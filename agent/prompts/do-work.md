@@ -25,7 +25,7 @@ Work through the plan step by step.
 
 ### 3. Validate
 
-Load the verification-before-completion skill.
+Load the verification-before-completion skill only in this point, do not load it earlier.
 Run the feedback loops (linting, type check, tests, etc), fix any issues, and run te prescribed validation steps from the plan.
 
 ### 4. Present to the user and wait for feedback
