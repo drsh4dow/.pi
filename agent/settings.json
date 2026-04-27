@@ -1,0 +1,17 @@
+{
+  "lastChangelogVersion": "0.70.2",
+  "packages": [
+    "npm:pi-web-access",
+    "npm:pi-questions",
+    "npm:pi-delegate"
+  ],
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.5",
+  "enabledModels": [
+    "anthropic/claude-opus-4-7",
+    "openai-codex/gpt-5.5"
+  ],
+  "defaultThinkingLevel": "high",
+  "hideThinkingBlock": true,
+  "treeFilterMode": "default"
+}

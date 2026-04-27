@@ -1,0 +1,9 @@
+.env
+sessions
+web-search.json
+exa-usage.json
+update-cache.json
+run-history.jsonl
+codex.md
+auth.json
+
