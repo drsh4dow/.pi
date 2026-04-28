@@ -21,7 +21,7 @@ $ARGUMENTS
 ## Process
 
 - Load any relevant skill if you think it has at least a chance to be useful for the current task before doing anything else.
-- Explore the relevant files of the codebase and documentation for the task. If the repository is huge use the `scout` subagent to optimize which files to focus on.
+- Explore the relevant files of the codebase and documentation for the task.
 - Do online research if applicable after you have explored the codebase.
 - Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer. Ask the questions one batch at a time grouped by topic. Use the ask questions tool. If a question can be answered by exploring the codebase, explore the codebase instead. Repeat the process until you reach a shared understanding and then proceed to output the plan.
 
