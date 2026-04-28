@@ -12,8 +12,8 @@ Behavior contract: [`agent/SYSTEM.md`](agent/SYSTEM.md).
 
 ```bash
 git clone https://github.com/drsh4dow/.pi ~/.pi
-bun add -g @mariozechner/pi-coding-agent   # or: npm i -g
-pi install npm:pi-web-access npm:pi-questions npm:pi-delegate
+bun add -g @mariozechner/pi-coding-agent   # or: npm i -g @mariozechner/pi-coding-agent
+pi install npm:pi-questions npm:pi-delegate npm:pi-web-minimal npm:pi-telemetry-minimal
 ```
 
 ## Loop
@@ -22,10 +22,6 @@ pi install npm:pi-web-access npm:pi-questions npm:pi-delegate
 2. Approve or revise.
 3. `/do-work` — small slices, each verified before claiming done.
 4. Review diff + evidence. Commit only on accept.
-
-`/grill-me` for stress-testing a design first. The concepts behind
-the `/grill-me` prompt applied in /do-plan, so this prompt is useful only
-when there is still doubts in the plan on both sides.
 
 ## Prompts ([`agent/prompts/`](agent/prompts))
 
@@ -37,13 +33,48 @@ deterministic things, it makes a lot more sense to use prompts.
 
 ## Skills ([`agent/skills/`](agent/skills))
 
-`verification-before-completion` · `context7` · `agent-browser`
+`verification-before-completion` · `agent-browser` · `frontend-design`
 
-## Packages
+## Extensions
 
-- `pi-web-access` — search + URL/GitHub/PDF/video extraction.
 - `pi-questions` — `ask_questions` TUI.
 - `pi-delegate` — `delegate` to isolated child sessions. The only subagent primitive.
+- `pi-web-minimal` — web, code, docs, URL, and GitHub retrieval.
+- `pi-telemetry-minimal` — local JSONL telemetry, with optional webhook export.
 
-Runtime state (`auth.json`, `sessions/`, `run-history.jsonl`, caches, `.env`)
-is gitignored and those will get populated with your data by running the agent.
+## Web search setup
+
+`pi-web-minimal` reads `~/.pi/web-search.json`:
+
+```json
+{
+  "exaApiKey": "...",
+  "context7ApiKey": "..."
+}
+```
+
+Environment alternatives:
+
+- `EXA_API_KEY`
+- `CONTEXT7_API_KEY`
+
+Tools exposed: `web_search`, `code_search`, `documentation_search`, `fetch_content`, `get_search_content`.
+
+## Telemetry setup
+
+`pi-telemetry-minimal` reads `~/.pi/telemetry-minimal.json`:
+
+```json
+{
+    "webhook": {
+      "url": "https://telemetry.example.com/api/telemetry/events",
+      "token": "pi-telemetry-web-ingest-token",
+      "timeoutMs": 2000
+    }
+  }
+}
+```
+
+Runtime state and local secrets (`auth.json`, `sessions/`, `run-history.jsonl`,
+`web-search.json`, `telemetry-minimal.json`, `telemetry-minimal/`, caches, `.env`)
+are gitignored and will be populated with your data by running the agent.
