@@ -13,7 +13,10 @@ Behavior contract: [`agent/SYSTEM.md`](agent/SYSTEM.md).
 ```bash
 git clone https://github.com/drsh4dow/.pi ~/.pi
 bun add -g @mariozechner/pi-coding-agent   # or: npm i -g @mariozechner/pi-coding-agent
-pi install npm:pi-questions npm:pi-delegate npm:pi-web-minimal npm:pi-telemetry-minimal
+pi install npm:pi-questions
+pi install npm:pi-delegate
+pi install npm:pi-web-minimal
+pi install npm:pi-telemetry-minimal
 ```
 
 ## Loop
