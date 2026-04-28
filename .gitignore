@@ -6,4 +6,5 @@ update-cache.json
 run-history.jsonl
 codex.md
 auth.json
-
+telemetry-minimal
+telemetry-minimal.json
