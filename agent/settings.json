@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.72.1",
+  "lastChangelogVersion": "0.73.0",
   "packages": [
     "npm:pi-questions",
     "npm:pi-delegate",
@@ -14,5 +14,15 @@
   ],
   "defaultThinkingLevel": "high",
   "hideThinkingBlock": true,
-  "treeFilterMode": "default"
+  "treeFilterMode": "default",
+  "theme": "catppuccin-mocha",
+  "terminal": {
+    "showTerminalProgress": false
+  },
+  "warnings": {
+    "anthropicExtraUsage": false
+  },
+  "compaction": {
+    "enabled": true
+  }
 }
