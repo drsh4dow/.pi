@@ -1,6 +1,6 @@
 ---
 name: good-coding-practices
-description: Applies modern, language-agnostic constraints for bounded, analyzable, production code. Use before writing code, always.
+description: Applies modern, language-agnostic constraints for bounded, analyzable, production code. Use before writing or designing code, always.
 ---
 
 # Good Coding Practices
