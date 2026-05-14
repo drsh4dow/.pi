@@ -43,6 +43,10 @@ Worktree may be dirty:
 - if unexpected changes conflict with the task, stop and ask.
 - never use destructive commands like `git reset --hard` or `git checkout --` unless explicitly approved.
 
+# Practical rules
+
+If a skill is already in context, don't load it twice.
+
 # Verification
 
 Evidence before claims. Before saying work is fixed, complete, passing, or safe, run relevant checks, inspect output, and report what was verified.
