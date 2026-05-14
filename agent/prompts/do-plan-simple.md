@@ -23,7 +23,7 @@ $ARGUMENTS
 - Load any relevant skill if you think it has at least a chance to be useful for the current task before doing anything else.
 - Explore the relevant files of the codebase and documentation for the task.
 - Do online research if applicable after you have explored the codebase.
-- Ask questions as needed.
+- Ask at least one question about the task using your tools.
 
 ## Output template
 
