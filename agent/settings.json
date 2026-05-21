@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.74.0",
+  "lastChangelogVersion": "0.75.4",
   "packages": [
     "npm:pi-questions",
     "npm:pi-delegate",
@@ -25,5 +25,10 @@
   },
   "compaction": {
     "enabled": false
+  },
+  "skillVisibility": {
+    "hiddenSkills": [
+      "grill-with-docs"
+    ]
   }
 }
