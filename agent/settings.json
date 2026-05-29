@@ -1,10 +1,9 @@
 {
-  "lastChangelogVersion": "0.75.4",
+  "lastChangelogVersion": "0.77.0",
   "packages": [
     "npm:pi-questions",
     "npm:pi-delegate",
     "npm:pi-web-minimal",
-    "npm:pi-telemetry-minimal",
     "npm:pi-notify"
   ],
   "defaultProvider": "openai-codex",
@@ -14,7 +13,7 @@
     "anthropic/claude-opus-4-7"
   ],
   "defaultThinkingLevel": "medium",
-  "hideThinkingBlock": true,
+  "hideThinkingBlock": false,
   "treeFilterMode": "default",
   "theme": "catppuccin-mocha",
   "terminal": {
@@ -24,7 +23,7 @@
     "anthropicExtraUsage": false
   },
   "compaction": {
-    "enabled": false
+    "enabled": true
   },
   "skillVisibility": {
     "hiddenSkills": [
