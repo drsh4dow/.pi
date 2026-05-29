@@ -12,7 +12,7 @@
     "openai-codex/gpt-5.5",
     "anthropic/claude-opus-4-7"
   ],
-  "defaultThinkingLevel": "medium",
+  "defaultThinkingLevel": "xhigh",
   "hideThinkingBlock": false,
   "treeFilterMode": "default",
   "theme": "catppuccin-mocha",
@@ -27,7 +27,8 @@
   },
   "skillVisibility": {
     "hiddenSkills": [
-      "grill-with-docs"
+      "grill-with-docs",
+      "improve-codebase-architecture"
     ]
   }
 }
