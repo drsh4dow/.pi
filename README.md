@@ -22,8 +22,8 @@ pi install npm:pi-telemetry-minimal
 ## Loop
 
 1. `/do-plan <task>` — read-only. Explores, researches, interviews, emits a plan.
-2. Approve or revise.
-3. `/do-work` — small slices, each verified before claiming done.
+2. Approve or revise. In case you want to deepen the plan run `/skill:grill-with-docs`
+3. `/do-work proceed with the plan` — small slices, each verified before claiming done.
 4. Review diff + evidence. Commit only on accept.
 
 ## Prompts ([`agent/prompts/`](agent/prompts))
