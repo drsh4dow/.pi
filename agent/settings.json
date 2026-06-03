@@ -4,7 +4,8 @@
     "npm:pi-questions",
     "npm:pi-delegate",
     "npm:pi-web-minimal",
-    "npm:pi-notify"
+    "npm:pi-notify",
+    "npm:pi-system-prompt-switcher"
   ],
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
