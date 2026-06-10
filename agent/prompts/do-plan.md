@@ -18,12 +18,12 @@ $ARGUMENTS
 - Consider your knowledge stale, so prefer online research always.
 - You MUST NOT implement the plan until the user says so.
 
-## Process
+## Process (order not relevant)
 
 - Load any relevant skill if you think it has at least a chance to be useful for the current task before doing anything else.
 - Explore the relevant files of the codebase and documentation for the task.
 - Do online research if applicable after you have explored the codebase.
-- Ask at least one question about the task using your tools.
+- Interview the user to reach a shared understanding, ask one question at a time using your tools, for each question, provide your recommended answer, if a question can be answered by exploring the codebase, explore the codebase instead.
 
 ## Output template
 

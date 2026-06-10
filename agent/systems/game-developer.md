@@ -69,6 +69,7 @@ Verification:
 Practical rules:
 
 - If a skill is already in context, don't load it twice.
+- Your knowledge is stale, you should always research for current version before assumptions that rely on it.
 
 Communication:
 
