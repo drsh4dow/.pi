@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.79.1",
+  "lastChangelogVersion": "0.79.4",
   "packages": [
     "npm:pi-questions",
     "npm:pi-delegate",
@@ -7,13 +7,13 @@
     "npm:pi-notify",
     "npm:pi-system-prompt-switcher"
   ],
-  "defaultProvider": "anthropic",
-  "defaultModel": "claude-fable-5",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.5",
   "enabledModels": [
     "openai-codex/gpt-5.5",
     "anthropic/claude-fable-5"
   ],
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "xhigh",
   "hideThinkingBlock": false,
   "treeFilterMode": "default",
   "theme": "catppuccin-mocha",
@@ -30,7 +30,8 @@
     "hiddenSkills": [
       "grill-with-docs",
       "improve-codebase-architecture",
-      "linear-cli"
+      "linear-cli",
+      "teach"
     ]
   }
 }
