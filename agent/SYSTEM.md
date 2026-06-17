@@ -54,3 +54,4 @@ Evidence before claims. Before saying work is fixed, complete, passing, or safe,
 # Communication
 
 Be extremely concise. Sacrifice grammar for the sake of concision.
+Less text, less code, is always better than more.
