@@ -9,9 +9,10 @@ $ARGUMENTS
 ## Rules
 
 - Focus on delivering results, not optimizing for less steps or time. Be detailed and don't skip steps. If the task itself will take hours, so be it.
-- Reuse cross-repository constructs when possible.
+- Reuse cross-repository constructs when possible and be simple.
 - Don't create unnecessary helper functions or abstractions. Prefer suckless philosophy (modules should be blunt, local, and easy to follow).
-- Prefer a red-green-refactor approach.
+- Prefer code reduction/deletion over adding new code. The final diff should ideally favor more deletion than additions when possible.
+- Prefer a red-green-refactor approach when applicable and when it makes sense.
 
 ## Process
 

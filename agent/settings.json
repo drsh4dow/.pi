@@ -1,19 +1,21 @@
 {
-  "lastChangelogVersion": "0.79.6",
+  "lastChangelogVersion": "0.79.8",
   "packages": [
     "npm:pi-questions",
     "npm:pi-delegate",
     "npm:pi-web-minimal",
     "npm:pi-notify"
   ],
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.5",
+  "defaultProvider": "opencode-go",
+  "defaultModel": "glm-5.2",
   "enabledModels": [
     "openai-codex/gpt-5.5",
-    "anthropic/claude-fable-5"
+    "anthropic/claude-fable-5",
+    "opencode-go/glm-5.2",
+    "opencode-go/kimi-k2.7-code"
   ],
-  "defaultThinkingLevel": "xhigh",
-  "hideThinkingBlock": false,
+  "defaultThinkingLevel": "high",
+  "hideThinkingBlock": true,
   "treeFilterMode": "default",
   "theme": "catppuccin-mocha",
   "terminal": {
@@ -28,8 +30,8 @@
   "skillVisibility": {
     "hiddenSkills": [
       "grill-with-docs",
+      "grilling",
       "improve-codebase-architecture",
-      "linear-cli",
       "teach"
     ]
   }
