@@ -2,11 +2,11 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import {
-  formatSkillsForPrompt,
   type ExtensionAPI,
   type ExtensionCommandContext,
+  formatSkillsForPrompt,
   type Skill,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 
 const SETTINGS_KEY = "skillVisibility";
 const DONE_LABEL = "Done";

@@ -5,7 +5,7 @@
  * final TPS statistics at the end of each agent run.
  */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 export default function (pi: ExtensionAPI) {
   /** Timestamp when the current assistant message event started. Used as a fallback. */
@@ -53,13 +53,15 @@ export default function (pi: ExtensionAPI) {
 
     const elapsed = (now - streamStart) / 1000;
     const officialTokens = event.message.usage.output;
-    const currentTokens = officialTokens > 0 ? officialTokens : estimatedStreamedTokens;
+    const currentTokens =
+      officialTokens > 0 ? officialTokens : estimatedStreamedTokens;
 
     if (elapsed > 0 && currentTokens > 0) {
       const tps = Math.round(currentTokens / elapsed);
-      const tokenLabel = officialTokens > 0
-        ? `${officialTokens} tok`
-        : `~${Math.round(estimatedStreamedTokens)} tok`;
+      const tokenLabel =
+        officialTokens > 0
+          ? `${officialTokens} tok`
+          : `~${Math.round(estimatedStreamedTokens)} tok`;
       const theme = ctx.ui.theme;
       ctx.ui.setStatus(
         "tps",
@@ -90,14 +92,19 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("agent_end", async (_event, ctx) => {
     const elapsed = totalStreamMs / 1000;
-    const tps = totalOutputTokens > 0 && elapsed > 0 ? Math.round(totalOutputTokens / elapsed) : 0;
+    const tps =
+      totalOutputTokens > 0 && elapsed > 0
+        ? Math.round(totalOutputTokens / elapsed)
+        : 0;
 
     const theme = ctx.ui.theme;
     const icon = theme.fg("success", "✓");
-    const tpsLabel = tps > 0
-      ? theme.fg("accent", `${tps} tok/s`)
-      : theme.fg("dim", "N/A");
-    const detail = theme.fg("dim", `${totalOutputTokens} tokens in ${elapsed.toFixed(1)}s streaming`);
+    const tpsLabel =
+      tps > 0 ? theme.fg("accent", `${tps} tok/s`) : theme.fg("dim", "N/A");
+    const detail = theme.fg(
+      "dim",
+      `${totalOutputTokens} tokens in ${elapsed.toFixed(1)}s streaming`,
+    );
 
     ctx.ui.notify(`${icon} ${tpsLabel}  ${detail}`, "info");
     ctx.ui.setStatus("tps", theme.fg("dim", `done — ${tpsLabel}`));

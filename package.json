@@ -1,0 +1,16 @@
+{
+  "name": "pi-dotfiles",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "npm run typecheck && npm run lint",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check agent/extensions"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.0",
+    "@earendil-works/pi-coding-agent": "0.79.8",
+    "@types/node": "22.20.0",
+    "typescript": "6.0.3"
+  }
+}

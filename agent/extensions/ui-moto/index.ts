@@ -2,7 +2,7 @@ import path from "node:path";
 import type {
   ExtensionAPI,
   ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 
 const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
@@ -28,8 +28,9 @@ function colorAt(position: number): Rgb {
   const index = Math.floor(scaled);
   const nextIndex = (index + 1) % PALETTE.length;
   const t = scaled - index;
-  const a = PALETTE[index]!;
-  const b = PALETTE[nextIndex]!;
+  const a = PALETTE[index];
+  const b = PALETTE[nextIndex];
+  if (!a || !b) throw new Error("palette index out of bounds");
 
   return [mix(a[0], b[0], t), mix(a[1], b[1], t), mix(a[2], b[2], t)];
 }

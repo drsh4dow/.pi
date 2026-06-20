@@ -1,6 +1,6 @@
 # Pi
 
-Opinionated config for [Pi](https://github.com/mariozechner/pi). Strong model, small harness, strict workflow.
+Personal dotfiles for [Pi](https://github.com/earendil-works/pi). Opinionated, public-safe config for people who want my defaults without my local secrets.
 
 - Engine: `openai-codex/gpt-5.5`, high thinking.
 - Taste: *suckless*, *A Philosophy of Software Design*, *The Pragmatic Programmer*.
@@ -12,29 +12,49 @@ Behavior contract: [`agent/SYSTEM.md`](agent/SYSTEM.md).
 
 ```bash
 git clone https://github.com/drsh4dow/.pi ~/.pi
-bun add -g @mariozechner/pi-coding-agent   # or: npm i -g @mariozechner/pi-coding-agent
+npm i -g @earendil-works/pi-coding-agent
 pi install npm:pi-questions
 pi install npm:pi-delegate
+pi install npm:pi-web-minimal
+pi install npm:pi-notify
+npm i -g agent-browser && agent-browser install  # optional, for the agent-browser skill
 ```
+
+Local-only files are ignored. Copy examples when you need them:
+
+```bash
+cp ~/.pi/web-search.example.json ~/.pi/web-search.json
+cp ~/.pi/agent/trust.example.json ~/.pi/agent/trust.json
+```
+
+Never commit real API keys, auth files, run history, telemetry, or trusted local paths.
+
+## Validate changes
+
+```bash
+npm install
+npm run check
+```
+
+CI runs the same check on GitHub Actions.
 
 ## Loop
 
 1. `/do-plan <task>` — read-only. Explores, researches, interviews, emits a plan.
-2. Approve or revise. In case you want to deepen the plan run `/skill:grill-with-docs`
+2. Approve or revise. To deepen the plan, run `/skill:grill-with-docs`.
 3. `/do-work proceed with the plan` — small slices, each verified before claiming done.
 4. Review diff + evidence. Commit only on accept.
 
 ## Prompts ([`agent/prompts/`](agent/prompts))
 
-We use prompts for deterministic triggers. Skills are injected into the context, so it
-makes sense for things that must be triggered automatically. But for
-deterministic things, it makes a lot more sense to use prompts.
+Prompts are for deterministic triggers. Skills are injected into context, so they are better for behavior that must trigger automatically.
 
 ## Extensions
 
 - `pi-questions` — `ask_questions` TUI.
 - `pi-delegate` — `delegate` to isolated child sessions. The only subagent primitive.
 - `pi-web-minimal` — web, code, docs, URL, and GitHub retrieval.
+- `pi-notify` — desktop notifications.
 
 ## Web search setup
 
@@ -53,3 +73,7 @@ Environment alternatives:
 - `CONTEXT7_API_KEY`
 
 Tools exposed: `web_search`, `code_search`, `documentation_search`, `fetch_content`, `get_search_content`.
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
