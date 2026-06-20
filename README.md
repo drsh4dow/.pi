@@ -15,8 +15,6 @@ git clone https://github.com/drsh4dow/.pi ~/.pi
 bun add -g @mariozechner/pi-coding-agent   # or: npm i -g @mariozechner/pi-coding-agent
 pi install npm:pi-questions
 pi install npm:pi-delegate
-pi install npm:pi-web-minimal
-pi install npm:pi-telemetry-minimal
 ```
 
 ## Loop
@@ -28,22 +26,15 @@ pi install npm:pi-telemetry-minimal
 
 ## Prompts ([`agent/prompts/`](agent/prompts))
 
-We use prompts, not skills. Skills are injected into the context, so it
+We use prompts for deterministic triggers. Skills are injected into the context, so it
 makes sense for things that must be triggered automatically. But for
 deterministic things, it makes a lot more sense to use prompts.
-
-`do-plan` · `do-work` · `grill-me` · `improve-codebase-architecture` · `write-prd` · `prd-to-issues` · `write-skill`
-
-## Skills ([`agent/skills/`](agent/skills))
-
-`verification-before-completion` · `agent-browser` · `frontend-design`
 
 ## Extensions
 
 - `pi-questions` — `ask_questions` TUI.
 - `pi-delegate` — `delegate` to isolated child sessions. The only subagent primitive.
 - `pi-web-minimal` — web, code, docs, URL, and GitHub retrieval.
-- `pi-telemetry-minimal` — local JSONL telemetry, with optional webhook export.
 
 ## Web search setup
 
@@ -62,22 +53,3 @@ Environment alternatives:
 - `CONTEXT7_API_KEY`
 
 Tools exposed: `web_search`, `code_search`, `documentation_search`, `fetch_content`, `get_search_content`.
-
-## Telemetry setup
-
-`pi-telemetry-minimal` reads `~/.pi/telemetry-minimal.json`:
-
-```json
-{
-    "webhook": {
-      "url": "https://telemetry.example.com/api/telemetry/events",
-      "token": "pi-telemetry-web-ingest-token",
-      "timeoutMs": 2000
-    }
-  }
-}
-```
-
-Runtime state and local secrets (`auth.json`, `sessions/`, `run-history.jsonl`,
-`web-search.json`, `telemetry-minimal.json`, `telemetry-minimal/`, caches, `.env`)
-are gitignored and will be populated with your data by running the agent.

@@ -6,15 +6,15 @@
     "npm:pi-web-minimal",
     "npm:pi-notify"
   ],
-  "defaultProvider": "opencode-go",
-  "defaultModel": "glm-5.2",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.5",
   "enabledModels": [
     "openai-codex/gpt-5.5",
-    "anthropic/claude-fable-5",
     "opencode-go/glm-5.2",
-    "opencode-go/kimi-k2.7-code"
+    "anthropic/claude-fable-5",
+    "anthropic/claude-opus-4-8"
   ],
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "xhigh",
   "hideThinkingBlock": true,
   "treeFilterMode": "default",
   "theme": "catppuccin-mocha",
