@@ -1,9 +1,9 @@
 {
-  "lastChangelogVersion": "0.80.1",
+  "lastChangelogVersion": "0.80.2",
   "packages": [
     "npm:pi-questions",
     "npm:pi-delegate",
-    "npm:pi-web-minimal"
+    "npm:pi-web-access"
   ],
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
@@ -13,7 +13,7 @@
     "anthropic/claude-fable-5",
     "anthropic/claude-opus-4-8"
   ],
-  "defaultThinkingLevel": "low",
+  "defaultThinkingLevel": "xhigh",
   "hideThinkingBlock": true,
   "treeFilterMode": "default",
   "theme": "catppuccin-mocha",
