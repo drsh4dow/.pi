@@ -29,10 +29,18 @@ Work through the plan step by step.
 Load the verification-before-completion skill only in this point, do not load it earlier.
 Run the feedback loops (linting, type check, tests, etc), fix any issues, and run te prescribed validation steps from the plan.
 
-### 4. Present to the user and wait for feedback
+### 4. Review and beautify
+
+Run a reviewer subagent before summarizing. The reviewer should check for unnecessary complexity, beautiful, simple, and elegant code, it should audit the current code changes. use this output to improve the code implementation.
+
+<BeautifulCode>
+Beautiful code is code that is readable on a single seam, code that is simple, that doesn't use unnecessary abstractions, getters, setters or scattered constants when they are used a single time. Code that blends perfectly on the current patterns and standards of the repo. Code that produces a git diff with more deletions than additions, this is one of the strongest beauty representations.
+</BeautifulCode>
+
+### 5. Present to the user and wait for feedback
 
 Present a summary of the results to the user. Ask for feedback highlighting the main implementation patterns and offer to either adjust something or commit the changes.
 
-### 5. Commit if user accepts
+### 6. Commit if user accepts
 
 Once the validation is complete, commit the changes to the codebase explaining the decisions, the why, and any useful context. Don't overstate what was done explicitly, as this can be inferred from the diff.

@@ -1,10 +1,10 @@
 {
   "lastChangelogVersion": "0.80.2",
   "packages": [
-    "npm:pi-questions",
-    "npm:pi-delegate",
     "npm:pi-web-access",
-    "npm:pi-better-openai"
+    "npm:pi-better-openai",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:pi-subagents"
   ],
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
