@@ -3,7 +3,8 @@
   "packages": [
     "npm:pi-questions",
     "npm:pi-delegate",
-    "npm:pi-web-access"
+    "npm:pi-web-access",
+    "npm:pi-better-openai"
   ],
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
