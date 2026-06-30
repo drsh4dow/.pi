@@ -31,7 +31,7 @@ Run the feedback loops (linting, type check, tests, etc), fix any issues, and ru
 
 ### 4. Review and beautify
 
-Run a reviewer subagent before summarizing. The reviewer should check for unnecessary complexity, beautiful, simple, and elegant code, it should audit the current code changes. use this output to improve the code implementation.
+Run a reviewer subagent before summarizing. The reviewer should check for unnecessary complexity, beautiful, simple, and elegant code, it should audit the current code changes. use this output to improve the code implementation. (pass to the reviewer subagent the definition of beautiful code below)
 
 <BeautifulCode>
 Beautiful code is code that is readable on a single seam, code that is simple, that doesn't use unnecessary abstractions, getters, setters or scattered constants when they are used a single time. Code that blends perfectly on the current patterns and standards of the repo. Code that produces a git diff with more deletions than additions, this is one of the strongest beauty representations.

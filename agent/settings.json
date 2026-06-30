@@ -3,8 +3,8 @@
   "packages": [
     "npm:pi-web-access",
     "npm:pi-better-openai",
-    "npm:@juicesharp/rpiv-ask-user-question",
-    "npm:pi-subagents"
+    "npm:pi-delegate",
+    "npm:pi-questions"
   ],
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
@@ -26,13 +26,5 @@
   },
   "compaction": {
     "enabled": false
-  },
-  "skillVisibility": {
-    "hiddenSkills": [
-      "grill-with-docs",
-      "grilling",
-      "improve-codebase-architecture",
-      "teach"
-    ]
   }
 }
