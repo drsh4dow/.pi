@@ -1,59 +1,27 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
-import {
-  type ExtensionAPI,
-  type ExtensionCommandContext,
-  formatSkillsForPrompt,
-  type Skill,
+import { readFile, writeFile } from "node:fs/promises";
+import type {
+  ExtensionAPI,
+  ExtensionCommandContext,
+  Skill,
 } from "@earendil-works/pi-coding-agent";
 
-const SETTINGS_KEY = "skillVisibility";
 const DONE_LABEL = "Done";
-const SKILLS_SECTION_PATTERN =
-  /\n\nThe following skills provide specialized instructions for specific tasks\.[\s\S]*?<\/available_skills>/;
+const DISABLE_MODEL_INVOCATION_LINE = /^disable-model-invocation\s*:/;
+const FRONTMATTER_OPEN = "---\n";
+const FRONTMATTER_CLOSE = "\n---";
 
-type SettingsDocument = Record<string, unknown> & {
-  skillVisibility?: {
-    hiddenSkills?: unknown;
-  };
+type SkillVisibility = {
+  name: string;
+  filePath: string;
+  hidden: boolean;
+};
+
+type SkillDocument = {
+  frontmatter: string;
+  body: string;
 };
 
 export default function (pi: ExtensionAPI) {
-  pi.on("session_start", async (_event, ctx) => {
-    try {
-      await pruneHiddenSkills(pi);
-    } catch (error) {
-      ctx.ui.notify(
-        `Failed to prune hidden skills: ${errorMessage(error)}`,
-        "warning",
-      );
-    }
-  });
-
-  pi.on("before_agent_start", async (event, ctx) => {
-    let hiddenSkills: Set<string>;
-    try {
-      hiddenSkills = await readHiddenSkills();
-    } catch (error) {
-      ctx.ui.notify(
-        `Failed to read skill visibility settings: ${errorMessage(error)}`,
-        "warning",
-      );
-      return;
-    }
-
-    if (hiddenSkills.size === 0 || !event.systemPromptOptions.skills?.length)
-      return;
-
-    const skills = applySkillVisibility(
-      event.systemPromptOptions.skills,
-      hiddenSkills,
-    );
-    const systemPrompt = replaceSkillsSection(event.systemPrompt, skills);
-    if (systemPrompt) return { systemPrompt };
-  });
-
   pi.registerCommand("skill-visibility", {
     description: "Toggle which skills are model-discoverable.",
     handler: async (_args, ctx) => {
@@ -62,63 +30,55 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      const skillNames = listLoadedSkillNames(pi);
-      if (skillNames.length === 0) {
+      const skills = listLoadedSkills(
+        ctx.getSystemPromptOptions().skills ?? [],
+      );
+      if (skills.length === 0) {
         ctx.ui.notify("No skills are currently loaded.", "info");
         return;
       }
 
-      let hiddenSkills: Set<string>;
-      try {
-        hiddenSkills = await readHiddenSkills();
-      } catch (error) {
-        ctx.ui.notify(
-          `Failed to read skill visibility settings: ${errorMessage(error)}`,
-          "error",
-        );
-        return;
-      }
-
-      await chooseSkillVisibility(ctx, skillNames, hiddenSkills);
+      const changed = await chooseSkillVisibility(ctx, skills);
+      if (changed) await reloadResources(ctx);
     },
   });
 }
 
 async function chooseSkillVisibility(
   ctx: ExtensionCommandContext,
-  skillNames: string[],
-  hiddenSkills: Set<string>,
-): Promise<void> {
-  let skillName = await selectSkillName(ctx, skillNames, hiddenSkills);
+  skills: SkillVisibility[],
+): Promise<boolean> {
+  let changed = false;
+  let skill = await selectSkill(ctx, skills);
 
-  while (skillName) {
-    toggleSetValue(hiddenSkills, skillName);
+  while (skill) {
+    const hidden = !skill.hidden;
 
     try {
-      await writeHiddenSkills(hiddenSkills);
+      await writeSkillVisibility(skill.filePath, hidden);
     } catch (error) {
       ctx.ui.notify(
-        `Failed to save skill visibility settings: ${errorMessage(error)}`,
+        `Failed to save ${skill.name} visibility: ${errorMessage(error)}`,
         "error",
       );
-      return;
+      return changed;
     }
 
-    const state = hiddenSkills.has(skillName)
-      ? "hidden from model discovery"
-      : "model-discoverable";
-    ctx.ui.notify(`${skillName} is now ${state}.`, "info");
+    skill.hidden = hidden;
+    changed = true;
+    ctx.ui.notify(`${skill.name} is now ${stateLabel(skill)}.`, "info");
 
-    skillName = await selectSkillName(ctx, skillNames, hiddenSkills);
+    skill = await selectSkill(ctx, skills);
   }
+
+  return changed;
 }
 
-async function selectSkillName(
+async function selectSkill(
   ctx: ExtensionCommandContext,
-  skillNames: string[],
-  hiddenSkills: Set<string>,
-): Promise<string | undefined> {
-  const choices = skillChoices(skillNames, hiddenSkills);
+  skills: SkillVisibility[],
+): Promise<SkillVisibility | undefined> {
+  const choices = skillChoices(skills);
   const selected = await ctx.ui.select("Skill visibility", [
     ...choices.keys(),
     DONE_LABEL,
@@ -128,149 +88,134 @@ async function selectSkillName(
   return choices.get(selected);
 }
 
-function skillChoices(
-  skillNames: string[],
-  hiddenSkills: Set<string>,
-): Map<string, string> {
-  const choices = new Map<string, string>();
+function skillChoices(skills: SkillVisibility[]): Map<string, SkillVisibility> {
+  const choices = new Map<string, SkillVisibility>();
 
-  for (const skillName of skillNames) {
-    const hidden = hiddenSkills.has(skillName);
-    const marker = hidden ? "○" : "●";
-    const status = hidden ? "hidden" : "discoverable";
-    choices.set(`${marker} ${skillName} — ${status}`, skillName);
+  for (const skill of skills) {
+    const marker = skill.hidden ? "○" : "●";
+    const status = skill.hidden ? "hidden" : "discoverable";
+    choices.set(`${marker} ${skill.name} — ${status}`, skill);
   }
 
   return choices;
 }
 
-function applySkillVisibility(
-  skills: Skill[],
-  hiddenSkills: Set<string>,
-): Skill[] {
-  return skills.map((skill) => ({
-    ...skill,
-    disableModelInvocation:
-      skill.disableModelInvocation ||
-      hiddenSkills.has(normalizeSkillName(skill.name)),
-  }));
-}
+function listLoadedSkills(skills: Skill[]): SkillVisibility[] {
+  const visibleSkills: SkillVisibility[] = [];
 
-async function pruneHiddenSkills(pi: ExtensionAPI): Promise<void> {
-  const installed = new Set(listLoadedSkillNames(pi));
-  const hidden = await readHiddenSkills();
-  const pruned = Array.from(hidden).filter((skillName) =>
-    installed.has(skillName),
-  );
+  for (const skill of skills) {
+    const name = normalizeSkillName(skill.name);
+    if (!name) continue;
 
-  if (pruned.length !== hidden.size) await writeHiddenSkills(pruned);
-}
-
-function listLoadedSkillNames(pi: ExtensionAPI): string[] {
-  const names = new Set<string>();
-
-  for (const command of pi.getCommands()) {
-    if (command.source !== "skill") continue;
-
-    const name = normalizeSkillName(command.name);
-    if (name) names.add(name);
+    visibleSkills.push({
+      name,
+      filePath: skill.filePath,
+      hidden: skill.disableModelInvocation,
+    });
   }
 
-  return Array.from(names).sort();
+  return visibleSkills.sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
 }
 
-function settingsPath(): string {
-  return join(homedir(), ".pi", "agent", "settings.json");
-}
-
-async function readHiddenSkills(): Promise<Set<string>> {
-  const settings = await readSettings();
-  const hiddenSkills = settings[SETTINGS_KEY]?.hiddenSkills;
-
-  if (!Array.isArray(hiddenSkills)) return new Set<string>();
-  return new Set(normalizeSkillNames(hiddenSkills));
-}
-
-async function writeHiddenSkills(
-  hiddenSkills: Iterable<string>,
+async function writeSkillVisibility(
+  filePath: string,
+  hidden: boolean,
 ): Promise<void> {
-  const path = settingsPath();
-  const settings = await readSettings();
-  const names = normalizeSkillNames(hiddenSkills);
+  const content = await readFile(filePath, "utf-8");
+  const nextContent = setSkillVisibility(content, hidden);
 
-  if (names.length === 0) {
-    deleteHiddenSkills(settings);
-  } else {
-    const section = isRecord(settings[SETTINGS_KEY])
-      ? { ...settings[SETTINGS_KEY] }
-      : {};
-    section.hiddenSkills = names;
-    settings[SETTINGS_KEY] = section;
-  }
-
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(settings, null, 2)}\n`, "utf-8");
+  if (nextContent === content) return;
+  await writeFile(filePath, nextContent, "utf-8");
 }
 
-async function readSettings(): Promise<SettingsDocument> {
+function setSkillVisibility(content: string, hidden: boolean): string {
+  const newline = detectNewline(content);
+  const document = splitSkillDocument(normalizeNewlines(content));
+  const frontmatter = setDisableModelInvocation(document.frontmatter, hidden);
+  const nextContent = `---\n${frontmatter}\n---${document.body}`;
+
+  return restoreNewlines(nextContent, newline);
+}
+
+function splitSkillDocument(content: string): SkillDocument {
+  if (!content.startsWith(FRONTMATTER_OPEN)) {
+    throw new Error("SKILL.md must start with YAML frontmatter");
+  }
+
+  const endIndex = content.indexOf(FRONTMATTER_CLOSE, FRONTMATTER_OPEN.length);
+  if (endIndex === -1) {
+    throw new Error("SKILL.md is missing a closing frontmatter delimiter");
+  }
+
+  const afterCloseIndex = endIndex + FRONTMATTER_CLOSE.length;
+  const nextCharacter = content.at(afterCloseIndex);
+  if (nextCharacter && nextCharacter !== "\n") {
+    throw new Error("SKILL.md frontmatter delimiter must be on its own line");
+  }
+
+  return {
+    frontmatter: content.slice(FRONTMATTER_OPEN.length, endIndex),
+    body: content.slice(afterCloseIndex),
+  };
+}
+
+function setDisableModelInvocation(
+  frontmatter: string,
+  hidden: boolean,
+): string {
+  const nextLine = `disable-model-invocation: ${hidden}`;
+  const lines = frontmatter ? frontmatter.split("\n") : [];
+  const nextLines: string[] = [];
+  let found = false;
+
+  for (const line of lines) {
+    if (!DISABLE_MODEL_INVOCATION_LINE.test(line)) {
+      nextLines.push(line);
+      continue;
+    }
+
+    if (!found) nextLines.push(nextLine);
+    found = true;
+  }
+
+  if (!found) nextLines.push(nextLine);
+  return nextLines.join("\n");
+}
+
+async function reloadResources(ctx: ExtensionCommandContext): Promise<void> {
+  const notify = ctx.ui.notify.bind(ctx.ui);
+  notify("Reloading skills.", "info");
+
   try {
-    const parsed = JSON.parse(
-      await readFile(settingsPath(), "utf-8"),
-    ) as unknown;
-    return isRecord(parsed) ? (parsed as SettingsDocument) : {};
+    await ctx.reload();
   } catch (error) {
-    if (isNotFoundError(error)) return {};
-    throw error;
+    notify(
+      `Skill visibility saved, but reload failed: ${errorMessage(error)}`,
+      "warning",
+    );
   }
-}
-
-function deleteHiddenSkills(settings: SettingsDocument): void {
-  const section = settings[SETTINGS_KEY];
-  if (!isRecord(section)) return;
-
-  delete section.hiddenSkills;
-  if (Object.keys(section).length === 0) delete settings[SETTINGS_KEY];
-}
-
-function replaceSkillsSection(
-  systemPrompt: string,
-  skills: Skill[],
-): string | undefined {
-  const next = systemPrompt.replace(
-    SKILLS_SECTION_PATTERN,
-    formatSkillsForPrompt(skills),
-  );
-  return next === systemPrompt ? undefined : next;
-}
-
-function normalizeSkillNames(names: Iterable<unknown>): string[] {
-  const normalized = new Set<string>();
-
-  for (const name of names) {
-    if (typeof name !== "string") continue;
-
-    const normalizedName = normalizeSkillName(name);
-    if (normalizedName) normalized.add(normalizedName);
-  }
-
-  return Array.from(normalized).sort();
 }
 
 function normalizeSkillName(name: string): string {
   return name.trim().replace(/^skill:/, "");
 }
 
-function toggleSetValue(values: Set<string>, value: string): void {
-  if (values.has(value)) values.delete(value);
-  else values.add(value);
+function stateLabel(skill: SkillVisibility): string {
+  return skill.hidden ? "hidden from model discovery" : "model-discoverable";
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function detectNewline(content: string): "\n" | "\r\n" {
+  return content.includes("\r\n") ? "\r\n" : "\n";
 }
 
-function isNotFoundError(error: unknown): boolean {
-  return isRecord(error) && error.code === "ENOENT";
+function normalizeNewlines(content: string): string {
+  return content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+function restoreNewlines(content: string, newline: "\n" | "\r\n"): string {
+  return newline === "\n" ? content : content.replace(/\n/g, newline);
 }
 
 function errorMessage(error: unknown): string {
