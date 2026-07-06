@@ -6,15 +6,15 @@
     "npm:pi-delegate",
     "npm:pi-questions"
   ],
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.5",
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-fable-5",
   "enabledModels": [
     "openai-codex/gpt-5.5",
     "opencode-go/glm-5.2",
     "anthropic/claude-fable-5",
     "anthropic/claude-opus-4-8"
   ],
-  "defaultThinkingLevel": "xhigh",
+  "defaultThinkingLevel": "high",
   "hideThinkingBlock": true,
   "treeFilterMode": "default",
   "theme": "catppuccin-mocha",
