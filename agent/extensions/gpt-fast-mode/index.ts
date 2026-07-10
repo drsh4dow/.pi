@@ -181,7 +181,9 @@ function announceState(ctx: ExtensionContext, enabled: boolean): void {
   }
 
   if (isSupportedModel(ctx.model)) {
-    ctx.ui.notify(`GPT Fast mode enabled (service_tier: ${FAST_SERVICE_TIER}).`);
+    ctx.ui.notify(
+      `GPT Fast mode enabled (service_tier: ${FAST_SERVICE_TIER}).`,
+    );
     return;
   }
 
