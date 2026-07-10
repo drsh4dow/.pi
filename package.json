@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "npm run typecheck && npm run lint",
+    "check": "bun run typecheck && bun run lint",
     "typecheck": "tsc --noEmit",
     "lint": "biome check agent/extensions"
   },
@@ -12,5 +12,9 @@
     "@earendil-works/pi-coding-agent": "0.79.8",
     "@types/node": "22.20.0",
     "typescript": "6.0.3"
-  }
+  },
+  "trustedDependencies": [
+    "@google/genai",
+    "protobufjs"
+  ]
 }
