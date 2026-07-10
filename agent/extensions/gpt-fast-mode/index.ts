@@ -1,29 +1,28 @@
-import { existsSync, readFileSync } from "node:fs";
+import {
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
+// OpenAI currently documents Codex Fast mode for these models only.
 export const SUPPORTED_MODELS: ReadonlySet<string> = new Set([
   "openai/gpt-5.4",
-  "openai/gpt-5.4-mini",
   "openai/gpt-5.5",
-  "openai/gpt-5.6",
-  "openai/gpt-5.6-sol",
-  "openai/gpt-5.6-terra",
-  "openai/gpt-5.6-luna",
   "openai-codex/gpt-5.4",
-  "openai-codex/gpt-5.4-mini",
   "openai-codex/gpt-5.5",
-  "openai-codex/gpt-5.6",
-  "openai-codex/gpt-5.6-sol",
-  "openai-codex/gpt-5.6-terra",
-  "openai-codex/gpt-5.6-luna",
 ]);
 
+// Codex calls this mode "fast" in config, but sends "priority" on the wire.
 export const FAST_SERVICE_TIER = "priority";
+export const CONFIG_FILE = "gpt-fast-mode.json";
 export const CONFIG_FIELD = "pi-gpt-fast-mode";
 export const DEFAULT_SHORTCUT = "ctrl+alt+m";
 export const RESERVED_SHORTCUTS: ReadonlySet<string> = new Set([
@@ -40,7 +39,6 @@ type ReadTextFile = (path: string, encoding: "utf8") => string;
 type PiFileLoadOptions = {
   env?: Record<string, string | undefined>;
   home?: string;
-  exists?: (path: string) => boolean;
   readFile?: ReadTextFile;
 };
 
@@ -77,35 +75,18 @@ function expandHome(input: string, home: string): string {
   return input;
 }
 
-/**
- * Resolve a global Pi config file path for this extension to read.
- * Order: PI_CODING_AGENT_DIR, then XDG config locations if present, then Pi's default.
- */
+/** Resolve a global Pi config path using the same locations as Pi itself. */
 export function resolvePiFilePath(
   fileName: string,
   options: PiFileLoadOptions = {},
 ): string {
   const env = options.env ?? process.env;
   const home = options.home ?? homedir();
-  const exists = options.exists ?? existsSync;
-
   const piDir = env.PI_CODING_AGENT_DIR?.trim();
-  if (piDir) return join(resolve(expandHome(piDir, home)), fileName);
 
-  const xdgConfigHome = env.XDG_CONFIG_HOME?.trim()
-    ? resolve(expandHome(env.XDG_CONFIG_HOME, home))
-    : join(home, ".config");
-
-  const xdgCandidates = [
-    join(xdgConfigHome, "pi", "agent", fileName),
-    join(xdgConfigHome, "pi", fileName),
-  ];
-
-  for (const candidate of xdgCandidates) {
-    if (exists(candidate)) return candidate;
-  }
-
-  return join(home, ".pi", "agent", fileName);
+  return piDir
+    ? join(resolve(expandHome(piDir, home)), fileName)
+    : join(home, ".pi", "agent", fileName);
 }
 
 function normalizeShortcutList(values: unknown[]): string[] {
@@ -156,22 +137,32 @@ export function loadShortcuts(options: PiFileLoadOptions = {}): string[] {
     : [DEFAULT_SHORTCUT];
 }
 
-/**
- * Read the default Fast mode state from global Pi settings.
- * `{ "pi-gpt-fast-mode": { "enabled": true } }` starts sessions enabled.
- */
-export function loadDefaultEnabled(options: PiFileLoadOptions = {}): boolean {
-  const extensionConfig = loadPiJson("settings.json", options)?.[CONFIG_FIELD];
+/** Read the last Fast mode state from the extension's global config file. */
+export function loadEnabled(options: PiFileLoadOptions = {}): boolean {
+  return loadPiJson(CONFIG_FILE, options)?.enabled === true;
+}
 
-  if (
-    !extensionConfig ||
-    typeof extensionConfig !== "object" ||
-    Array.isArray(extensionConfig)
-  ) {
-    return false;
+/** Atomically persist Fast mode for future sessions. */
+export function saveEnabled(enabled: boolean): void {
+  const configPath = resolvePiFilePath(CONFIG_FILE);
+  const temporaryPath = `${configPath}.${process.pid}.${Date.now()}.tmp`;
+
+  mkdirSync(dirname(configPath), { recursive: true });
+  try {
+    writeFileSync(temporaryPath, `${JSON.stringify({ enabled }, null, 2)}\n`, {
+      encoding: "utf8",
+      flag: "wx",
+      mode: 0o600,
+    });
+    renameSync(temporaryPath, configPath);
+  } catch (error) {
+    try {
+      unlinkSync(temporaryPath);
+    } catch {
+      // The temporary file may not have been created.
+    }
+    throw error;
   }
-
-  return (extensionConfig as { enabled?: unknown }).enabled === true;
 }
 
 function announceState(ctx: ExtensionContext, enabled: boolean): void {
@@ -196,11 +187,18 @@ function announceState(ctx: ExtensionContext, enabled: boolean): void {
 }
 
 export default function fastModeExtension(pi: ExtensionAPI): void {
-  let enabled = loadDefaultEnabled();
+  let enabled = loadEnabled();
 
   function toggle(ctx: ExtensionContext): void {
-    enabled = !enabled;
-    announceState(ctx, enabled);
+    const nextEnabled = !enabled;
+    try {
+      saveEnabled(nextEnabled);
+      enabled = nextEnabled;
+      announceState(ctx, enabled);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      ctx.ui.notify(`Could not save GPT Fast mode: ${reason}`, "error");
+    }
   }
 
   pi.registerCommand("fast", {
@@ -216,7 +214,7 @@ export default function fastModeExtension(pi: ExtensionAPI): void {
   }
 
   pi.on("session_start", () => {
-    enabled = loadDefaultEnabled();
+    enabled = loadEnabled();
   });
 
   pi.on("before_provider_request", (event, ctx) => {
