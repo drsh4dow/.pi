@@ -2,7 +2,6 @@
   "lastChangelogVersion": "0.80.6",
   "packages": [
     "npm:pi-web-access",
-    "npm:pi-better-openai",
     "npm:pi-delegate",
     "npm:pi-questions"
   ],
