@@ -22,6 +22,9 @@
         "thinkingLevelMap": {
           "xhigh": "xhigh",
           "minimal": "low"
+        },
+        "compat": {
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -57,6 +60,7 @@
           "minimal": "low"
         },
         "compat": {
+          "supportsOpenAIGrammarTools": true,
           "supportsToolSearch": true
         }
       },
@@ -84,6 +88,7 @@
           "minimal": "low"
         },
         "compat": {
+          "supportsOpenAIGrammarTools": true,
           "supportsToolSearch": true
         }
       },
@@ -120,6 +125,7 @@
           "minimal": "low"
         },
         "compat": {
+          "supportsOpenAIGrammarTools": true,
           "supportsToolSearch": true
         }
       },
@@ -157,6 +163,7 @@
           "minimal": "low"
         },
         "compat": {
+          "supportsOpenAIGrammarTools": true,
           "supportsToolSearch": true
         }
       },
@@ -194,6 +201,7 @@
           "minimal": "low"
         },
         "compat": {
+          "supportsOpenAIGrammarTools": true,
           "supportsToolSearch": true
         }
       },
@@ -231,12 +239,13 @@
           "minimal": "low"
         },
         "compat": {
+          "supportsOpenAIGrammarTools": true,
           "supportsToolSearch": true
         }
       }
     ],
-    "checkedAt": 1784736663367,
-    "lastModified": 1784724573000
+    "checkedAt": 1784892963631,
+    "lastModified": 1784887371000
   },
   "huggingface": {
     "models": [
@@ -720,6 +729,37 @@
         "maxTokens": 4096
       },
       {
+        "id": "XiaomiMiMo/MiMo-V2.5",
+        "name": "MiMo-V2.5",
+        "api": "openai-completions",
+        "provider": "huggingface",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "reasoning": true,
+        "input": [
+          "text"
+        ],
+        "cost": {
+          "input": 0.4,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "compat": {
+          "supportsDeveloperRole": false
+        },
+        "contextWindow": 262144,
+        "maxTokens": 131072,
+        "thinkingLevelMap": {
+          "off": "none",
+          "minimal": null,
+          "low": "low",
+          "medium": "medium",
+          "high": "high",
+          "xhigh": "xhigh",
+          "max": null
+        }
+      },
+      {
         "id": "XiaomiMiMo/MiMo-V2.5-Pro",
         "name": "MiMo-V2.5-Pro",
         "api": "openai-completions",
@@ -739,7 +779,16 @@
           "supportsDeveloperRole": false
         },
         "contextWindow": 1048576,
-        "maxTokens": 131072
+        "maxTokens": 131072,
+        "thinkingLevelMap": {
+          "off": "none",
+          "minimal": null,
+          "low": "low",
+          "medium": "medium",
+          "high": "high",
+          "xhigh": "xhigh",
+          "max": null
+        }
       },
       {
         "id": "deepseek-ai/DeepSeek-R1",
@@ -1379,8 +1428,8 @@
         "maxTokens": 131072
       }
     ],
-    "checkedAt": 1784736663471,
-    "lastModified": 1784724561000
+    "checkedAt": 1784892963656,
+    "lastModified": 1784887359000
   },
   "opencode": {
     "models": [
@@ -2769,7 +2818,10 @@
           "cacheWrite": 0
         },
         "contextWindow": 8192,
-        "maxTokens": 8192
+        "maxTokens": 8192,
+        "compat": {
+          "supportsStrictMode": true
+        }
       },
       {
         "id": "gpt-4-turbo",
@@ -2789,7 +2841,10 @@
           "cacheWrite": 0
         },
         "contextWindow": 128000,
-        "maxTokens": 4096
+        "maxTokens": 4096,
+        "compat": {
+          "supportsStrictMode": true
+        }
       },
       {
         "id": "gpt-4.1",
@@ -2809,7 +2864,10 @@
           "cacheWrite": 0
         },
         "contextWindow": 1047576,
-        "maxTokens": 32768
+        "maxTokens": 32768,
+        "compat": {
+          "supportsStrictMode": true
+        }
       },
       {
         "id": "gpt-4.1-mini",
@@ -2829,7 +2887,10 @@
           "cacheWrite": 0
         },
         "contextWindow": 1047576,
-        "maxTokens": 32768
+        "maxTokens": 32768,
+        "compat": {
+          "supportsStrictMode": true
+        }
       },
       {
         "id": "gpt-4.1-nano",
@@ -2849,7 +2910,10 @@
           "cacheWrite": 0
         },
         "contextWindow": 1047576,
-        "maxTokens": 32768
+        "maxTokens": 32768,
+        "compat": {
+          "supportsStrictMode": true
+        }
       },
       {
         "id": "gpt-4o",
@@ -2869,7 +2933,10 @@
           "cacheWrite": 0
         },
         "contextWindow": 128000,
-        "maxTokens": 16384
+        "maxTokens": 16384,
+        "compat": {
+          "supportsStrictMode": true
+        }
       },
       {
         "id": "gpt-4o-2024-05-13",
@@ -2889,7 +2956,10 @@
           "cacheWrite": 0
         },
         "contextWindow": 128000,
-        "maxTokens": 4096
+        "maxTokens": 4096,
+        "compat": {
+          "supportsStrictMode": true
+        }
       },
       {
         "id": "gpt-4o-2024-08-06",
@@ -2909,7 +2979,10 @@
           "cacheWrite": 0
         },
         "contextWindow": 128000,
-        "maxTokens": 16384
+        "maxTokens": 16384,
+        "compat": {
+          "supportsStrictMode": true
+        }
       },
       {
         "id": "gpt-4o-2024-11-20",
@@ -2929,7 +3002,10 @@
           "cacheWrite": 0
         },
         "contextWindow": 128000,
-        "maxTokens": 16384
+        "maxTokens": 16384,
+        "compat": {
+          "supportsStrictMode": true
+        }
       },
       {
         "id": "gpt-4o-mini",
@@ -2949,7 +3025,10 @@
           "cacheWrite": 0
         },
         "contextWindow": 128000,
-        "maxTokens": 16384
+        "maxTokens": 16384,
+        "compat": {
+          "supportsStrictMode": true
+        }
       },
       {
         "id": "gpt-5",
@@ -2978,6 +3057,10 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3001,6 +3084,10 @@
         "maxTokens": 16384,
         "thinkingLevelMap": {
           "off": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3030,6 +3117,10 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3059,6 +3150,10 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3088,6 +3183,10 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3117,6 +3216,10 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3146,6 +3249,10 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3175,6 +3282,10 @@
           "high": null,
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3204,6 +3315,10 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3233,6 +3348,10 @@
           "high": "high",
           "xhigh": "xhigh",
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3262,6 +3381,10 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3291,6 +3414,10 @@
           "high": "high",
           "xhigh": "xhigh",
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3320,6 +3447,10 @@
           "high": null,
           "xhigh": "xhigh",
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3349,6 +3480,10 @@
           "high": "high",
           "xhigh": "xhigh",
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3378,6 +3513,10 @@
           "high": "high",
           "xhigh": "xhigh",
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3402,6 +3541,10 @@
         "thinkingLevelMap": {
           "off": null,
           "xhigh": "xhigh"
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3431,6 +3574,10 @@
           "high": "high",
           "xhigh": "xhigh",
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3460,6 +3607,10 @@
           "high": "high",
           "xhigh": "xhigh",
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3500,6 +3651,8 @@
           "max": null
         },
         "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true,
           "supportsToolSearch": true
         }
       },
@@ -3532,6 +3685,8 @@
           "max": null
         },
         "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true,
           "supportsToolSearch": true
         }
       },
@@ -3562,6 +3717,10 @@
           "high": "high",
           "xhigh": "xhigh",
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3602,6 +3761,8 @@
           "max": null
         },
         "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true,
           "supportsToolSearch": true
         }
       },
@@ -3643,6 +3804,8 @@
           "max": null
         },
         "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true,
           "supportsToolSearch": true
         }
       },
@@ -3682,6 +3845,10 @@
           "high": "high",
           "xhigh": "xhigh",
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true
         }
       },
       {
@@ -3722,7 +3889,10 @@
           "max": "max"
         },
         "compat": {
-          "supportsToolSearch": true
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true,
+          "supportsToolSearch": true,
+          "supportsExplicitPromptCacheMode": true
         }
       },
       {
@@ -3763,7 +3933,10 @@
           "max": "max"
         },
         "compat": {
-          "supportsToolSearch": true
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true,
+          "supportsToolSearch": true,
+          "supportsExplicitPromptCacheMode": true
         }
       },
       {
@@ -3804,7 +3977,10 @@
           "max": "max"
         },
         "compat": {
-          "supportsToolSearch": true
+          "supportsStrictMode": true,
+          "supportsOpenAIGrammarTools": true,
+          "supportsToolSearch": true,
+          "supportsExplicitPromptCacheMode": true
         }
       },
       {
@@ -3834,6 +4010,9 @@
           "high": "high",
           "xhigh": "xhigh",
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true
         }
       },
       {
@@ -3863,6 +4042,9 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true
         }
       },
       {
@@ -3892,6 +4074,9 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true
         }
       },
       {
@@ -3921,6 +4106,9 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true
         }
       },
       {
@@ -3950,6 +4138,9 @@
           "high": null,
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true
         }
       },
       {
@@ -3978,6 +4169,9 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true
         }
       },
       {
@@ -4007,6 +4201,9 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true
         }
       },
       {
@@ -4036,6 +4233,9 @@
           "high": "high",
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true
         }
       },
       {
@@ -4065,11 +4265,14 @@
           "high": null,
           "xhigh": null,
           "max": null
+        },
+        "compat": {
+          "supportsStrictMode": true
         }
       }
     ],
-    "checkedAt": 1784736663335,
-    "lastModified": 1784724571000
+    "checkedAt": 1784892962971,
+    "lastModified": 1784887369000
   },
   "anthropic": {
     "models": [
@@ -4558,6 +4761,39 @@
         }
       },
       {
+        "id": "hy3",
+        "name": "Hy3",
+        "api": "openai-completions",
+        "provider": "opencode-go",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "reasoning": true,
+        "input": [
+          "text"
+        ],
+        "cost": {
+          "input": 0.14,
+          "output": 0.58,
+          "cacheRead": 0.035,
+          "cacheWrite": 0
+        },
+        "compat": {
+          "supportsStore": false,
+          "supportsDeveloperRole": false,
+          "maxTokensField": "max_tokens"
+        },
+        "contextWindow": 256000,
+        "maxTokens": 64000,
+        "thinkingLevelMap": {
+          "off": "none",
+          "minimal": null,
+          "low": "low",
+          "medium": null,
+          "high": "high",
+          "xhigh": null,
+          "max": null
+        }
+      },
+      {
         "id": "kimi-k2.6",
         "name": "Kimi K2.6",
         "api": "openai-completions",
@@ -4808,7 +5044,7 @@
         "maxTokens": 65536
       }
     ],
-    "checkedAt": 1784736663403,
-    "lastModified": 1784724576000
+    "checkedAt": 1784892963656,
+    "lastModified": 1784887373000
   }
 }
