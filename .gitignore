@@ -1,0 +1,12 @@
+/agent/*
+!/agent/extensions/
+!/agent/skills/
+!/agent/prompts/
+!/agent/themes/
+!/agent/AGENTS.md
+!/agent/SYSTEM.md
+!/agent/APPEND_SYSTEM.md
+!/agent/keybindings.json
+
+node_modules/
+.env*

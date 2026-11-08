@@ -1,0 +1,117 @@
+{
+	"$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
+	"extends": [
+		"./node_modules/@effect/tsgo/oxlint-presets/correctness.json",
+		"./node_modules/@effect/tsgo/oxlint-presets/antipattern.json",
+		"./node_modules/@effect/tsgo/oxlint-presets/effect-native.json",
+		"./node_modules/@effect/tsgo/oxlint-presets/style.json",
+		"./node_modules/@effect/tsgo/oxlint-presets/maintainers.json",
+	],
+	"plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node"],
+	"categories": {
+		"correctness": "error",
+		"suspicious": "error",
+		"pedantic": "error",
+		"perf": "error",
+		"style": "error",
+	},
+	"options": {
+		"typeAware": true,
+		"denyWarnings": true,
+		"reportUnusedDisableDirectives": "error",
+	},
+	"ignorePatterns": [
+		".agent/**",
+		".agents/**",
+		".claude/**",
+		".codex/**",
+		".continue/**",
+		".cursor/**",
+		".gemini/**",
+		".opencode/**",
+		".pi/**",
+		".roo/**",
+		".windsurf/**",
+		"tools/oxlint/anti-slop/**",
+	],
+	"jsPlugins": [
+		{
+			"name": "anti-slop",
+			"specifier": "./tools/oxlint/anti-slop/index.ts",
+		},
+		{
+			"name": "anti-slop-effect",
+			"specifier": "./tools/oxlint/anti-slop/effect/index.ts",
+		},
+	],
+	"rules": {
+		"oxc/no-accumulating-spread": "error",
+		"anti-slop/no-array-filter-map": "error",
+		"anti-slop/no-reduce-accumulator-copy": "error",
+		"anti-slop/no-chained-type-assertions": "error",
+		"anti-slop/no-conditional-empty-object-spread": "error",
+		"anti-slop/no-known-value-widening": "error",
+		"anti-slop/no-module-mocking": "error",
+		"anti-slop/no-object-parameters": "error",
+		"anti-slop/no-reflect-apply": "error",
+		"anti-slop/no-reflect-get": "error",
+		"anti-slop/no-runtime-typeof": "error",
+		"anti-slop/no-shape-in-symbol-names": "error",
+		"anti-slop/no-unknown-parameters": "error",
+		"anti-slop/no-unknown-returns": "error",
+		"anti-slop/no-unknown-type-aliases": "error",
+		"anti-slop/no-unsafe-dictionary-type": "error",
+		"anti-slop/no-widen-then-assert": "error",
+		"anti-slop/require-readable-spacing": "error",
+		"anti-slop/require-safety-comment-for-type-assertion": "error",
+		"anti-slop-effect/no-manual-effect-error-tag": "error",
+		"anti-slop-effect/no-manual-tag-comparison": "error",
+		"anti-slop-effect/no-manual-tagged-construction": "error",
+		"anti-slop-effect/no-service-constructor-imports": "error",
+		"anti-slop-effect/prefer-effect-match": "error",
+		// Effect's own setting; pi writes `string[]`, Effect wins
+		"typescript/array-type": ["error", { "default": "generic", "readonly": "generic" }],
+		// pi tool handlers take (toolCallId, params, signal, onUpdate, ctx)
+		"eslint/max-params": ["error", { "max": 5 }],
+		// Effect constructors are capitalized calls, e.g. Schema.Struct(...)
+		"eslint/new-cap": ["error", { "capIsNew": false }],
+		"eslint/one-var": ["error", "never"],
+		// Effect declares tagged errors and services as classes, several per module
+		"eslint/max-classes-per-file": "off",
+		// oxfmt sorts imports, as Biome does for pi
+		"eslint/sort-imports": "off",
+		// misreads Schema.TaggedError<...>()(...) as an error thrown without new
+		"unicorn/throw-new-error": "off",
+		// Effect and pi use plain ternaries
+		"eslint/no-ternary": "off",
+		// Effect APIs take inline literals, e.g. Schedule.recurs(3)
+		"eslint/no-magic-numbers": "off",
+		// Effect.gen(function* () {}) and pi's `export default function (pi)` are anonymous by convention
+		"eslint/func-names": "off",
+		// pi loads an extension from its anonymous default export
+		"import/no-anonymous-default-export": "off",
+		// misreads Effect combinator callbacks such as catchTag handlers
+		"promise/prefer-await-to-callbacks": "off",
+		// Effect and pi order keys by meaning, e.g. a pi tool's name, label, description
+		"eslint/sort-keys": "off",
+		// pi's ExtensionAPI and Effect callback parameter types are not deeply readonly
+		"typescript/prefer-readonly-parameter-types": "off",
+		// tsconfig's namespaceImportPackages, copied from Effect's own config, makes effecttsgo/prefer-namespace-import require `import * as`
+		"import/no-namespace": "off",
+		"import/max-dependencies": "off",
+		// Effect code exports each value by name, inline
+		"import/no-named-export": "off",
+		"import/group-exports": "off",
+		"import/exports-last": "off",
+		"import/prefer-default-export": "off",
+		// pi and Effect write `import { type X, y }`; with no-duplicate-imports, no other form passes
+		"import/consistent-type-specifier-style": "off",
+		// `_tag` is Effect's discriminant
+		"eslint/no-underscore-dangle": "off",
+		// Effect pairs a schema value with its type, `const Turn` and `type Turn`
+		"eslint/no-redeclare": "off",
+		// misread Effect's Array module functions as native array methods
+		"unicorn/no-array-callback-reference": "off",
+		"unicorn/no-array-method-this-argument": "off",
+	},
+}

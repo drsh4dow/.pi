@@ -1,0 +1,38 @@
+{
+	"compilerOptions": {
+		"target": "ES2024",
+		"lib": ["ES2024"],
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"types": ["node"],
+		"noEmit": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true,
+		"verbatimModuleSyntax": true,
+		"erasableSyntaxOnly": true,
+		"allowImportingTsExtensions": true,
+		"isolatedModules": true,
+		"noErrorTruncation": true,
+		"plugins": [
+			{
+				"name": "@effect/language-service",
+				"diagnostics": false,
+				"namespaceImportPackages": ["effect", "@effect/*"]
+			}
+		],
+
+		"strict": true,
+		"exactOptionalPropertyTypes": true,
+		"noUncheckedIndexedAccess": true,
+		"noPropertyAccessFromIndexSignature": true,
+		"noImplicitOverride": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"allowUnreachableCode": false,
+		"allowUnusedLabels": false
+	},
+	"include": ["**/*.ts"],
+	"exclude": ["node_modules", "agent/git", "agent/tmp", "tools/oxlint/anti-slop"]
+}
