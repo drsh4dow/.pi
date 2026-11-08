@@ -4,7 +4,7 @@
 		"lib": ["ES2024"],
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
-		"types": ["node"],
+		"types": ["node", "bun"],
 		"noEmit": true,
 		"skipLibCheck": true,
 		"resolveJsonModule": true,

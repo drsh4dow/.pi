@@ -1,8 +1,10 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Context from "effect/Context";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Match from "effect/Match";
@@ -41,10 +43,12 @@ class Files extends Context.Service<
 	}
 >()("pi-harness/tools/oxlint/fixtures/effect-pi-idioms/Files") {}
 
-const FilesLive = Layer.succeed(Files, {
-	read: (path) =>
-		Str.isNonEmpty(path) ? Effect.succeed(`contents of ${path}`) : Effect.fail(ReadFailed.make({ path })),
-});
+const FilesLive = Layer.effect(
+	Files,
+	Effect.map(FileSystem.FileSystem, (fs) =>
+		Files.of({ read: (path) => Effect.mapError(fs.readFileString(path), () => ReadFailed.make({ path })) }),
+	),
+);
 
 const describe = Match.type<Event>().pipe(
 	Match.tag("Started", (event) => `started ${event.id}`),
@@ -72,7 +76,7 @@ const toolResult = ({ path }: SummarizeParams) =>
 	);
 
 export default function (pi: ExtensionAPI) {
-	const runtime = ManagedRuntime.make(FilesLive);
+	const runtime = ManagedRuntime.make(Layer.provide(FilesLive, NodeServices.layer));
 
 	pi.on("session_shutdown", () => runtime.dispose());
 	pi.registerTool({

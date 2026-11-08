@@ -7,15 +7,19 @@
 		"fmt": "oxfmt",
 		"lint": "oxlint",
 		"typecheck": "tsc -p .",
-		"check": "oxfmt --check && oxlint && tsc -p ."
+		"test": "bun test",
+		"check": "oxfmt --check && oxlint && tsc -p . && bun test"
 	},
 	"dependencies": {
-		"effect": "4.1.2"
+		"@effect/platform-node": "4.1.2",
+		"effect": "4.1.2",
+		"jiti": "2.7.0"
 	},
 	"devDependencies": {
 		"@earendil-works/pi-coding-agent": "1.5.0",
 		"@effect/tsgo": "0.67.5",
 		"@oxlint/plugins": "1.92.0",
+		"@types/bun": "1.4.4",
 		"@types/node": "26.6.6",
 		"oxfmt": "0.77.0",
 		"oxlint": "1.92.0",
