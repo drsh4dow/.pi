@@ -1,0 +1,235 @@
+import { uuidv7 } from "@earendil-works/pi-ai";
+import type {
+	AgentBeforeSettleEvent,
+	ExtensionAPI,
+	ExtensionContext,
+	InputEvent,
+	SessionStartEvent,
+} from "@earendil-works/pi-coding-agent";
+import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as Arr from "effect/Array";
+import * as Cause from "effect/Cause";
+import * as Deferred from "effect/Deferred";
+import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
+import * as Layer from "effect/Layer";
+import * as ManagedRuntime from "effect/ManagedRuntime";
+import * as Match from "effect/Match";
+import * as Option from "effect/Option";
+import * as Str from "effect/String";
+
+import { hcLayer, TerminalAddress } from "../../clients/hc/index.ts";
+import { piCliLayer, unwrapMessage } from "../../clients/pi-cli/index.ts";
+import { piSessionsLayer } from "../../clients/pi-sessions/index.ts";
+import { slicesLayer } from "../../clients/systemd/index.ts";
+import { inheritedEnv, Self, selfFromEnv } from "./child.ts";
+import { choices, harnessFolder, loadRegistry } from "./delegates.ts";
+import { Host, Ledger, ledgerLayer } from "./ledger.ts";
+import { Out } from "./out.ts";
+import { Tools } from "./tools.ts";
+import type { Settled } from "./work.ts";
+
+type Runtime = ManagedRuntime.ManagedRuntime<Ledger | NodeServices.NodeServices, never>;
+
+interface Relay {
+	waiter: Option.Option<Deferred.Deferred<ReadonlyArray<Settled>>>;
+}
+
+interface Session {
+	readonly runtime: Runtime;
+	readonly relay: Relay;
+}
+
+const kind = "owned-work";
+
+const messageOf = (settled: Settled) => {
+	const json = Out.result(settled);
+
+	return Effect.map(Out.text(json), (content) => ({ customType: kind, content, display: true, details: json }));
+};
+
+const hostLayer = (pi: ExtensionAPI, relay: Relay) => {
+	const send = (settled: Settled) =>
+		Effect.map(messageOf(settled), (message) => {
+			pi.sendMessage(message, { deliverAs: "followUp", triggerTurn: true });
+		});
+
+	const handOver = (waiter: Deferred.Deferred<ReadonlyArray<Settled>>, results: ReadonlyArray<Settled>) => {
+		relay.waiter = Option.none();
+
+		return Effect.asVoid(Deferred.succeed(waiter, results));
+	};
+
+	return Layer.succeed(Host, {
+		wake: (results) =>
+			Option.match(relay.waiter, {
+				onSome: (waiter) => handOver(waiter, results),
+				onNone: () => Effect.asVoid(Effect.forEach(results, send)),
+			}),
+		append: (entry) =>
+			Effect.sync(() => {
+				pi.appendEntry(kind, Out.entry(entry));
+			}),
+	});
+};
+
+type Env = Readonly<Record<string, string | undefined>>;
+
+const registryOf = (self: Self, ctx: ExtensionContext) =>
+	Effect.gen(function* () {
+		if (self.role === "leaf") {
+			return [];
+		}
+
+		const project = ctx.isProjectTrusted() ? `${ctx.cwd}/.pi/delegates` : undefined;
+
+		const hasModel = (provider: string, id: string) =>
+			Option.isSome(Option.fromUndefinedOr(ctx.modelRegistry.find(provider, id)));
+
+		const registry = yield* loadRegistry({ folders: { harness: harnessFolder, project }, hasModel });
+
+		for (const { file, why } of registry.rejected) {
+			ctx.ui.notify(`owned-work skipped ${file}: ${why}`, "warning");
+		}
+
+		return choices(self)(registry);
+	});
+
+const runtimeOf = (
+	pi: ExtensionAPI,
+	ctx: ExtensionContext,
+	env: Env,
+	self: Self,
+	childExtensions: ReadonlyArray<string>,
+) => {
+	const agentKey = Str.takeRight(uuidv7(), 8);
+	const parent = Option.map(Option.fromUndefinedOr(env["HC_TERMINAL_ID"]), TerminalAddress);
+	const relay: Relay = { waiter: Option.none() };
+	const ledger = ledgerLayer({ role: self.role, agentKey, cwd: ctx.cwd, passEnv: inheritedEnv(env) });
+
+	const slices = Self.$is("Root")(self)
+		? slicesLayer({ slice: `pi-ow-${agentKey}`, rootPid: Option.some(process.pid) })
+		: slicesLayer({ slice: self.slice, rootPid: Option.none() });
+
+	const services = Layer.provideMerge(
+		Layer.mergeAll(
+			hcLayer({ agentKey, parent, pid: process.pid }),
+			hostLayer(pi, relay),
+			slices,
+			piSessionsLayer,
+			piCliLayer(childExtensions),
+		),
+		NodeServices.layer,
+	);
+
+	return { runtime: ManagedRuntime.make(Layer.provideMerge(ledger, services)), relay };
+};
+
+const placeOf = (self: Self, ctx: ExtensionContext) => {
+	const dir = ctx.sessionManager.getSessionDir();
+
+	return { cwd: ctx.cwd, dir: Self.$is("Root")(self) ? `${dir}/delegates` : dir };
+};
+
+const sessionOf = (pi: ExtensionAPI, ctx: ExtensionContext, env: Env, childExtensions: ReadonlyArray<string>) =>
+	Effect.gen(function* () {
+		const self = yield* selfFromEnv(env);
+		const session: Session = runtimeOf(pi, ctx, env, self, childExtensions);
+		const services = yield* session.runtime.contextEffect;
+		const entries = yield* Effect.provideContext(registryOf(self, ctx), services);
+
+		Tools.register(pi, session.runtime, entries, placeOf(self, ctx));
+
+		return session;
+	});
+
+/** Both modes run pi's `print-mode.js`, which exits once the prompt resolves. */
+export const exitsWhenPromptResolves = (mode: ExtensionContext["mode"]): boolean => mode === "print" || mode === "json";
+
+const continued = (event: AgentBeforeSettleEvent, results: ReadonlyArray<Settled>) =>
+	Effect.map(Effect.forEach(results, messageOf), (messages) => ({
+		entries: [...event.entries, ...Arr.map(messages, (message) => ({ type: "custom_message" as const, ...message }))],
+		continue: true,
+	}));
+
+const awaitResults = (ledger: (typeof Ledger)["Service"], relay: Relay) =>
+	Effect.gen(function* () {
+		const waiter = yield* Deferred.make<ReadonlyArray<Settled>>();
+
+		relay.waiter = Option.some(waiter);
+		yield* ledger.wentIdle;
+
+		return yield* Deferred.await(waiter);
+	});
+
+const settle =
+	(session: Session, event: AgentBeforeSettleEvent, ctx: ExtensionContext) => (ledger: (typeof Ledger)["Service"]) =>
+		Effect.flatMap(ledger.turnEnded, (verdict) =>
+			Match.valueTags(verdict, {
+				Continue: ({ results }) => continued(event, results),
+				Idle: ({ outstanding }) =>
+					exitsWhenPromptResolves(ctx.mode) && Arr.isReadonlyArrayNonEmpty(outstanding)
+						? Effect.flatMap(awaitResults(ledger, session.relay), (results) => continued(event, results))
+						: Effect.void,
+				Finish: () =>
+					Effect.sync(() => {
+						ctx.shutdown();
+					}),
+			}),
+		);
+
+export const runHook =
+	<Services>(runtime: ManagedRuntime.ManagedRuntime<Services, never>) =>
+	<Reply>(hook: Effect.Effect<Reply, never, Services>): Promise<Reply | undefined> =>
+		Effect.promise(() => runtime.runPromiseExit(hook)).pipe(
+			Effect.flatMap((exit) =>
+				Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) ? Effect.undefined : exit,
+			),
+			Effect.runPromise,
+		);
+
+/** `childExtensions` are the entrypoints each delegate loads: this feature's own, plus any the harness wants in every child. */
+export const ownedWork = (childExtensions: ReadonlyArray<string>) => (pi: ExtensionAPI) => {
+	const env = { ...process.env } satisfies Env;
+	const current = { session: Option.none<Session>() };
+
+	const withLedger = <Reply>(
+		use: (session: Session) => (ledger: (typeof Ledger)["Service"]) => Effect.Effect<Reply>,
+	) =>
+		Option.match(current.session, {
+			onNone: () => Promise.resolve(),
+			onSome: (session) => runHook(session.runtime)(Effect.flatMap(Ledger, use(session))),
+		});
+
+	const dispose = () => {
+		const runtime = Option.map(current.session, (session) => session.runtime);
+
+		current.session = Option.none();
+
+		return Option.match(runtime, { onNone: () => Promise.resolve(), onSome: (found) => found.dispose() });
+	};
+
+	return {
+		sessionStart: (_event: SessionStartEvent, ctx: ExtensionContext) =>
+			Effect.runPromise(
+				Effect.gen(function* () {
+					const session = yield* sessionOf(pi, ctx, env, childExtensions);
+
+					current.session = Option.some(session);
+				}),
+			),
+		input: ({ text }: InputEvent, ctx: ExtensionContext) => {
+			const session = { dir: ctx.sessionManager.getSessionDir(), id: ctx.sessionManager.getSessionId() };
+
+			return Option.match(unwrapMessage(session)(text), {
+				onNone: () => ({ action: "continue" as const }),
+				onSome: (message) => ({ action: "transform" as const, text: message }),
+			});
+		},
+		agentStart: () => withLedger(() => (ledger) => ledger.runStarted),
+		beforeSettle: (event: AgentBeforeSettleEvent, ctx: ExtensionContext) =>
+			withLedger((session) => settle(session, event, ctx)),
+		settled: () => withLedger(() => (ledger) => ledger.wentIdle),
+		shutdown: dispose,
+	};
+};

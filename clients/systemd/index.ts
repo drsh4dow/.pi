@@ -1,0 +1,120 @@
+import * as Context from "effect/Context";
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
+import * as ChildProcess from "effect/process/ChildProcess";
+import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
+import * as Schema from "effect/Schema";
+import * as Stream from "effect/Stream";
+import * as Str from "effect/String";
+
+import type { RunSpec } from "../hc/index.ts";
+
+export class Slices extends Context.Service<
+	Slices,
+	{
+		readonly wrap: (spec: RunSpec) => RunSpec;
+		readonly stop: (ref: string) => Effect.Effect<void>;
+	}
+>()("pi-harness/clients/systemd/Slices") {}
+
+class NoUserManager extends Schema.TaggedError<NoUserManager, { readonly brand: unique symbol }>()("NoUserManager", {
+	message: Schema.String,
+}) {}
+
+const noUserManager = (output: string) =>
+	NoUserManager.make({
+		message: `owned-work runs each delegate in a systemd user scope, and systemd-run --user failed: ${output}`,
+	});
+
+export interface SliceOptions {
+	readonly slice: string;
+	readonly rootPid: Option.Option<number>;
+}
+
+const notLoaded = 5;
+
+const unitOf = (slice: string, ref: string) => `${slice}-${Str.replaceAll("-", "")(ref)}`;
+
+const finished = (handle: ChildProcessSpawner.ChildProcessHandle) =>
+	Effect.all(
+		{ code: handle.exitCode, output: handle.all.pipe(Stream.decodeText, Stream.mkString) },
+		{ concurrency: 2 },
+	);
+
+const systemd = (
+	spawner: ChildProcessSpawner.ChildProcessSpawner["Service"],
+	program: string,
+	args: ReadonlyArray<string>,
+	ok: ReadonlyArray<number>,
+) =>
+	spawner.spawn(ChildProcess.make(program, ["--user", ...args])).pipe(
+		Effect.flatMap(finished),
+		Effect.scoped,
+		Effect.mapError((error) => error.message),
+		Effect.filterOrFail(
+			({ code }) => ok.includes(code),
+			({ output }) => Str.trim(output),
+		),
+	);
+
+const stopUnit = (spawner: ChildProcessSpawner.ChildProcessSpawner["Service"], unit: string) =>
+	Effect.ignore(systemd(spawner, "systemctl", ["stop", "--no-block", unit], [0, notLoaded]), { log: "Warn" });
+
+/**
+ * The root's slice outlives a `kill -9` of the root, so a user service outside hc waits on the root's pid and stops
+ * the slice once it exits.
+ */
+const watchRoot = (spawner: ChildProcessSpawner.ChildProcessSpawner["Service"], slice: string, pid: number) => {
+	const service = [
+		"--quiet",
+		"--collect",
+		`--unit=${slice}`,
+		`--property=ExecStopPost=systemctl --user stop --no-block ${slice}.slice`,
+		"--",
+		"tail",
+		`--pid=${String(pid)}`,
+		"-f",
+		"/dev/null",
+	];
+
+	return Effect.acquireRelease(Effect.mapError(systemd(spawner, "systemd-run", service, [0]), noUserManager), () =>
+		stopUnit(spawner, `${slice}.service`),
+	);
+};
+
+export const slicesLayer = ({
+	slice,
+	rootPid,
+}: SliceOptions): Layer.Layer<Slices, never, ChildProcessSpawner.ChildProcessSpawner> =>
+	Layer.effect(
+		Slices,
+		Effect.gen(function* () {
+			const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+
+			yield* Effect.orDie(Effect.forEach(Option.toArray(rootPid), (pid) => watchRoot(spawner, slice, pid)));
+
+			return Slices.of({
+				wrap: (spec) => {
+					const unit = unitOf(slice, spec.ref);
+
+					return {
+						...spec,
+						argv: [
+							"systemd-run",
+							"--user",
+							"--scope",
+							"--quiet",
+							"--collect",
+							`--slice=${unit}.slice`,
+							`--unit=${unit}`,
+							"--",
+							...spec.argv,
+						],
+						env: { ...spec.env, PI_OWNED_WORK_SLICE: unit },
+					};
+				},
+				stop: (ref) => stopUnit(spawner, `${unitOf(slice, ref)}.slice`),
+			});
+		}),
+	);
