@@ -14,7 +14,7 @@ import {
 	type MonotonicNanos,
 	Outcome,
 	type Spawn,
-	type StartRequest,
+	StartRequest,
 	Work,
 	WorkEntry,
 	WorkRef,
@@ -28,7 +28,7 @@ const initial = (role: Role, now: MonotonicNanos): LedgerState => ({
 	now,
 });
 
-type Started = readonly [Work, WorkEntry, Option.Option<Duration.Duration>];
+type Started = readonly [Work, WorkEntry];
 
 const startedOf = (request: StartRequest, ref: WorkRef, now: MonotonicNanos): Started => {
 	const job = { ref, heldBy: Option.none(), startedAt: now, settled: Option.none(), spawn: Option.none() };
@@ -43,17 +43,14 @@ const startedOf = (request: StartRequest, ref: WorkRef, now: MonotonicNanos): St
 				instructionsFile: Option.map(brief.instructions, ({ file }) => file),
 				childSessionId: childSession.id,
 			}),
-			Option.none(),
 		],
-		Watch: ({ command, deadline }): Started => [
-			Work.Watch({ ...job, command, deadline }),
+		Watch: ({ command }): Started => [
+			Work.Watch({ ...job, command }),
 			WorkEntry.CommandStarted({ handle: ref, kind: "watch", command }),
-			deadline,
 		],
 		Serve: ({ command }): Started => [
 			Work.Serve({ ...job, command }),
 			WorkEntry.CommandStarted({ handle: ref, kind: "serve", command }),
-			Option.none(),
 		],
 	});
 };
@@ -61,14 +58,14 @@ const startedOf = (request: StartRequest, ref: WorkRef, now: MonotonicNanos): St
 const start = (state: LedgerState, request: StartRequest): Step<WorkRef> => {
 	const draft = Draft.of(state);
 	const ref = WorkRef(`${Draft.kindOf(request)}-${String(state.next)}`);
-	const [work, entry, deadline] = startedOf(request, ref, state.now);
+	const [work, entry] = startedOf(request, ref, state.now);
 
 	draft.next += 1;
 	draft.work.set(ref, work);
 	draft.commands.push(Command.Append({ entry }));
 
-	if (Option.isSome(deadline)) {
-		draft.commands.push(Command.ArmDeadline({ ref, after: deadline.value }));
+	if (StartRequest.$is("Watch")(request) && Option.isSome(request.deadline)) {
+		draft.commands.push(Command.ArmDeadline({ ref, after: request.deadline.value }));
 	}
 
 	return Draft.finish(draft, ref);
