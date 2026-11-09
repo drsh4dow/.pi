@@ -1,6 +1,6 @@
 /**
  * `bun run prompts [project-dir]` writes `system-prompts.md` at the harness root: the exact first-turn request pi builds
- * for stock pi, for our root agent, and for each harness delegate, with diffs between them. No request is sent.
+ * for stock pi, for our root agent, and for each harness delegate. No request is sent.
  */
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -16,7 +16,7 @@ import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
 
 import { inheritedEnv, type StagedLaunch, stagedLaunches } from "../../features/owned-work/index.ts";
-import { type Capture, type Diff, Payload, promptOf, render, Tool } from "./render.ts";
+import { type Capture, Payload, render } from "./render.ts";
 
 const captureExtension = `${import.meta.dirname}/capture.ts`;
 
@@ -40,6 +40,7 @@ type Env = Readonly<Record<string, string>>;
 interface Run {
 	readonly key: string;
 	readonly title: string;
+	readonly about: string;
 	readonly argv: ReadonlyArray<string>;
 	readonly env: Env;
 }
@@ -66,8 +67,6 @@ class CaptureFailed extends Schema.TaggedError<CaptureFailed, { readonly brand: 
 }) {}
 
 const decodePayload = Schema.decodeEffect(Schema.fromJsonString(Payload));
-
-const encodeTools = Schema.encodeEffect(Schema.fromJsonString(Schema.Array(Tool), { space: 2 }));
 
 const spawn = Effect.fn("spawn")(function* (argv: ReadonlyArray<string>, cwd: string, env: Env) {
 	const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
@@ -103,9 +102,8 @@ const capture = Effect.fn("capture")(function* (run: Run, cwd: string, workDir: 
 	}
 
 	const payload = yield* Effect.flatMap(fs.readFileString(file), decodePayload);
-	const toolsJson = yield* encodeTools(payload.tools);
 
-	return { key: run.key, title: run.title, payload, toolsJson } satisfies Capture;
+	return { title: run.title, about: run.about, payload } satisfies Capture;
 });
 
 /** Links to every entry of `agentDir` the harness does not ship. Links, not copies, so an auth refresh lands in the real file. */
@@ -123,35 +121,24 @@ const stockAgentDir = Effect.fn("stockAgentDir")(function* (agentDir: string, in
 
 const delegateRun = (launch: StagedLaunch): Run => ({
 	key: `delegate-${launch.name}`,
-	title: `delegate \`${launch.name}\` (${launch.role})`,
+	title: `Delegate \`${launch.name}\``,
+	about: `A child pi the root starts with the \`delegate\` tool. ${roleNote[launch.role]}`,
 	argv: launch.argv,
 	env: withoutPackageBins(launch.env),
 });
 
-const piRun = (key: string, title: string, env: Env): Run => ({
+const roleNote = {
+	owner: "It is an owner, so it can start delegates of its own.",
+	leaf: "It is a leaf, so it cannot start delegates.",
+};
+
+const piRun = (key: string, title: string, about: string, env: Env): Run => ({
 	key,
 	title,
+	about,
 	argv: ["pi", "--no-session", "--", message],
 	env,
 });
-
-const diffOf = Effect.fn("diffOf")(function* (workDir: string, from: Capture, to: Capture) {
-	const fs = yield* FileSystem.FileSystem;
-	const fromFile = `${workDir}/${from.key}.prompt.txt`;
-	const toFile = `${workDir}/${to.key}.prompt.txt`;
-
-	yield* fs.writeFileString(fromFile, promptOf(from.payload));
-	yield* fs.writeFileString(toFile, promptOf(to.payload));
-
-	const argv = ["diff", "-u", "--label", from.key, "--label", to.key, fromFile, toFile];
-	const { output } = yield* spawn(argv, workDir, userEnv);
-
-	return { from: from.key, to: to.key, text: Str.trimEnd(output) } satisfies Diff;
-});
-
-/** Stock pi against our root, then our root against each delegate. */
-const diffsOf = (workDir: string, stock: Capture, root: Capture, delegates: ReadonlyArray<Capture>) =>
-	Effect.all([diffOf(workDir, stock, root), ...Arr.map(delegates, (delegate) => diffOf(workDir, root, delegate))]);
 
 const captureAll = Effect.fn("captureAll")(function* (harnessRoot: string, project: string, workDir: string) {
 	const stockDir = yield* stockAgentDir(`${harnessRoot}/agent`, `${workDir}/stock-agent`);
@@ -163,8 +150,13 @@ const captureAll = Effect.fn("captureAll")(function* (harnessRoot: string, proje
 
 	return yield* Effect.all(
 		{
-			stock: run(piRun("stock", "stock pi", { ...userEnv, PI_CODING_AGENT_DIR: stockDir })),
-			root: run(piRun("root", "our root agent", userEnv)),
+			stock: run(
+				piRun("stock", "Stock pi", "pi without this harness: no `SYSTEM.md` and no harness extensions.", {
+					...userEnv,
+					PI_CODING_AGENT_DIR: stockDir,
+				}),
+			),
+			root: run(piRun("root", "Root agent", "The pi you start and talk to.", userEnv)),
 			delegates: Effect.forEach(Arr.map(staged.launches, delegateRun), run, { concurrency: "unbounded" }),
 		},
 		{ concurrency: "unbounded" },
@@ -175,10 +167,9 @@ const reportOf = Effect.fn("reportOf")(function* (harnessRoot: string, project: 
 	const fs = yield* FileSystem.FileSystem;
 	const workDir = yield* fs.makeTempDirectoryScoped({ prefix: "pi-prompts-" });
 	const { stock, root, delegates } = yield* captureAll(harnessRoot, project, workDir);
-	const diffs = yield* diffsOf(workDir, stock, root, delegates);
 	const version = yield* spawn(["pi", "--version"], project, userEnv);
 
-	return { piVersion: Str.trim(version.output), project, message, captures: [stock, root, ...delegates], diffs };
+	return { piVersion: Str.trim(version.output), project, captures: [stock, root, ...delegates] };
 });
 
 const program = Effect.gen(function* () {
