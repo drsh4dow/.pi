@@ -38,9 +38,9 @@ export const selfFromEnv = Effect.fn("selfFromEnv")(function* (env: Readonly<Rec
 	return Self.Delegate({ role: "delegate", level: child.PI_OWNED_WORK_LEVEL, slice: child.PI_OWNED_WORK_SLICE });
 });
 
-/** What a process at `level` runs with. Deeper levels are killed first when memory runs out: OOM score 500, then 1000. */
+/** `choom -n` sets the OOM score adjustment, so deeper levels die first when memory runs out. */
 export const atLevel = (level: number) => ({
-	oomScore: String(500 * (level - 1)),
+	oomScoreAdj: String(500 * (level - 1)),
 	env: { PI_OWNED_WORK_LEVEL: String(level) },
 });
 
@@ -84,13 +84,13 @@ const terminalName = ({ brief, ref, agentKey }: LaunchRequest) => {
 };
 
 export const launch = (cli: (typeof PiCli)["Service"]) => (request: LaunchRequest) => {
-	const { oomScore, env } = atLevel(request.level);
+	const { oomScoreAdj, env } = atLevel(request.level);
 
 	return Effect.map(
 		cli.launch({ ...request.brief, session: request.childSession }),
 		(argv): Pick<RunSpec, "name" | "argv" | "env"> => ({
 			name: terminalName(request),
-			argv: ["choom", "-n", oomScore, "--", ...argv],
+			argv: ["choom", "-n", oomScoreAdj, "--", ...argv],
 			env: { ...request.passEnv, ...env },
 		}),
 	);

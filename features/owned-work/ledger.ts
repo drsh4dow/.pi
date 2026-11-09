@@ -87,7 +87,7 @@ export const commandSpec =
 	(ref: WorkRef, command: string): RunSpec => ({
 		ref,
 		name: Str.slice(0, 32)(`${ref}-${options.agentKey}`),
-		argv: ["choom", "-n", lastLevel.oomScore, "--", "sh", "-c", command],
+		argv: ["choom", "-n", lastLevel.oomScoreAdj, "--", "sh", "-c", command],
 		cwd: options.cwd,
 		env: { ...options.passEnv, ...lastLevel.env },
 	});

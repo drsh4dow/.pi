@@ -172,7 +172,7 @@ const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) =
 
 const launchRows = [
 	{
-		name: "a level-2 delegate starts at OOM score 500 with codemode, every skill, its thinking level and its instructions",
+		name: "a level-2 delegate starts at OOM score adjustment 500 with codemode, every skill, its thinking level and its instructions",
 		spec: delegateLaunch(2, Option.some("high"), Option.some({ file: "/brief.md", text: "Review." })),
 		expect: {
 			name: "review-the-retry-12-test",
@@ -185,7 +185,7 @@ const launchRows = [
 		},
 	},
 	{
-		name: "a delegate at the last level starts at OOM score 1000, and with no thinking level or instructions passes neither",
+		name: "a delegate at the last level starts at OOM score adjustment 1000, and with no thinking level or instructions passes neither",
 		spec: delegateLaunch(3, Option.none(), Option.none()),
 		expect: {
 			name: "review-the-retry-12-test",
