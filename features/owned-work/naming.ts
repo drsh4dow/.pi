@@ -1,4 +1,4 @@
-import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
+import { type Api, contentText, type Model } from "@earendil-works/pi-ai";
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Clock from "effect/Clock";
@@ -32,12 +32,6 @@ export const cleanName =
 		return Str.slice(0, nameLength)(/[\p{L}\p{N}]/u.test(bare) ? bare : firstLine(message));
 	};
 
-const textOf = (reply: AssistantMessage) =>
-	Arr.join(
-		Arr.flatMap(reply.content, (part) => (part.type === "text" ? [part.text] : [])),
-		"",
-	);
-
 /** One call on the parent's model, with reasoning off. It never fails: on any error, or after 5 s, the name is the message's first line. */
 export const nameOf = Effect.fn("nameOf")(function* (
 	registry: Pick<ModelRegistry, "streamSimple">,
@@ -59,7 +53,7 @@ export const nameOf = Effect.fn("nameOf")(function* (
 
 	const reply = yield* Effect.flatMap(Effect.fromNullishOr(model), ask).pipe(
 		Effect.timeout(timeout),
-		Effect.map(textOf),
+		Effect.map(({ content }) => contentText(content, "")),
 		Effect.orElseSucceed(() => ""),
 	);
 
