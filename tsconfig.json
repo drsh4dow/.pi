@@ -34,5 +34,14 @@
 		"allowUnusedLabels": false
 	},
 	"include": ["**/*.ts"],
-	"exclude": ["node_modules", "agent/git", "agent/tmp", "tools/oxlint/anti-slop", "agent/skills/dumpfile/cli"]
+	"exclude": [
+		"node_modules",
+		"agent/git",
+		"agent/tmp",
+		"tools/oxlint/anti-slop",
+		"agent/skills/making-videos/scripts",
+		"agent/skills/making-videos/templates",
+		"agent/skills/writing-good-prs/scripts",
+		"agent/skills/dumpfile/cli"
+	]
 }

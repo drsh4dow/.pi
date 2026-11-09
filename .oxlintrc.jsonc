@@ -34,6 +34,9 @@
 		".windsurf/**",
 		"tools/oxlint/anti-slop/**",
 		"tools/oxlint/fixtures/harness-layout/**",
+		"agent/skills/making-videos/scripts/**",
+		"agent/skills/making-videos/templates/**",
+		"agent/skills/writing-good-prs/scripts/**",
 		"agent/skills/dumpfile/cli/**",
 	],
 	"jsPlugins": [

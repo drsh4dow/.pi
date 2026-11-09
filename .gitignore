@@ -12,6 +12,7 @@
 !/agent/keybindings.json
 
 node_modules/
+__pycache__/
 .env*
 
 # bun run prompts output: machine-specific paths, skills and context files
