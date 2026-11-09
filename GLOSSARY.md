@@ -42,3 +42,15 @@ Terms from the owned-work feature (`features/owned-work/`).
 - **Slice.** The systemd user slice a delegate, serve or watch runs in, named `<owner's slice>-<ref without dashes>`, such as `pi-ow-1a2b3c4d-delegate3`. The root's slice is `pi-ow-<agent key>`, and the work's own work nests below its slice. Settling the work stops its slice, which ends every process in it, even one that left its process group. A user service of the same name watches the root's pid and stops the root's slice when the root dies.
 - **Child session.** A delegate's own pi session, in the `delegates/` folder next to the root's sessions, so `pi -c` never opens one. Under `--no-session` the root has no session folder, so its delegates go in a `pi-delegates-<random>` folder in the temp folder, made owner-only when the first delegate starts.
 - **Staged files.** A delegate's task message and instructions, written as `<session id>.message` and `<session id>.instructions` beside its child session, because one argv word holds at most 128 KiB. The ledger deletes them when the delegate settles.
+
+## Web
+
+Terms from the web client (`clients/web/`) and feature (`features/web/`).
+
+- **Page.** What reading one URL gives back: the URL asked for, the final URL after redirects, a title, the source that read it, an optional caveat, and a body. The body is markdown, or a file such as a PDF with the markdown extracted from it.
+- **Source.** One way to read a URL, such as GitHub's API, npm, Hacker News, Reddit, Docsify, a direct fetch, or Exa's copy. The sources sit in one ordered table. The first source that claims a URL and answers reads it.
+- **Via.** The name of the source that read a page. It is shown to the model beside the page.
+- **Site source.** A source that reads a site's own API or files, such as GitHub's API, npm's README, a Hacker News or Reddit thread, or a Docsify page's markdown. Its answer is the whole page, so it skips the verdict (`skipsVerdict`) and is never judged thin or a bot check. A direct fetch and Exa's copy are judged, and Exa's copy also carries a caveat.
+- **Saved page.** The whole of a fetched page, written under the web cache as `<date>/<host and path>-<8 random>.md`. A file keeps its own bytes at `<...>.<ext>`, and its markdown, if any, at `<...>.<ext>.md`. web_fetch shows the head, plus the `read(path, offset)` call that continues it.
+- **Untrusted content.** Page text and search highlights. They are data, never instructions. Inline text sits in one `<web_content trust="untrusted">` tag, and each saved page's first line says the same.
+- **Web cache.** `${XDG_CACHE_HOME:-~/.cache}/pi-web/`, readable only by the user. With neither variable set there is none, and web_fetch fails. Date folders older than 7 days are deleted when a session starts.

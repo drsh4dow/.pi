@@ -55,10 +55,11 @@ export type ChildSession = SessionAddress;
 
 const extensionsFolder = `${import.meta.dirname}/../../agent/extensions`;
 
-/** The entrypoints every delegate loads first: owned-work, so it can report back, and prompt, which builds its system prompt. */
+/** The entrypoints every delegate loads first: owned-work, so it can report back, prompt, which builds its system prompt, and web, so every agent can search and read pages. */
 export const childExtensions: ReadonlyArray<string> = [
 	`${extensionsFolder}/owned-work/index.ts`,
 	`${extensionsFolder}/prompt/index.ts`,
+	`${extensionsFolder}/web/index.ts`,
 ];
 
 /** Every agent combines tool calls with codemode, so every child gets it whatever its delegate file lists. */
