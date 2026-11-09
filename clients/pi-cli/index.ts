@@ -18,7 +18,8 @@ export interface Loadout {
 	/** Tool names the child declares, such as `read`, `bash`, `codemode`. */
 	readonly tools: ReadonlyArray<string>;
 	readonly extensions?: ReadonlyArray<string>;
-	readonly skills?: ReadonlyArray<string>;
+	/** Names of skills the child's prompt extension drops, from the list named by `ignoreSkillsFlag`. */
+	readonly ignoreSkills?: ReadonlyArray<string>;
 	readonly contextFiles?: boolean;
 }
 
@@ -43,6 +44,9 @@ export class PiCli extends Context.Service<
 
 /** The child's flag for its instructions file, registered by the prompt extension every child loads. */
 export const instructionsFlag = "instructions";
+
+/** The child's flag for the comma-separated names of skills its prompt leaves out, registered by the same extension. */
+export const ignoreSkillsFlag = "ignore-skills";
 
 const coreTools = ["read", "bash", "powershell", "edit", "write", "grep", "find", "ls"];
 
@@ -69,8 +73,7 @@ const loadoutFlags = (childExtensions: ReadonlyArray<string>, loadout: Loadout) 
 	return [
 		"--no-extensions",
 		...flagEach("-e", [...childExtensions, ...extensions, ...(loadout.extensions ?? [])]),
-		"--no-skills",
-		...flagEach("--skill", loadout.skills ?? []),
+		...listFlag(`--${ignoreSkillsFlag}`, loadout.ignoreSkills ?? []),
 		...(loadout.contextFiles === true ? [] : ["--no-context-files"]),
 		...listFlag("--exclude-tools", Arr.difference(coreTools, loadout.tools)),
 		...listFlag(

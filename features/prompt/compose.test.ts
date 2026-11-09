@@ -1,6 +1,11 @@
 import { expect, test } from "bun:test";
 
-import type { NormalizedBuildSystemPromptOptions } from "@earendil-works/pi-coding-agent";
+import {
+	createSyntheticSourceInfo,
+	type NormalizedBuildSystemPromptOptions,
+	type Skill,
+} from "@earendil-works/pi-coding-agent";
+import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 
 import { compose, type Layers } from "./compose.ts";
@@ -20,7 +25,12 @@ const options = (overrides: Partial<NormalizedBuildSystemPromptOptions>): Normal
 	...overrides,
 });
 
-const root: Layers = { role: "<role>\nroot\n</role>", instructions: Option.none(), principles: Option.none() };
+const root: Layers = {
+	role: "<role>\nroot\n</role>",
+	instructions: Option.none(),
+	principles: Option.none(),
+	ignoredSkills: [],
+};
 
 const composed = (given: NormalizedBuildSystemPromptOptions, layers: Layers) => {
 	compose(layers)({
@@ -50,6 +60,7 @@ const preambleRows = [
 			role: "<role>\ndelegate\n</role>\n",
 			instructions: Option.some("Review one diff.\n"),
 			principles: Option.some("<principles>\n…\n</principles>"),
+			ignoredSkills: [],
 		},
 		expect:
 			"you are a coding agent.\n\n<role>\ndelegate\n</role>\n\n<instructions>\nReview one diff.\n</instructions>\n\n<principles>\n…\n</principles>",
@@ -109,6 +120,36 @@ for (const { name, given, tools, rules } of sectionRows) {
 		const { sections } = composed(options(given), root);
 
 		expect({ tools: sections["tools"], rules: sections["rules"] }).toEqual({ tools, rules });
+	});
+}
+
+const skill = (name: string): Skill => ({
+	name,
+	description: `Use for ${name}.`,
+	filePath: `/skills/${name}/SKILL.md`,
+	baseDir: `/skills/${name}`,
+	sourceInfo: createSyntheticSourceInfo(`/skills/${name}/SKILL.md`, { source: "local" }),
+	disableModelInvocation: false,
+});
+
+const discovered = ["tdd", "web-docs", "deep-research"];
+
+const skillRows = [
+	{ name: "a prompt with nothing ignored lists every skill pi found", ignored: [], expect: discovered },
+	{
+		name: "a prompt leaves out each skill whose name is ignored",
+		ignored: ["web-docs", "deep-research"],
+		expect: ["tdd"],
+	},
+	{ name: "an ignored name pi never found changes nothing", ignored: ["pdf"], expect: discovered },
+];
+
+for (const row of skillRows) {
+	test(row.name, () => {
+		const given = options({ skills: Arr.map(discovered, skill) });
+		const { skills } = composed(given, { ...root, ignoredSkills: row.ignored });
+
+		expect(Arr.map(skills, ({ name }) => name)).toEqual(row.expect);
 	});
 }
 

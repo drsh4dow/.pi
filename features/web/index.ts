@@ -9,7 +9,7 @@ import { webLayer } from "../../clients/web/index.ts";
 import { cacheRootOf, noStoreLayer, Store, storeLayer } from "./store.ts";
 import { webTools } from "./tools.ts";
 
-/** Extension skill paths are merged even under a delegate's --no-skills, so pi gives delegates web-docs and deep-research too. */
+/** Delegates get these skills too, unless a delegate file names one in `ignoreSkills`. */
 const skillPaths = [import.meta.dirname];
 
 export const web = (pi: Pick<ExtensionAPI, "registerTool">) => {

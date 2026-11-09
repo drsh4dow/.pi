@@ -34,8 +34,8 @@ const common = {
 	tools: Names,
 	/** Extension paths the child loads besides `childExtensions` and the built-in extensions its `tools` need. The child starts with `--no-extensions`, so none by default. */
 	extensions: Schema.optionalKey(Names),
-	/** Skill paths the child may load. The child starts with `--no-skills`, so none by default. */
-	skills: Schema.optionalKey(Names),
+	/** Names of skills kept out of the child's prompt. The child gets every skill pi discovers for it, so all by default. */
+	ignoreSkills: Schema.optionalKey(Names),
 	/** Load AGENTS.md / CLAUDE.md context files. Off by default (`--no-context-files`): the prompt and message carry the context. */
 	contextFiles: Schema.optionalKey(Schema.Boolean),
 	/** What this delegate does, shown to it as `<instructions>`. With them and the one message, the child must have everything it needs. How a delegate deals with its parent comes from `agent/roles/delegate.md`. */

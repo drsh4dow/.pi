@@ -3,6 +3,7 @@ import { afterAll, expect, test } from "bun:test";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import * as Str from "effect/String";
 
 import type { RunSpec } from "../../clients/hc/index.ts";
 import { PiCli } from "../../clients/pi-cli/index.ts";
@@ -161,7 +162,14 @@ const plumbing = ({ argv, env }: Pick<RunSpec, "argv" | "env">) => {
 			([, value]) => value,
 		);
 
-	return { argv: Arr.take(argv, 4), excluded: valuesOf("--exclude-tools"), tools: valuesOf("--tools"), env };
+	return {
+		argv: Arr.take(argv, 4),
+		excluded: valuesOf("--exclude-tools"),
+		tools: valuesOf("--tools"),
+		skillFlags: Arr.filter(argv, Str.includes("skill")),
+		ignoredSkills: valuesOf("--ignore-skills"),
+		env,
+	};
 };
 
 const launchRows = [
@@ -172,6 +180,20 @@ const launchRows = [
 			argv: ["choom", "-n", "1000", "--"],
 			excluded: ["powershell,edit,write,grep,find,ls"],
 			tools: ["+read,+bash,+codemode"],
+			skillFlags: [],
+			ignoredSkills: [],
+			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
+		},
+	},
+	{
+		name: "a delegate that ignores skills hands their names to its child and still lets pi discover every other skill",
+		spec: delegateLaunch({ ...common, role: "leaf", tools: ["read"], ignoreSkills: ["tdd", "web-docs"] }),
+		expect: {
+			argv: ["choom", "-n", "1000", "--"],
+			excluded: ["bash,powershell,edit,write,grep,find,ls"],
+			tools: ["+read,+codemode"],
+			skillFlags: ["--ignore-skills"],
+			ignoredSkills: ["tdd,web-docs"],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
 		},
 	},
@@ -182,6 +204,8 @@ const launchRows = [
 			argv: ["choom", "-n", "500", "--"],
 			excluded: ["bash,powershell,edit,write,grep,find,ls"],
 			tools: ["+read,+codemode"],
+			skillFlags: [],
+			ignoredSkills: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "owner", PI_OWNED_WORK_DELEGATES: "e2e,reviewer" },
 		},
 	},
@@ -194,6 +218,8 @@ const launchRows = [
 			argv: ["choom", "-n", "1000", "--"],
 			excluded: [],
 			tools: [],
+			skillFlags: [],
+			ignoredSkills: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
 		},
 	},
