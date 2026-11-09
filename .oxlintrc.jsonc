@@ -123,7 +123,13 @@
 	"overrides": [
 		{
 			// The user chose Effect platform (FileSystem, Path, Socket, ChildProcess) over Node built-ins, and Effect marks those modules `@stability unstable`: the Effect convention wins, per AGENTS.md
-			"files": ["agent/extensions/**", "features/**", "clients/**", "tools/oxlint/fixtures/effect-pi-idioms.ts"],
+			"files": [
+				"agent/extensions/**",
+				"features/**",
+				"clients/**",
+				"tools/prompts/**",
+				"tools/oxlint/fixtures/effect-pi-idioms.ts",
+			],
 			"rules": {
 				"effecttsgo/unstable-api-usage": "off",
 				"effecttsgo/api-stability-leak": "off",

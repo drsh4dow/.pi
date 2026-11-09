@@ -8,6 +8,7 @@
 		"lint": "oxlint",
 		"typecheck": "tsc -p .",
 		"test": "bun test",
+		"prompts": "bun tools/prompts/index.ts",
 		"check": "oxfmt --check && oxlint && tsc -p . && bun test"
 	},
 	"dependencies": {
