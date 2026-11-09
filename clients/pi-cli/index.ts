@@ -89,6 +89,9 @@ const stagedFiles = ({ dir, id }: Pick<SessionAddress, "dir" | "id">) => ({
 	instructions: `${dir}/${id}.instructions`,
 });
 
+/** A task message or prompt can hold what the parent read behind a token. */
+const ownerOnly = 0o600;
+
 const argvOf = (
 	childExtensions: ReadonlyArray<string>,
 	{ session, name, loadout }: ChildPi,
@@ -133,10 +136,11 @@ export const piCliLayer = (childExtensions: ReadonlyArray<string>): Layer.Layer<
 					const files = stagedFiles(child.session);
 
 					return Effect.all([
-						fs.makeDirectory(child.session.dir, { recursive: true }),
+						fs.makeDirectory(child.session.dir, { recursive: true, mode: 0o700 }),
+						fs.chmod(child.session.dir, 0o700),
 						Effect.sync(() => staged.add(files.message).add(files.instructions)),
-						fs.writeFileString(files.message, child.message),
-						fs.writeFileString(files.instructions, child.loadout.instructions),
+						fs.writeFileString(files.message, child.message, { mode: ownerOnly }),
+						fs.writeFileString(files.instructions, child.loadout.instructions, { mode: ownerOnly }),
 					]).pipe(Effect.as(argvOf(childExtensions, child, files)));
 				},
 				unstage: (session) => remove(Rec.values(stagedFiles(session))),
