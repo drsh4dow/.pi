@@ -139,20 +139,16 @@ const parentEnv = inheritedEnv({
 });
 
 const delegateLaunch = (level: number, thinking: Option.Option<string>, instructions: Brief["instructions"]) =>
-	Effect.gen(function* () {
-		const brief = { name: "Review the retry cap, again!", message: "Do it.", model: "a/b", thinking, instructions };
-		const childSession = { id: "launched", cwd: sessionRoot, dir: `${sessionRoot}/delegates` };
-		const pi = yield* PiCli;
-
-		return yield* launch(pi)({
-			brief,
+	Effect.flatMap(PiCli, (pi) =>
+		launch(pi)({
+			brief: { name: "Review the retry cap, again!", message: "Do it.", model: "a/b", thinking, instructions },
 			level,
 			ref: "delegate-12",
 			agentKey: "test",
-			childSession,
+			childSession: { id: "launched", cwd: sessionRoot, dir: `${sessionRoot}/delegates` },
 			passEnv: parentEnv,
-		});
-	});
+		}),
+	);
 
 const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) => {
 	const flags = Arr.zip(argv, Arr.drop(argv, 1));
