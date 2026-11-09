@@ -142,10 +142,9 @@ const instructionsOf = Effect.fn("instructionsOf")(function* (cwd: string, file:
 export const briefOf = Effect.fn("briefOf")(function* (ctx: Caller, call: Static<typeof DelegateParams>) {
 	const { model, thinking } = yield* modelOf(ctx, call.model);
 
-	const instructions = yield* Option.match(Option.fromUndefinedOr(call.instructionsFile), {
-		onNone: () => Effect.succeedNone,
-		onSome: (file) => Effect.asSome(instructionsOf(ctx.cwd, file)),
-	});
+	const instructions = yield* Effect.transposeOption(
+		Option.map(Option.fromUndefinedOr(call.instructionsFile), (file) => instructionsOf(ctx.cwd, file)),
+	);
 
 	const name = yield* nameOf(ctx.modelRegistry, ctx.model, call.message);
 
