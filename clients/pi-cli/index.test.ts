@@ -11,16 +11,14 @@ import * as Option from "effect/Option";
 import * as Scope from "effect/Scope";
 import * as Str from "effect/String";
 
+import type { SessionAddress } from "../pi-sessions/index.ts";
 import { instructionsFlag, PiCli, piCliLayer } from "./index.ts";
 
 const cli = Layer.provideMerge(piCliLayer(["/entrypoint.ts"]), NodeServices.layer);
 
 const staging = `${Bun.env["TMPDIR"] ?? "/tmp"}/pi-cli-test-${String(process.pid)}`;
 
-const childOf = (
-	session: { id: string; cwd: string; dir: string },
-	instructions = Option.some({ text: "Review." }),
-) => ({
+const childOf = (session: SessionAddress, instructions = Option.some({ text: "Review." })) => ({
 	session,
 	name: "n",
 	message: "m",
@@ -48,13 +46,11 @@ const rows = [
 	{
 		name: "a launch whose files can't be staged fails with the filesystem's error, not hc's",
 		dir: "/dev/null/delegates",
-		instructions: Option.some({ text: "Review." }),
 		expect: ["PlatformError"],
 	},
 	{
 		name: "a launch stages the delegate's instructions for the child's prompt extension, and both files for the user alone",
 		dir: staging,
-		instructions: Option.some({ text: "Review." }),
 		expect: ["--instructions Review. 600", "@ m 600"],
 	},
 	{
