@@ -4,7 +4,7 @@ when: After completing a task or a step, before you declare it done or report th
 
 # Prove It Works
 
-Verify every task output by checking the real thing directly. Do not infer from proxies, self-reports, or "it compiles."
+Verify every task output by checking the real thing directly. Dogfood your implementations. Do not infer from proxies, self-reports, or "it compiles." Unverified work is not done.
 
 **Why.** Unverified work has unknown correctness. Indirect verification, such as file mtimes, output freshness, a delegate's self-report, or a cached screenshot, feels cheaper than direct observation. Acting on a wrong inference costs far more than checking the source.
 

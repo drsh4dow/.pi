@@ -22,11 +22,7 @@ Decide whether the human must answer before you act. Take the first case that ma
    → Correct or confirm these, and I'll proceed.
    ```
 
-   A wrong guess on an open decision, run unchecked, is the most common failure mode. Surfacing it early is cheaper than rework.
-
-4. **Everything else: proceed, then present.** Reversible execution choices on a clear task (writing code, editing notes, splitting tasks) go ahead without waiting. Make the reasonable decision, do the work, and explain the choice in the report so the human can course-correct after the fact. When you notice a problem along the way, log it and fix it in the next round.
-
-Product direction comes from the human. Execution on a clear task does not wait on them.
+4. **Everything else: proceed, then present.** Reversible execution choices on a clear task (writing code, editing notes, splitting tasks) go ahead without waiting. Make the reasonable decision, do the work, and explain the choice in the report so the human can course-correct after the fact.
 
 When a requested approach has clear problems:
 
@@ -34,6 +30,4 @@ When a requested approach has clear problems:
 - Explain the concrete downside, quantified when possible ("this adds ~200ms latency", not "this might be slower").
 - Propose an alternative.
 - Accept the human's decision if they override with full information.
-
-Honest technical disagreement is worth more than false agreement. Agreeing to a bad idea and implementing it helps no one.
 </collaboration>

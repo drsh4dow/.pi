@@ -54,7 +54,7 @@ const promptGuidelines = [
 const delegateGuidelines = [
 	"Use delegate to keep bulk out of your context. When the work means reading many files, a long transcript, or a large artifact, hand it to a delegate and keep only its answer and the evidence locations it names.",
 	"Treat every delegate hand-off as lossy. One agent, one round trip, is the baseline. Fan out only when the sub-tasks are independent (no shared mutable state, no ordering between them), each delegate brings back a different kind of finding, and merging the answers fits in your context.",
-	"Write each delegate task message as the delegate's whole world. It has no other context and cannot ask you anything. Name the goal, the inputs, what counts as done, and the shape of the answer.",
+	"Write each delegate task message as the delegate's whole world. Name the goal, the inputs, what counts as done, and the shape of the answer.",
 	"Give each delegate that commits its own branch or worktree.",
 	"A delegate's answer is a claim. Check what you will act on against the real artifact before you report it as done.",
 	"A delegate that reports something missing hands you a gap. Supply it in a fresh delegate's message. If only someone above you can settle it, it is your own open question now.",
