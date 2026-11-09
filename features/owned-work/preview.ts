@@ -28,6 +28,9 @@ export const stagedLaunches = Effect.fn("stagedLaunches")(function* (cwd: string
 	const fs = yield* FileSystem.FileSystem;
 	const files = yield* fs.readDirectory(instructionsFolder);
 
+	const services = yield* Layer.build(piCliLayer(childExtensions));
+	const cli = Context.get(services, PiCli);
+
 	const withInstructions = yield* Effect.forEach(files, (file) =>
 		Effect.map(fs.readFileString(`${instructionsFolder}/${file}`), (text) => ({
 			name: Str.replace(/\.md$/u, "")(file),
@@ -36,30 +39,25 @@ export const stagedLaunches = Effect.fn("stagedLaunches")(function* (cwd: string
 		})),
 	);
 
-	const services = yield* Layer.build(piCliLayer(childExtensions));
-	const cli = Context.get(services, PiCli);
-
-	const stage = ({ name, level, instructions }: (typeof withInstructions)[number]) =>
-		Effect.map(
-			launch(cli)({
-				brief: { name, message, model: "anthropic/claude-opus-5-5", thinking: Option.none(), instructions },
-				level,
-				ref: "delegate-1",
-				agentKey: "prompts",
-				childSession: { cwd, dir: `${dir}/${name}`, id: uuidv7() },
-				passEnv: inheritedEnv(process.env),
-			}),
-			// In a real launch the systemd client's `wrap` sets the slice. A child without one fails to start.
-			(spec): StagedLaunch => ({
-				name,
-				level,
-				argv: spec.argv,
-				env: { ...spec.env, PI_OWNED_WORK_SLICE: `pi-ow-prompts-${name}` },
-			}),
-		);
-
 	return yield* Effect.forEach(
 		[...withInstructions, { name: "bare", level: levels, instructions: Option.none() }],
-		stage,
+		({ name, level, instructions }) =>
+			Effect.map(
+				launch(cli)({
+					brief: { name, message, model: "anthropic/claude-opus-5-5", thinking: Option.none(), instructions },
+					level,
+					ref: "delegate-1",
+					agentKey: "prompts",
+					childSession: { cwd, dir: `${dir}/${name}`, id: uuidv7() },
+					passEnv: inheritedEnv(process.env),
+				}),
+				// In a real launch the systemd client's `wrap` sets the slice. A child without one fails to start.
+				(spec): StagedLaunch => ({
+					name,
+					level,
+					argv: spec.argv,
+					env: { ...spec.env, PI_OWNED_WORK_SLICE: `pi-ow-prompts-${name}` },
+				}),
+			),
 	);
 });
