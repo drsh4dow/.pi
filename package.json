@@ -13,8 +13,11 @@
 	},
 	"dependencies": {
 		"@effect/platform-node": "4.1.2",
+		"defuddle": "0.19.6",
 		"effect": "4.1.2",
-		"jiti": "2.7.0"
+		"jiti": "2.7.0",
+		"linkedom": "0.18.15",
+		"unpdf": "2.1.0"
 	},
 	"devDependencies": {
 		"@earendil-works/pi-coding-agent": "1.5.0",

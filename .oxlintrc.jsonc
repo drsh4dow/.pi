@@ -135,5 +135,12 @@
 				"effecttsgo/api-stability-leak": "off",
 			},
 		},
+		{
+			// The URL guard pins the address it checked by replacing node:http's DNS lookup, which only node:dns and node:net offer
+			"files": ["clients/web/guard.ts"],
+			"rules": {
+				"import/no-nodejs-modules": ["error", { "allow": ["node:dns", "node:net"] }],
+			},
+		},
 	],
 }
