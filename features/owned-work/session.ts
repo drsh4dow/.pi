@@ -125,10 +125,18 @@ const runtimeOf = (
 	return { runtime: ManagedRuntime.make(Layer.provideMerge(ledger, services)), relay };
 };
 
-const placeOf = (self: Self, ctx: ExtensionContext) => {
-	const dir = ctx.sessionManager.getSessionDir();
+/**
+ * Under --no-session pi's session folder is "", so a root's delegates keep their sessions in a temp folder whose name
+ * nobody can guess ahead of time. It is made, owner-only, when the first delegate starts.
+ */
+export const delegatesDirOf = ({ sessionDir, tmpDir }: { readonly sessionDir: string; readonly tmpDir: string }) =>
+	sessionDir === "" ? `${tmpDir}/pi-delegates-${uuidv7()}` : `${sessionDir}/delegates`;
 
-	return { cwd: ctx.cwd, dir: Self.$is("Root")(self) ? `${dir}/delegates` : dir };
+const placeOf = (self: Self, ctx: ExtensionContext, env: Env) => {
+	const sessionDir = ctx.sessionManager.getSessionDir();
+	const tmpDir = Option.getOrElse(Option.filter(Option.fromUndefinedOr(env["TMPDIR"]), Str.isNonEmpty), () => "/tmp");
+
+	return { cwd: ctx.cwd, dir: Self.$is("Root")(self) ? delegatesDirOf({ sessionDir, tmpDir }) : sessionDir };
 };
 
 const sessionOf = (pi: ExtensionAPI, ctx: ExtensionContext, env: Env, childExtensions: ReadonlyArray<string>) =>
@@ -137,8 +145,7 @@ const sessionOf = (pi: ExtensionAPI, ctx: ExtensionContext, env: Env, childExten
 		const session: Session = runtimeOf(pi, ctx, env, self, childExtensions);
 		const services = yield* session.runtime.contextEffect;
 		const entries = yield* Effect.provideContext(registryOf(self, ctx), services);
-
-		Tools.register(pi, session.runtime, entries, placeOf(self, ctx));
+		Tools.register(pi, session.runtime, entries, placeOf(self, ctx, env));
 
 		return session;
 	});

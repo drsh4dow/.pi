@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 
-import { exitsWhenPromptResolves, runHook } from "./session.ts";
+import { delegatesDirOf, exitsWhenPromptResolves, runHook } from "./session.ts";
 
 const rows = [
 	{ mode: "print", exits: true },
@@ -35,3 +35,22 @@ test("a hook still waiting when the session shuts down ends with no reply, and a
 			expect(reply).toBeUndefined();
 		}),
 	));
+
+const places = [
+	{ name: "a saved session keeps delegates beside it", sessionDir: "/s", dir: /^\/s\/delegates$/u },
+	{
+		name: "a --no-session run keeps delegates in a temp folder named at random",
+		sessionDir: "",
+		dir: /^\/t\/pi-delegates-[0-9a-f-]{36}$/u,
+	},
+] as const;
+
+for (const { name, sessionDir, dir } of places) {
+	test(name, () => {
+		expect(delegatesDirOf({ sessionDir, tmpDir: "/t" })).toMatch(dir);
+	});
+}
+
+test("two --no-session runs never share a delegates folder", () => {
+	expect(delegatesDirOf({ sessionDir: "", tmpDir: "/t" })).not.toBe(delegatesDirOf({ sessionDir: "", tmpDir: "/t" }));
+});

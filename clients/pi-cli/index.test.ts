@@ -8,6 +8,7 @@ import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Scope from "effect/Scope";
+import * as Str from "effect/String";
 
 import { instructionsFlag, PiCli, piCliLayer } from "./index.ts";
 
@@ -15,11 +16,18 @@ const cli = Layer.provideMerge(piCliLayer(["/entrypoint.ts"]), NodeServices.laye
 
 const staging = `${Bun.env["TMPDIR"] ?? "/tmp"}/pi-cli-test-${String(process.pid)}`;
 
-const instructionFlags = (argv: ReadonlyArray<string>) => {
-	const pairs = Arr.filter(Arr.zip(argv, Arr.drop(argv, 1)), ([flag]) => flag === `--${instructionsFlag}`);
+const stagedFiles = (argv: ReadonlyArray<string>) => {
+	const instructions = Arr.filter(Arr.zip(argv, Arr.drop(argv, 1)), ([flag]) => flag === `--${instructionsFlag}`);
+	const messages = Arr.map(Arr.filter(argv, Str.startsWith("@")), (word) => ["@", Str.slice(1)(word)] as const);
 
 	return Effect.flatMap(FileSystem.FileSystem, (fs) =>
-		Effect.forEach(pairs, ([flag, file]) => Effect.map(fs.readFileString(file), (text) => `${flag} ${text}`)),
+		Effect.forEach([...instructions, ...messages], ([flag, file]) =>
+			Effect.zipWith(
+				fs.readFileString(file),
+				fs.stat(file),
+				(text, { mode }) => `${flag} ${text} ${(mode % 0o1000).toString(8)}`,
+			),
+		),
 	);
 };
 
@@ -30,9 +38,9 @@ const rows = [
 		expect: ["PlatformError"],
 	},
 	{
-		name: "a launch stages the delegate's instructions for the child's prompt extension, not as pi's appended prompt",
+		name: "a launch stages the delegate's instructions for the child's prompt extension, and both files for the user alone",
 		dir: staging,
-		expect: ["--instructions Review."],
+		expect: ["--instructions Review. 600", "@ m 600"],
 	},
 ];
 
@@ -44,18 +52,35 @@ for (const row of rows) {
 				const session = { id: "child", cwd: "/", dir: row.dir };
 				const loadout = { model: "a/b", instructions: "Review.", tools: [] };
 
-				const got = yield* pi.launch({ session, name: "n", message: "m", loadout }).pipe(
-					Effect.matchEffect({
-						onFailure: (error) => Effect.succeed([error._tag]),
-						onSuccess: instructionFlags,
-					}),
-				);
+				const got = yield* pi
+					.launch({ session, name: "n", message: "m", loadout })
+					.pipe(
+						Effect.matchEffect({ onFailure: (error) => Effect.succeed([error._tag]), onSuccess: stagedFiles }),
+					);
 
 				expect(got).toEqual(row.expect);
 			}).pipe(Effect.provide(cli)),
 		),
 	);
 }
+
+test("a launch makes a delegates folder that already exists owner-only", () =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const pi = yield* PiCli;
+			const dir = `${staging}/open`;
+			const loadout = { model: "a/b", instructions: "Review.", tools: [] };
+
+			yield* fs.makeDirectory(dir, { recursive: true });
+			yield* fs.chmod(dir, 0o777);
+			yield* pi.launch({ session: { id: "open", cwd: "/", dir }, name: "n", message: "m", loadout });
+
+			const { mode } = yield* fs.stat(dir);
+
+			expect((mode % 0o1000).toString(8)).toBe("700");
+		}).pipe(Effect.provide(cli)),
+	));
 
 test("closing the client leaves alone the paths of a child it already unstaged", () => {
 	const session = { id: "unstaged", cwd: "/", dir: staging };
