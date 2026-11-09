@@ -9,7 +9,7 @@ import { Type } from "typebox";
 
 import type { TerminalEnd } from "../../clients/hc/index.ts";
 import type { LedgerFailure } from "./ledger.ts";
-import type { FailReason, Handle, Outcome, Settled, WorkEntry } from "./work.ts";
+import type { BadDelegate, FailReason, Handle, Outcome, Settled, WorkEntry } from "./work.ts";
 
 export const HandleOut = Type.Object({
 	ref: Type.String(),
@@ -94,13 +94,12 @@ const endOut = (end: Option.Option<TerminalEnd>) =>
 
 const entryOut = (entry: WorkEntry) =>
 	Match.valueTags(entry, {
-		DelegateStarted: ({ handle, delegate, configFile, configHash, model, childSessionId }) => ({
+		DelegateStarted: ({ handle, name, model, instructionsFile, childSessionId }) => ({
 			type: "delegate-started",
 			handle,
-			delegate,
-			config_file: configFile,
-			config_hash: configHash,
+			name,
 			model,
+			instructions_file: Option.getOrNull(instructionsFile),
 			child_session_id: childSessionId,
 		}),
 		CommandStarted: ({ handle, kind, command }) => ({ type: "command-started", handle, kind, command }),
@@ -114,8 +113,9 @@ const entryOut = (entry: WorkEntry) =>
 		}),
 	});
 
-const errorText = (error: LedgerFailure): string =>
+const errorText = (error: LedgerFailure | BadDelegate): string =>
 	Match.valueTags(error, {
+		BadDelegate: ({ why }) => why,
 		UnknownRef: ({ ref }) => `no work is called ${ref}`,
 		NotYours: ({ ref, why }) => `${ref}: ${why}`,
 		NoJobs: ({ refs }) => `a group needs a delegate or a watch, and ${Arr.join(refs, ", ")} are only serves`,
@@ -131,6 +131,6 @@ export const Out = {
 	handle: handleOut,
 	result: resultOut,
 	entry: entryOut,
-	error: (error: LedgerFailure) => ({ error: error._tag, message: errorText(error) }),
+	error: (error: LedgerFailure | BadDelegate) => ({ error: error._tag, message: errorText(error) }),
 	text,
 };

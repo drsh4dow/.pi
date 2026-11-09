@@ -4,10 +4,10 @@ import * as Data from "effect/Data";
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import type * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 
 import type { TerminalAddress, TerminalEnd } from "../../clients/hc/index.ts";
-import type { ChildSession } from "./child.ts";
-import type { Entry } from "./delegates.ts";
+import type { Brief, ChildSession } from "./child.ts";
 
 export type WorkRef = string & Brand.Brand<"WorkRef">;
 
@@ -68,11 +68,7 @@ export interface Spawn {
 }
 
 export type Work = Data.TaggedEnum<{
-	Delegate: Common & {
-		readonly entry: Entry;
-		readonly childSession: ChildSession;
-		readonly spawn: Option.Option<Spawn>;
-	};
+	Delegate: Common & { readonly childSession: ChildSession; readonly spawn: Option.Option<Spawn> };
 	Watch: Common & {
 		readonly command: string;
 		readonly deadline: Option.Option<Duration.Duration>;
@@ -85,12 +81,17 @@ export type Work = Data.TaggedEnum<{
 export const Work = Data.taggedEnum<Work>();
 
 export type StartRequest = Data.TaggedEnum<{
-	Delegate: { readonly entry: Entry; readonly message: string; readonly childSession: ChildSession };
+	Delegate: { readonly brief: Brief; readonly childSession: ChildSession };
 	Serve: { readonly command: string; readonly ready: Option.Option<string> };
 	Watch: { readonly command: string; readonly deadline: Option.Option<Duration.Duration> };
 }>;
 
 export const StartRequest = Data.taggedEnum<StartRequest>();
+
+/** A `delegate` call refused before anything starts, such as one naming a model the registry lacks. */
+export class BadDelegate extends Schema.TaggedError<BadDelegate, { readonly brand: unique symbol }>()("BadDelegate", {
+	why: Schema.String,
+}) {}
 
 export interface Handle {
 	readonly ref: WorkRef;
@@ -102,10 +103,9 @@ export interface Handle {
 export type WorkEntry = Data.TaggedEnum<{
 	DelegateStarted: {
 		readonly handle: WorkRef;
-		readonly delegate: string;
-		readonly configFile: string;
-		readonly configHash: string;
+		readonly name: string;
 		readonly model: string;
+		readonly instructionsFile: Option.Option<string>;
 		readonly childSessionId: string;
 	};
 	CommandStarted: { readonly handle: WorkRef; readonly kind: "serve" | "watch"; readonly command: string };

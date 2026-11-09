@@ -90,17 +90,17 @@ const checked = <Value>(got: () => Value, expected: Value) =>
 		expect(got()).toEqual(expected);
 	});
 
-const requestOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
+const requestOf = (act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
 	counter.sessions += 1;
 
 	const childSession = { id: `child-${String(counter.sessions)}`, cwd: sessionRoot, dir: `${sessionRoot}/delegates` };
 	const deadline = Option.map(Option.fromUndefinedOr(act.deadlineMs), Duration.millis);
 	const message = act.messageKiB === undefined ? "Review it." : Str.repeat(act.messageKiB * 1024)("x");
-	const config = { ...world.entry.config, instructions: Str.repeat((act.promptKiB ?? 0) * 1024)("p") || "Review." };
-	const entry = { ...world.entry, config };
+	const instructions = Option.some({ file: "/r.md", text: Str.repeat((act.promptKiB ?? 0) * 1024)("p") || "Review." });
+	const brief = { name: "Review it", message, model: "a/b", thinking: Option.none(), instructions };
 
 	return Match.value(act.kind).pipe(
-		Match.when("delegate", () => StartRequest.Delegate({ entry, message, childSession })),
+		Match.when("delegate", () => StartRequest.Delegate({ brief, childSession })),
 		Match.when("serve", () => StartRequest.Serve({ command: "serve", ready: Option.some("ready") })),
 		Match.when("watch", () => StartRequest.Watch({ command: "watch", deadline })),
 		Match.exhaustive,
@@ -110,7 +110,7 @@ const requestOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">): Star
 const refusal = (error: LedgerFailure): string => Out.error(error).message;
 
 const start = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
-	const request = requestOf(world, act);
+	const request = requestOf(act);
 
 	const started = ({ ref, terminal }: Handle) => {
 		const address = Option.getOrElse(terminal, () => "");

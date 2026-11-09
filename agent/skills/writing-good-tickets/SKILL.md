@@ -114,7 +114,7 @@ Hypothesis: the guard splits commands on `;` and `|` inside quotes, so the quote
 
 ## Context
 
-- The glossary's Owned work section defines leaves and owners and why a leaf starts no delegates. The fix must keep that rule.
+- The glossary's Owned work section defines levels and why an agent at the last level starts no delegates. The fix must keep that rule.
 ````
 
 The same ticket, written badly:
@@ -149,14 +149,14 @@ Size each ticket as a vertical slice. It cuts a narrow path through every layer 
 Write the body to a file and run the three gates.
 
 1. **Structure.** Run `../writing-good-prs/scripts/check-body.ts ticket <body-file> --title "<title>"`, with `--template <path>` when the repository has an issue template. A parent issue that holds a spec keeps the spec's headings, so pass `--template` with a file that lists them, which still checks paths and the title. Fix each printed problem and rerun until it exits 0. Exit 0 means the headings and title parse and the body names no path on your machine, such as one under `~/`, even inside a code block. It says nothing about the case the body makes.
-2. **Implementer read.** Start one `cold-reader` delegate, and give it only the title and the body file. Ask it to:
+2. **Implementer read.** Start one delegate with `instructionsFile: ~/.pi/agent/instructions/cold-reader.md`, and give it only the title and the body file. Ask it to:
    1. Retell the problem as one story, with who it costs, and name the witness that shows it, or write `none visible`.
    2. For each Done-when item, say exactly what it would run and what result counts as done, or write `unclear`.
    3. As the implementer, list what it would still need to start, or write `nothing`.
 
    Run the read once. Fix every gap its answers show, then move on without a second read.
 
-   Run this read yourself even when you run as a delegate, and publish only after it has run. Only when you cannot start a `cold-reader` delegate, write the body file, publish nothing, and name the read in your report for your parent to run.
+   Run this read yourself even when you run as a delegate, and publish only after it has run. Only when you have no `delegate` tool, write the body file, publish nothing, and name the read in your report for your parent to run.
 
 3. **Facts.** The implementer read finds gaps, not false facts. Settle each claim you marked inferred with the read that decides it, such as one query or one `curl`, or carry its label word for word into every copy of the claim, including each comment that records a decision. When the user's answer to a compliance or health-data question reads two ways, restate it to them and get a yes before you write it as a fact.
 

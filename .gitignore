@@ -1,6 +1,6 @@
 /agent/*
 !/agent/extensions/
-!/agent/delegates/
+!/agent/instructions/
 !/agent/skills/
 !/agent/prompts/
 !/agent/themes/

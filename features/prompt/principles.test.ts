@@ -14,7 +14,7 @@ const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/principles-test-${String(process
 
 const agentDir = `${import.meta.dirname}/../../agent`;
 
-const every: ReadonlyArray<Role> = ["root", "owner", "leaf"];
+const every: ReadonlyArray<Role> = ["root", "delegate"];
 
 const rows: ReadonlyArray<{ name: string; file: string; text: string; roles?: ReadonlyArray<Role> }> = [
 	{
@@ -66,11 +66,11 @@ test("the index names the folder once, then each principle's name and trigger, o
 	const everywhere: Principle = { name: "fix-root-causes", when: "Debugging.", roles: every };
 	const rootOnly: Principle = { name: "ask-less", when: "Asking.", roles: ["root"] };
 
-	expect(principleIndex({ role: "leaf", dir: "/p", principles: [everywhere, rootOnly] })).toEqual(
+	expect(principleIndex({ role: "delegate", dir: "/p", principles: [everywhere, rootOnly] })).toEqual(
 		Option.some('<principles dir="/p">\n- fix-root-causes: Debugging.\n</principles>'),
 	);
 
-	expect(principleIndex({ role: "leaf", dir: "/p", principles: [rootOnly] })).toEqual(Option.none());
+	expect(principleIndex({ role: "delegate", dir: "/p", principles: [rootOnly] })).toEqual(Option.none());
 });
 
 /** The names `text` points at as `principle-<name>`, the one spelling prompts and answers use. */
@@ -80,11 +80,11 @@ const references = (text: string) => {
 	return Arr.dedupe(Arr.map(found, (match) => match.groups?.["name"] ?? ""));
 };
 
-/** The agent files whose text reaches a prompt: the shared layer, the role files, the principles and the harness delegates. */
+/** The agent files whose text reaches a prompt: the shared layer, the role files, the principles and the instructions files. */
 const promptFiles = Effect.gen(function* () {
 	const fs = yield* FileSystem.FileSystem;
 
-	const listed = yield* Effect.forEach(["roles", "principles", "delegates"], (folder) =>
+	const listed = yield* Effect.forEach(["roles", "principles", "instructions"], (folder) =>
 		Effect.map(
 			fs.readDirectory(`${agentDir}/${folder}`),
 			Arr.map((name) => `${folder}/${name}`),

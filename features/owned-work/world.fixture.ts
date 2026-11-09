@@ -12,7 +12,6 @@ import * as Layer from "effect/Layer";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
-import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
@@ -21,8 +20,7 @@ import { Hc, HcError, HcNotice, type RunSpec, TerminalAddress, TerminalEnd } fro
 import { piCliLayer } from "../../clients/pi-cli/index.ts";
 import { piSessionsLayer } from "../../clients/pi-sessions/index.ts";
 import { Slices } from "../../clients/systemd/index.ts";
-import type { ChildSession, Role } from "./child.ts";
-import { DelegateName, type Entry } from "./delegates.ts";
+import { type ChildSession, type Role, Self } from "./child.ts";
 import { Host, Ledger, ledgerLayer } from "./ledger.ts";
 import type { Verdict } from "./step.ts";
 import { type FailReason, Outcome, type Settled, WorkEntry } from "./work.ts";
@@ -36,7 +34,6 @@ export interface World {
 	readonly gate: Semaphore.Semaphore;
 	readonly pending: Array<Fiber.Fiber<string>>;
 	readonly scope: Scope.Closeable;
-	readonly entry: Entry;
 	readonly sessions: Map<string, ChildSession>;
 	readonly delivered: Array<Settled>;
 	readonly owed: Array<string>;
@@ -247,14 +244,6 @@ export const worldOf = (clock: World["clock"]) => (role: Role) =>
 		const notices = yield* Queue.unbounded<HcNotice>();
 		const gate = yield* Semaphore.make(0);
 		const scope = yield* Scope.make();
-		const name = yield* Schema.decodeEffect(DelegateName)("reviewer");
-
-		const config = {
-			role: "leaf" as const,
-			description: "Reviews.",
-			model: "anthropic/claude-haiku-4-5",
-			instructions: "Review.",
-		};
 
 		const world: Omit<World, "ledger" | "fs"> = {
 			notices,
@@ -262,7 +251,6 @@ export const worldOf = (clock: World["clock"]) => (role: Role) =>
 			gate,
 			pending: [],
 			scope,
-			entry: { name, config, source: "harness" as const, file: "/delegates/reviewer.ts", hash: "test" },
 			sessions: new Map(),
 			delivered: [],
 			owed: [],
@@ -280,7 +268,8 @@ export const worldOf = (clock: World["clock"]) => (role: Role) =>
 		};
 
 		const fakes = Layer.mergeAll(hcOf(world), hostOf(world), slicesOf(world), piSessionsLayer, node);
-		const ledger = ledgerLayer({ role, agentKey: "test", cwd: sessionRoot, passEnv: {} });
+		const self = role === "root" ? Self.Root({ role }) : Self.Delegate({ role, level: 2, slice: "pi-ow-test" });
+		const ledger = ledgerLayer({ self, agentKey: "test", cwd: sessionRoot, passEnv: {} });
 		const context = yield* Layer.buildWithScope(Layer.provideMerge(ledger, fakes), scope);
 
 		return Object.assign(world, {

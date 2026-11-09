@@ -2,13 +2,12 @@ import { afterAll, expect, test } from "bun:test";
 
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import type { RunSpec } from "../../clients/hc/index.ts";
 import { PiCli } from "../../clients/pi-cli/index.ts";
-import { childExtensions, inheritedEnv, launch } from "./child.ts";
-import { type Delegate, DelegateName } from "./delegates.ts";
+import { type Brief, childExtensions, inheritedEnv, launch, Self } from "./child.ts";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { commandSpec } from "./ledger.ts";
 import { WorkRef } from "./work.ts";
@@ -135,37 +134,41 @@ for (const row of rows) {
 const parentEnv = inheritedEnv({
 	PATH: "/bin",
 	HC_TERMINAL_ID: "t9",
-	PI_OWNED_WORK_ROLE: "owner",
-	PI_OWNED_WORK_DELEGATES: "reviewer",
+	PI_OWNED_WORK_LEVEL: "2",
 	PI_OWNED_WORK_SLICE: "pi-ow-test-delegate1",
 });
 
-const common = { description: "Does it.", model: "a/b", instructions: "Do it." };
-
-const delegateLaunch = (config: Delegate) =>
+const delegateLaunch = (level: number, thinking: Option.Option<string>, instructions: Brief["instructions"]) =>
 	Effect.gen(function* () {
-		const name = yield* Schema.decodeEffect(DelegateName)("child");
-		const entry = { name, config, source: "harness" as const, file: "/child.ts", hash: "test" };
+		const brief = { name: "Review the retry cap, again!", message: "Do it.", model: "a/b", thinking, instructions };
 		const childSession = { id: "launched", cwd: sessionRoot, dir: `${sessionRoot}/delegates` };
-		const request = { entry, message: "Do it.", ref: "delegate-1", agentKey: "test", childSession };
 		const pi = yield* PiCli;
 
-		return yield* launch(pi)({ ...request, passEnv: parentEnv });
+		return yield* launch(pi)({
+			brief,
+			level,
+			ref: "delegate-12",
+			agentKey: "test",
+			childSession,
+			passEnv: parentEnv,
+		});
 	});
 
-const plumbing = ({ argv, env }: Pick<RunSpec, "argv" | "env">) => {
+const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) => {
 	const flags = Arr.zip(argv, Arr.drop(argv, 1));
 
-	const valuesOf = (name: string) =>
+	const valuesOf = (flag: string) =>
 		Arr.map(
-			Arr.filter(flags, ([flag]) => flag === name),
+			Arr.filter(flags, ([word]) => word === flag),
 			([, value]) => value,
 		);
 
 	return {
+		name,
 		argv: Arr.take(argv, 4),
-		excluded: valuesOf("--exclude-tools"),
 		tools: valuesOf("--tools"),
+		thinking: valuesOf("--thinking"),
+		instructions: Arr.length(valuesOf("--instructions")),
 		skillFlags: Arr.filter(argv, Str.includes("skill")),
 		env,
 	};
@@ -173,38 +176,47 @@ const plumbing = ({ argv, env }: Pick<RunSpec, "argv" | "env">) => {
 
 const launchRows = [
 	{
-		name: "a leaf delegate starts at OOM score 1000, as a leaf, with codemode and without the tools it excludes",
-		spec: delegateLaunch({ ...common, role: "leaf", excludedTools: ["edit", "write"] }),
+		name: "a level-2 delegate starts at OOM score 500 with codemode, every skill, its thinking level and its instructions",
+		spec: delegateLaunch(2, Option.some("high"), Option.some({ file: "/brief.md", text: "Review." })),
 		expect: {
-			argv: ["choom", "-n", "1000", "--"],
-			excluded: ["edit,write"],
-			tools: ["+codemode"],
-			skillFlags: [],
-			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
-		},
-	},
-	{
-		name: "an owner delegate starts at OOM score 500, as an owner that may start only its listed delegates",
-		spec: delegateLaunch({ ...common, role: "owner", delegates: ["e2e", "reviewer"] }),
-		expect: {
+			name: "review-the-retry-12-test",
 			argv: ["choom", "-n", "500", "--"],
-			excluded: [],
 			tools: ["+codemode"],
+			thinking: ["high"],
+			instructions: 1,
 			skillFlags: [],
-			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "owner", PI_OWNED_WORK_DELEGATES: "e2e,reviewer" },
+			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "2" },
 		},
 	},
 	{
-		name: "a serve or watch starts at OOM score 1000 as a leaf, so a pi it runs has no delegate tool",
+		name: "a delegate at the last level starts at OOM score 1000, and with no thinking level or instructions passes neither",
+		spec: delegateLaunch(3, Option.none(), Option.none()),
+		expect: {
+			name: "review-the-retry-12-test",
+			argv: ["choom", "-n", "1000", "--"],
+			tools: ["+codemode"],
+			thinking: [],
+			instructions: 0,
+			skillFlags: [],
+			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "3" },
+		},
+	},
+	{
+		name: "a serve or watch runs at the last level, so a pi it starts has no delegate tool",
 		spec: Effect.succeed(
-			commandSpec({ role: "owner", agentKey: "test", cwd: "/", passEnv: parentEnv })(WorkRef("watch-1"), "pi"),
+			commandSpec({ self: Self.Root({ role: "root" }), agentKey: "test", cwd: "/", passEnv: parentEnv })(
+				WorkRef("watch-1"),
+				"pi",
+			),
 		),
 		expect: {
+			name: "watch-1-test",
 			argv: ["choom", "-n", "1000", "--"],
-			excluded: [],
 			tools: [],
+			thinking: [],
+			instructions: 0,
 			skillFlags: [],
-			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
+			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "3" },
 		},
 	},
 ];

@@ -23,7 +23,6 @@ import { piCliLayer, unwrapMessage } from "../../clients/pi-cli/index.ts";
 import { piSessionsLayer } from "../../clients/pi-sessions/index.ts";
 import { slicesLayer } from "../../clients/systemd/index.ts";
 import { inheritedEnv, Self, selfFromEnv } from "./child.ts";
-import { choices, harnessFolder, loadRegistry } from "./delegates.ts";
 import { Host, Ledger, ledgerLayer } from "./ledger.ts";
 import { Out } from "./out.ts";
 import { Tools } from "./tools.ts";
@@ -75,26 +74,6 @@ const hostLayer = (pi: ExtensionAPI, relay: Relay) => {
 
 type Env = Readonly<Record<string, string | undefined>>;
 
-const registryOf = (self: Self, ctx: ExtensionContext) =>
-	Effect.gen(function* () {
-		if (self.role === "leaf") {
-			return [];
-		}
-
-		const project = ctx.isProjectTrusted() ? `${ctx.cwd}/.pi/delegates` : undefined;
-
-		const hasModel = (provider: string, id: string) =>
-			Option.isSome(Option.fromUndefinedOr(ctx.modelRegistry.find(provider, id)));
-
-		const registry = yield* loadRegistry({ folders: { harness: harnessFolder, project }, hasModel });
-
-		for (const { file, why } of registry.rejected) {
-			ctx.ui.notify(`owned-work skipped ${file}: ${why}`, "warning");
-		}
-
-		return choices(self)(registry);
-	});
-
 const runtimeOf = (
 	pi: ExtensionAPI,
 	ctx: ExtensionContext,
@@ -105,7 +84,7 @@ const runtimeOf = (
 	const agentKey = Str.takeRight(uuidv7(), 8);
 	const parent = Option.map(Option.fromUndefinedOr(env["HC_TERMINAL_ID"]), TerminalAddress);
 	const relay: Relay = { waiter: Option.none() };
-	const ledger = ledgerLayer({ role: self.role, agentKey, cwd: ctx.cwd, passEnv: inheritedEnv(env) });
+	const ledger = ledgerLayer({ self, agentKey, cwd: ctx.cwd, passEnv: inheritedEnv(env) });
 
 	const slices = Self.$is("Root")(self)
 		? slicesLayer({ slice: `pi-ow-${agentKey}`, rootPid: Option.some(process.pid) })
@@ -140,12 +119,10 @@ const placeOf = (self: Self, ctx: ExtensionContext, env: Env) => {
 };
 
 const sessionOf = (pi: ExtensionAPI, ctx: ExtensionContext, env: Env, childExtensions: ReadonlyArray<string>) =>
-	Effect.gen(function* () {
-		const self = yield* selfFromEnv(env);
-		const session: Session = runtimeOf(pi, ctx, env, self, childExtensions);
-		const services = yield* session.runtime.contextEffect;
-		const entries = yield* Effect.provideContext(registryOf(self, ctx), services);
-		Tools.register(pi, session.runtime, entries, placeOf(self, ctx, env));
+	Effect.map(selfFromEnv(env), (self): Session => {
+		const session = runtimeOf(pi, ctx, env, self, childExtensions);
+
+		Tools.register(pi, session.runtime, self, placeOf(self, ctx, env));
 
 		return session;
 	});

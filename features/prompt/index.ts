@@ -15,9 +15,6 @@ import { type Role, selfFromEnv } from "../owned-work/index.ts";
 import { compose } from "./compose.ts";
 import { loadPrinciples, principleIndex } from "./principles.ts";
 
-/** Owners and leaves share one role file: what an owner has beyond a leaf comes with the `delegate` tool. */
-const roleFile: Record<Role, string> = { root: "root.md", owner: "delegate.md", leaf: "delegate.md" };
-
 /** Reads the prompt files on every run, so an edit lands on the next turn. Unchanged files give the same text, so pi sends no patch. */
 const layersOf = Effect.fn("layersOf")(function* (
 	agentDir: string,
@@ -25,7 +22,7 @@ const layersOf = Effect.fn("layersOf")(function* (
 	instructionsFile: Option.Option<string>,
 ) {
 	const fs = yield* FileSystem.FileSystem;
-	const roleText = yield* fs.readFileString(`${agentDir}/roles/${roleFile[role]}`);
+	const roleText = yield* fs.readFileString(`${agentDir}/roles/${role}.md`);
 
 	const instructions = yield* Option.match(instructionsFile, {
 		onNone: () => Effect.succeedNone,

@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Scope from "effect/Scope";
 import * as Str from "effect/String";
 
@@ -15,6 +16,18 @@ import { instructionsFlag, PiCli, piCliLayer } from "./index.ts";
 const cli = Layer.provideMerge(piCliLayer(["/entrypoint.ts"]), NodeServices.layer);
 
 const staging = `${Bun.env["TMPDIR"] ?? "/tmp"}/pi-cli-test-${String(process.pid)}`;
+
+const childOf = (
+	session: { id: string; cwd: string; dir: string },
+	instructions = Option.some({ text: "Review." }),
+) => ({
+	session,
+	name: "n",
+	message: "m",
+	model: "a/b",
+	thinking: Option.none(),
+	instructions,
+});
 
 const stagedFiles = (argv: ReadonlyArray<string>) => {
 	const instructions = Arr.filter(Arr.zip(argv, Arr.drop(argv, 1)), ([flag]) => flag === `--${instructionsFlag}`);
@@ -35,12 +48,20 @@ const rows = [
 	{
 		name: "a launch whose files can't be staged fails with the filesystem's error, not hc's",
 		dir: "/dev/null/delegates",
+		instructions: Option.some({ text: "Review." }),
 		expect: ["PlatformError"],
 	},
 	{
 		name: "a launch stages the delegate's instructions for the child's prompt extension, and both files for the user alone",
 		dir: staging,
+		instructions: Option.some({ text: "Review." }),
 		expect: ["--instructions Review. 600", "@ m 600"],
+	},
+	{
+		name: "a launch with no instructions stages only the message and passes no instructions flag",
+		dir: `${staging}/bare`,
+		instructions: Option.none(),
+		expect: ["@ m 600"],
 	},
 ];
 
@@ -49,11 +70,9 @@ for (const row of rows) {
 		Effect.runPromise(
 			Effect.gen(function* () {
 				const pi = yield* PiCli;
-				const session = { id: "child", cwd: "/", dir: row.dir };
-				const loadout = { model: "a/b", instructions: "Review." };
 
 				const got = yield* pi
-					.launch({ session, name: "n", message: "m", loadout })
+					.launch(childOf({ id: "child", cwd: "/", dir: row.dir }, row.instructions))
 					.pipe(
 						Effect.matchEffect({ onFailure: (error) => Effect.succeed([error._tag]), onSuccess: stagedFiles }),
 					);
@@ -70,11 +89,10 @@ test("a launch makes a delegates folder that already exists owner-only", () =>
 			const fs = yield* FileSystem.FileSystem;
 			const pi = yield* PiCli;
 			const dir = `${staging}/open`;
-			const loadout = { model: "a/b", instructions: "Review." };
 
 			yield* fs.makeDirectory(dir, { recursive: true });
 			yield* fs.chmod(dir, 0o777);
-			yield* pi.launch({ session: { id: "open", cwd: "/", dir }, name: "n", message: "m", loadout });
+			yield* pi.launch(childOf({ id: "open", cwd: "/", dir }));
 
 			const { mode } = yield* fs.stat(dir);
 
@@ -93,12 +111,7 @@ test("closing the client leaves alone the paths of a child it already unstaged",
 			const pi = Context.get(context, PiCli);
 			const fs = Context.get(context, FileSystem.FileSystem);
 
-			yield* pi.launch({
-				session,
-				name: "n",
-				message: "m",
-				loadout: { model: "a/b", instructions: "R." },
-			});
+			yield* pi.launch(childOf(session));
 			yield* pi.unstage(session);
 			yield* fs.writeFileString(message, "someone else's");
 			yield* Scope.close(scope, Exit.void);

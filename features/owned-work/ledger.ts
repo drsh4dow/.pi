@@ -18,7 +18,7 @@ import { Hc, type HcError, type RunSpec } from "../../clients/hc/index.ts";
 import { PiCli } from "../../clients/pi-cli/index.ts";
 import { PiSessions } from "../../clients/pi-sessions/index.ts";
 import { Slices } from "../../clients/systemd/index.ts";
-import { launch, leafRole, type Role } from "./child.ts";
+import { atLevel, launch, levelOf, levels, type Self } from "./child.ts";
 import { Command, type LedgerError, type LedgerState, type Step, type Verdict } from "./step.ts";
 import { Transitions } from "./transitions.ts";
 import {
@@ -57,7 +57,7 @@ export class Ledger extends Context.Service<
 >()("pi-harness/features/owned-work/ledger") {}
 
 export interface LedgerOptions {
-	readonly role: Role;
+	readonly self: Self;
 	readonly agentKey: string;
 	readonly cwd: string;
 	readonly passEnv: Readonly<Record<string, string>>;
@@ -80,21 +80,31 @@ const readyTimeout = Duration.seconds(60);
 
 const tailLines = 40;
 
+/** A serve or watch runs at the last level, so a pi it starts has no `delegate` tool. */
+const lastLevel = atLevel(levels);
+
 export const commandSpec =
 	(options: LedgerOptions) =>
 	(ref: WorkRef, command: string): RunSpec => ({
 		ref,
 		name: Str.slice(0, 32)(`${ref}-${options.agentKey}`),
-		argv: ["choom", "-n", leafRole.nice, "--", "sh", "-c", command],
+		argv: ["choom", "-n", lastLevel.oomScore, "--", "sh", "-c", command],
 		cwd: options.cwd,
-		env: { ...options.passEnv, ...leafRole.env },
+		env: { ...options.passEnv, ...lastLevel.env },
 	});
 
 const specOf = ({ options, cli }: Kit, ref: WorkRef, request: StartRequest): Effect.Effect<RunSpec, SpawnError> =>
 	Match.valueTags(request, {
-		Delegate: ({ entry, message, childSession }) =>
+		Delegate: ({ brief, childSession }) =>
 			Effect.map(
-				launch(cli)({ entry, message, ref, agentKey: options.agentKey, childSession, passEnv: options.passEnv }),
+				launch(cli)({
+					brief,
+					level: levelOf(options.self) + 1,
+					ref,
+					agentKey: options.agentKey,
+					childSession,
+					passEnv: options.passEnv,
+				}),
 				(spawn) => ({ ref, cwd: childSession.cwd, ...spawn }),
 			),
 		Serve: ({ command }) => Effect.succeed(commandSpec(options)(ref, command)),
@@ -214,7 +224,7 @@ export const ledgerLayer = (
 				slices: yield* Slices,
 				sessions: yield* PiSessions,
 				cli: yield* PiCli,
-				state: yield* Ref.make(Transitions.initial(options.role, now)),
+				state: yield* Ref.make(Transitions.initial(options.self.role, now)),
 				lock: yield* Semaphore.make(1),
 				fibers: yield* FiberSet.make(),
 				deadlines: yield* FiberMap.make<WorkRef>(),

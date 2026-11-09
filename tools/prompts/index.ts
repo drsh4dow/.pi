@@ -1,6 +1,6 @@
 /**
  * `bun run prompts [project-dir]` writes `system-prompts.md` at the harness root: the exact first-turn request pi builds
- * for stock pi, for our root agent, and for each harness delegate. No request is sent.
+ * for stock pi, for our root agent, and for delegates at each level. No request is sent.
  */
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -15,7 +15,7 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
 
-import { inheritedEnv, type StagedLaunch, stagedLaunches } from "../../features/owned-work/index.ts";
+import { inheritedEnv, levels, type StagedLaunch, stagedLaunches } from "../../features/owned-work/index.ts";
 import { type Capture, Payload, render } from "./render.ts";
 
 const captureExtension = `${import.meta.dirname}/capture.ts`;
@@ -119,16 +119,14 @@ const stockAgentDir = Effect.fn("stockAgentDir")(function* (harnessRoot: string,
 
 const delegateRun = (launch: StagedLaunch): Run => ({
 	key: `delegate-${launch.name}`,
-	title: `Delegate \`${launch.name}\``,
-	about: `A child pi the root starts with the \`delegate\` tool. ${roleNote[launch.role]}`,
+	title: `Delegate \`${launch.name}\` at level ${String(launch.level)}`,
+	about:
+		launch.level < levels
+			? "A child pi started with the `delegate` tool. It can start delegates of its own."
+			: "A child pi at the last level, so it has no `delegate` tool.",
 	argv: launch.argv,
 	env: withoutPackageBins(launch.env),
 });
-
-const roleNote = {
-	owner: "It is an owner, so it can start delegates of its own.",
-	leaf: "It is a leaf, so it cannot start delegates.",
-};
 
 const piRun = (key: string, title: string, about: string, env: Env): Run => ({
 	key,
@@ -142,8 +140,6 @@ const captureAll = Effect.fn("captureAll")(function* (harnessRoot: string, proje
 	const stockDir = yield* stockAgentDir(harnessRoot, `${workDir}/stock-agent`);
 	const staged = yield* stagedLaunches(project, `${workDir}/delegates`, message);
 
-	yield* Effect.forEach(staged.rejected, ({ file, why }) => Effect.logWarning(`skipped delegate ${file}: ${why}`));
-
 	const run = (each: Run) => capture(each, project, workDir);
 
 	return yield* Effect.all(
@@ -155,7 +151,7 @@ const captureAll = Effect.fn("captureAll")(function* (harnessRoot: string, proje
 				}),
 			),
 			root: run(piRun("root", "Root agent", "The pi you start and talk to.", userEnv)),
-			delegates: Effect.forEach(Arr.map(staged.launches, delegateRun), run, { concurrency: "unbounded" }),
+			delegates: Effect.forEach(Arr.map(staged, delegateRun), run, { concurrency: "unbounded" }),
 		},
 		{ concurrency: "unbounded" },
 	);

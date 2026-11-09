@@ -18,5 +18,5 @@ We picked a lint rule over a prose rule because the graph is cheap to check on e
 ## Consequences
 
 - A type that a feature and a client share lives in the client. A client that would need a feature's type takes a plain one, so the systemd client takes a work's ref as a `string`, and hc stamps its notices with a raw monotonic `bigint` that the feature brands.
-- Harness delegates live in `agent/delegates/`, which is `~/.pi/agent/delegates/` once installed. A project's delegates live in `.pi/delegates/`. This follows pi's own pairing of `~/.pi/agent/extensions/` with `.pi/extensions/`.
+- Harness instructions files live in `agent/instructions/`, which is `~/.pi/agent/instructions/` once installed. A skill names one by that path in a `delegate` call, and a project passes the path of its own.
 - The rule finds a file's layer from the last `agent/extensions/`, `features/` or `clients/` in its path, so no folder inside a layer may take one of those names.

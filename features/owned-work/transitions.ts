@@ -1,5 +1,5 @@
 import * as Arr from "effect/Array";
-import * as Duration from "effect/Duration";
+import type * as Duration from "effect/Duration";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 
@@ -34,17 +34,16 @@ const startedOf = (request: StartRequest, ref: WorkRef, now: MonotonicNanos): St
 	const job = { ref, heldBy: Option.none(), startedAt: now, settled: Option.none(), spawn: Option.none() };
 
 	return Match.valueTags(request, {
-		Delegate: ({ entry, childSession }): Started => [
-			Work.Delegate({ ...job, entry, childSession }),
+		Delegate: ({ brief, childSession }): Started => [
+			Work.Delegate({ ...job, childSession }),
 			WorkEntry.DelegateStarted({
 				handle: ref,
-				delegate: entry.name,
-				configFile: entry.file,
-				configHash: entry.hash,
-				model: entry.config.model,
+				name: brief.name,
+				model: brief.model,
+				instructionsFile: Option.map(brief.instructions, ({ file }) => file),
 				childSessionId: childSession.id,
 			}),
-			Option.map(Option.fromNullishOr(entry.config.deadline), Duration.seconds),
+			Option.none(),
 		],
 		Watch: ({ command, deadline }): Started => [
 			Work.Watch({ ...job, command, deadline }),

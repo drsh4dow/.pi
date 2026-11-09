@@ -1,6 +1,6 @@
 # Watcher brief
 
-Fill the brackets and send the block as the task message of two `cold-reader` delegates, one with the privacy part and one with the story part. Start both, then group them with mode `all`, so they watch at once. A new sha256 gets two new delegates. Each returns its findings as its answer; save them beside the export as `<export name>.privacy.md` and `<export name>.story.md`.
+Fill the brackets and send the block as the task message of two delegates with `instructionsFile: ~/.pi/agent/instructions/cold-reader.md`, one with the privacy part and one with the story part. Start both, then group them with mode `all`, so they watch at once. A new sha256 gets two new delegates. Each returns its findings as its answer; save them beside the export as `<export name>.privacy.md` and `<export name>.story.md`.
 
 ```text
 You are a watcher. Review one video export cold. Do not edit the video or its sources.

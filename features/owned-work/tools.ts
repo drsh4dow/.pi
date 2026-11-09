@@ -1,17 +1,21 @@
 import { type JsonValue, uuidv7 } from "@earendil-works/pi-ai";
-import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { defineTool, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
+import * as Config from "effect/Config";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import type * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
+import * as Path from "effect/Path";
+import * as Str from "effect/String";
 import { type Static, Type } from "typebox";
 
-import type { ChildSession } from "./child.ts";
-import type { Entry } from "./delegates.ts";
+import { type Brief, type ChildSession, levelOf, levels, type Self } from "./child.ts";
 import { Ledger, type LedgerFailure } from "./ledger.ts";
+import { nameOf } from "./naming.ts";
 import { HandleOut, Out, ResultsOut } from "./out.ts";
-import { StartRequest, WorkRef } from "./work.ts";
+import { BadDelegate, StartRequest, WorkRef } from "./work.ts";
 
 const HandleRef = Type.Object({ ref: Type.String() });
 
@@ -19,9 +23,23 @@ const Refs = Type.Array(HandleRef, { minItems: 1 });
 
 const RefsParams = Type.Object({ of: Refs });
 
-const Message = Type.String({
-	minLength: 1,
-	description: "Everything the delegate needs. You cannot send it anything later, and it cannot ask you.",
+const DelegateParams = Type.Object({
+	message: Type.String({
+		minLength: 1,
+		description: "Everything the delegate needs. You cannot send it anything later, and it cannot ask you.",
+	}),
+	instructionsFile: Type.Optional(
+		Type.String({
+			description:
+				"A file whose text the delegate keeps as standing instructions, such as one a skill names. `~/` and paths relative to your working directory work.",
+		}),
+	),
+	model: Type.Optional(
+		Type.String({
+			description:
+				"`provider/id`, such as anthropic/claude-opus-5-5. Your own model and thinking level when left out.",
+		}),
+	),
 });
 
 const ServeParams = Type.Object({
@@ -60,6 +78,9 @@ const delegateGuidelines = [
 	"A delegate that reports something missing hands you a gap. Supply it in a fresh delegate's message. If only someone above you can settle it, it is your own open question now.",
 ];
 
+const lastLevelGuideline =
+	"Your delegates cannot start delegates of their own, so give each one work it can finish alone.";
+
 const resultOf = (json: JsonValue, isError: boolean) =>
 	Effect.map(Out.text(json), (text) => ({
 		content: [{ type: "text" as const, text }],
@@ -68,9 +89,11 @@ const resultOf = (json: JsonValue, isError: boolean) =>
 		isError,
 	}));
 
-type Runtime = ManagedRuntime.ManagedRuntime<Ledger, never>;
+type Runtime = ManagedRuntime.ManagedRuntime<Ledger | FileSystem.FileSystem | Path.Path, never>;
 
-type Call<Reply> = (ledger: (typeof Ledger)["Service"]) => Effect.Effect<Reply, LedgerFailure>;
+type Call<Reply> = (
+	ledger: (typeof Ledger)["Service"],
+) => Effect.Effect<Reply, LedgerFailure | BadDelegate, FileSystem.FileSystem | Path.Path>;
 
 const runTool =
 	(runtime: Runtime, signal: AbortSignal | undefined) =>
@@ -85,40 +108,68 @@ const runTool =
 
 const refsOf = (of: ReadonlyArray<Static<typeof HandleRef>>) => Arr.map(of, ({ ref }) => WorkRef(ref));
 
-const descriptionOf = (entries: ReadonlyArray<Entry>) =>
-	Arr.join(
-		Arr.map(entries, ({ name, config }) => `- ${name}: ${config.description}`),
-		"\n",
+/** The part of pi's context a `delegate` call reads. */
+type Caller = Pick<ExtensionContext, "cwd" | "model" | "thinkingLevel"> & {
+	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "find" | "streamSimple">;
+};
+
+/** The caller's own model and thinking level, unless it names a model the registry has. */
+const modelOf = (ctx: Caller, wanted: string | undefined) => {
+	const model = wanted ?? (ctx.model === undefined ? "" : `${ctx.model.provider}/${ctx.model.id}`);
+	const [provider, ...id] = Str.split(model, "/");
+	const thinking = wanted === undefined ? Option.fromUndefinedOr(ctx.thinkingLevel) : Option.none<string>();
+	const found = Option.fromUndefinedOr(ctx.modelRegistry.find(provider, Arr.join(id, "/")));
+
+	return Effect.fromOption(found, () => BadDelegate.make({ why: `model ${model} is not in the model registry` })).pipe(
+		Effect.as({ model, thinking }),
+	);
+};
+
+const instructionsOf = Effect.fn("instructionsOf")(function* (cwd: string, file: string) {
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
+	const home = yield* Effect.orElseSucceed(Config.String("HOME"), () => "~");
+	const absolute = path.resolve(cwd, Str.replace(/^~(?=\/)/u, home)(file));
+
+	const text = yield* Effect.mapError(fs.readFileString(absolute), (error) =>
+		BadDelegate.make({ why: `cannot read instructionsFile ${file}: ${error.reason._tag}` }),
 	);
 
-const delegateTool = (runtime: Runtime, entries: ReadonlyArray<Entry>, place: Omit<ChildSession, "id">) => {
-	const start = (name: string, message: string) => (ledger: (typeof Ledger)["Service"]) =>
-		Option.match(
-			Arr.findFirst(entries, (entry) => entry.name === name),
-			{
-				onNone: () => Effect.die(`no delegate ${name}`),
-				onSome: (entry) => {
-					const childSession = { ...place, id: uuidv7() };
+	return { file: absolute, text };
+});
 
-					return ledger.start(StartRequest.Delegate({ entry, message, childSession }));
-				},
-			},
-		);
+/** Checks the model and the instructions file before the naming call, so a bad call costs no model call. */
+export const briefOf = Effect.fn("briefOf")(function* (ctx: Caller, call: Static<typeof DelegateParams>) {
+	const { model, thinking } = yield* modelOf(ctx, call.model);
 
-	const names = Arr.map(entries, ({ name }) => name);
+	const instructions = yield* Option.match(Option.fromUndefinedOr(call.instructionsFile), {
+		onNone: () => Effect.succeedNone,
+		onSome: (file) => Effect.asSome(instructionsOf(ctx.cwd, file)),
+	});
 
-	return defineTool({
+	const name = yield* nameOf(ctx.modelRegistry, ctx.model, call.message);
+
+	return { name, message: call.message, model, thinking, instructions } satisfies Brief;
+});
+
+const delegateTool = (runtime: Runtime, childLevel: number, place: Omit<ChildSession, "id">) =>
+	defineTool({
 		name: "delegate",
 		label: "delegate",
 		promptSnippet: "Start a delegate on one task. It wakes you with its answer.",
-		description: `Start a delegate on one task. It wakes you with its answer. Delegates:\n${descriptionOf(entries)}`,
-		promptGuidelines: delegateGuidelines,
-		parameters: Type.Object({ delegate: Type.Enum(names), message: Message }),
+		description: "Start a delegate on one task. It wakes you with its answer.",
+		promptGuidelines: childLevel === levels ? [...delegateGuidelines, lastLevelGuideline] : delegateGuidelines,
+		parameters: DelegateParams,
 		outputSchema: HandleOut,
-		execute: (_id, { delegate, message }, signal) =>
-			runTool(runtime, signal)(start(String(delegate), message), Out.handle),
+		execute: (_id, call, signal, _update, ctx) =>
+			runTool(runtime, signal)(
+				(ledger) =>
+					Effect.flatMap(briefOf(ctx, call), (brief) =>
+						ledger.start(StartRequest.Delegate({ brief, childSession: { ...place, id: uuidv7() } })),
+					),
+				Out.handle,
+			),
 	});
-};
 
 const serveTool = (runtime: Runtime) =>
 	defineTool({
@@ -182,10 +233,11 @@ const stopTool = (runtime: Runtime) =>
 			),
 	});
 
+/** An agent at the last level gets no `delegate` tool, so neither a call nor codemode can reach one. */
 const register = (
-	pi: ExtensionAPI,
+	pi: Pick<ExtensionAPI, "registerTool">,
 	runtime: Runtime,
-	entries: ReadonlyArray<Entry>,
+	self: Self,
 	place: Omit<ChildSession, "id">,
 ) => {
 	pi.registerTool(serveTool(runtime));
@@ -193,8 +245,8 @@ const register = (
 	pi.registerTool(groupTool(runtime));
 	pi.registerTool(stopTool(runtime));
 
-	if (Arr.isReadonlyArrayNonEmpty(entries)) {
-		pi.registerTool(delegateTool(runtime, entries, place));
+	if (levelOf(self) < levels) {
+		pi.registerTool(delegateTool(runtime, levelOf(self) + 1, place));
 	}
 };
 

@@ -1,48 +1,49 @@
-import * as Arr from "effect/Array";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
-import * as Match from "effect/Match";
+import type * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import type { RunSpec } from "../../clients/hc/index.ts";
-import type { PiCli } from "../../clients/pi-cli/index.ts";
+import type { ChildPi, PiCli } from "../../clients/pi-cli/index.ts";
 import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
-import { type Delegate, DelegateName, type Entry } from "./delegates.ts";
 
-export const Role = Schema.Literals(["root", "owner", "leaf"]);
+/** How deep a chain of agents goes, counting the root as level 1. An agent at the last level has no `delegate` tool. */
+export const levels = 3;
+
+export const Role = Schema.Literals(["root", "delegate"]);
 
 export type Role = typeof Role.Type;
 
-export const ChildEnv = Schema.Struct({
-	PI_OWNED_WORK_ROLE: Schema.Literals(["owner", "leaf"]),
-	PI_OWNED_WORK_DELEGATES: Schema.optionalKey(Schema.String),
-	PI_OWNED_WORK_SLICE: Schema.String,
-});
+const Level = Schema.FiniteFromString.pipe(Schema.check(Schema.isBetween({ minimum: 2, maximum: levels })));
+
+const ChildEnv = Schema.Struct({ PI_OWNED_WORK_LEVEL: Level, PI_OWNED_WORK_SLICE: Schema.String });
 
 export type Self = Data.TaggedEnum<{
 	Root: { readonly role: "root" };
-	Child: {
-		readonly role: "owner" | "leaf";
-		readonly delegates: ReadonlyArray<DelegateName>;
-		readonly slice: string;
-	};
+	Delegate: { readonly role: "delegate"; readonly level: number; readonly slice: string };
 }>;
 
 export const Self = Data.taggedEnum<Self>();
 
 export const selfFromEnv = Effect.fn("selfFromEnv")(function* (env: Readonly<Record<string, string | undefined>>) {
-	if (env["PI_OWNED_WORK_ROLE"] === undefined) {
+	if (env["PI_OWNED_WORK_LEVEL"] === undefined) {
 		return Self.Root({ role: "root" });
 	}
 
 	const child = yield* Schema.decodeUnknownEffect(ChildEnv)(env);
-	const listed = child.PI_OWNED_WORK_DELEGATES === undefined ? [] : Str.split(child.PI_OWNED_WORK_DELEGATES, ",");
-	const delegates = yield* Schema.decodeEffect(Schema.Array(DelegateName))(listed);
 
-	return Self.Child({ role: child.PI_OWNED_WORK_ROLE, delegates, slice: child.PI_OWNED_WORK_SLICE });
+	return Self.Delegate({ role: "delegate", level: child.PI_OWNED_WORK_LEVEL, slice: child.PI_OWNED_WORK_SLICE });
+});
+
+export const levelOf = (self: Self): number => (Self.$is("Root")(self) ? 1 : self.level);
+
+/** What a process at `level` runs with. Deeper levels are killed first when memory runs out: OOM score 500, then 1000. */
+export const atLevel = (level: number) => ({
+	oomScore: String(500 * (level - 1)),
+	env: { PI_OWNED_WORK_LEVEL: String(level) },
 });
 
 export const inheritedEnv = (env: Readonly<Record<string, string | undefined>>): Readonly<Record<string, string>> =>
@@ -62,50 +63,38 @@ export const childExtensions: ReadonlyArray<string> = [
 	`${extensionsFolder}/web/index.ts`,
 ];
 
+/** One `delegate` call, checked where the tool is called. */
+export interface Brief extends Omit<ChildPi, "session"> {
+	/** The file the caller named and its text, read at the call. Only the text is staged, so a later edit never reaches the child. */
+	readonly instructions: Option.Option<{ readonly file: string; readonly text: string }>;
+}
+
 export interface LaunchRequest {
-	readonly entry: Entry;
-	readonly message: string;
+	readonly brief: Brief;
+	readonly level: number;
 	readonly ref: string;
 	readonly agentKey: string;
 	readonly childSession: ChildSession;
 	readonly passEnv: Readonly<Record<string, string>>;
 }
 
-export const leafRole = { nice: "1000", env: { PI_OWNED_WORK_ROLE: "leaf" } };
+/** A terminal name holds at most 32 chars in hc, so the name's slug gets 16 and the ref and agent key always fit. */
+const terminalName = ({ brief, ref, agentKey }: LaunchRequest) => {
+	const words = Str.replaceAll(/[^a-z0-9_.-]+/gu, "-")(Str.toLowerCase(brief.name));
+	const slug = Str.slice(0, 16)(words);
 
-const roleOf = (config: Delegate) =>
-	Match.value(config).pipe(
-		Match.discriminatorsExhaustive("role")({
-			leaf: () => leafRole,
-			owner: (owner) => ({
-				nice: "500",
-				env: { PI_OWNED_WORK_ROLE: "owner", PI_OWNED_WORK_DELEGATES: Arr.join(owner.delegates, ",") },
-			}),
-		}),
-	);
-
-const terminalName = ({ entry, ref, agentKey }: LaunchRequest) => {
-	const name = Str.toLowerCase(`${entry.name}-${Str.replace(/^\D*/u, "")(ref)}-${agentKey}`);
-
-	return Str.slice(0, 32)(Str.replaceAll(/[^a-z0-9_.-]/gu, "-")(name));
+	return `${slug}-${Str.replace(/^\D*/u, "")(ref)}-${agentKey}`;
 };
 
-const nameLength = 80;
-
 export const launch = (cli: (typeof PiCli)["Service"]) => (request: LaunchRequest) => {
-	const { entry, message, childSession } = request;
-	const role = roleOf(entry.config);
+	const { oomScore, env } = atLevel(request.level);
 
-	const child = {
-		session: childSession,
-		name: Str.slice(0, nameLength)(`${entry.name}: ${Arr.headNonEmpty(Str.split(message, "\n"))}`),
-		message,
-		loadout: entry.config,
-	};
-
-	return Effect.map(cli.launch(child), (argv): Pick<RunSpec, "name" | "argv" | "env"> => ({
-		name: terminalName(request),
-		argv: ["choom", "-n", role.nice, "--", ...argv],
-		env: { ...request.passEnv, ...role.env },
-	}));
+	return Effect.map(
+		cli.launch({ ...request.brief, session: request.childSession }),
+		(argv): Pick<RunSpec, "name" | "argv" | "env"> => ({
+			name: terminalName(request),
+			argv: ["choom", "-n", oomScore, "--", ...argv],
+			env: { ...request.passEnv, ...env },
+		}),
+	);
 };

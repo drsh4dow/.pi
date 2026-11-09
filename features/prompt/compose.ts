@@ -13,7 +13,7 @@ import * as Str from "effect/String";
 export interface Layers {
 	/** The role file: its `<role>` and `<collaboration>` blocks. */
 	readonly role: string;
-	/** A delegate's own instructions, from its delegate file. */
+	/** A delegate's own instructions, from the instructions file its parent named. */
 	readonly instructions: Option.Option<string>;
 	/** The `<principles>` index. */
 	readonly principles: Option.Option<string>;
@@ -46,7 +46,7 @@ const toolSections = (options: NormalizedBuildSystemPromptOptions) => {
 const docs = () =>
 	Arr.join(
 		[
-			"Pi is the host this harness runs in. Read its docs before you change the harness itself: an extension, a delegate, SYSTEM.md, a role file, or a principle.",
+			"Pi is the host this harness runs in. Read its docs before you change the harness itself: an extension, SYSTEM.md, a role file, or a principle.",
 			`- README: ${getReadmePath()}`,
 			`- Docs: ${getDocsPath()}`,
 			`- Examples: ${getExamplesPath()}`,
