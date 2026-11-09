@@ -38,6 +38,7 @@
 		"agent/skills/making-videos/templates/**",
 		"agent/skills/writing-good-prs/scripts/**",
 		"agent/skills/dumpfile/cli/**",
+		"agent/extensions/herdr-agent-state.ts",
 	],
 	"jsPlugins": [
 		{
