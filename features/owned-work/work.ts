@@ -29,6 +29,7 @@ export type FailReason = Data.TaggedEnum<{
 	Lost: { readonly why: string };
 	Deadline: { readonly after: Duration.Duration };
 	SpawnFailed: { readonly why: string };
+	Errored: { readonly why: string };
 	Stopped: { readonly by: WorkRef };
 }>;
 

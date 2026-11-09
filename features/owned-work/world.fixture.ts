@@ -69,6 +69,7 @@ const reasonOf = (reason: FailReason): string =>
 		Lost: () => "lost",
 		Deadline: () => "deadline",
 		SpawnFailed: () => "spawn failed",
+		Errored: ({ why }) => `errored: ${why}`,
 		Stopped: ({ by }) => `stopped by ${by}`,
 	});
 
@@ -119,6 +120,7 @@ export const writeAnswer =
 				model: "claude-haiku-4-5",
 				usage: { ...zero, totalTokens: 0, cost: { ...zero, total: 0 } },
 				stopReason: index === texts.length - 1 ? lastStopReason : "stop",
+				errorMessage: "429 rate limit",
 				timestamp: 0,
 			});
 		}

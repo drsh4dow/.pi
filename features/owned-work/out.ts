@@ -22,7 +22,7 @@ const DoneOut = Type.Object({ status: Type.Literal("done"), text: Type.String() 
 
 const FiredOut = Type.Object({ status: Type.Literal("fired"), exit_code: Type.Number(), tail: Type.String() });
 
-const FailedReason = Type.Enum(["oom", "exited", "lost", "deadline", "spawn-failed", "stopped"]);
+const FailedReason = Type.Enum(["oom", "exited", "lost", "deadline", "spawn-failed", "errored", "stopped"]);
 
 const FailedOut = Type.Object({ status: Type.Literal("failed"), reason: FailedReason, detail: Type.String() });
 
@@ -58,6 +58,7 @@ const reasonOut = (reason: FailReason): { readonly reason: string; readonly deta
 		Lost: ({ why }) => ({ reason: "lost", detail: why }),
 		Deadline: ({ after }) => ({ reason: "deadline", detail: `still running after ${Duration.format(after)}` }),
 		SpawnFailed: ({ why }) => ({ reason: "spawn-failed", detail: why }),
+		Errored: ({ why }) => ({ reason: "errored", detail: why }),
 		Stopped: ({ by }) => ({ reason: "stopped", detail: `stopped by ${by}` }),
 	});
 
