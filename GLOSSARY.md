@@ -9,9 +9,16 @@ See `docs/adr/0001-harness-layout.md`.
 - **Feature.** One piece of harness behavior, in `features/<name>/`, used only through its `index.ts`.
 - **Client.** A typed adapter to one outside system, such as hc, systemd or pi's session store, in `clients/<system>/index.ts`.
 
-## Tool context
+## Prompt
 
-- **Tool context.** The `<tools>` list (each tool's one-line snippet) and the `<rules>` list (each tool's and extension's guidelines) that pi writes into its default prompt. A custom `SYSTEM.md` replaces that prompt and drops both, so the `tool-context` feature (`features/tool-context/`) adds them back. The root and every delegate load it. It leaves out pi's generic rules (the bash file-ops rule, "Be concise", "Show file paths clearly") and the "Additional tools may be available" line, since `SYSTEM.md` sets its own style.
+Terms from the prompt feature (`features/prompt/`), which builds every agent's system prompt. The root and every delegate load it.
+
+- **Shared layer.** `agent/SYSTEM.md`: how to operate inside this harness, the same for every agent. pi puts it first.
+- **Role layer.** The `<role>` and `<collaboration>` blocks from a role file, then a delegate's `<instructions>`. It comes right after the shared layer. Not to be confused with **Role** below, which says where an agent sits.
+- **Role file.** `agent/roles/root.md` for the root, `agent/roles/delegate.md` for every owner and leaf. Each file is the text the model reads, tags included. What an owner has beyond a leaf comes with the `delegate` tool and its guidelines, so the two share a file.
+- **Instructions.** What one delegate does, from its delegate file's `instructions`. The parent stages them in a file and passes `--instructions <file>`.
+- **Principle.** A hard rule that steers how an agent thinks, in `agent/principles/<name>.md`. Its frontmatter has a one-line `when` and an optional `for` naming the roles it fits. The prompt lists each fitting principle's name, `when` and file under `<principles>`, and the agent reads the file when the `when` might match. Prompt text and answers point at one as `principle-<name>`.
+- **Tool context.** The `<tools>` list (each tool's one-line snippet), the `<rules>` list (each tool's and extension's guidelines) and `<docs>` that pi writes into its default prompt. A custom preamble makes pi drop them, so the prompt feature adds them back. It leaves out pi's generic rules (the bash file-ops rule, "Be concise", "Show file paths clearly") and the "Additional tools may be available" line, since `SYSTEM.md` sets its own style.
 
 ## Owned work
 
@@ -34,4 +41,4 @@ Terms from the owned-work feature (`features/owned-work/`).
 - **Anchor.** One hc terminal per pi process, running `tail --pid=<pi pid>`. Every terminal the agent starts sits under it, so killing pi ends each terminal's program. Its slice ends the rest.
 - **Slice.** The systemd user slice a delegate, serve or watch runs in, named `<owner's slice>-<ref without dashes>`, such as `pi-ow-1a2b3c4d-delegate3`. The root's slice is `pi-ow-<agent key>`, and the work's own work nests below its slice. Settling the work stops its slice, which ends every process in it, even one that left its process group. A user service of the same name watches the root's pid and stops the root's slice when the root dies.
 - **Child session.** A delegate's own pi session, in the `delegates/` folder next to the root's sessions, so `pi -c` never opens one.
-- **Staged files.** A delegate's task message and system prompt, written as `<session id>.message` and `<session id>.prompt` beside its child session, because one argv word holds at most 128 KiB. The ledger deletes them when the delegate settles.
+- **Staged files.** A delegate's task message and instructions, written as `<session id>.message` and `<session id>.instructions` beside its child session, because one argv word holds at most 128 KiB. The ledger deletes them when the delegate settles.

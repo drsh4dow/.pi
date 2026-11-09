@@ -8,16 +8,15 @@ import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Scope from "effect/Scope";
-import * as Str from "effect/String";
 
-import { PiCli, piCliLayer } from "./index.ts";
+import { instructionsFlag, PiCli, piCliLayer } from "./index.ts";
 
 const cli = Layer.provideMerge(piCliLayer(["/entrypoint.ts"]), NodeServices.layer);
 
 const staging = `${Bun.env["TMPDIR"] ?? "/tmp"}/pi-cli-test-${String(process.pid)}`;
 
-const promptFlags = (argv: ReadonlyArray<string>) => {
-	const pairs = Arr.filter(Arr.zip(argv, Arr.drop(argv, 1)), ([flag]) => Str.endsWith("system-prompt")(flag));
+const instructionFlags = (argv: ReadonlyArray<string>) => {
+	const pairs = Arr.filter(Arr.zip(argv, Arr.drop(argv, 1)), ([flag]) => flag === `--${instructionsFlag}`);
 
 	return Effect.flatMap(FileSystem.FileSystem, (fs) =>
 		Effect.forEach(pairs, ([flag, file]) => Effect.map(fs.readFileString(file), (text) => `${flag} ${text}`)),
@@ -31,9 +30,9 @@ const rows = [
 		expect: ["PlatformError"],
 	},
 	{
-		name: "a launch adds the delegate's prompt after pi's base system prompt instead of replacing it",
+		name: "a launch stages the delegate's instructions for the child's prompt extension, not as pi's appended prompt",
 		dir: staging,
-		expect: ["--append-system-prompt Review."],
+		expect: ["--instructions Review."],
 	},
 ];
 
@@ -43,13 +42,14 @@ for (const row of rows) {
 			Effect.gen(function* () {
 				const pi = yield* PiCli;
 				const session = { id: "child", cwd: "/", dir: row.dir };
-				const loadout = { model: "a/b", systemPrompt: "Review.", tools: [] };
+				const loadout = { model: "a/b", instructions: "Review.", tools: [] };
 
-				const got = yield* pi
-					.launch({ session, name: "n", message: "m", loadout })
-					.pipe(
-						Effect.matchEffect({ onFailure: (error) => Effect.succeed([error._tag]), onSuccess: promptFlags }),
-					);
+				const got = yield* pi.launch({ session, name: "n", message: "m", loadout }).pipe(
+					Effect.matchEffect({
+						onFailure: (error) => Effect.succeed([error._tag]),
+						onSuccess: instructionFlags,
+					}),
+				);
 
 				expect(got).toEqual(row.expect);
 			}).pipe(Effect.provide(cli)),
@@ -72,7 +72,7 @@ test("closing the client leaves alone the paths of a child it already unstaged",
 				session,
 				name: "n",
 				message: "m",
-				loadout: { model: "a/b", systemPrompt: "R.", tools: [] },
+				loadout: { model: "a/b", instructions: "R.", tools: [] },
 			});
 			yield* pi.unstage(session);
 			yield* fs.writeFileString(message, "someone else's");

@@ -96,7 +96,7 @@ const requestOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">): Star
 	const childSession = { id: `child-${String(counter.sessions)}`, cwd: sessionRoot, dir: `${sessionRoot}/delegates` };
 	const deadline = Option.map(Option.fromUndefinedOr(act.deadlineMs), Duration.millis);
 	const message = act.messageKiB === undefined ? "Review it." : Str.repeat(act.messageKiB * 1024)("x");
-	const config = { ...world.entry.config, systemPrompt: Str.repeat((act.promptKiB ?? 0) * 1024)("p") || "Review." };
+	const config = { ...world.entry.config, instructions: Str.repeat((act.promptKiB ?? 0) * 1024)("p") || "Review." };
 	const entry = { ...world.entry, config };
 
 	return Match.value(act.kind).pipe(

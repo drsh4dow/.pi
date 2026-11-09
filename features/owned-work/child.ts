@@ -12,7 +12,9 @@ import type { PiCli } from "../../clients/pi-cli/index.ts";
 import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
 import { type Delegate, DelegateName, type Entry } from "./delegates.ts";
 
-export type Role = "root" | "owner" | "leaf";
+export const Role = Schema.Literals(["root", "owner", "leaf"]);
+
+export type Role = typeof Role.Type;
 
 export const ChildEnv = Schema.Struct({
 	PI_OWNED_WORK_ROLE: Schema.Literals(["owner", "leaf"]),
@@ -53,14 +55,14 @@ export type ChildSession = SessionAddress;
 
 const extensionsFolder = `${import.meta.dirname}/../../agent/extensions`;
 
-/** The entrypoints every delegate loads first: owned-work, so it can report back, and tool-context, since SYSTEM.md drops pi's tool list. */
+/** The entrypoints every delegate loads first: owned-work, so it can report back, and prompt, which builds its system prompt. */
 export const childExtensions: ReadonlyArray<string> = [
 	`${extensionsFolder}/owned-work/index.ts`,
-	`${extensionsFolder}/tool-context/index.ts`,
+	`${extensionsFolder}/prompt/index.ts`,
 ];
 
-export const missingGuideline =
-	"If your task message lacks something you need, or leaves a doubt your parent could have settled, say exactly what was missing as your final answer and stop. Never ask your parent a question.";
+/** Every agent combines tool calls with codemode, so every child gets it whatever its delegate file lists. */
+const toolsOf = (config: Delegate) => Arr.union(config.tools, ["codemode"]);
 
 export interface LaunchRequest {
 	readonly entry: Entry;
@@ -100,7 +102,7 @@ export const launch = (cli: (typeof PiCli)["Service"]) => (request: LaunchReques
 		session: childSession,
 		name: Str.slice(0, nameLength)(`${entry.name}: ${Arr.headNonEmpty(Str.split(message, "\n"))}`),
 		message,
-		loadout: { ...entry.config, systemPrompt: `${entry.config.systemPrompt}\n\n${missingGuideline}` },
+		loadout: { ...entry.config, tools: toolsOf(entry.config) },
 	};
 
 	return Effect.map(cli.launch(child), (argv): Pick<RunSpec, "name" | "argv" | "env"> => ({

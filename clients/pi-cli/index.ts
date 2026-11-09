@@ -13,8 +13,8 @@ import type { SessionAddress } from "../pi-sessions/index.ts";
 /** What the child pi runs with. */
 export interface Loadout {
 	readonly model: string;
-	/** Added after pi's base system prompt, the SYSTEM.md pi finds, so the child keeps it. */
-	readonly systemPrompt: string;
+	/** The delegate's own instructions. The child's prompt extension reads them from the file `instructionsFlag` names. */
+	readonly instructions: string;
 	/** Tool names the child declares, such as `read`, `bash`, `codemode`. */
 	readonly tools: ReadonlyArray<string>;
 	readonly extensions?: ReadonlyArray<string>;
@@ -33,13 +33,16 @@ export interface ChildPi {
 export class PiCli extends Context.Service<
 	PiCli,
 	{
-		/** Stages the message and system prompt beside the child's session and returns the argv that starts the child. */
+		/** Stages the message and instructions beside the child's session and returns the argv that starts the child. */
 		readonly launch: (
 			child: ChildPi,
 		) => Effect.Effect<readonly [string, ...Array<string>], PlatformError.PlatformError>;
 		readonly unstage: (session: SessionAddress) => Effect.Effect<void>;
 	}
 >()("pi-harness/clients/pi-cli/PiCli") {}
+
+/** The child's flag for its instructions file, registered by the prompt extension every child loads. */
+export const instructionsFlag = "instructions";
 
 const coreTools = ["read", "bash", "powershell", "edit", "write", "grep", "find", "ls"];
 
@@ -78,12 +81,12 @@ const loadoutFlags = (childExtensions: ReadonlyArray<string>, loadout: Loadout) 
 };
 
 /**
- * One argv word holds at most 128 KiB, so the message and the system prompt go in files beside the child's session.
- * pi reads `@message` as an included file and `--append-system-prompt` as a path when the file exists.
+ * One argv word holds at most 128 KiB, so the message and the instructions go in files beside the child's session.
+ * pi reads `@message` as an included file. The prompt extension reads the instructions file itself.
  */
 const stagedFiles = ({ dir, id }: Pick<SessionAddress, "dir" | "id">) => ({
 	message: `${dir}/${id}.message`,
-	prompt: `${dir}/${id}.prompt`,
+	instructions: `${dir}/${id}.instructions`,
 });
 
 const argvOf = (
@@ -95,8 +98,8 @@ const argvOf = (
 		"pi",
 		"--model",
 		loadout.model,
-		"--append-system-prompt",
-		files.prompt,
+		`--${instructionsFlag}`,
+		files.instructions,
 		"--session-id",
 		session.id,
 		"--session-dir",
@@ -131,9 +134,9 @@ export const piCliLayer = (childExtensions: ReadonlyArray<string>): Layer.Layer<
 
 					return Effect.all([
 						fs.makeDirectory(child.session.dir, { recursive: true }),
-						Effect.sync(() => staged.add(files.message).add(files.prompt)),
+						Effect.sync(() => staged.add(files.message).add(files.instructions)),
 						fs.writeFileString(files.message, child.message),
-						fs.writeFileString(files.prompt, child.loadout.systemPrompt),
+						fs.writeFileString(files.instructions, child.loadout.instructions),
 					]).pipe(Effect.as(argvOf(childExtensions, child, files)));
 				},
 				unstage: (session) => remove(Rec.values(stagedFiles(session))),

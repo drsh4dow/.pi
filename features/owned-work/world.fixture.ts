@@ -252,7 +252,7 @@ export const worldOf = (clock: World["clock"]) => (role: Role) =>
 			description: "Reviews.",
 			model: "anthropic/claude-haiku-4-5",
 			tools: ["read"],
-			systemPrompt: "Review.",
+			instructions: "Review.",
 		};
 
 		const world: Omit<World, "ledger" | "fs"> = {

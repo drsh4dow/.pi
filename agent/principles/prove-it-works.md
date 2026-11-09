@@ -1,0 +1,21 @@
+---
+when: After completing a task or a step, before you declare it done or report that it works.
+---
+
+# Prove It Works
+
+Verify every task output by checking the real thing directly. Do not infer from proxies, self-reports, or "it compiles."
+
+**Why.** Unverified work has unknown correctness. Indirect verification, such as file mtimes, output freshness, a delegate's self-report, or a cached screenshot, feels cheaper than direct observation. Acting on a wrong inference costs far more than checking the source.
+
+Check the real thing, not a proxy:
+
+- Check process liveness directly, not indirectly through derived state.
+- Read the actual value, not a cached or derived representation.
+- When verification fails, suspect the observation method before suspecting the system.
+
+## Script the check when you can
+
+The strongest proof is a deterministic script that reruns the same comparison, not a one-time eyeball. Write the script, run it, and keep its output as an artifact a reviewer can rerun instead of trusting your word.
+
+Keep the artifact where whoever gave you the task can see it, and name its path in your report. Commit it only for large or complex work where the trail has to be auditable later, like a big port or migration.

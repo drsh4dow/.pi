@@ -4,6 +4,8 @@
 !/agent/skills/
 !/agent/prompts/
 !/agent/themes/
+!/agent/principles/
+!/agent/roles/
 !/agent/AGENTS.md
 !/agent/SYSTEM.md
 !/agent/APPEND_SYSTEM.md

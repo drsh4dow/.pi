@@ -1,4 +1,4 @@
-export { childExtensions, inheritedEnv } from "./child.ts";
+export { childExtensions, inheritedEnv, Role, selfFromEnv } from "./child.ts";
 
 export type { DelegateFile } from "./delegates.ts";
 

@@ -72,7 +72,9 @@ const rows: ReadonlyArray<Row> = [
 			delegate,
 			delegate,
 			delegate,
-			Leftovers({ expect: ["t1.message", "t1.prompt", "t2.message", "t2.prompt", "t3.message", "t3.prompt"] }),
+			Leftovers({
+				expect: ["t1.instructions", "t1.message", "t2.instructions", "t2.message", "t3.instructions", "t3.message"],
+			}),
 			Act.Slices({ expect: ["delegate-1", "delegate-2", "delegate-3"] }),
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
 			Answer({ terminal: "t2", text: "half", end: killed(9) }),
@@ -117,7 +119,7 @@ const parentEnv = inheritedEnv({
 	PI_OWNED_WORK_SLICE: "pi-ow-test-delegate1",
 });
 
-const common = { description: "Does it.", model: "a/b", systemPrompt: "Do it." };
+const common = { description: "Does it.", model: "a/b", instructions: "Do it." };
 
 const delegateLaunch = (config: Delegate) =>
 	Effect.gen(function* () {
@@ -131,18 +133,25 @@ const delegateLaunch = (config: Delegate) =>
 	});
 
 const plumbing = ({ argv, env }: Pick<RunSpec, "argv" | "env">) => {
-	const excluded = Arr.filter(Arr.zip(argv, Arr.drop(argv, 1)), ([flag]) => flag === "--exclude-tools");
+	const flags = Arr.zip(argv, Arr.drop(argv, 1));
 
-	return { argv: Arr.take(argv, 4), excluded: Arr.map(excluded, ([, tools]) => tools), env };
+	const valuesOf = (name: string) =>
+		Arr.map(
+			Arr.filter(flags, ([flag]) => flag === name),
+			([, value]) => value,
+		);
+
+	return { argv: Arr.take(argv, 4), excluded: valuesOf("--exclude-tools"), tools: valuesOf("--tools"), env };
 };
 
 const launchRows = [
 	{
-		name: "a leaf delegate starts at OOM score 1000, as a leaf, without the core tools it does not declare",
+		name: "a leaf delegate starts at OOM score 1000, as a leaf, with codemode and without the core tools it does not declare",
 		spec: delegateLaunch({ ...common, role: "leaf", tools: ["read", "bash"] }),
 		expect: {
 			argv: ["choom", "-n", "1000", "--"],
 			excluded: ["powershell,edit,write,grep,find,ls"],
+			tools: ["+read,+bash,+codemode"],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
 		},
 	},
@@ -152,6 +161,7 @@ const launchRows = [
 		expect: {
 			argv: ["choom", "-n", "500", "--"],
 			excluded: ["bash,powershell,edit,write,grep,find,ls"],
+			tools: ["+read,+codemode"],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "owner", PI_OWNED_WORK_DELEGATES: "e2e,reviewer" },
 		},
 	},
@@ -160,7 +170,12 @@ const launchRows = [
 		spec: Effect.succeed(
 			commandSpec({ role: "owner", agentKey: "test", cwd: "/", passEnv: parentEnv })(WorkRef("watch-1"), "pi"),
 		),
-		expect: { argv: ["choom", "-n", "1000", "--"], excluded: [], env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" } },
+		expect: {
+			argv: ["choom", "-n", "1000", "--"],
+			excluded: [],
+			tools: [],
+			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
+		},
 	},
 ];
 

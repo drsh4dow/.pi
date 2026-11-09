@@ -44,7 +44,7 @@ const defaultModelRows = [
 		name: "a project delegate overrides the harness delegate of the same name",
 		known: ["anthropic/claude-opus-5-5", "anthropic/claude-haiku-4-5"],
 		project: {
-			"reviewer.ts": `export default { role: "leaf", description: "Reviews.", model: "anthropic/claude-haiku-4-5", tools: ["read"], systemPrompt: "Review." };`,
+			"reviewer.ts": `export default { role: "leaf", description: "Reviews.", model: "anthropic/claude-haiku-4-5", tools: ["read"], instructions: "Review." };`,
 		},
 		expect: [
 			"e2e anthropic/claude-opus-5-5",
@@ -56,7 +56,7 @@ const defaultModelRows = [
 		name: "an owner that lists another owner is rejected",
 		known: ["anthropic/claude-opus-5-5"],
 		project: {
-			"boss.ts": `export default { role: "owner", description: "Leads.", tools: ["read"], delegates: ["lead"], systemPrompt: "Lead." };`,
+			"boss.ts": `export default { role: "owner", description: "Leads.", tools: ["read"], delegates: ["lead"], instructions: "Lead." };`,
 		},
 		expect: [
 			"e2e anthropic/claude-opus-5-5",

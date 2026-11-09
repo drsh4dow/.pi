@@ -20,18 +20,13 @@ import { type Capture, Payload, render } from "./render.ts";
 
 const captureExtension = `${import.meta.dirname}/capture.ts`;
 
-/** What `.gitignore` lets this repo ship in `agent/`. Stock pi gets every other entry of the agent dir. */
-const harnessEntries = [
-	"extensions",
-	"delegates",
-	"skills",
-	"prompts",
-	"themes",
-	"AGENTS.md",
-	"SYSTEM.md",
-	"APPEND_SYSTEM.md",
-	"keybindings.json",
-];
+/** The `agent/` entries `.gitignore` lets this repo ship. */
+const harnessEntries = (gitignore: string) =>
+	Arr.flatMap(Str.split(gitignore, "\n"), (line) => {
+		const shipped = /^!\/agent\/(?<entry>[^/]+)\/?$/u.exec(line)?.groups?.["entry"];
+
+		return shipped === undefined ? [] : [shipped];
+	});
 
 const message = "Capture run: reply with the single word ok.";
 
@@ -106,13 +101,16 @@ const capture = Effect.fn("capture")(function* (run: Run, cwd: string, workDir: 
 	return { title: run.title, about: run.about, payload } satisfies Capture;
 });
 
-/** Links to every entry of `agentDir` the harness does not ship. Links, not copies, so an auth refresh lands in the real file. */
-const stockAgentDir = Effect.fn("stockAgentDir")(function* (agentDir: string, into: string) {
+/** Links to every entry of `<harnessRoot>/agent` the harness does not ship. Links, not copies, so an auth refresh lands in the real file. */
+const stockAgentDir = Effect.fn("stockAgentDir")(function* (harnessRoot: string, into: string) {
 	const fs = yield* FileSystem.FileSystem;
+	const agentDir = `${harnessRoot}/agent`;
 	const listed = yield* fs.readDirectory(agentDir);
+	const gitignore = yield* fs.readFileString(`${harnessRoot}/.gitignore`);
+	const shipped = harnessEntries(gitignore);
 
 	yield* fs.makeDirectory(into);
-	yield* Effect.forEach(Arr.difference(listed, harnessEntries), (entry) =>
+	yield* Effect.forEach(Arr.difference(listed, shipped), (entry) =>
 		fs.symlink(`${agentDir}/${entry}`, `${into}/${entry}`),
 	);
 
@@ -141,7 +139,7 @@ const piRun = (key: string, title: string, about: string, env: Env): Run => ({
 });
 
 const captureAll = Effect.fn("captureAll")(function* (harnessRoot: string, project: string, workDir: string) {
-	const stockDir = yield* stockAgentDir(`${harnessRoot}/agent`, `${workDir}/stock-agent`);
+	const stockDir = yield* stockAgentDir(harnessRoot, `${workDir}/stock-agent`);
 	const staged = yield* stagedLaunches(project, `${workDir}/delegates`, message);
 
 	yield* Effect.forEach(staged.rejected, ({ file, why }) => Effect.logWarning(`skipped delegate ${file}: ${why}`));

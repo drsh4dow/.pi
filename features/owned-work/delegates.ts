@@ -30,16 +30,16 @@ const common = {
 		Schema.check(Schema.isPattern(/^[^/]+\/.+$/u)),
 		Schema.withDecodingDefaultKey(Effect.succeed("anthropic/claude-opus-5-5")),
 	),
-	/** Tool names the child declares, such as `read`, `bash`, `codemode`. Owned-work tools come from the role. */
+	/** Tool names the child declares, such as `read`, `bash`, `edit`. Every child also gets codemode, and owned-work tools come from the role. */
 	tools: Names,
-	/** Extension paths the child loads besides owned-work and the built-in extensions its `tools` need. The child starts with `--no-extensions`, so none by default. */
+	/** Extension paths the child loads besides `childExtensions` and the built-in extensions its `tools` need. The child starts with `--no-extensions`, so none by default. */
 	extensions: Schema.optionalKey(Names),
 	/** Skill paths the child may load. The child starts with `--no-skills`, so none by default. */
 	skills: Schema.optionalKey(Names),
 	/** Load AGENTS.md / CLAUDE.md context files. Off by default (`--no-context-files`): the prompt and message carry the context. */
 	contextFiles: Schema.optionalKey(Schema.Boolean),
-	/** Added after pi's base system prompt. With it and the one message, the child must have everything it needs. The launch appends `missingGuideline`. */
-	systemPrompt: Schema.NonEmptyString,
+	/** What this delegate does, shown to it as `<instructions>`. With them and the one message, the child must have everything it needs. How a delegate deals with its parent comes from `agent/roles/delegate.md`. */
+	instructions: Schema.NonEmptyString,
 	/** Seconds. A child still running then is killed and fails with `deadline`. No deadline by default. */
 	deadline: Schema.optionalKey(Seconds),
 };
