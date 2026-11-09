@@ -9,9 +9,8 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import * as Str from "effect/String";
 
-import { ignoreSkillsFlag, instructionsFlag } from "../../clients/pi-cli/index.ts";
+import { instructionsFlag } from "../../clients/pi-cli/index.ts";
 import { type Role, selfFromEnv } from "../owned-work/index.ts";
 import { compose } from "./compose.ts";
 import { loadPrinciples, principleIndex } from "./principles.ts";
@@ -24,7 +23,6 @@ const layersOf = Effect.fn("layersOf")(function* (
 	agentDir: string,
 	role: Role,
 	instructionsFile: Option.Option<string>,
-	ignoredSkills: ReadonlyArray<string>,
 ) {
 	const fs = yield* FileSystem.FileSystem;
 	const roleText = yield* fs.readFileString(`${agentDir}/roles/${roleFile[role]}`);
@@ -42,7 +40,6 @@ const layersOf = Effect.fn("layersOf")(function* (
 			role: roleText,
 			instructions,
 			principles: principleIndex({ role, dir: principlesDir, principles }),
-			ignoredSkills,
 		},
 		problems,
 	};
@@ -50,17 +47,11 @@ const layersOf = Effect.fn("layersOf")(function* (
 
 export const prompt = (pi: ExtensionAPI) => {
 	pi.registerFlag(instructionsFlag, { description: "File with this delegate's instructions.", type: "string" });
-	pi.registerFlag(ignoreSkillsFlag, {
-		description: "Comma-separated skill names this delegate never sees.",
-		type: "string",
-	});
 
 	const run = Effect.fn("prompt")(function* (event: BeforeAgentStartEvent, ctx: ExtensionContext) {
 		const file = Schema.decodeUnknownOption(Schema.String)(pi.getFlag(instructionsFlag));
-		const ignored = Schema.decodeUnknownOption(Schema.String)(pi.getFlag(ignoreSkillsFlag));
-		const ignoredSkills = Option.match(ignored, { onNone: () => [], onSome: Str.split(",") });
 		const { role } = yield* selfFromEnv(process.env);
-		const { layers, problems } = yield* layersOf(getAgentDir(), role, file, ignoredSkills);
+		const { layers, problems } = yield* layersOf(getAgentDir(), role, file);
 
 		compose(layers)(event);
 

@@ -167,7 +167,6 @@ const plumbing = ({ argv, env }: Pick<RunSpec, "argv" | "env">) => {
 		excluded: valuesOf("--exclude-tools"),
 		tools: valuesOf("--tools"),
 		skillFlags: Arr.filter(argv, Str.includes("skill")),
-		ignoredSkills: valuesOf("--ignore-skills"),
 		env,
 	};
 };
@@ -181,19 +180,6 @@ const launchRows = [
 			excluded: ["edit,write"],
 			tools: ["+codemode"],
 			skillFlags: [],
-			ignoredSkills: [],
-			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
-		},
-	},
-	{
-		name: "a delegate that ignores skills hands their names to its child and still lets pi discover every other skill",
-		spec: delegateLaunch({ ...common, role: "leaf", ignoreSkills: ["tdd", "web-docs"] }),
-		expect: {
-			argv: ["choom", "-n", "1000", "--"],
-			excluded: [],
-			tools: ["+codemode"],
-			skillFlags: ["--ignore-skills"],
-			ignoredSkills: ["tdd,web-docs"],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
 		},
 	},
@@ -205,7 +191,6 @@ const launchRows = [
 			excluded: [],
 			tools: ["+codemode"],
 			skillFlags: [],
-			ignoredSkills: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "owner", PI_OWNED_WORK_DELEGATES: "e2e,reviewer" },
 		},
 	},
@@ -219,7 +204,6 @@ const launchRows = [
 			excluded: [],
 			tools: [],
 			skillFlags: [],
-			ignoredSkills: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
 		},
 	},

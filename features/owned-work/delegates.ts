@@ -32,12 +32,6 @@ const common = {
 	),
 	/** Tool names or `*` patterns the child goes without, such as `edit`, `write`. It keeps every other tool: pi's default selection, codemode, and the tools of its extensions, such as web and owned-work. None by default. */
 	excludedTools: Schema.optionalKey(Names),
-	/** Extension paths the child loads besides `childExtensions` and codemode. The child starts with `--no-extensions`, so none by default. */
-	extensions: Schema.optionalKey(Names),
-	/** Names of skills kept out of the child's prompt. The child gets every skill pi discovers for it, so all by default. */
-	ignoreSkills: Schema.optionalKey(Names),
-	/** Load AGENTS.md / CLAUDE.md context files. Off by default (`--no-context-files`): the prompt and message carry the context. */
-	contextFiles: Schema.optionalKey(Schema.Boolean),
 	/** What this delegate does, shown to it as `<instructions>`. With them and the one message, the child must have everything it needs. How a delegate deals with its parent comes from `agent/roles/delegate.md`. */
 	instructions: Schema.NonEmptyString,
 	/** Seconds. A child still running then is killed and fails with `deadline`. No deadline by default. */
