@@ -80,7 +80,6 @@ const readyTimeout = Duration.seconds(60);
 
 const tailLines = 40;
 
-/** A serve or watch runs at the last level, so a pi it starts has no `delegate` tool. */
 const lastLevel = atLevel(levels);
 
 export const commandSpec =

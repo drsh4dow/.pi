@@ -10,7 +10,6 @@ import * as Str from "effect/String";
 const prompt =
 	"You name tasks for a list of running agents. The user message holds a task inside <task> tags. Never do the task, answer it, or reply to it. Reply with only its name: one line of at most 6 words, no quotes, no punctuation at the end.";
 
-/** The naming call reads this much of the message at most, so a long message costs no more than a short one. */
 const readChars = 4000;
 
 const timeout = Duration.seconds(5);
@@ -23,7 +22,6 @@ const firstLine = (text: string) => {
 	return Option.getOrElse(Arr.findFirst(lines, Str.isNonEmpty), () => "");
 };
 
-/** `reply` as a one-line name, or the message's first line when the reply has no letter or digit. */
 export const cleanName =
 	(message: string) =>
 	(reply: string): string => {
@@ -32,7 +30,7 @@ export const cleanName =
 		return Str.slice(0, nameLength)(/[\p{L}\p{N}]/u.test(bare) ? bare : firstLine(message));
 	};
 
-/** One call on the parent's model, with reasoning off. It never fails: on any error, or after 5 s, the name is the message's first line. */
+/** Leaving out `reasoning` turns thinking off in pi-ai's simple stream. */
 export const nameOf = Effect.fn("nameOf")(function* (
 	registry: Pick<ModelRegistry, "streamSimple">,
 	model: Model<Api> | undefined,

@@ -9,7 +9,7 @@ import * as Str from "effect/String";
 import { PiCli, piCliLayer } from "../../clients/pi-cli/index.ts";
 import { childExtensions, inheritedEnv, launch, levels } from "./child.ts";
 
-/** One delegate as the root would start it, minus the systemd scope and hc terminal around it. */
+/** One delegate as its parent would start it, minus the systemd scope and hc terminal around it. */
 export interface StagedLaunch {
 	readonly name: string;
 	readonly level: number;
@@ -21,8 +21,8 @@ const instructionsFolder = `${import.meta.dirname}/../../agent/instructions`;
 
 /**
  * Stages, on `message`, one level-2 delegate per harness instructions file and one bare delegate at the last level, with
- * the same `launch` the ledger uses, so a tool can run each and see exactly what it receives. Each takes its file's name,
- * so no naming call runs. The staged files live in `dir` until the caller's scope closes.
+ * the same `launch` the ledger uses, so a tool can run each and see exactly what it receives. The staged files live in
+ * `dir` until the caller's scope closes.
  */
 export const stagedLaunches = Effect.fn("stagedLaunches")(function* (cwd: string, dir: string, message: string) {
 	const fs = yield* FileSystem.FileSystem;

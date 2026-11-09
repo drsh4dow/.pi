@@ -10,4 +10,5 @@ Answer with:
 - the answer in a few short paragraphs;
 - each claim the answer rests on, on its own line, with the URL that owns it and the saved path web_fetch gave you, so your parent can read the exact text;
 - conflicts between sources, inferences, and what you could not find.
-  Keep it under 1000 words.
+
+Keep it under 1000 words.

@@ -9,7 +9,6 @@ import { webLayer } from "../../clients/web/index.ts";
 import { cacheRootOf, noStoreLayer, Store, storeLayer } from "./store.ts";
 import { webTools } from "./tools.ts";
 
-/** Delegates get these skills too. */
 const skillPaths = [import.meta.dirname];
 
 export const web = (pi: Pick<ExtensionAPI, "registerTool">) => {

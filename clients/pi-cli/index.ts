@@ -10,7 +10,6 @@ import * as Str from "effect/String";
 
 import type { SessionAddress } from "../pi-sessions/index.ts";
 
-/** What the child pi runs with. */
 export interface ChildPi {
 	/** Give each child a fresh uuid as `id`, because pi reuses an existing session with the same id. */
 	readonly session: SessionAddress;
@@ -18,7 +17,7 @@ export interface ChildPi {
 	readonly message: string;
 	/** `provider/id`. */
 	readonly model: string;
-	/** The `--thinking` level the child runs at. None leaves the model's default. */
+	/** The `--thinking` level the child runs at. None leaves pi's default for the model. */
 	readonly thinking: Option.Option<string>;
 	/** The child's `<instructions>`. Its prompt extension reads them from the file `instructionsFlag` names. */
 	readonly instructions: Option.Option<{ readonly text: string }>;
@@ -27,7 +26,7 @@ export interface ChildPi {
 export class PiCli extends Context.Service<
 	PiCli,
 	{
-		/** Stages the message and instructions beside the child's session and returns the argv that starts the child. */
+		/** Stages the message, and the instructions when there are any, beside the child's session and returns the argv that starts the child. */
 		readonly launch: (
 			child: ChildPi,
 		) => Effect.Effect<readonly [string, ...Array<string>], PlatformError.PlatformError>;

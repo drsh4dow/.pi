@@ -61,7 +61,6 @@ export const childExtensions: ReadonlyArray<string> = [
 	`${extensionsFolder}/web/index.ts`,
 ];
 
-/** One `delegate` call, checked where the tool is called. */
 export interface Brief extends Omit<ChildPi, "session"> {
 	/** The file the caller named and its text, read at the call. Only the text is staged, so a later edit never reaches the child. */
 	readonly instructions: Option.Option<{ readonly file: string; readonly text: string }>;
@@ -76,7 +75,7 @@ export interface LaunchRequest {
 	readonly passEnv: Readonly<Record<string, string>>;
 }
 
-/** A terminal name holds at most 32 chars in hc, so the name's slug gets 16 and the ref and agent key always fit. */
+/** A terminal name in hc holds 1-32 chars, so the slug gets 16 to leave room for the ref's number and the agent key. */
 const terminalName = ({ brief, ref, agentKey }: LaunchRequest) => {
 	const words = Str.replaceAll(/[^a-z0-9_.-]+/gu, "-")(Str.toLowerCase(brief.name));
 	const slug = Str.slice(0, 16)(words);

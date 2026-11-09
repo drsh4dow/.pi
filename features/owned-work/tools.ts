@@ -108,12 +108,10 @@ const runTool =
 
 const refsOf = (of: ReadonlyArray<Static<typeof HandleRef>>) => Arr.map(of, ({ ref }) => WorkRef(ref));
 
-/** The part of pi's context a `delegate` call reads. */
 type Caller = Pick<ExtensionContext, "cwd" | "model" | "thinkingLevel"> & {
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "find" | "streamSimple">;
 };
 
-/** The caller's own model and thinking level, unless it names a model the registry has. */
 const modelOf = (ctx: Caller, wanted: string | undefined) => {
 	const model = wanted ?? (ctx.model === undefined ? "" : `${ctx.model.provider}/${ctx.model.id}`);
 	const [provider, ...id] = Str.split(model, "/");
@@ -138,7 +136,6 @@ const instructionsOf = Effect.fn("instructionsOf")(function* (cwd: string, file:
 	return { file: absolute, text };
 });
 
-/** Checks the model and the instructions file before the naming call, so a bad call costs no model call. */
 export const briefOf = Effect.fn("briefOf")(function* (ctx: Caller, call: Static<typeof DelegateParams>) {
 	const { model, thinking } = yield* modelOf(ctx, call.model);
 
@@ -232,7 +229,6 @@ const stopTool = (runtime: Runtime) =>
 			),
 	});
 
-/** An agent at the last level gets no `delegate` tool, so neither a call nor codemode can reach one. */
 const register = (
 	pi: Pick<ExtensionAPI, "registerTool">,
 	runtime: Runtime,

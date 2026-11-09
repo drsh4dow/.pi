@@ -84,7 +84,6 @@ export type StartRequest = Data.TaggedEnum<{
 
 export const StartRequest = Data.taggedEnum<StartRequest>();
 
-/** A `delegate` call refused before anything starts, such as one naming a model the registry lacks. */
 export class BadDelegate extends Schema.TaggedError<BadDelegate, { readonly brand: unique symbol }>()("BadDelegate", {
 	why: Schema.String,
 }) {}

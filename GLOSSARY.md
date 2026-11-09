@@ -14,7 +14,7 @@ See `docs/adr/0001-harness-layout.md`.
 Terms from the prompt feature (`features/prompt/`), which builds every agent's system prompt. The root and every delegate load it.
 
 - **Shared layer.** `agent/SYSTEM.md`: how to operate inside this harness, the same for every agent. pi puts it first.
-- **Role layer.** The `<role>` and `<collaboration>` blocks from a role file, then a delegate's `<instructions>`. It comes right after the shared layer. Not to be confused with **Role** below, which says where an agent sits.
+- **Role layer.** The `<role>` and `<collaboration>` blocks from a role file, then a delegate's `<instructions>`. It comes right after the shared layer. Not to be confused with an agent's **role** under **Level** below.
 - **Role file.** `agent/roles/<role>.md`: `root.md` for the root, `delegate.md` for a delegate at any level. Each file is the text the model reads, tags included. What sets one level apart comes with the `delegate` tool and its guidelines, so every delegate shares a file.
 - **Instructions.** What one delegate does, from the file its parent named in the `delegate` call's `instructionsFile`, such as `agent/instructions/cold-reader.md`. The parent reads the file at the call, stages a copy, and passes `--instructions <copy>`, so a later edit never reaches a running child.
 - **Principle.** A hard rule that steers how an agent thinks, in `agent/principles/<name>.md`. Its frontmatter has a one-line `when` and an optional `for` naming the roles it fits. The prompt names the principles folder once in `<principles dir="…">`, then lists each fitting principle as `name: when`, and the agent reads `<name>.md` when the `when` might match. Prompt text and answers point at one as `principle-<name>`.

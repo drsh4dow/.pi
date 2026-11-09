@@ -80,7 +80,7 @@ const briefRows = [
 		expect: { brief: ["Review the retry cap.", "anthropic/claude-haiku-5-5", "high", undefined], asked: ["named"] },
 	},
 	{
-		name: "a model the caller names runs at that model's own thinking level",
+		name: "a model the caller names runs at pi's default thinking level for that model",
 		call: { message: "m", model: "anthropic/claude-haiku-5-5" },
 		expect: { brief: ["m", "anthropic/claude-haiku-5-5", undefined, undefined], asked: ["named"] },
 	},

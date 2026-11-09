@@ -80,7 +80,6 @@ const references = (text: string) => {
 	return Arr.dedupe(Arr.map(found, (match) => match.groups?.["name"] ?? ""));
 };
 
-/** The agent files whose text reaches a prompt: the shared layer, the role files, the principles and the instructions files. */
 const promptFiles = Effect.gen(function* () {
 	const fs = yield* FileSystem.FileSystem;
 
