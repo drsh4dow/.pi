@@ -16,6 +16,8 @@
 		".pi/**",
 		".roo/**",
 		".windsurf/**",
-		"tools/oxlint/anti-slop/**"
+		"tools/oxlint/anti-slop/**",
+		"agent/skills/unslop/SKILL.md",
+		"agent/skills/dumpfile/cli/**"
 	]
 }

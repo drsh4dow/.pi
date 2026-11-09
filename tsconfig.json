@@ -34,5 +34,5 @@
 		"allowUnusedLabels": false
 	},
 	"include": ["**/*.ts"],
-	"exclude": ["node_modules", "agent/git", "agent/tmp", "tools/oxlint/anti-slop"]
+	"exclude": ["node_modules", "agent/git", "agent/tmp", "tools/oxlint/anti-slop", "agent/skills/dumpfile/cli"]
 }

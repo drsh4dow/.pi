@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Runs the dumpfile client with Bun, installing its dependencies when package.json or bun.lock change.
+set -euo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIRECTORY=$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)
+  SOURCE=$(readlink "$SOURCE")
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIRECTORY/$SOURCE"
+done
+ROOT=$(cd -P "$(dirname "$SOURCE")/.." >/dev/null 2>&1 && pwd)
+
+KEY=$(cat "$ROOT/package.json" "$ROOT/bun.lock" | cksum)
+if [[ "$(cat "$ROOT/node_modules/.dumpfile-install-key" 2>/dev/null)" != "$KEY" ]]; then
+  bun install --frozen-lockfile --cwd "$ROOT" >&2
+  printf '%s\n' "$KEY" > "$ROOT/node_modules/.dumpfile-install-key"
+fi
+
+exec bun "$ROOT/src/cli.ts" "$@"
