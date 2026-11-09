@@ -33,13 +33,33 @@ const rows: ReadonlyArray<Row> = [
 		],
 	},
 	{
-		name: "a child whose last provider call errored after its answer settles failed",
+		name: "a child whose last provider call errored after its answer settles failed with the provider's error",
 		role: "root",
 		acts: [
 			runs,
 			delegate,
 			Answer({ terminal: "t1", text: "a", closing: "", stopReason: "error", end: exit(0) }),
-			TurnEnds({ expect: "continue: delegate-1 failed: exited" }),
+			TurnEnds({ expect: "continue: delegate-1 failed: errored: 429 rate limit" }),
+		],
+	},
+	{
+		name: "a child whose last provider call errored and that was then killed by SIGKILL settles failed: oom",
+		role: "root",
+		acts: [
+			runs,
+			delegate,
+			Answer({ terminal: "t1", text: "a", stopReason: "error", end: killed(9) }),
+			TurnEnds({ expect: "continue: delegate-1 failed: oom" }),
+		],
+	},
+	{
+		name: "a child whose last provider call errored settles errored even when it exits with an error code",
+		role: "root",
+		acts: [
+			runs,
+			delegate,
+			Answer({ terminal: "t1", text: "a", stopReason: "error", end: exit(1) }),
+			TurnEnds({ expect: "continue: delegate-1 failed: errored: 429 rate limit" }),
 		],
 	},
 	{

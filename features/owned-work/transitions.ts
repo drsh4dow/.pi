@@ -4,6 +4,7 @@ import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 
 import { TerminalEnd, type TerminalAddress, type TerminalSnapshot } from "../../clients/hc/index.ts";
+import type { ChildReply } from "../../clients/pi-sessions/index.ts";
 import type { Role } from "./child.ts";
 import { Groups } from "./groups.ts";
 import { Command, Draft, type Job, type LedgerState, type Step, type Woke, Verdict } from "./step.ts";
@@ -153,14 +154,19 @@ const settleJob = (state: LedgerState, ref: WorkRef, outcome: Outcome, end: Opti
 
 /**
  * Done(answer) needs both an answer and a clean exit, because `ctx.shutdown()` exits 0: a child killed mid-run or
- * while idle on a watcher has an assistant text that is not its answer.
+ * while idle on a watcher has an assistant text that is not its answer. A provider error is the reason only when the
+ * child exited with a code, since a kill or a lost terminal ended it first.
  */
-const answered = (state: LedgerState, ref: WorkRef, end: TerminalEnd, answer: Option.Option<string>): Woke => {
-	const text = Option.filter(answer, () => Draft.isCleanExit(end));
-
-	const outcome = Option.match(text, {
+const answered = (state: LedgerState, ref: WorkRef, end: TerminalEnd, reply: Option.Option<ChildReply>): Woke => {
+	const outcome = Option.match(reply, {
 		onNone: () => Draft.failure(end),
-		onSome: (done) => Outcome.Done({ text: done }),
+		onSome: Match.valueTags({
+			Answered: ({ text }) => (Draft.isCleanExit(end) ? Outcome.Done({ text }) : Draft.failure(end)),
+			Errored: ({ why }) =>
+				Option.isSome(Draft.exitCode(end))
+					? Outcome.Failed({ reason: FailReason.Errored({ why }) })
+					: Draft.failure(end),
+		}),
 	});
 
 	return settleJob(state, ref, outcome, Option.some(end));
