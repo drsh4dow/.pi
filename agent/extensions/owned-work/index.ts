@@ -1,10 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-import { ownedWork } from "../../../features/owned-work/index.ts";
-
-const ownedWorkEntry = import.meta.filename;
-const toolContextEntry = `${import.meta.dirname}/../tool-context/index.ts`;
-const childExtensions = [ownedWorkEntry, toolContextEntry];
+import { childExtensions, ownedWork } from "../../../features/owned-work/index.ts";
 
 export default function (pi: ExtensionAPI) {
 	const work = ownedWork(childExtensions)(pi);

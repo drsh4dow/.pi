@@ -6,7 +6,7 @@ import * as Schema from "effect/Schema";
 
 import type { RunSpec } from "../../clients/hc/index.ts";
 import { PiCli } from "../../clients/pi-cli/index.ts";
-import { inheritedEnv, launch } from "./child.ts";
+import { childExtensions, inheritedEnv, launch } from "./child.ts";
 import { type Delegate, DelegateName } from "./delegates.ts";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { commandSpec } from "./ledger.ts";
@@ -173,6 +173,12 @@ for (const row of launchRows) {
 		),
 	);
 }
+
+test("every child extension is an entrypoint pi can load", () => {
+	for (const entry of childExtensions) {
+		expect(Bun.file(entry).size).toBeGreaterThan(0);
+	}
+});
 
 const cleanup = Effect.promise(() => Bun.$`rm -rf ${sessionRoot}`.quiet());
 

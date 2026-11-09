@@ -51,6 +51,14 @@ export const inheritedEnv = (env: Readonly<Record<string, string | undefined>>):
 /** `dir` is the `delegates/` subfolder of the root's session folder, so `pi -c` never picks a child. */
 export type ChildSession = SessionAddress;
 
+const extensionsFolder = `${import.meta.dirname}/../../agent/extensions`;
+
+/** The entrypoints every delegate loads first: owned-work, so it can report back, and tool-context, since SYSTEM.md drops pi's tool list. */
+export const childExtensions: ReadonlyArray<string> = [
+	`${extensionsFolder}/owned-work/index.ts`,
+	`${extensionsFolder}/tool-context/index.ts`,
+];
+
 export const missingGuideline =
 	"If your task message lacks something you need, or leaves a doubt your parent could have settled, say exactly what was missing as your final answer and stop. Never ask your parent a question.";
 
