@@ -18,7 +18,7 @@ const model = getBuiltinModel("anthropic", "claude-haiku-5-5");
 const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, Layer.mock(Ledger)({})));
 
 const levelRows = [
-	{ name: "the root", self: Self.Root({ role: "root" }), expect: { delegate: true, lastLevelLine: false } },
+	{ name: "the root", self: Self.Root({ role: "root", level: 1 }), expect: { delegate: true, lastLevelLine: false } },
 	{
 		name: "a level-2 delegate, told its delegates cannot delegate,",
 		self: Self.Delegate({ role: "delegate", level: 2, slice: "s" }),

@@ -18,7 +18,7 @@ import { Hc, type HcError, type RunSpec } from "../../clients/hc/index.ts";
 import { PiCli } from "../../clients/pi-cli/index.ts";
 import { PiSessions } from "../../clients/pi-sessions/index.ts";
 import { Slices } from "../../clients/systemd/index.ts";
-import { atLevel, launch, levelOf, levels, type Self } from "./child.ts";
+import { atLevel, launch, levels, type Self } from "./child.ts";
 import { Command, type LedgerError, type LedgerState, type Step, type Verdict } from "./step.ts";
 import { Transitions } from "./transitions.ts";
 import {
@@ -99,7 +99,7 @@ const specOf = ({ options, cli }: Kit, ref: WorkRef, request: StartRequest): Eff
 			Effect.map(
 				launch(cli)({
 					brief,
-					level: levelOf(options.self) + 1,
+					level: options.self.level + 1,
 					ref,
 					agentKey: options.agentKey,
 					childSession,

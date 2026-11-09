@@ -204,7 +204,7 @@ const launchRows = [
 	{
 		name: "a serve or watch runs at the last level, so a pi it starts has no delegate tool",
 		spec: Effect.succeed(
-			commandSpec({ self: Self.Root({ role: "root" }), agentKey: "test", cwd: "/", passEnv: parentEnv })(
+			commandSpec({ self: Self.Root({ role: "root", level: 1 }), agentKey: "test", cwd: "/", passEnv: parentEnv })(
 				WorkRef("watch-1"),
 				"pi",
 			),

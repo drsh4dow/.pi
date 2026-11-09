@@ -11,7 +11,7 @@ import * as Path from "effect/Path";
 import * as Str from "effect/String";
 import { type Static, Type } from "typebox";
 
-import { type Brief, type ChildSession, levelOf, levels, type Self } from "./child.ts";
+import { type Brief, type ChildSession, levels, type Self } from "./child.ts";
 import { Ledger, type LedgerFailure } from "./ledger.ts";
 import { nameOf } from "./naming.ts";
 import { HandleOut, Out, ResultsOut } from "./out.ts";
@@ -245,8 +245,8 @@ const register = (
 	pi.registerTool(groupTool(runtime));
 	pi.registerTool(stopTool(runtime));
 
-	if (levelOf(self) < levels) {
-		pi.registerTool(delegateTool(runtime, levelOf(self) + 1, place));
+	if (self.level < levels) {
+		pi.registerTool(delegateTool(runtime, self.level + 1, place));
 	}
 };
 

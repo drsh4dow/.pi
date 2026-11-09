@@ -22,7 +22,7 @@ const Level = Schema.FiniteFromString.pipe(Schema.check(Schema.isBetween({ minim
 const ChildEnv = Schema.Struct({ PI_OWNED_WORK_LEVEL: Level, PI_OWNED_WORK_SLICE: Schema.String });
 
 export type Self = Data.TaggedEnum<{
-	Root: { readonly role: "root" };
+	Root: { readonly role: "root"; readonly level: 1 };
 	Delegate: { readonly role: "delegate"; readonly level: number; readonly slice: string };
 }>;
 
@@ -30,15 +30,13 @@ export const Self = Data.taggedEnum<Self>();
 
 export const selfFromEnv = Effect.fn("selfFromEnv")(function* (env: Readonly<Record<string, string | undefined>>) {
 	if (env["PI_OWNED_WORK_LEVEL"] === undefined) {
-		return Self.Root({ role: "root" });
+		return Self.Root({ role: "root", level: 1 });
 	}
 
 	const child = yield* Schema.decodeUnknownEffect(ChildEnv)(env);
 
 	return Self.Delegate({ role: "delegate", level: child.PI_OWNED_WORK_LEVEL, slice: child.PI_OWNED_WORK_SLICE });
 });
-
-export const levelOf = (self: Self): number => (Self.$is("Root")(self) ? 1 : self.level);
 
 /** What a process at `level` runs with. Deeper levels are killed first when memory runs out: OOM score 500, then 1000. */
 export const atLevel = (level: number) => ({
