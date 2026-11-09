@@ -34,6 +34,7 @@ const defaultModelRows = [
 		name: "a harness delegate with no model runs on anthropic/claude-opus-5-5",
 		known: ["anthropic/claude-opus-5-5"],
 		expect: [
+			"cold-reader anthropic/claude-opus-5-5",
 			"e2e anthropic/claude-opus-5-5",
 			"lead anthropic/claude-opus-5-5",
 			"researcher anthropic/claude-opus-5-5",
@@ -43,7 +44,7 @@ const defaultModelRows = [
 	{
 		name: "the model registry check runs on the default model",
 		known: [],
-		expect: Arr.replicate("model anthropic/claude-opus-5-5 is not in the model registry", 4),
+		expect: Arr.replicate("model anthropic/claude-opus-5-5 is not in the model registry", 5),
 	},
 	{
 		name: "a project delegate overrides the harness delegate of the same name",
@@ -52,6 +53,7 @@ const defaultModelRows = [
 			"reviewer.ts": `export default { role: "leaf", description: "Reviews.", model: "anthropic/claude-haiku-4-5", tools: ["read"], instructions: "Review." };`,
 		},
 		expect: [
+			"cold-reader anthropic/claude-opus-5-5",
 			"e2e anthropic/claude-opus-5-5",
 			"lead anthropic/claude-opus-5-5",
 			"researcher anthropic/claude-opus-5-5",
@@ -65,6 +67,7 @@ const defaultModelRows = [
 			"boss.ts": `export default { role: "owner", description: "Leads.", tools: ["read"], delegates: ["lead"], instructions: "Lead." };`,
 		},
 		expect: [
+			"cold-reader anthropic/claude-opus-5-5",
 			"e2e anthropic/claude-opus-5-5",
 			"lead anthropic/claude-opus-5-5",
 			"researcher anthropic/claude-opus-5-5",
