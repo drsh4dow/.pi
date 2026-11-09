@@ -49,7 +49,7 @@ export type Act = Data.TaggedEnum<{
 		readonly kind: "delegate" | "serve" | "watch";
 		readonly deadlineMs?: number;
 		readonly messageKiB?: number;
-		readonly promptKiB?: number;
+		readonly instructionsKiB?: number;
 		readonly heldThen?: HeldSpawn;
 	};
 	Spawned: { readonly expect: string };
@@ -96,7 +96,8 @@ const requestOf = (act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
 	const childSession = { id: `child-${String(counter.sessions)}`, cwd: sessionRoot, dir: `${sessionRoot}/delegates` };
 	const deadline = Option.map(Option.fromUndefinedOr(act.deadlineMs), Duration.millis);
 	const message = act.messageKiB === undefined ? "Review it." : Str.repeat(act.messageKiB * 1024)("x");
-	const instructions = Option.some({ file: "/r.md", text: Str.repeat((act.promptKiB ?? 0) * 1024)("p") || "Review." });
+	const text = act.instructionsKiB === undefined ? "Review." : Str.repeat(act.instructionsKiB * 1024)("p");
+	const instructions = Option.some({ file: "/r.md", text });
 	const brief = { name: "Review it", message, model: "a/b", thinking: Option.none(), instructions };
 
 	return Match.value(act.kind).pipe(

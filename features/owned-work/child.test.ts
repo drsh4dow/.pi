@@ -116,11 +116,11 @@ const rows: ReadonlyArray<Row> = [
 		],
 	},
 	{
-		name: "a task message and a system prompt longer than one argv word still start their delegate",
+		name: "a task message and instructions longer than one argv word still start their delegate",
 		role: "root",
 		acts: [
 			runs,
-			Start({ kind: "delegate", messageKiB: 200, promptKiB: 200 }),
+			Start({ kind: "delegate", messageKiB: 200, instructionsKiB: 200 }),
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
 			TurnEnds({ expect: "continue: delegate-1 done: a" }),
 		],
