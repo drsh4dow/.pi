@@ -9,7 +9,7 @@ import * as Str from "effect/String";
 
 import { Role } from "../owned-work/index.ts";
 
-/** One line the agent matches against its task. No angle brackets, since it renders inside `<when>`. */
+/** One line the agent matches against its task. No angle brackets, since it renders inside `<principles>`. */
 const When = Schema.NonEmptyString.pipe(Schema.check(Schema.isPattern(/^[^\n<>]+$/u)));
 
 const Roles = Role.pipe(Schema.NonEmptyArray);
@@ -29,7 +29,6 @@ export interface Principle {
 	readonly name: string;
 	readonly when: string;
 	readonly roles: ReadonlyArray<Role>;
-	readonly file: string;
 }
 
 export interface Problem {
@@ -46,7 +45,7 @@ const parsePrinciple = Effect.fn("parsePrinciple")(function* (file: string, text
 		return yield* Effect.fail("the body is empty");
 	}
 
-	const principle: Principle = { name, when: fields.when, roles: fields.for ?? Role.literals, file };
+	const principle: Principle = { name, when: fields.when, roles: fields.for ?? Role.literals };
 
 	return principle;
 });
@@ -67,14 +66,21 @@ export const loadPrinciples = Effect.fn("loadPrinciples")(function* (dir: string
 	return { principles, problems };
 });
 
-const entry = ({ name, when, file }: Principle) =>
-	`<principle>\n<name>${name}</name>\n<when>${when}</when>\n<location>${file}</location>\n</principle>`;
+const entry = ({ name, when }: Principle) => `- ${name}: ${when}`;
 
-/** The `<principles>` index for `role`: each fitting principle's name, trigger and file, never its body. */
-export const principleIndex = (role: Role) => (principles: ReadonlyArray<Principle>) => {
+/** The `<principles>` index for `role`: the folder once, then each fitting principle's name and trigger, never its body. */
+export const principleIndex = ({
+	role,
+	dir,
+	principles,
+}: {
+	role: Role;
+	dir: string;
+	principles: ReadonlyArray<Principle>;
+}) => {
 	const fitting = Arr.filter(principles, (principle) => principle.roles.includes(role));
 
 	return Arr.isReadonlyArrayNonEmpty(fitting)
-		? Option.some(`<principles>\n${Arr.join(Arr.map(fitting, entry), "\n")}\n</principles>`)
+		? Option.some(`<principles dir="${dir}">\n${Arr.join(Arr.map(fitting, entry), "\n")}\n</principles>`)
 		: Option.none();
 };

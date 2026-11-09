@@ -62,23 +62,15 @@ for (const [index, row] of rows.entries()) {
 	);
 }
 
-test("the index lists a principle's name, trigger and file only for the roles it fits", () => {
-	const everywhere: Principle = {
-		name: "fix-root-causes",
-		when: "Debugging.",
-		roles: every,
-		file: "/p/fix-root-causes.md",
-	};
+test("the index names the folder once, then each principle's name and trigger, only for the roles it fits", () => {
+	const everywhere: Principle = { name: "fix-root-causes", when: "Debugging.", roles: every };
+	const rootOnly: Principle = { name: "ask-less", when: "Asking.", roles: ["root"] };
 
-	const rootOnly: Principle = { name: "ask-less", when: "Asking.", roles: ["root"], file: "/p/ask-less.md" };
-
-	expect(principleIndex("leaf")([everywhere, rootOnly])).toEqual(
-		Option.some(
-			"<principles>\n<principle>\n<name>fix-root-causes</name>\n<when>Debugging.</when>\n<location>/p/fix-root-causes.md</location>\n</principle>\n</principles>",
-		),
+	expect(principleIndex({ role: "leaf", dir: "/p", principles: [everywhere, rootOnly] })).toEqual(
+		Option.some('<principles dir="/p">\n- fix-root-causes: Debugging.\n</principles>'),
 	);
 
-	expect(principleIndex("leaf")([rootOnly])).toEqual(Option.none());
+	expect(principleIndex({ role: "leaf", dir: "/p", principles: [rootOnly] })).toEqual(Option.none());
 });
 
 /** The names `text` points at as `principle-<name>`, the one spelling prompts and answers use. */

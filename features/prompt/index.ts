@@ -34,10 +34,16 @@ const layersOf = Effect.fn("layersOf")(function* (
 		onSome: (file) => Effect.asSome(fs.readFileString(file)),
 	});
 
-	const { principles, problems } = yield* loadPrinciples(`${agentDir}/principles`);
+	const principlesDir = `${agentDir}/principles`;
+	const { principles, problems } = yield* loadPrinciples(principlesDir);
 
 	return {
-		layers: { role: roleText, instructions, principles: principleIndex(role)(principles), ignoredSkills },
+		layers: {
+			role: roleText,
+			instructions,
+			principles: principleIndex({ role, dir: principlesDir, principles }),
+			ignoredSkills,
+		},
 		problems,
 	};
 });
