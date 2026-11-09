@@ -50,7 +50,7 @@ const defaultModelRows = [
 		name: "a project delegate overrides the harness delegate of the same name",
 		known: ["anthropic/claude-opus-5-5", "anthropic/claude-haiku-4-5"],
 		project: {
-			"reviewer.ts": `export default { role: "leaf", description: "Reviews.", model: "anthropic/claude-haiku-4-5", tools: ["read"], instructions: "Review." };`,
+			"reviewer.ts": `export default { role: "leaf", description: "Reviews.", model: "anthropic/claude-haiku-4-5", instructions: "Review." };`,
 		},
 		expect: [
 			"cold-reader anthropic/claude-opus-5-5",
@@ -64,7 +64,7 @@ const defaultModelRows = [
 		name: "an owner that lists another owner is rejected",
 		known: ["anthropic/claude-opus-5-5"],
 		project: {
-			"boss.ts": `export default { role: "owner", description: "Leads.", tools: ["read"], delegates: ["lead"], instructions: "Lead." };`,
+			"boss.ts": `export default { role: "owner", description: "Leads.", delegates: ["lead"], instructions: "Lead." };`,
 		},
 		expect: [
 			"cold-reader anthropic/claude-opus-5-5",
@@ -104,5 +104,25 @@ for (const row of defaultModelRows) {
 		),
 	);
 }
+
+test("a project delegate that still lists the old tools allowlist is rejected, so it never runs with every tool", () =>
+	runtime.runPromise(
+		Effect.gen(function* () {
+			const project = yield* projectFolder("stale tools", {
+				"reviewer.ts": `export default { role: "leaf", description: "Reviews.", tools: ["read"], instructions: "Review." };`,
+			});
+
+			const registry = yield* loadRegistry({ folders: { harness: harnessFolder, project }, hasModel: () => true });
+			const sources = Arr.map([...registry.entries.values()], ({ name, source }) => `${name} ${source}`);
+
+			expect({
+				sources: Arr.sort(sources, Order.String),
+				rejected: Arr.map(registry.rejected, ({ file }) => file),
+			}).toEqual({
+				sources: ["cold-reader harness", "e2e harness", "lead harness", "researcher harness", "reviewer harness"],
+				rejected: [`${project}/reviewer.ts`],
+			});
+		}),
+	));
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${projects}`.quiet())));

@@ -30,9 +30,9 @@ const common = {
 		Schema.check(Schema.isPattern(/^[^/]+\/.+$/u)),
 		Schema.withDecodingDefaultKey(Effect.succeed("anthropic/claude-opus-5-5")),
 	),
-	/** Tool names the child declares, such as `read`, `bash`, `edit`. Every child also gets codemode, and owned-work tools come from the role. */
-	tools: Names,
-	/** Extension paths the child loads besides `childExtensions` and the built-in extensions its `tools` need. The child starts with `--no-extensions`, so none by default. */
+	/** Tool names or `*` patterns the child goes without, such as `edit`, `write`. It keeps every other tool: pi's default selection, codemode, and the tools of its extensions, such as web and owned-work. None by default. */
+	excludedTools: Schema.optionalKey(Names),
+	/** Extension paths the child loads besides `childExtensions` and codemode. The child starts with `--no-extensions`, so none by default. */
 	extensions: Schema.optionalKey(Names),
 	/** Names of skills kept out of the child's prompt. The child gets every skill pi discovers for it, so all by default. */
 	ignoreSkills: Schema.optionalKey(Names),
@@ -103,7 +103,8 @@ const loadFile = Effect.fn("loadFile")(function* (folder: string, fileName: stri
 	const text = yield* Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readFile(file));
 	const jiti = createJiti(import.meta.url, { moduleCache: false });
 	const exported = yield* attempt(() => jiti.import(file, { default: true }));
-	const config = yield* Schema.decodeUnknownEffect(Delegate)(exported);
+	// A key the schema does not know, such as the old `tools` allowlist, would otherwise drop silently.
+	const config = yield* Schema.decodeUnknownEffect(Delegate)(exported, { onExcessProperty: "error" });
 	const name = yield* Schema.decodeEffect(DelegateName)(Str.replace(/\.ts$/u, "")(fileName));
 	const digest = yield* attempt(() => crypto.subtle.digest("SHA-256", new Uint8Array(text)));
 	const hash = Encoding.Hex.encode(new Uint8Array(digest));

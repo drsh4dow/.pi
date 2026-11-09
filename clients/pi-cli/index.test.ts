@@ -50,7 +50,7 @@ for (const row of rows) {
 			Effect.gen(function* () {
 				const pi = yield* PiCli;
 				const session = { id: "child", cwd: "/", dir: row.dir };
-				const loadout = { model: "a/b", instructions: "Review.", tools: [] };
+				const loadout = { model: "a/b", instructions: "Review." };
 
 				const got = yield* pi
 					.launch({ session, name: "n", message: "m", loadout })
@@ -70,7 +70,7 @@ test("a launch makes a delegates folder that already exists owner-only", () =>
 			const fs = yield* FileSystem.FileSystem;
 			const pi = yield* PiCli;
 			const dir = `${staging}/open`;
-			const loadout = { model: "a/b", instructions: "Review.", tools: [] };
+			const loadout = { model: "a/b", instructions: "Review." };
 
 			yield* fs.makeDirectory(dir, { recursive: true });
 			yield* fs.chmod(dir, 0o777);
@@ -97,7 +97,7 @@ test("closing the client leaves alone the paths of a child it already unstaged",
 				session,
 				name: "n",
 				message: "m",
-				loadout: { model: "a/b", instructions: "R.", tools: [] },
+				loadout: { model: "a/b", instructions: "R." },
 			});
 			yield* pi.unstage(session);
 			yield* fs.writeFileString(message, "someone else's");

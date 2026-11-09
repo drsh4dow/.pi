@@ -62,9 +62,6 @@ export const childExtensions: ReadonlyArray<string> = [
 	`${extensionsFolder}/web/index.ts`,
 ];
 
-/** Every agent combines tool calls with codemode, so every child gets it whatever its delegate file lists. */
-const toolsOf = (config: Delegate) => Arr.union(config.tools, ["codemode"]);
-
 export interface LaunchRequest {
 	readonly entry: Entry;
 	readonly message: string;
@@ -103,7 +100,7 @@ export const launch = (cli: (typeof PiCli)["Service"]) => (request: LaunchReques
 		session: childSession,
 		name: Str.slice(0, nameLength)(`${entry.name}: ${Arr.headNonEmpty(Str.split(message, "\n"))}`),
 		message,
-		loadout: { ...entry.config, tools: toolsOf(entry.config) },
+		loadout: entry.config,
 	};
 
 	return Effect.map(cli.launch(child), (argv): Pick<RunSpec, "name" | "argv" | "env"> => ({

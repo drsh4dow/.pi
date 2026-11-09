@@ -4,7 +4,7 @@ export default {
 	role: "leaf",
 	description:
 		"Answers one research sub-question from primary web sources. Reports each claim with the URL that owns it and its saved page.",
-	tools: ["read", "bash"],
+	excludedTools: ["edit", "write"],
 	deadline: 1200,
 	instructions: `You answer one research sub-question. Your task message gives the sub-question, why it matters, and what is out of scope.
 

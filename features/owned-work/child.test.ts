@@ -174,12 +174,12 @@ const plumbing = ({ argv, env }: Pick<RunSpec, "argv" | "env">) => {
 
 const launchRows = [
 	{
-		name: "a leaf delegate starts at OOM score 1000, as a leaf, with codemode and without the core tools it does not declare",
-		spec: delegateLaunch({ ...common, role: "leaf", tools: ["read", "bash"] }),
+		name: "a leaf delegate starts at OOM score 1000, as a leaf, with codemode and without the tools it excludes",
+		spec: delegateLaunch({ ...common, role: "leaf", excludedTools: ["edit", "write"] }),
 		expect: {
 			argv: ["choom", "-n", "1000", "--"],
-			excluded: ["powershell,edit,write,grep,find,ls"],
-			tools: ["+read,+bash,+codemode"],
+			excluded: ["edit,write"],
+			tools: ["+codemode"],
 			skillFlags: [],
 			ignoredSkills: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
@@ -187,11 +187,11 @@ const launchRows = [
 	},
 	{
 		name: "a delegate that ignores skills hands their names to its child and still lets pi discover every other skill",
-		spec: delegateLaunch({ ...common, role: "leaf", tools: ["read"], ignoreSkills: ["tdd", "web-docs"] }),
+		spec: delegateLaunch({ ...common, role: "leaf", ignoreSkills: ["tdd", "web-docs"] }),
 		expect: {
 			argv: ["choom", "-n", "1000", "--"],
-			excluded: ["bash,powershell,edit,write,grep,find,ls"],
-			tools: ["+read,+codemode"],
+			excluded: [],
+			tools: ["+codemode"],
 			skillFlags: ["--ignore-skills"],
 			ignoredSkills: ["tdd,web-docs"],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "leaf" },
@@ -199,11 +199,11 @@ const launchRows = [
 	},
 	{
 		name: "an owner delegate starts at OOM score 500, as an owner that may start only its listed delegates",
-		spec: delegateLaunch({ ...common, role: "owner", tools: ["read"], delegates: ["e2e", "reviewer"] }),
+		spec: delegateLaunch({ ...common, role: "owner", delegates: ["e2e", "reviewer"] }),
 		expect: {
 			argv: ["choom", "-n", "500", "--"],
-			excluded: ["bash,powershell,edit,write,grep,find,ls"],
-			tools: ["+read,+codemode"],
+			excluded: [],
+			tools: ["+codemode"],
 			skillFlags: [],
 			ignoredSkills: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_ROLE: "owner", PI_OWNED_WORK_DELEGATES: "e2e,reviewer" },

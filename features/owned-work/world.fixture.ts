@@ -253,7 +253,6 @@ export const worldOf = (clock: World["clock"]) => (role: Role) =>
 			role: "leaf" as const,
 			description: "Reviews.",
 			model: "anthropic/claude-haiku-4-5",
-			tools: ["read"],
 			instructions: "Review.",
 		};
 

@@ -15,8 +15,8 @@ export interface Loadout {
 	readonly model: string;
 	/** The delegate's own instructions. The child's prompt extension reads them from the file `instructionsFlag` names. */
 	readonly instructions: string;
-	/** Tool names the child declares, such as `read`, `bash`, `codemode`. */
-	readonly tools: ReadonlyArray<string>;
+	/** Tool names or `*` patterns the child goes without, from pi's `--exclude-tools`. */
+	readonly excludedTools?: ReadonlyArray<string>;
 	readonly extensions?: ReadonlyArray<string>;
 	/** Names of skills the child's prompt extension drops, from the list named by `ignoreSkillsFlag`. */
 	readonly ignoreSkills?: ReadonlyArray<string>;
@@ -48,40 +48,24 @@ export const instructionsFlag = "instructions";
 /** The child's flag for the comma-separated names of skills its prompt leaves out, registered by the same extension. */
 export const ignoreSkillsFlag = "ignore-skills";
 
-const coreTools = ["read", "bash", "powershell", "edit", "write", "grep", "find", "ls"];
-
-/** Tools that come from a built-in extension, which `--no-extensions` drops unless `-e` names it again. */
-const builtinExtensions = [
-	{ tool: "codemode", extension: "builtin:codemode" },
-	{ tool: "tool_search", extension: "builtin:tool-search" },
-];
-
 const flagEach = (flag: string, values: ReadonlyArray<string>) => Arr.flatMap(values, (value) => [flag, value]);
 
 const listFlag = (flag: string, values: ReadonlyArray<string>) =>
 	Arr.isReadonlyArrayNonEmpty(values) ? [flag, Arr.join(values, ",")] : [];
 
 /**
- * Never a plain `--tools a,b` allowlist: it would unregister the child extensions' own tools in the child. `+name` on a
- * tool already on is a no-op, so every listed tool gets one, whatever the user's `defaultTools`.
+ * The child keeps pi's default selection, the tools its extensions register, and codemode, which `--no-extensions`
+ * drops until `-e builtin:codemode` loads it again. `--exclude-tools` then removes what the loadout excludes.
  */
-const loadoutFlags = (childExtensions: ReadonlyArray<string>, loadout: Loadout) => {
-	const extensions = Arr.flatMap(builtinExtensions, ({ tool, extension }) =>
-		loadout.tools.includes(tool) ? [extension] : [],
-	);
-
-	return [
-		"--no-extensions",
-		...flagEach("-e", [...childExtensions, ...extensions, ...(loadout.extensions ?? [])]),
-		...listFlag(`--${ignoreSkillsFlag}`, loadout.ignoreSkills ?? []),
-		...(loadout.contextFiles === true ? [] : ["--no-context-files"]),
-		...listFlag("--exclude-tools", Arr.difference(coreTools, loadout.tools)),
-		...listFlag(
-			"--tools",
-			Arr.map(loadout.tools, (tool) => `+${tool}`),
-		),
-	];
-};
+const loadoutFlags = (childExtensions: ReadonlyArray<string>, loadout: Loadout) => [
+	"--no-extensions",
+	...flagEach("-e", [...childExtensions, "builtin:codemode", ...(loadout.extensions ?? [])]),
+	...listFlag(`--${ignoreSkillsFlag}`, loadout.ignoreSkills ?? []),
+	...(loadout.contextFiles === true ? [] : ["--no-context-files"]),
+	"--tools",
+	"+codemode",
+	...listFlag("--exclude-tools", loadout.excludedTools ?? []),
+];
 
 /**
  * One argv word holds at most 128 KiB, so the message and the instructions go in files beside the child's session.
