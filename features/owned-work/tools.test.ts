@@ -28,6 +28,8 @@ const haiku = getBuiltinModel("anthropic", "claude-haiku-5-5");
 
 const opus = getBuiltinModel("anthropic", "claude-opus-5-5");
 
+const unlisted = { ...haiku, id: "claude-haiku-9-9" };
+
 const harness = Bun.fileURLToPath(new URL("../..", import.meta.url));
 
 const briefs: Array<Brief> = [];
@@ -169,6 +171,24 @@ const briefRows = [
 		expect: { ...handed, briefs: [["Review the retry cap.", "anthropic/claude-haiku-5-5", "high", undefined]] },
 	},
 	{
+		name: "a caller on a model id the registry lacks, as pi allows, starts its delegate on that model",
+		call: { message: "Review the retry cap." },
+		caller: { model: unlisted },
+		naming: offline,
+		expect: {
+			...handed,
+			briefs: [["Review the retry cap.", "anthropic/claude-haiku-9-9", "high", undefined]],
+			asked: ["claude-haiku-9-9 with maxTokens, signal"],
+		},
+	},
+	{
+		name: "a caller on no model that names none is a tool error that says so",
+		call: { message: "m" },
+		caller: { model: undefined },
+		naming: offline,
+		expect: refused("name a model, since you run on none"),
+	},
+	{
 		name: "a model the caller names runs at pi's default thinking level for it, and the caller's own model names it",
 		call: { message: "m", model: "anthropic/claude-opus-5-5" },
 		naming: replies("Opus task"),
@@ -211,7 +231,8 @@ for (const row of briefRows) {
 		runtime.runPromise(
 			Effect.gen(function* () {
 				const asked: Array<string> = [];
-				const pending = delegate.execute("call", row.call, undefined, undefined, callerOf(row.naming, asked));
+				const caller = { ...callerOf(row.naming, asked), ...row.caller };
+				const pending = delegate.execute("call", row.call, undefined, undefined, caller);
 
 				yield* TestClock.adjust(row.clock ?? Duration.zero);
 

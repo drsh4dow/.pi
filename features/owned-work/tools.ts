@@ -118,14 +118,21 @@ type Caller = Pick<ExtensionContext, "cwd" | "model" | "thinkingLevel"> & {
 };
 
 const modelOf = (ctx: Caller, wanted: string | undefined) => {
-	const model = wanted ?? (ctx.model === undefined ? "" : `${ctx.model.provider}/${ctx.model.id}`);
-	const [provider, ...id] = Str.split(model, "/");
-	const thinking = wanted === undefined ? Option.fromUndefinedOr(ctx.thinkingLevel) : Option.none<string>();
+	if (wanted === undefined) {
+		const own = Option.fromUndefinedOr(ctx.model);
+		const thinking = Option.fromUndefinedOr(ctx.thinkingLevel);
+
+		return Effect.fromOption(own, () => BadDelegate.make({ why: "name a model, since you run on none" })).pipe(
+			Effect.map(({ provider, id }) => ({ model: `${provider}/${id}`, thinking })),
+		);
+	}
+
+	const [provider, ...id] = Str.split(wanted, "/");
 	const found = Option.fromUndefinedOr(ctx.modelRegistry.find(provider, Arr.join(id, "/")));
 
-	return Effect.fromOption(found, () => BadDelegate.make({ why: `model ${model} is not in the model registry` })).pipe(
-		Effect.as({ model, thinking }),
-	);
+	return Effect.fromOption(found, () =>
+		BadDelegate.make({ why: `model ${wanted} is not in the model registry` }),
+	).pipe(Effect.as({ model: wanted, thinking: Option.none<string>() }));
 };
 
 const instructionsOf = Effect.fn("instructionsOf")(function* (cwd: string, file: string) {
