@@ -41,7 +41,6 @@
 		"agent/skills/statechart/scripts/**",
 		"agent/skills/constraint-driven-development/scripts/**",
 		"agent/skills/idea-refine/scripts/**",
-		"agent/extensions/herdr-agent-state.ts",
 	],
 	"jsPlugins": [
 		{
