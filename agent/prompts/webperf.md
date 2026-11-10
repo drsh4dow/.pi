@@ -1,5 +1,6 @@
 ---
 description: Run a web performance audit via the web-performance-auditor persona
+argument-hint: "[url or files]"
 ---
 
 `/webperf` targets web applications specifically. Do not use it for utility libraries, CLIs, or server-only code with no browser-facing output.
@@ -22,7 +23,7 @@ Start a delegate with `instructionsFile: "~/.pi/agent/instructions/web-performan
 
 - The files, components, or diff under review
 - Any artifact paths (Lighthouse JSON, PSI JSON, CrUX response, trace) or pasted JSON content
-- The target URL or page name when known
+- The target URL or page name when known: ${@:-not given}
 - A note on which mode you expect (Quick or Deep), so the agent surfaces missing inputs if Deep was intended
 
 The delegate returns a scorecard (only populated with sourced values), a ranked list of findings, positive observations, and proactive recommendations.

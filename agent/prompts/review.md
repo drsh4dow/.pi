@@ -1,10 +1,11 @@
 ---
 description: Conduct a five-axis code review — correctness, readability, architecture, security, performance
+argument-hint: "[scope or focus]"
 ---
 
 Load the `code-review-and-quality` skill.
 
-Review the current changes (staged or recent commits) across all five axes:
+Review ${@:-the current changes (staged or recent commits)} across all five axes:
 
 1. **Correctness** — Does it match the spec? Edge cases handled? Tests adequate?
 2. **Readability** — Clear names? Straightforward logic? Well-organized?

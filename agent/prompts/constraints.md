@@ -1,10 +1,11 @@
 ---
 description: Define and enforce this project's quality bar — interview, sane defaults, CONSTRAINTS.md
+argument-hint: "[check|guard|ratchet]"
 ---
 
 Load the `constraint-driven-development` skill.
 
-$ARGUMENTS
+Sub-command: ${@:-none}
 
 Default behaviour with no arguments: set up constraints for this repository.
 

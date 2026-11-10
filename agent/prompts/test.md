@@ -1,8 +1,9 @@
 ---
 description: Run TDD workflow — write failing tests, implement, verify. For bugs, use the Prove-It pattern.
+argument-hint: "[feature or bug]"
 ---
 
-Load the `test-driven-development` skill.
+Load the `test-driven-development` skill, and apply it to ${@:-the change in progress}.
 
 For new features:
 

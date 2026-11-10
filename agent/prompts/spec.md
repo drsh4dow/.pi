@@ -1,10 +1,11 @@
 ---
 description: Start spec-driven development — write a structured specification before writing code
+argument-hint: "[what to build]"
 ---
 
 Load the `spec-driven-development` skill.
 
-Begin by understanding what the user wants to build. Ask clarifying questions about:
+Begin by understanding what the user wants to build: ${@:-they have not said yet}. Ask clarifying questions about:
 
 1. The objective and target users
 2. Core features and acceptance criteria

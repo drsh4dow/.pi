@@ -1,10 +1,11 @@
 ---
 description: Simplify code for clarity and maintainability — reduce complexity without changing behavior
+argument-hint: "[scope]"
 ---
 
 Load the `code-simplification` skill.
 
-Simplify recently changed code (or the specified scope) while preserving exact behavior:
+Simplify ${@:-recently changed code} while preserving exact behavior:
 
 1. Read CLAUDE.md and study project conventions
 2. Identify the target code — recent changes unless a broader scope is specified

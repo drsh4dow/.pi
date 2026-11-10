@@ -1,5 +1,6 @@
 ---
 description: Implement tasks incrementally — build, test, verify, commit. Add "auto" to run the whole plan in one approved pass.
+argument-hint: "[auto]"
 ---
 
 Load the `incremental-implementation` skill alongside the `test-driven-development` skill.
@@ -9,7 +10,7 @@ Load the `incremental-implementation` skill alongside the `test-driven-developme
 - **`/build`** — implement the _next_ pending task, then stop (careful, one slice at a time).
 - **`/build auto`** — generate the plan if needed, get a single approval, then implement _every_ task without stopping between them.
 
-`$ARGUMENTS` selects the mode. Treat `auto` (canonical) or `all` as autonomous mode; anything else (or empty) is the default single-task mode. Note: autonomous mode is not faster _per task_ — it runs the same test-driven loop — it only removes the human stepping _between_ tasks.
+The requested mode is `${1:-default}`. Treat `auto` (canonical) or `all` as autonomous mode; anything else is the default single-task mode. Note: autonomous mode is not faster _per task_ — it runs the same test-driven loop — it only removes the human stepping _between_ tasks.
 
 ## Default: one task
 
