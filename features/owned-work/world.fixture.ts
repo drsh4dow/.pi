@@ -43,6 +43,7 @@ export interface World {
 	readonly kills: Array<string>;
 	readonly gone: Set<string>;
 	readonly slices: Set<string>;
+	readonly spawnLevels: Array<string>;
 	readonly hostCallsAfterDeath: Array<string>;
 	readonly settles: Array<string>;
 	readonly settledRefs: Array<string>;
@@ -186,6 +187,7 @@ const hcOf = (world: Omit<World, "ledger" | "fs">) => {
 		}
 
 		world.slices.add(spec.ref);
+		world.spawnLevels.push(`${spec.ref} at level ${spec.env["PI_OWNED_WORK_LEVEL"] ?? "none"}`);
 
 		return TerminalAddress(`t${String((spawned.count += 1))}`);
 	});
@@ -260,6 +262,7 @@ export const worldOf = (clock: World["clock"]) => (role: Role) =>
 			kills: [],
 			gone: new Set(),
 			slices: new Set(),
+			spawnLevels: [],
 			hostCallsAfterDeath: [],
 			settles: [],
 			settledRefs: [],

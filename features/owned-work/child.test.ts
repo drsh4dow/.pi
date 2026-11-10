@@ -7,7 +7,7 @@ import * as Str from "effect/String";
 
 import type { RunSpec } from "../../clients/hc/index.ts";
 import { PiCli } from "../../clients/pi-cli/index.ts";
-import { type Brief, childExtensions, inheritedEnv, launch, Self } from "./child.ts";
+import { atLevel, type Brief, childExtensions, inheritedEnv, launch, Self, selfFromEnv } from "./child.ts";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { commandSpec } from "./ledger.ts";
 import { WorkRef } from "./work.ts";
@@ -23,11 +23,12 @@ const delegate = Start({ kind: "delegate" });
 
 const rows: ReadonlyArray<Row> = [
 	{
-		name: "a child whose answer is followed by an empty closing message is done with that answer",
+		name: "a root's child starts at level 2, and its answer followed by an empty closing message is done with that answer",
 		role: "root",
 		acts: [
 			runs,
 			delegate,
+			Act.SpawnLevels({ expect: ["delegate-1 at level 2"] }),
 			Answer({ terminal: "t1", text: "a", closing: "", end: exit(0) }),
 			TurnEnds({ expect: "continue: delegate-1 done: a" }),
 		],
@@ -225,6 +226,29 @@ for (const row of launchRows) {
 			}).pipe(Effect.provide(node)),
 		),
 	);
+}
+
+const envRows = [
+	{ level: 2, reads: 2 },
+	{ level: 3, reads: 3 },
+	{ level: 1, reads: undefined },
+	{ level: 4, reads: undefined },
+];
+
+for (const row of envRows) {
+	test(`a child started with level ${String(row.level)}'s env ${row.reads === undefined ? "is refused" : "runs at that level"}`, () =>
+		Effect.runPromise(
+			Effect.gen(function* () {
+				const self = yield* Effect.option(selfFromEnv({ ...atLevel(row.level).env, PI_OWNED_WORK_SLICE: "s" }));
+
+				expect(
+					self.pipe(
+						Option.map(({ level }) => level),
+						Option.getOrUndefined,
+					),
+				).toBe(row.reads);
+			}),
+		));
 }
 
 test("every child extension is an entrypoint pi can load", () => {

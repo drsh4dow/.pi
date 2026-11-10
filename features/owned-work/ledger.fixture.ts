@@ -70,6 +70,7 @@ export type Act = Data.TaggedEnum<{
 	Settles: { readonly expect: ReadonlyArray<string> };
 	Leftovers: { readonly expect: ReadonlyArray<string> };
 	Slices: { readonly expect: ReadonlyArray<string> };
+	SpawnLevels: { readonly expect: ReadonlyArray<string> };
 	Timers: { readonly expect: number };
 	WallClockSteps: { readonly backMs: number };
 	Pause: { readonly ms: number };
@@ -260,6 +261,7 @@ const perform = (world: World, act: Act): Effect.Effect<void> =>
 		Leftovers: ({ expect: expected }) =>
 			Effect.flatMap(leftovers(world), (left) => checked(() => left, [...expected])),
 		Slices: ({ expect: expected }) => checked(() => Arr.sort([...world.slices], Order.String), [...expected]),
+		SpawnLevels: ({ expect: expected }) => checked(() => world.spawnLevels, [...expected]),
 		Timers: ({ expect: expected }) => checked(() => world.clock.sleeping, expected),
 		WallClockSteps: ({ backMs }) =>
 			Effect.sync(() => {
