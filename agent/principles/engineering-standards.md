@@ -6,7 +6,7 @@ when: Writing, changing, or reviewing code.
 
 Correct behavior is necessary but not sufficient. Bad code is hard to read, understand, and evolve. Changing one thing breaks something far away, a feature means patching many places and still missing one, the design's invariants are unclear, and tests need mocks that expose implementation details. Hold each design decision to that standard, and read your final diff against it before reporting.
 
-**Contracts.** Leave out checks and branches that re-establish what the types or preceding code already guarantee, per principle-boundary-discipline. Use direct calls for known contracts, and confine reflection and runtime structural inspection to code whose job is parsing or dynamic integration.
+**Contracts.** Leave out checks and branches that re-establish what the types or preceding code already guarantee. Use direct calls for known contracts, and confine reflection and runtime structural inspection to code whose job is parsing or dynamic integration.
 
 **Dependencies.** Make dependencies explicit, construct them at the application's assembly points, and pass them to consumers.
 

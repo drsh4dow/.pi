@@ -14,5 +14,3 @@ Find what limits the number, and rule out that it measured something other than 
 For an eval result, ask the same of the trials. Did every run do the task? Does the gap hold across trials and models? Does the scenario matter?
 
 You skipped this when a run started without the result that would change a decision, when the evidence behind a number has no run count, no spread, or no named limiter, or when the claimed time saved is larger than the whole time the changed piece took.
-
-Distinct from principle-prove-it-works, which checks that an output is real.

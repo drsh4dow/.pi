@@ -4,7 +4,7 @@ when: Writing, reviewing, or reshaping code that is hard to trace, or about to a
 
 # Minimize Reader Load
 
-Maintainability is the work a reader must do to understand code. Track two axes. **Layers to trace** are the indirections between the question and the answer. **State to hold** is the hidden or mutable context the reader must keep in their head. LOC, cyclomatic complexity, and "clean architecture" are proxies. Reader load is the thing that matters. The two axes are independent. A flat file with 50 globals can be as hard to reason about as a 6-layer adapter stack. Guard both. This is the human analog of principle-guard-the-context-window. Working memory is finite for readers too.
+Maintainability is the work a reader must do to understand code. Track two axes. **Layers to trace** are the indirections between the question and the answer. **State to hold** is the hidden or mutable context the reader must keep in their head. LOC, cyclomatic complexity, and "clean architecture" are proxies. Reader load is the thing that matters. The two axes are independent. A flat file with 50 globals can be as hard to reason about as a 6-layer adapter stack. Guard both. A reader's working memory is finite.
 
 - **Collapse layers** that cost more than they save, such as wrappers with one caller, adapters with no second implementation, and speculative indirection that was never needed. Inline them.
 - **Make adjacent layers change the abstraction.** A layer that repeats the same methods and arguments adds reader load without compression. Collapse pass-through layers.
