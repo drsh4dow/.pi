@@ -84,7 +84,7 @@ const runtimeOf = (
 	const agentKey = Str.takeRight(uuidv7(), 8);
 	const parent = Option.map(Option.fromUndefinedOr(env["HC_TERMINAL_ID"]), TerminalAddress);
 	const relay: Relay = { waiter: Option.none() };
-	const ledger = ledgerLayer({ self, agentKey, cwd: ctx.cwd, passEnv: inheritedEnv(env) });
+	const ledger = ledgerLayer({ self, cwd: ctx.cwd, passEnv: inheritedEnv(env) });
 
 	const slices = Self.$is("Root")(self)
 		? slicesLayer({ slice: `pi-ow-${agentKey}`, rootPid: Option.some(process.pid) })
@@ -92,7 +92,7 @@ const runtimeOf = (
 
 	const services = Layer.provideMerge(
 		Layer.mergeAll(
-			hcLayer({ agentKey, parent, pid: process.pid }),
+			hcLayer({ agentKey, parent }),
 			hostLayer(pi, relay),
 			slices,
 			piSessionsLayer,

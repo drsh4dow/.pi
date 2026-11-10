@@ -1,8 +1,3 @@
-import {
-	type AssistantMessageEventStream,
-	createAssistantMessageEventStream,
-	fauxAssistantMessage,
-} from "@earendil-works/pi-ai";
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
@@ -12,7 +7,6 @@ import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
 import * as Struct from "effect/Struct";
-import * as TestClock from "effect/testing/TestClock";
 
 import type { Brief } from "./child.ts";
 import { Ledger } from "./ledger.ts";
@@ -77,48 +71,16 @@ const ledger = Layer.mock(Ledger)({
 
 const home = ConfigProvider.layer(ConfigProvider.fromUnknown({ HOME: fixtures }));
 
-export const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, ledger, TestClock.layer(), home));
+export const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, ledger, home));
 
 export const delegate = Tools.delegate(runtime, 2, { cwd: "/", dir: "/d" }, table);
 
-type Naming = (stream: AssistantMessageEventStream) => void;
-
-export const offline: Naming = () => {
-	throw new Error("offline");
-};
-
-export const replies =
-	(text: string): Naming =>
-	(stream) => {
-		stream.end(fauxAssistantMessage(text));
-	};
-
-export const silent: Naming = () => {};
-
-export const callerOf = ({
-	naming,
-	asked,
-}: {
-	readonly naming: Naming;
-	readonly asked: Array<string>;
-}): Parameters<typeof delegate.execute>[4] => ({
+export const callerOf = (): Parameters<typeof delegate.execute>[4] => ({
 	cwd: `${fixtures}/work`,
 	model: haiku,
 	thinkingLevel: "high",
-	modelRegistry: {
-		getAll: () => [haiku, opus, proxied],
-		streamSimple: (model, _context, options) => {
-			const stream = createAssistantMessageEventStream();
-
-			asked.push(`${model.id} with ${Arr.join(Struct.keys(options ?? {}), ", ")}`);
-			naming(stream);
-
-			return stream;
-		},
-	},
+	modelRegistry: { getAll: () => [haiku, opus, proxied] },
 });
-
-const namedOnHaiku = ["claude-haiku-5-5 with maxTokens, signal"];
 
 interface Shown {
 	readonly name: string;
@@ -129,7 +91,7 @@ interface Shown {
 	readonly cwd: string;
 }
 
-/** What a call with a message alone starts, named by the message while the naming call is offline. */
+/** What a call with a name and a message alone starts. */
 const plainStart: Shown = {
 	name: "m",
 	model: "anthropic/claude-haiku-5-5",
@@ -142,7 +104,6 @@ const plainStart: Shown = {
 export const handed = (start: Partial<Shown> = {}) => ({
 	isError: false,
 	details: { ref: "delegate-1", kind: "delegate" },
-	asked: namedOnHaiku,
 	started: [{ ...plainStart, ...start }],
 });
 
@@ -150,5 +111,4 @@ export const refused = (message: string) => ({
 	isError: true,
 	details: { error: "BadDelegate", message },
 	started: [],
-	asked: [],
 });

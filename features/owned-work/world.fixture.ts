@@ -11,17 +11,18 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
+import * as Order from "effect/Order";
 import * as Queue from "effect/Queue";
 import * as Scope from "effect/Scope";
 import * as Semaphore from "effect/Semaphore";
-import * as Stream from "effect/Stream";
+import * as Str from "effect/String";
 
-import { Hc, HcError, HcNotice, type RunSpec, TerminalAddress, TerminalEnd } from "../../clients/hc/index.ts";
+import { type HcNotice, TerminalEnd } from "../../clients/hc/index.ts";
 import { piCliLayer } from "../../clients/pi-cli/index.ts";
 import { piSessionsLayer } from "../../clients/pi-sessions/index.ts";
-import { Slices } from "../../clients/systemd/index.ts";
 import { type ChildSession, type Role, Self } from "./child.ts";
 import { Host, Ledger, ledgerLayer } from "./ledger.ts";
+import { hcOf, slicesOf } from "./outside.fixture.ts";
 import type { Verdict } from "./step.ts";
 import { type FailReason, Outcome, type Settled, WorkEntry } from "./work.ts";
 
@@ -44,6 +45,7 @@ export interface World {
 	readonly gone: Set<string>;
 	readonly slices: Set<string>;
 	readonly spawnLevels: Array<string>;
+	readonly shown: Array<string>;
 	readonly hostCallsAfterDeath: Array<string>;
 	readonly settles: Array<string>;
 	readonly settledRefs: Array<string>;
@@ -151,65 +153,6 @@ const hostOf = (world: Omit<World, "ledger" | "fs">) => {
 	});
 };
 
-const hangUp = (terminal: TerminalAddress) => HcNotice.Ended({ terminal, end: killed(1) });
-
-/** Linux MAX_ARG_STRLEN, which counts the closing NUL: execve fails with E2BIG on a longer argv word. */
-const argvWordLimit = 128 * 1024;
-
-const tooLong = (spec: RunSpec) => Arr.some(spec.argv, (word) => Buffer.byteLength(word) >= argvWordLimit);
-
-const failed = (why: string) => HcError.make({ method: "terminal.run", kind: "spawn_failed", message: why });
-
-const hcOf = (world: Omit<World, "ledger" | "fs">) => {
-	const spawned = { count: 0 };
-
-	const recorded = (terminal: TerminalAddress) => () => {
-		world.kills.push(terminal);
-		world.gone.add(terminal);
-	};
-
-	const kill = (terminal: TerminalAddress) =>
-		Effect.andThen(Effect.sync(recorded(terminal)), Queue.offer(world.notices, hangUp(terminal)));
-
-	const run = Effect.fn("run")(function* (spec: RunSpec) {
-		const held = world.spawns.shift();
-
-		if (held !== undefined) {
-			yield* Semaphore.take(world.gate, 1);
-		}
-
-		if (tooLong(spec)) {
-			return yield* failed("E2BIG");
-		}
-
-		if (held === "fails") {
-			return yield* failed("no such program");
-		}
-
-		world.slices.add(spec.ref);
-		world.spawnLevels.push(`${spec.ref} at level ${spec.env["PI_OWNED_WORK_LEVEL"] ?? "none"}`);
-
-		return TerminalAddress(`t${String((spawned.count += 1))}`);
-	});
-
-	return Layer.succeed(Hc, {
-		run,
-		kill,
-		waitForOutput: () => Effect.succeed(true),
-		tail: () => Effect.succeed("tail"),
-		notices: Stream.fromQueue(world.notices),
-	});
-};
-
-const slicesOf = (world: Omit<World, "ledger" | "fs">) =>
-	Layer.succeed(Slices, {
-		wrap: (spec) => spec,
-		stop: (ref) =>
-			Effect.sync(() => {
-				world.slices.delete(ref);
-			}),
-	});
-
 export const node = Layer.provideMerge(piCliLayer(["/entrypoint.ts"]), NodeServices.layer);
 
 export const steppable =
@@ -263,6 +206,7 @@ export const worldOf = (clock: World["clock"]) => (role: Role) =>
 			gone: new Set(),
 			slices: new Set(),
 			spawnLevels: [],
+			shown: [],
 			hostCallsAfterDeath: [],
 			settles: [],
 			settledRefs: [],
@@ -272,11 +216,24 @@ export const worldOf = (clock: World["clock"]) => (role: Role) =>
 
 		const fakes = Layer.mergeAll(hcOf(world), hostOf(world), slicesOf(world), piSessionsLayer, node);
 		const self = role === "root" ? Self.Root({ role, level: 1 }) : Self.Delegate({ role, level: 2, slice: "pi-ow" });
-		const ledger = ledgerLayer({ self, agentKey: "test", cwd: sessionRoot, passEnv: {} });
+		const ledger = ledgerLayer({ self, cwd: sessionRoot, passEnv: {} });
 		const context = yield* Layer.buildWithScope(Layer.provideMerge(ledger, fakes), scope);
 
 		return Object.assign(world, {
 			ledger: Context.get(context, Ledger),
 			fs: Context.get(context, FileSystem.FileSystem),
 		});
+	});
+
+export const leftovers = (world: World) =>
+	Effect.gen(function* () {
+		const names = yield* Effect.orElseSucceed(world.fs.readDirectory(`${sessionRoot}/delegates`), Arr.empty<string>);
+
+		const left = Arr.flatMap([...world.sessions], ([terminal, { id }]) =>
+			Arr.flatMap(names, (name) =>
+				Str.startsWith(`${id}.`)(name) ? [`${terminal}${Str.slice(id.length)(name)}`] : [],
+			),
+		);
+
+		return Arr.sort(left, Order.String);
 	});

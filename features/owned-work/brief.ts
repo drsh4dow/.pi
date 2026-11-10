@@ -11,7 +11,6 @@ import { type Static, Type } from "typebox";
 
 import type { Brief } from "./child.ts";
 import { ModelName, modelNameOf, type ModelTable } from "./models.ts";
-import { nameOf } from "./naming.ts";
 import { parseProfile } from "./profile.ts";
 import { BadDelegate } from "./work.ts";
 
@@ -32,6 +31,11 @@ export const delegateParams = (table: ModelTable) => {
 	const model = Type.String({ description: modelDescription(table) });
 
 	return Type.Object({
+		name: Type.String({
+			pattern: String.raw`\S`,
+			description:
+				"A few words that tell this delegate apart from the others you run, such as `review auth` or `classify opus 2`. The human sees it in their list of running agents.",
+		}),
 		message: Type.String({
 			pattern: String.raw`\S`,
 			description: "Everything the delegate needs. You cannot send it anything later, and it cannot ask you.",
@@ -54,18 +58,10 @@ export const delegateParams = (table: ModelTable) => {
 export type DelegateParams = ReturnType<typeof delegateParams>;
 
 export type Caller = Pick<ExtensionContext, "cwd" | "model" | "thinkingLevel"> & {
-	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll" | "streamSimple">;
+	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll">;
 };
 
-type Checking = Pick<Caller, "cwd" | "model" | "thinkingLevel"> & {
-	readonly modelRegistry: Pick<Caller["modelRegistry"], "getAll">;
-};
-
-type Naming = Pick<Caller, "model"> & {
-	readonly modelRegistry: Pick<Caller["modelRegistry"], "streamSimple">;
-};
-
-const modelOf = (ctx: Checking, { aliases }: ModelTable, wanted: Option.Option<ModelName>) =>
+const modelOf = (ctx: Caller, { aliases }: ModelTable, wanted: Option.Option<ModelName>) =>
 	Option.match(wanted, {
 		onNone: () =>
 			Effect.fromOption(Option.fromUndefinedOr(ctx.model), () =>
@@ -126,12 +122,16 @@ const folderOf = Effect.fn("folderOf")(function* (cwd: string, folder: string) {
 	return info.type === "Directory" ? real : yield* refusal("not a folder");
 });
 
-interface Checked {
-	readonly brief: Omit<Brief, "name">;
+interface Parsed {
+	readonly brief: Brief;
 	readonly cwd: Option.Option<string>;
 }
 
-const check = Effect.fn("check")(function* (ctx: Checking, table: ModelTable, call: Static<DelegateParams>) {
+export const parseCall = Effect.fn("parseCall")(function* (
+	ctx: Caller,
+	table: ModelTable,
+	call: Static<DelegateParams>,
+) {
 	const cwd = yield* Effect.transposeOption(
 		Option.map(Option.fromUndefinedOr(call.cwd), (folder) => folderOf(ctx.cwd, folder)),
 	);
@@ -146,7 +146,8 @@ const check = Effect.fn("check")(function* (ctx: Checking, table: ModelTable, ca
 
 	const { model, thinking } = yield* modelOf(ctx, table, wanted);
 
-	const brief: Omit<Brief, "name"> = {
+	const brief: Brief = {
+		name: call.name,
 		message: call.message,
 		model,
 		thinking: Option.orElse(
@@ -157,23 +158,7 @@ const check = Effect.fn("check")(function* (ctx: Checking, table: ModelTable, ca
 		instructions: Option.map(profile, ({ file, text }) => ({ file, text })),
 	};
 
-	const checked: Checked = { brief, cwd };
+	const parsed: Parsed = { brief, cwd };
 
-	return checked;
-});
-
-const named = (
-	ctx: Naming,
-	{ brief, cwd }: Checked,
-): Effect.Effect<{ readonly brief: Brief; readonly cwd: Option.Option<string> }> =>
-	Effect.map(nameOf(ctx.modelRegistry, ctx.model, brief.message), (name) => ({ brief: { ...brief, name }, cwd }));
-
-export const parseCall = Effect.fn("parseCall")(function* (
-	ctx: Caller,
-	table: ModelTable,
-	call: Static<DelegateParams>,
-) {
-	const checked = yield* check(ctx, table, call);
-
-	return yield* named(ctx, checked);
+	return parsed;
 });

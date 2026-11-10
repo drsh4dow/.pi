@@ -32,6 +32,7 @@ import {
 } from "./work.ts";
 import {
 	deliveredRefs,
+	leftovers,
 	sessionRoot,
 	showAll,
 	showVerdict,
@@ -71,6 +72,7 @@ export type Act = Data.TaggedEnum<{
 	Leftovers: { readonly expect: ReadonlyArray<string> };
 	Slices: { readonly expect: ReadonlyArray<string> };
 	SpawnLevels: { readonly expect: ReadonlyArray<string> };
+	Shown: { readonly expect: ReadonlyArray<string> };
 	Timers: { readonly expect: number };
 	WallClockSteps: { readonly backMs: number };
 	Pause: { readonly ms: number };
@@ -180,7 +182,7 @@ const replied = <Reply>(reply: Effect.Effect<Reply, LedgerError>, render: (value
 	);
 
 const group = (world: World, act: Data.TaggedEnum.Value<Act, "Group">) => {
-	const adopted = (ref: WorkRef) => {
+	const adopted = ({ ref }: Handle) => {
 		world.groups.set(ref, act.refs);
 
 		if (act.mode === "all" && !world.owed.includes(ref)) {
@@ -190,7 +192,9 @@ const group = (world: World, act: Data.TaggedEnum.Value<Act, "Group">) => {
 		return ref;
 	};
 
-	return replied(world.ledger.group(act.mode, Arr.map(act.refs, WorkRef)), ({ ref }) => adopted(ref), act.expect);
+	const request = { name: "principles eval", mode: act.mode, members: Arr.map(act.refs, WorkRef) };
+
+	return replied(world.ledger.group(request), adopted, act.expect);
 };
 
 const stop = (world: World, act: Data.TaggedEnum.Value<Act, "Stop">) => {
@@ -229,19 +233,6 @@ const hook = (world: World, event: Data.TaggedEnum.Value<Act, "Hook">["event"]):
 		Match.exhaustive,
 	);
 
-const leftovers = (world: World) =>
-	Effect.gen(function* () {
-		const names = yield* Effect.orElseSucceed(world.fs.readDirectory(`${sessionRoot}/delegates`), Arr.empty<string>);
-
-		const left = Arr.flatMap([...world.sessions], ([terminal, { id }]) =>
-			Arr.flatMap(names, (name) =>
-				Str.startsWith(`${id}.`)(name) ? [`${terminal}${Str.slice(id.length)(name)}`] : [],
-			),
-		);
-
-		return Arr.sort(left, Order.String);
-	});
-
 const breather = Effect.sleep(Duration.millis(20));
 
 const perform = (world: World, act: Act): Effect.Effect<void> =>
@@ -262,6 +253,7 @@ const perform = (world: World, act: Act): Effect.Effect<void> =>
 			Effect.flatMap(leftovers(world), (left) => checked(() => left, [...expected])),
 		Slices: ({ expect: expected }) => checked(() => Arr.sort([...world.slices], Order.String), [...expected]),
 		SpawnLevels: ({ expect: expected }) => checked(() => world.spawnLevels, [...expected]),
+		Shown: ({ expect: expected }) => checked(() => world.shown.splice(0), [...expected]),
 		Timers: ({ expect: expected }) => checked(() => world.clock.sleeping, expected),
 		WallClockSteps: ({ backMs }) =>
 			Effect.sync(() => {

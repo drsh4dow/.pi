@@ -12,17 +12,16 @@ import * as Ref from "effect/Ref";
 import * as Result from "effect/Result";
 import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
-import * as Str from "effect/String";
 
-import { Hc, type HcError, type RunSpec } from "../../clients/hc/index.ts";
+import { Hc, type HcError, type RunSpec, terminalNameOf } from "../../clients/hc/index.ts";
 import { PiCli } from "../../clients/pi-cli/index.ts";
 import { PiSessions } from "../../clients/pi-sessions/index.ts";
 import { Slices } from "../../clients/systemd/index.ts";
 import { atLevel, launch, levels, type Self } from "./child.ts";
-import { Command, type LedgerError, type LedgerState, type Step, type Verdict } from "./step.ts";
+import { Command, Draft, type LedgerError, type LedgerState, type Step, type Verdict } from "./step.ts";
 import { Transitions } from "./transitions.ts";
 import {
-	type GroupMode,
+	type GroupRequest,
 	type Handle,
 	MonotonicNanos,
 	monotonicNow,
@@ -48,7 +47,7 @@ export class Ledger extends Context.Service<
 	Ledger,
 	{
 		readonly start: (request: StartRequest) => Effect.Effect<Handle, SpawnError>;
-		readonly group: (mode: GroupMode, refs: ReadonlyArray<WorkRef>) => Effect.Effect<Handle, LedgerError>;
+		readonly group: (request: GroupRequest) => Effect.Effect<Handle, LedgerError>;
 		readonly stop: (refs: ReadonlyArray<WorkRef>) => Effect.Effect<ReadonlyArray<Settled>, LedgerError>;
 		readonly runStarted: Effect.Effect<void>;
 		readonly turnEnded: Effect.Effect<Verdict>;
@@ -58,7 +57,6 @@ export class Ledger extends Context.Service<
 
 export interface LedgerOptions {
 	readonly self: Self;
-	readonly agentKey: string;
 	readonly cwd: string;
 	readonly passEnv: Readonly<Record<string, string>>;
 }
@@ -82,33 +80,36 @@ const tailLines = 40;
 
 const lastLevel = atLevel(levels);
 
+/** Herdr's agents mod reads these to pick each row's icon and the group it sits under. */
+const labelOf = {
+	kind: "ow.kind",
+	group: "ow.group",
+	groupName: "ow.group.name",
+} as const;
+
 export const commandSpec =
 	(options: LedgerOptions) =>
-	(ref: WorkRef, command: string): RunSpec => ({
+	(ref: WorkRef, command: string): Omit<RunSpec, "labels"> => ({
 		ref,
-		name: Str.slice(0, 32)(`${ref}-${options.agentKey}`),
+		name: terminalNameOf(command),
 		argv: ["choom", "-n", lastLevel.oomScoreAdj, "--", "sh", "-c", command],
 		cwd: options.cwd,
 		env: { ...options.passEnv, ...lastLevel.env },
 	});
 
-const specOf = ({ options, cli }: Kit, ref: WorkRef, request: StartRequest): Effect.Effect<RunSpec, SpawnError> =>
-	Match.valueTags(request, {
+const specOf = ({ options, cli }: Kit, ref: WorkRef, request: StartRequest): Effect.Effect<RunSpec, SpawnError> => {
+	const labels = { [labelOf.kind]: Draft.kindOf(request) };
+
+	return Match.valueTags(request, {
 		Delegate: ({ brief, childSession }) =>
 			Effect.map(
-				launch(cli)({
-					brief,
-					level: options.self.level + 1,
-					ref,
-					agentKey: options.agentKey,
-					childSession,
-					passEnv: options.passEnv,
-				}),
-				(spawn) => ({ ref, cwd: childSession.cwd, ...spawn }),
+				launch(cli)({ brief, level: options.self.level + 1, childSession, passEnv: options.passEnv }),
+				(spawn) => ({ ref, cwd: childSession.cwd, labels, ...spawn }),
 			),
-		Serve: ({ command }) => Effect.succeed(commandSpec(options)(ref, command)),
-		Watch: ({ command }) => Effect.succeed(commandSpec(options)(ref, command)),
+		Serve: ({ command }) => Effect.succeed({ ...commandSpec(options)(ref, command), labels }),
+		Watch: ({ command }) => Effect.succeed({ ...commandSpec(options)(ref, command), labels }),
 	});
+};
 
 const attempt = <Reply, Failure>(
 	kit: Kit,
@@ -139,6 +140,8 @@ const run = (kit: Kit, command: Command): Effect.Effect<unknown> =>
 	Match.valueTags(command, {
 		Append: ({ entry }) => kit.host.append(entry),
 		Kill: ({ terminal }) => kit.hc.kill(terminal),
+		ShowInGroup: ({ terminal, group, name }) =>
+			kit.hc.label(terminal, { [labelOf.group]: group, [labelOf.groupName]: name }),
 		StopSlice: ({ ref }) => kit.slices.stop(ref),
 		ReadAnswer: ({ ref, session, end }) =>
 			Effect.flatMap(kit.sessions.readAnswer(session), (answer) =>
@@ -233,7 +236,7 @@ export const ledgerLayer = (
 
 			return {
 				start: (request) => start(kit, request),
-				group: (mode, refs) => attempt(kit, (current) => Transitions.group(current, mode, refs)),
+				group: (request) => attempt(kit, (current) => Transitions.group(current, request)),
 				stop: (refs) => attempt(kit, (current) => Transitions.stop(current, refs)),
 				runStarted: Effect.asVoid(apply(kit, Transitions.runStarted)),
 				turnEnded: apply(kit, Transitions.turnEnded),

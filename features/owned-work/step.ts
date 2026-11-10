@@ -32,6 +32,8 @@ export interface LedgerState {
 
 export type Command = Data.TaggedEnum<{
 	Kill: { readonly terminal: TerminalAddress };
+	/** Show `terminal` under its group in Herdr's agents list. */
+	ShowInGroup: { readonly terminal: TerminalAddress; readonly group: WorkRef; readonly name: string };
 	StopSlice: { readonly ref: WorkRef };
 	ReadAnswer: { readonly ref: WorkRef; readonly session: ChildSession; readonly end: TerminalEnd };
 	ReadTail: { readonly ref: WorkRef; readonly terminal: TerminalAddress; readonly end: TerminalEnd };
@@ -193,8 +195,11 @@ const recordEnd = (draft: Draft, work: Work, outcome: Outcome, end: Option.Optio
 	}
 };
 
+const holderOf = (draft: Draft, work: Work): Option.Option<Group> =>
+	Option.flatMap(work.heldBy, (ref) => Option.filter(find(draft, ref), isGroup));
+
 const groupAwaiting = (draft: Draft, work: Work): Option.Option<Group> =>
-	isJob(work) ? Option.flatMap(work.heldBy, (ref) => Option.filter(find(draft, ref), isGroup)) : Option.none();
+	isJob(work) ? holderOf(draft, work) : Option.none();
 
 const settle = (draft: Draft, settling: Work, outcome: Outcome, end: Option.Option<TerminalEnd>): void => {
 	if (!isLive(settling)) {
@@ -263,6 +268,7 @@ export const Draft = {
 	woke,
 	settle,
 	settleGroup,
+	holderOf,
 	halt,
 	passesThrough,
 	find,
@@ -285,4 +291,4 @@ export const Draft = {
 	terminalOf,
 };
 
-export type { Job };
+export type { Group, Job };

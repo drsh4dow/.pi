@@ -71,7 +71,7 @@ export type Work = Data.TaggedEnum<{
 	Delegate: Common & { readonly childSession: ChildSession; readonly spawn: Option.Option<Spawn> };
 	Watch: Common & { readonly command: string; readonly spawn: Option.Option<Spawn> };
 	Serve: Common & { readonly command: string; readonly spawn: Option.Option<Spawn> };
-	Group: Common & { readonly mode: GroupMode; readonly members: ReadonlyArray<WorkRef> };
+	Group: Common & { readonly name: string; readonly mode: GroupMode; readonly members: ReadonlyArray<WorkRef> };
 }>;
 
 export const Work = Data.taggedEnum<Work>();
@@ -83,6 +83,12 @@ export type StartRequest = Data.TaggedEnum<{
 }>;
 
 export const StartRequest = Data.taggedEnum<StartRequest>();
+
+export interface GroupRequest {
+	readonly name: string;
+	readonly mode: GroupMode;
+	readonly members: ReadonlyArray<WorkRef>;
+}
 
 export class BadDelegate extends Schema.TaggedError<BadDelegate, { readonly brand: unique symbol }>()("BadDelegate", {
 	why: Schema.String,
@@ -104,7 +110,12 @@ export type WorkEntry = Data.TaggedEnum<{
 		readonly childSessionId: string;
 	};
 	CommandStarted: { readonly handle: WorkRef; readonly kind: "serve" | "watch"; readonly command: string };
-	GroupStarted: { readonly handle: WorkRef; readonly mode: GroupMode; readonly members: ReadonlyArray<WorkRef> };
+	GroupStarted: {
+		readonly handle: WorkRef;
+		readonly name: string;
+		readonly mode: GroupMode;
+		readonly members: ReadonlyArray<WorkRef>;
+	};
 	JobSettled: {
 		readonly handle: WorkRef;
 		readonly outcome: Outcome;

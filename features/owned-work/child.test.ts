@@ -145,14 +145,13 @@ const delegateLaunch = (level: number, thinking: Option.Option<string>, readOnly
 		launch(pi)({
 			brief: { ...brief, thinking, readOnly },
 			level,
-			ref: "delegate-12",
-			agentKey: "test",
 			childSession: { id: "launched", cwd: sessionRoot, dir: `${sessionRoot}/delegates` },
 			passEnv: parentEnv,
 		}),
 	);
 
 const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) => {
+	const shownAs: string = name;
 	const flags = Arr.zip(argv, Arr.drop(argv, 1));
 
 	const valuesOf = (flag: string) =>
@@ -162,7 +161,7 @@ const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) =
 		);
 
 	return {
-		name,
+		name: shownAs,
 		argv: Arr.take(argv, 4),
 		tools: valuesOf("--tools"),
 		excluded: valuesOf("--exclude-tools"),
@@ -176,7 +175,7 @@ const launchRows = [
 		name: "a level-2 delegate starts at OOM score adjustment 500 with codemode and its thinking level",
 		spec: delegateLaunch(2, Option.some("high")),
 		expect: {
-			name: "review-the-retry-12-test",
+			name: "review-the-retry-cap-again",
 			argv: ["choom", "-n", "500", "--"],
 			tools: ["+codemode"],
 			excluded: [],
@@ -188,7 +187,7 @@ const launchRows = [
 		name: "a read-only delegate starts without the edit and write tools, and keeps codemode",
 		spec: delegateLaunch(2, Option.none(), true),
 		expect: {
-			name: "review-the-retry-12-test",
+			name: "review-the-retry-cap-again",
 			argv: ["choom", "-n", "500", "--"],
 			tools: ["+codemode"],
 			excluded: ["edit,write"],
@@ -200,7 +199,7 @@ const launchRows = [
 		name: "a delegate at the last level starts at OOM score adjustment 1000, and with no thinking level passes none",
 		spec: delegateLaunch(3, Option.none()),
 		expect: {
-			name: "review-the-retry-12-test",
+			name: "review-the-retry-cap-again",
 			argv: ["choom", "-n", "1000", "--"],
 			tools: ["+codemode"],
 			excluded: [],
@@ -209,15 +208,15 @@ const launchRows = [
 		},
 	},
 	{
-		name: "a serve or watch runs at the last level, so a pi it starts has no delegate tool",
+		name: "a serve or watch runs at the last level, so a pi it starts has no delegate tool, and is named by its command",
 		spec: Effect.succeed(
-			commandSpec({ self: Self.Root({ role: "root", level: 1 }), agentKey: "test", cwd: "/", passEnv: parentEnv })(
+			commandSpec({ self: Self.Root({ role: "root", level: 1 }), cwd: "/", passEnv: parentEnv })(
 				WorkRef("watch-1"),
-				"pi",
+				"pi --print hi",
 			),
 		),
 		expect: {
-			name: "watch-1-test",
+			name: "pi-print-hi",
 			argv: ["choom", "-n", "1000", "--"],
 			tools: [],
 			excluded: [],

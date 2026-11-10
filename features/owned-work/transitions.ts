@@ -85,6 +85,10 @@ const spawned = (state: LedgerState, ref: WorkRef, terminal: TerminalAddress): S
 		draft.commands.push(Command.Kill({ terminal }), Command.StopSlice({ ref }));
 	}
 
+	for (const holder of Option.toArray(Option.filter(Draft.holderOf(draft, work), () => Draft.isLive(work)))) {
+		Groups.showInGroup(draft, holder, [work]);
+	}
+
 	return Draft.finish(draft, Draft.handleOf(work));
 };
 

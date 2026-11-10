@@ -1,11 +1,12 @@
 import { expect, test } from "bun:test";
 
-import { validateToolArguments } from "@earendil-works/pi-ai";
+import { type JsonObject, validateToolArguments } from "@earendil-works/pi-ai";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
+import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import { Self } from "./child.ts";
@@ -15,7 +16,8 @@ import { Tools } from "./tools.ts";
 const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, Layer.mock(Ledger)({})));
 
 const toolsOf = (self: Self) => {
-	const tools: Array<Pick<ToolDefinition, "name" | "promptGuidelines" | "execute">> = [];
+	const tools: Array<Pick<ToolDefinition, "name" | "description" | "parameters" | "promptGuidelines" | "execute">> =
+		[];
 
 	Tools.register(
 		{
@@ -63,11 +65,28 @@ for (const row of levelRows) {
 
 const delegate = Tools.delegate(runtime, 2, { cwd: "/", dir: "/d" });
 
-const validated = (message: string) => () => {
-	validateToolArguments(delegate, { type: "toolCall", id: "c", name: "delegate", arguments: { message } });
+const validated = (tool: Pick<ToolDefinition, "name" | "description" | "parameters">, args: JsonObject) => () => {
+	validateToolArguments(tool, { type: "toolCall", id: "c", name: tool.name, arguments: args });
 };
 
 test("pi refuses a delegate message of only spaces, tabs and newlines, and passes one with a word", () => {
-	expect(validated(" \n\t ")).toThrow();
-	expect(validated("\n Review it. ")).not.toThrow();
+	expect(validated(delegate, { name: "review", message: " \n\t " })).toThrow();
+	expect(validated(delegate, { name: "review", message: "\n Review it. " })).not.toThrow();
 });
+
+const group = Arr.findFirst(toolsOf(Self.Root({ role: "root", level: 1 })), ({ name }) => name === "group");
+
+const nameRows = [
+	{ tool: "delegate", args: { message: "Review it." } },
+	{ tool: "group", args: { mode: "all", of: [{ ref: "delegate-1" }] } },
+];
+
+for (const row of nameRows) {
+	test(`pi refuses a ${row.tool} call with no name or a blank one, and passes one with a name`, () => {
+		const tool = row.tool === "delegate" ? delegate : Option.getOrThrow(group);
+
+		expect(validated(tool, row.args)).toThrow();
+		expect(validated(tool, { ...row.args, name: " " })).toThrow();
+		expect(validated(tool, { ...row.args, name: "review auth" })).not.toThrow();
+	});
+}

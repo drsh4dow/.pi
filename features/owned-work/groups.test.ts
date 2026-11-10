@@ -5,13 +5,51 @@ import * as Effect from "effect/Effect";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { exit, sessionRoot } from "./world.fixture.ts";
 
-const { Hook, Start, Answer, Group, Stop, TurnEnds } = Act;
+const { Hook, Start, Spawned, Answer, Group, Stop, TurnEnds, Shown } = Act;
 
 const runs = Hook({ event: "run starts" });
 
 const delegate = Start({ kind: "delegate" });
 
 const rows: ReadonlyArray<Row> = [
+	{
+		name: "each terminal is named for the list of running agents and labeled with its kind",
+		role: "root",
+		acts: [
+			runs,
+			delegate,
+			Start({ kind: "watch" }),
+			Start({ kind: "serve" }),
+			Shown({ expect: ["review-it (ow.kind=delegate)", "watch (ow.kind=watch)", "serve (ow.kind=serve)"] }),
+			Stop({
+				refs: ["delegate-1", "watch-2", "serve-3"],
+				expect:
+					"delegate-1 failed: stopped by delegate-1; watch-2 failed: stopped by watch-2; serve-3 failed: stopped by serve-3",
+			}),
+		],
+	},
+	{
+		name: "a group shows its live members under its name, and a member still starting once it starts",
+		role: "root",
+		acts: [
+			runs,
+			delegate,
+			delegate,
+			Start({ kind: "delegate", heldThen: "succeeds" }),
+			Answer({ terminal: "t1", text: "a", end: exit(0) }),
+			Shown({ expect: ["review-it (ow.kind=delegate)", "review-it (ow.kind=delegate)"] }),
+			Group({ mode: "all", refs: ["delegate-1", "delegate-2", "delegate-3"], expect: "group-4" }),
+			Shown({ expect: ["t2 (ow.group=group-4, ow.group.name=principles eval)"] }),
+			Spawned({ expect: "delegate-3" }),
+			Shown({ expect: ["review-it (ow.kind=delegate)", "t3 (ow.group=group-4, ow.group.name=principles eval)"] }),
+			Stop({
+				refs: ["group-4"],
+				expect:
+					"group-4 [delegate-1 done: a, delegate-2 failed: stopped by group-4, delegate-3 failed: stopped by group-4]",
+			}),
+			TurnEnds({ expect: "idle: " }),
+		],
+	},
 	{
 		name: "grouping an each group that already settled says so, and its member's result still arrives",
 		role: "root",

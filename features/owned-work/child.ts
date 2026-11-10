@@ -4,9 +4,8 @@ import type * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import * as Str from "effect/String";
 
-import type { RunSpec } from "../../clients/hc/index.ts";
+import { type RunSpec, terminalNameOf } from "../../clients/hc/index.ts";
 import type { ChildPi, PiCli } from "../../clients/pi-cli/index.ts";
 import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
 
@@ -69,19 +68,9 @@ export interface Brief extends Omit<ChildPi, "session"> {
 export interface LaunchRequest {
 	readonly brief: Brief;
 	readonly level: number;
-	readonly ref: string;
-	readonly agentKey: string;
 	readonly childSession: ChildSession;
 	readonly passEnv: Readonly<Record<string, string>>;
 }
-
-/** A terminal name in hc holds 1-32 chars, so the slug gets 16 to leave room for the ref's number and the agent key. */
-const terminalName = ({ brief, ref, agentKey }: LaunchRequest) => {
-	const words = Str.replaceAll(/[^a-z0-9_.-]+/gu, "-")(Str.toLowerCase(brief.name));
-	const slug = Str.slice(0, 16)(words);
-
-	return `${slug}-${Str.replace(/^\D*/u, "")(ref)}-${agentKey}`;
-};
 
 export const launch = (cli: (typeof PiCli)["Service"]) => (request: LaunchRequest) => {
 	const { oomScoreAdj, env } = atLevel(request.level);
@@ -89,7 +78,7 @@ export const launch = (cli: (typeof PiCli)["Service"]) => (request: LaunchReques
 	return Effect.map(
 		cli.launch({ ...request.brief, session: request.childSession }),
 		(argv): Pick<RunSpec, "name" | "argv" | "env"> => ({
-			name: terminalName(request),
+			name: terminalNameOf(request.brief.name),
 			argv: ["choom", "-n", oomScoreAdj, "--", ...argv],
 			env: { ...request.passEnv, ...env },
 		}),

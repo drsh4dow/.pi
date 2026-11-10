@@ -6,22 +6,24 @@ import * as Context from "effect/Context";
 import * as Data from "effect/Data";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
-import * as Exit from "effect/Exit";
 import * as Latch from "effect/Latch";
 import * as Layer from "effect/Layer";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
-import * as Random from "effect/Random";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 import * as Socket from "effect/socket/Socket";
 import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
 
+import { nameAt, type TerminalName } from "./name.ts";
+
 export type TerminalAddress = string & Brand.Brand<"TerminalAddress">;
 
 export const TerminalAddress = Brand.nominal<TerminalAddress>();
+
+export { type TerminalName, terminalNameOf } from "./name.ts";
 
 export type TerminalEnd = Data.TaggedEnum<{
 	Exited: { readonly code: Option.Option<number>; readonly signal: Option.Option<number> };
@@ -46,8 +48,10 @@ export const HcNotice = Data.taggedEnum<HcNotice>();
 
 export interface RunSpec {
 	readonly ref: string;
-	/** Human name for `hc attach`: 1-32 chars of `[a-z0-9-_.]`, unique among live terminals. */
-	readonly name: string;
+	/** Shown in Herdr's agents list and taken by `hc attach`. A live terminal holding it already gets `-2`, `-3`, and so on. */
+	readonly name: TerminalName;
+	/** Set beside the ones hc itself uses to find the terminal again. */
+	readonly labels: Readonly<Record<string, string>>;
 	readonly argv: readonly [string, ...Array<string>];
 	readonly cwd: string;
 	/** Layered on the hc core's env, not this process's, so it names everything the program needs. */
@@ -65,6 +69,7 @@ export class Hc extends Context.Service<
 	{
 		readonly run: (spec: RunSpec) => Effect.Effect<TerminalAddress, HcError>;
 		readonly kill: (terminal: TerminalAddress) => Effect.Effect<void>;
+		readonly label: (terminal: TerminalAddress, labels: Readonly<Record<string, string>>) => Effect.Effect<void>;
 		readonly waitForOutput: (
 			terminal: TerminalAddress,
 			pattern: string,
@@ -75,10 +80,10 @@ export class Hc extends Context.Service<
 	}
 >()("pi-harness/clients/hc/Hc") {}
 
-export interface AnchorOptions {
+export interface HcOptions {
 	readonly agentKey: string;
+	/** The terminal pi runs in, so its work shows under it. */
 	readonly parent: Option.Option<TerminalAddress>;
-	readonly pid: number;
 }
 
 const Labels = Schema.Record(Schema.String, Schema.String);
@@ -162,17 +167,31 @@ const call = <Out>(socket: string, method: string, params: Schema.Json, result: 
 		Effect.flatMap((it) => ("error" in it ? Effect.fail(rpcError(method, it.error)) : Effect.succeed(it.result))),
 	);
 
-const start = (socket: string, params: Schema.JsonObject & { readonly labels: typeof Labels.Type }) =>
-	call(socket, "terminal.list", { all: true, labels: params.labels }, Terminals).pipe(
+const maxNameAttempts = 20;
+
+type RunParams = Omit<RunSpec, "ref"> & { readonly parent: string | null };
+
+const runNamed = (socket: string, params: RunParams, attempt: number): Effect.Effect<typeof Address.Type, HcError> =>
+	call(socket, "terminal.run", { ...params, name: nameAt(attempt)(params.name), no_notify: true }, Address).pipe(
+		Effect.catchIf(
+			(error) => error.kind === "name_taken" && attempt < maxNameAttempts,
+			() => runNamed(socket, params, attempt + 1),
+		),
+	);
+
+/** `own` finds a terminal an earlier try already started, so a retry never starts a second one. */
+const start = (socket: string, own: typeof Labels.Type, params: RunParams) =>
+	call(socket, "terminal.list", { all: true, labels: own }, Terminals).pipe(
 		Effect.flatMap(({ terminals: [found] }) =>
-			found === undefined ? call(socket, "terminal.run", params, Address) : Effect.succeed(found),
+			found === undefined ? runNamed(socket, params, 1) : Effect.succeed(found),
 		),
 		Effect.retry({ ...safely, while: (error) => transient(error) || error.kind === "spawn_failed" }),
 		Effect.map(({ address }) => TerminalAddress(address)),
 	);
 
-const kill = (socket: string, terminal: TerminalAddress) =>
-	call(socket, "terminal.kill", { terminal }, Address).pipe(
+/** A change to a terminal that may already be gone, which is then nothing left to do. */
+const change = (socket: string, method: string, params: Schema.JsonObject & { readonly terminal: TerminalAddress }) =>
+	call(socket, method, params, Address).pipe(
 		Effect.retry(safely),
 		Effect.catchIf(notFound, () => Effect.void),
 		Effect.ignore({ log: "Warn" }),
@@ -212,10 +231,10 @@ const handle = (feed: Feed, subscribedAt: bigint) =>
 		Match.orElse(() => Effect.void),
 	);
 
-const follow = (socket: string, anchor: TerminalAddress, feed: Feed) =>
+const follow = (socket: string, own: typeof Labels.Type, feed: Feed) =>
 	Clock.monotonicTimeNanos.pipe(
 		Effect.flatMap((subscribedAt) =>
-			lines(socket, "events.subscribe", { children_of: anchor }, Inbound).pipe(
+			lines(socket, "events.subscribe", { labels: own }, Inbound).pipe(
 				Stream.tap(handle(feed, subscribedAt)),
 				Stream.runCount,
 			),
@@ -223,13 +242,11 @@ const follow = (socket: string, anchor: TerminalAddress, feed: Feed) =>
 		Effect.filterOrFail(Boolean, () => closed("events.subscribe")),
 		Effect.retry(retrying),
 		Effect.forever,
-		Effect.ensuring(kill(socket, anchor)),
 	);
 
 const socketOf = ({ HC_TERMINAL_SOCKET, XDG_RUNTIME_DIR = "/tmp", HC_SESSION = "default" }: NodeJS.ProcessEnv) =>
 	HC_TERMINAL_SOCKET ?? `${XDG_RUNTIME_DIR}/herdr-core/${HC_SESSION}.sock`;
 
-const cacheSuccess = (exit: Exit.Exit<TerminalAddress, HcError>) => (Exit.isSuccess(exit) ? Duration.infinity : 0);
 const lastLines = (count: number) => (text: string) => Arr.join(Arr.takeRight(Str.split(text, "\n"), count), "\n");
 
 const notSubscribed = HcError.make({
@@ -239,34 +256,38 @@ const notSubscribed = HcError.make({
 });
 
 /**
- * The anchor is a terminal running `tail --pid=<this pi's pid> -f /dev/null`, parented to `HC_TERMINAL_ID` when pi
- * runs inside hc. It ends within a second of pi dying (kill -9 included), and hc then ends every terminal under it,
- * since a child ends with its parent unless it sets `outlive_parent`.
+ * One subscription by the `ow.agent` label sees every end. The agent's own terminal parents each one, so Herdr shows
+ * them under it, and hc ends them when a delegate's pi exits. A root's slice ends them when the root dies.
  */
-export const hcLayer = (options: AnchorOptions): Layer.Layer<Hc> =>
+export const hcLayer = (options: HcOptions): Layer.Layer<Hc> =>
 	Layer.effect(
 		Hc,
 		Effect.gen(function* () {
 			const socket = socketOf(process.env);
 			const feed = yield* makeFeed;
 			const scope = yield* Effect.scope;
-			const labels = (ref: string) => ({ "ow.agent": options.agentKey, "ow.ref": ref });
-			const argv = ["tail", `--pid=${options.pid}`, "-f", "/dev/null"];
-			const own = labels(`anchor-${yield* Random.nextInt}`);
-			const tail = { argv, parent: Option.getOrNull(options.parent), no_notify: true, labels: own };
-			const launch = Effect.tap(start(socket, tail), (anchor) => Effect.forkIn(follow(socket, anchor, feed), scope));
-			const anchor = yield* Effect.cachedWithTTL(launch, cacheSuccess);
+			const agent = { "ow.agent": options.agentKey };
+			const subscription = yield* Effect.cached(Effect.forkIn(follow(socket, agent, feed), scope));
+			const parent = Option.getOrNull(options.parent);
 
 			return Hc.of({
-				run: Effect.fn("Hc.run")(function* ({ ref, name, argv: program, cwd, env }) {
-					const parent = yield* anchor;
-					const params = { argv: program, cwd, env, name, parent, no_notify: true };
+				run: Effect.fn("Hc.run")(function* ({ ref, name, labels, argv: program, cwd, env }) {
+					const own = { ...agent, "ow.ref": ref };
 
+					yield* subscription;
 					yield* Effect.mapError(Effect.timeout(feed.subscribed.await, "10 seconds"), () => notSubscribed);
 
-					return yield* start(socket, { ...params, labels: labels(ref) });
+					return yield* start(socket, own, {
+						argv: program,
+						cwd,
+						env,
+						parent,
+						name,
+						labels: { ...labels, ...own },
+					});
 				}),
-				kill: (terminal) => kill(socket, terminal),
+				kill: (terminal) => change(socket, "terminal.kill", { terminal }),
+				label: (terminal, labels) => change(socket, "terminal.label", { terminal, labels }),
 				waitForOutput: (terminal, pattern, timeout) => waitForOutput(socket, terminal, pattern, timeout),
 				tail: (terminal, count) => Effect.map(read(socket, terminal, count), lastLines(count)),
 				notices: Stream.fromQueue(feed.notices),

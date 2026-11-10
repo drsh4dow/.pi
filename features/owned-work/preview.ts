@@ -55,8 +55,6 @@ export const stagedLaunches = Effect.fn("stagedLaunches")(function* (cwd: string
 						instructions,
 					},
 					level,
-					ref: "delegate-1",
-					agentKey: "prompts",
 					childSession: { cwd, dir: `${dir}/${name}`, id: uuidv7() },
 					passEnv: inheritedEnv(process.env),
 				}),
