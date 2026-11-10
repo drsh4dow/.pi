@@ -43,6 +43,12 @@ Terms from the owned-work feature (`features/owned-work/`).
 - **Child session.** A delegate's own pi session, in the `delegates/` folder next to the root's sessions, so `pi -c` never opens one. Under `--no-session` the root has no session folder, so its delegates go in a `pi-delegates-<random>` folder in the temp folder, made owner-only when the first delegate starts.
 - **Staged files.** A delegate's task message and, when it has any, its instructions, written as `<session id>.message` and `<session id>.instructions` beside its child session, because one argv word holds at most 128 KiB. The ledger deletes them when the delegate settles.
 
+## Skill menu
+
+Terms from the skill-menu feature (`features/skill-menu/`).
+
+- **User-invocable.** Whether a skill shows in the `/` menu. The feature leaves out every skill whose frontmatter sets `user-invocable: false`. Pi reads no such key, so the skill still loads, the model still sees it, and typing its `/skill:<name>` in full still runs it.
+
 ## Web
 
 Terms from the web client (`clients/web/`) and feature (`features/web/`).
