@@ -1,7 +1,6 @@
 ---
 name: no-comments
-description: "Start Comment Sicko, fix accepted findings, and offer encodings for claimed constraints."
-disable-model-invocation: true
+description: Delete the comments code can carry, fix what they flag, and offer to encode the constraints they claim. Use when asked to remove or audit comments.
 ---
 
 # No comments
