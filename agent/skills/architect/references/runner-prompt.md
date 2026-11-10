@@ -11,6 +11,6 @@ Apply the following discipline. The orchestrator compares candidates on these ax
 - Validate at boundaries, trust types inside, per principle-boundary-discipline. Business logic as pure functions. The shell stays thin.
 - Single source of truth per invariant. Derive instead of sync.
 - Idempotent state transitions where applicable, per principle-make-operations-idempotent. Ask what happens if the operation runs twice or crashes halfway.
-- Short call chains. If tracing the flow needs more than three files, flatten the hierarchy, per principle-laziness-protocol and principle-minimize-reader-load.
+- Short call chains. If tracing the flow needs more than three files, flatten the hierarchy, per principle-minimize-reader-load.
 
 You are one of the parallel runners, each on a different model. Produce the best design your model can make. Don't hedge against the others. Differences between candidates are the signal used to pick a base and graft. Converging on a safe-looking middle defeats the exploration.
