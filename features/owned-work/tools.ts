@@ -1,5 +1,10 @@
 import { type JsonValue, uuidv7 } from "@earendil-works/pi-ai";
-import { defineTool, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import {
+	defineTool,
+	type ExtensionAPI,
+	type ExtensionContext,
+	type ToolDefinition,
+} from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Config from "effect/Config";
 import * as Duration from "effect/Duration";
@@ -136,7 +141,7 @@ const instructionsOf = Effect.fn("instructionsOf")(function* (cwd: string, file:
 	return { file: absolute, text };
 });
 
-export const briefOf = Effect.fn("briefOf")(function* (ctx: Caller, call: Static<typeof DelegateParams>) {
+const briefOf = Effect.fn("briefOf")(function* (ctx: Caller, call: Static<typeof DelegateParams>) {
 	const { model, thinking } = yield* modelOf(ctx, call.model);
 
 	const instructions = yield* Effect.transposeOption(
@@ -149,7 +154,7 @@ export const briefOf = Effect.fn("briefOf")(function* (ctx: Caller, call: Static
 });
 
 const delegateTool = (runtime: Runtime, childLevel: number, place: Omit<ChildSession, "id">) =>
-	defineTool({
+	({
 		name: "delegate",
 		label: "delegate",
 		promptSnippet: "Start a delegate on one task. It wakes you with its answer.",
@@ -157,7 +162,7 @@ const delegateTool = (runtime: Runtime, childLevel: number, place: Omit<ChildSes
 		promptGuidelines: childLevel === levels ? [...delegateGuidelines, lastLevelGuideline] : delegateGuidelines,
 		parameters: DelegateParams,
 		outputSchema: HandleOut,
-		execute: (_id, call, signal, _update, ctx) =>
+		execute: (_id, call, signal, _update, ctx: Caller) =>
 			runTool(runtime, signal)(
 				(ledger) =>
 					Effect.flatMap(briefOf(ctx, call), (brief) =>
@@ -165,7 +170,7 @@ const delegateTool = (runtime: Runtime, childLevel: number, place: Omit<ChildSes
 					),
 				Out.handle,
 			),
-	});
+	}) satisfies ToolDefinition<typeof DelegateParams, JsonValue>;
 
 const serveTool = (runtime: Runtime) =>
 	defineTool({
@@ -245,4 +250,4 @@ const register = (
 	}
 };
 
-export const Tools = { register };
+export const Tools = { register, delegate: delegateTool };
