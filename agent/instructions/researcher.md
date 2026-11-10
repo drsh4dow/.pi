@@ -1,4 +1,5 @@
 ---
+model: investigator
 readonly: true
 ---
 

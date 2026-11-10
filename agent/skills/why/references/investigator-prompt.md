@@ -1,5 +1,5 @@
 ---
-model: worker
+model: investigator
 readonly: true
 ---
 

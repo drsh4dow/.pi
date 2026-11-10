@@ -122,7 +122,7 @@ A single-model reviewer shares blind spots with the original author — a colder
 
 After the single-model review in Step 3 above, but before RECONCILE, pause and ask:
 
-> _"Single-model review complete. Want a cross-model second opinion? Options: a delegate on another panel model (`judgment` or `openai/gpt-6.1-sol`, whichever is not the model that wrote the artifact), manual external review (you paste it elsewhere), or skip."_
+> _"Single-model review complete. Want a cross-model second opinion? Options: a delegate on another panel model (`judgment` or `investigator`, whichever is not the model that wrote the artifact), manual external review (you paste it elsewhere), or skip."_
 
 This question is mandatory in every interactive doubt cycle — even on artifacts that feel low-stakes. The user — not the agent — decides whether the cost is worth it. The agent's job is to surface the choice.
 
@@ -137,7 +137,7 @@ Example shape:
 ```
 delegate({
   name: "doubt cross-model",
-  model: "openai/gpt-6.1-sol",
+  model: "investigator",
   instructionsFile: "~/.pi/agent/instructions/code-reviewer.md",
   message: "<adversarial prompt + ARTIFACT + CONTRACT; change no files>"
 })

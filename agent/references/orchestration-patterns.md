@@ -114,7 +114,7 @@ main agent → research sub-agent (reads 50 files) → digest → main agent con
 
 **Cost:** one isolated sub-agent context. Worth it any time the alternative is loading hundreds of files into the main context.
 
-**In pi, start a plain `delegate` on the `worker` model** rather than defining a custom research persona. `worker` is a small, cheap model, and the delegate returns only its last message, which fits this pattern. Define a custom research instructions file only when a plain delegate doesn't fit (e.g. you need a domain-specific system prompt the model wouldn't infer).
+**In pi, start a plain `delegate` on the `scout` model** rather than defining a custom research persona. `scout` is a fast model for mechanical search and aggregation, and the delegate returns only its last message, which fits this pattern. Define a custom research instructions file only when a plain delegate doesn't fit (e.g. you need a domain-specific system prompt the model wouldn't infer).
 
 ---
 
@@ -144,17 +144,17 @@ This means contributors can still build the anti-patterns by accident. The "Do n
 
 Before defining a custom persona, check whether one of these covers the role:
 
-| Setup                                                                        | Purpose                                                                          |
-| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `delegate` with `model: "worker"`                                            | Cheap codebase search and analysis. Use this for Pattern 5 (research isolation). |
-| `delegate` with `instructionsFile: "~/.pi/agent/instructions/researcher.md"` | Read-only web research on one sub-question.                                      |
-| plain `delegate`                                                             | Multi-step tasks needing both exploration and modification.                      |
+| Setup                                                                        | Purpose                                                                                  |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `delegate` with `model: "scout"`                                             | Mechanical codebase search and aggregation. Use this for Pattern 5 (research isolation). |
+| `delegate` with `instructionsFile: "~/.pi/agent/instructions/researcher.md"` | Read-only web research on one sub-question.                                              |
+| plain `delegate`                                                             | Multi-step tasks needing both exploration and modification.                              |
 
 Don't redefine these. Layer your specialist personas (code-reviewer, security-auditor, test-engineer) on top of them.
 
 ### Frontmatter restrictions for persona files
 
-An instructions file's frontmatter is a strict profile: only `model`, `thinking` (off|minimal|low|medium|high|xhigh|max), and `readonly` (boolean) are allowed, and any other key is an error. `readonly: true` removes the edit and write tools. Use `model` per-persona if you want to optimize cost (e.g. `worker` for `test-engineer` coverage scans, `judgment` for `security-auditor`).
+An instructions file's frontmatter is a strict profile: only `model`, `thinking` (off|minimal|low|medium|high|xhigh|max), and `readonly` (boolean) are allowed, and any other key is an error. `readonly: true` removes the edit and write tools. Use `model` per persona to route it to the alias its work calls for (e.g. `investigator` for `security-auditor`, `judgment` for `cold-reader`).
 
 ### Spawning multiple delegates in parallel
 

@@ -13,13 +13,13 @@ import { Ledger } from "./ledger.ts";
 import { Tools } from "./tools.ts";
 import { StartRequest, WorkRef } from "./work.ts";
 
-const haiku = getBuiltinModel("anthropic", "claude-haiku-5-5");
+const luna = getBuiltinModel("openai", "gpt-6-luna");
 
 const opus = getBuiltinModel("anthropic", "claude-opus-5-5");
 
-export const unlisted = { ...haiku, id: "claude-haiku-9-9" };
+export const unlisted = { ...luna, id: "gpt-9-luna" };
 
-export const proxied = { ...haiku, provider: "proxy/anthropic" };
+export const proxied = { ...luna, provider: "proxy/openai" };
 
 export const fixtures = `${Bun.env["TMPDIR"] ?? "/tmp"}/owned-work-tools-test-${String(process.pid)}`;
 
@@ -42,9 +42,12 @@ await Promise.all(
 );
 
 export const table = {
-	aliases: { deep: "claude-opus-5-5", quick: "claude-haiku-5-5", gone: "nope" },
-	fallbackProvider: "anthropic",
-	panel: ["anthropic/claude-opus-5-5", "proxy/anthropic/claude-haiku-5-5"],
+	aliases: {
+		deep: { provider: "anthropic", id: "claude-opus-5-5", use: "work that needs taste" },
+		quick: { provider: "openai", id: "gpt-6-luna", use: "mechanical scouting" },
+		gone: { provider: "anthropic", id: "nope", use: "nothing" },
+	},
+	panel: ["deep", "proxy/openai/gpt-6-luna"],
 };
 
 interface Started {
@@ -78,9 +81,9 @@ export const delegate = Tools.delegate(runtime, 2, { cwd: "/", dir: "/d" }, tabl
 
 export const callerOf = (): Parameters<typeof delegate.execute>[4] => ({
 	cwd: `${fixtures}/work`,
-	model: haiku,
+	model: luna,
 	thinkingLevel: "high",
-	modelRegistry: { getAll: () => [haiku, opus, proxied] },
+	modelRegistry: { getAll: () => [luna, opus, proxied] },
 });
 
 interface Shown {
@@ -95,7 +98,7 @@ interface Shown {
 /** What a call with a name and a message alone starts. */
 const plainStart: Shown = {
 	name: "m",
-	model: "anthropic/claude-haiku-5-5",
+	model: "openai/gpt-6-luna",
 	thinking: "high",
 	readOnly: false,
 	instructions: undefined,

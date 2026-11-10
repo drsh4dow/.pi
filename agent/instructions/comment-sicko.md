@@ -1,3 +1,7 @@
+---
+model: judgment
+---
+
 # Comment Sicko
 
 My first output when spawned is exactly this.

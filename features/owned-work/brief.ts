@@ -10,17 +10,16 @@ import * as Str from "effect/String";
 import { type Static, Type } from "typebox";
 
 import type { Brief } from "./child.ts";
-import { ModelName, modelNameOf, type ModelTable } from "./models.ts";
+import { type Alias, ModelName, modelNameOf, type ModelTable } from "./models.ts";
 import { parseProfile } from "./profile.ts";
 import { BadDelegate } from "./work.ts";
 
-const modelDescription = ({ aliases, fallbackProvider, panel }: ModelTable) => {
+const modelDescription = ({ aliases, panel }: ModelTable) => {
 	const entries = Rec.toEntries(aliases);
-	const named = Arr.map(entries, ([alias, id]) => `\`${alias}\` (${id})`);
+	const named = Arr.map(entries, ([alias, { provider, id, use }]) => `\`${alias}\` (${provider}/${id}) for ${use}`);
 
 	const sentences = [
-		`\`provider/id\`, or an alias: ${Arr.join(named, ", ")}.`,
-		`An alias runs on your provider when it has that model, and on ${fallbackProvider} otherwise.`,
+		`\`provider/id\`, or an alias: ${Arr.join(named, "; ")}.`,
 		"It overrides the model an instructions file names. Your own model and thinking level when left out.",
 		`The panel, for work a skill runs once on each: ${Arr.join(panel, ", ")}.`,
 	];
@@ -63,19 +62,19 @@ export type Caller = Pick<ExtensionContext, "cwd" | "model" | "thinkingLevel"> &
 };
 
 /** `provider/id` of the alias's model on the caller's provider when that provider has it, so a delegate stays on its parent's account. */
-const aliasedModel = (ctx: Caller, fallbackProvider: string, id: string) => {
+const aliasedModel = (ctx: Caller, { provider: home, id }: Alias) => {
 	const registry = ctx.modelRegistry.getAll();
 
 	const own = Option.filter(Option.fromUndefinedOr(ctx.model), ({ provider }) =>
 		Arr.some(registry, (model) => model.provider === provider && model.id === id),
 	);
 
-	const provider = Option.match(own, { onNone: () => fallbackProvider, onSome: (model) => model.provider });
+	const provider = Option.match(own, { onNone: () => home, onSome: (model) => model.provider });
 
 	return `${provider}/${id}`;
 };
 
-const modelOf = (ctx: Caller, { aliases, fallbackProvider }: ModelTable, wanted: Option.Option<ModelName>) =>
+const modelOf = (ctx: Caller, { aliases }: ModelTable, wanted: Option.Option<ModelName>) =>
 	Option.match(wanted, {
 		onNone: () =>
 			Effect.fromOption(Option.fromUndefinedOr(ctx.model), () =>
@@ -92,8 +91,8 @@ const modelOf = (ctx: Caller, { aliases, fallbackProvider }: ModelTable, wanted:
 				Alias: ({ alias }) =>
 					Option.match(Rec.get(aliases, alias), {
 						onNone: () => ({ model: alias, source: "" }),
-						onSome: (id) => ({
-							model: aliasedModel(ctx, fallbackProvider, id),
+						onSome: (entry) => ({
+							model: aliasedModel(ctx, entry),
 							source: `, which the alias ${alias} names,`,
 						}),
 					}),

@@ -24,10 +24,14 @@ afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${fixtures}`.
 
 const Described = Schema.Struct({ description: Schema.String });
 
-test("the model parameter tells the caller each alias with its model, where it runs, and the panel", () =>
+test("the model parameter tells the caller each alias with its model and its use, and the panel", () =>
 	runtime.runPromise(
 		Effect.map(Schema.decodeUnknownEffect(Described)(delegate.parameters.properties.model), ({ description }) => {
-			const parts = ["`deep` (claude-opus-5-5)", "`gone` (nope)", "on anthropic otherwise", ...table.panel];
+			const parts = [
+				"`deep` (anthropic/claude-opus-5-5) for work that needs taste",
+				"`quick` (openai/gpt-6-luna) for mechanical scouting",
+				...table.panel,
+			];
 
 			expect(Arr.filter(parts, (part) => !Str.includes(part)(description))).toEqual([]);
 		}),
@@ -47,7 +51,7 @@ const briefRows = [
 		name: "a caller on a model id the registry lacks, as pi allows, starts its delegate on that model",
 		call: { name: "m", message: "m" },
 		caller: { model: unlisted },
-		expect: handed({ model: "anthropic/claude-haiku-9-9" }),
+		expect: handed({ model: "openai/gpt-9-luna" }),
 	},
 	{
 		name: "a caller on no model that names none is a tool error that says so",
@@ -62,8 +66,8 @@ const briefRows = [
 	},
 	{
 		name: "a model whose provider id holds a slash is found whole",
-		call: { name: "m", message: "m", model: "proxy/anthropic/claude-haiku-5-5" },
-		expect: handed({ model: "proxy/anthropic/claude-haiku-5-5", thinking: undefined }),
+		call: { name: "m", message: "m", model: "proxy/openai/gpt-6-luna" },
+		expect: handed({ model: "proxy/openai/gpt-6-luna", thinking: undefined }),
 	},
 	{
 		name: "an alias runs the model the table gives it",
@@ -74,10 +78,10 @@ const briefRows = [
 		name: "an alias runs on the caller's provider when that provider has the alias's model",
 		call: { name: "m", message: "m", model: "quick" },
 		caller: { model: proxied },
-		expect: handed({ model: "proxy/anthropic/claude-haiku-5-5", thinking: undefined }),
+		expect: handed({ model: "proxy/openai/gpt-6-luna", thinking: undefined }),
 	},
 	{
-		name: "an alias runs on the fallback provider when the caller's provider lacks the alias's model",
+		name: "an alias runs on its own provider when the caller's provider lacks the alias's model",
 		call: { name: "m", message: "m", model: "deep" },
 		caller: { model: proxied },
 		expect: handed({ model: "anthropic/claude-opus-5-5", thinking: undefined }),
@@ -104,9 +108,9 @@ const briefRows = [
 	},
 	{
 		name: "the call's model wins over the instructions file's, and the file's thinking level still holds",
-		call: { name: "m", message: "m", instructionsFile: "../profiled.md", model: "proxy/anthropic/claude-haiku-5-5" },
+		call: { name: "m", message: "m", instructionsFile: "../profiled.md", model: "proxy/openai/gpt-6-luna" },
 		expect: handed({
-			model: "proxy/anthropic/claude-haiku-5-5",
+			model: "proxy/openai/gpt-6-luna",
 			thinking: "low",
 			readOnly: true,
 			instructions: profiledFile,

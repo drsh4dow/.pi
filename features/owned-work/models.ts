@@ -15,26 +15,40 @@ export const ModelName = Data.taggedEnum<ModelName>();
 export const modelNameOf = (name: string): ModelName =>
 	isModelKey(name) ? ModelName.Spelled({ key: name }) : ModelName.Alias({ alias: name });
 
+/** A model and the work it is for. It runs on the caller's provider when that provider has the model id, so a delegate stays on its parent's account, and on `provider` otherwise. */
+export interface Alias {
+	readonly provider: string;
+	readonly id: string;
+	readonly use: string;
+}
+
 export interface ModelTable {
-	/** A model id for each alias. An alias runs on the caller's provider when that provider has the model, so a delegate stays on its parent's account, and on `fallbackProvider` otherwise. */
-	readonly aliases: Readonly<Record<string, string>>;
-	readonly fallbackProvider: string;
+	readonly aliases: Readonly<Record<string, Alias>>;
 	/** Model names, aliases or `provider/id`, one per provider. */
 	readonly panel: ReadonlyArray<string>;
 }
 
 /** An alias never looks like a `provider/id`, so a spelled model always means that model. */
-type Aliases = Readonly<Record<string, string> & Record<ModelKey, never>>;
+type Aliases = Readonly<Record<string, Alias> & Record<ModelKey, never>>;
 
 const aliases = {
-	worker: "claude-haiku-5-5",
-	judgment: "claude-opus-5-5",
+	judgment: {
+		provider: "ultra-a",
+		id: "claude-opus-5-5",
+		use: "implementation, design, synthesis, and anything that needs taste",
+	},
+	investigator: {
+		provider: "openai",
+		id: "gpt-6.1-sol",
+		use: "research, web search, code review, audits, investigation, and a second opinion from another model family",
+	},
+	scout: {
+		provider: "openai",
+		id: "gpt-6-luna",
+		use: "mechanical scouting and fan-out aggregation",
+	},
 } as const satisfies Aliases;
 
-const claudeJudgment: keyof typeof aliases = "judgment";
+const panel: ReadonlyArray<keyof typeof aliases> = ["judgment", "investigator"];
 
-export const modelTable: ModelTable = {
-	aliases,
-	fallbackProvider: "ultra-a",
-	panel: [claudeJudgment, "openai/gpt-6.1-sol"],
-};
+export const modelTable: ModelTable = { aliases, panel };

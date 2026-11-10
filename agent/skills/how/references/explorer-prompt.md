@@ -1,5 +1,5 @@
 ---
-model: worker
+model: scout
 readonly: true
 ---
 
