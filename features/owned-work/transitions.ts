@@ -1,5 +1,4 @@
 import * as Arr from "effect/Array";
-import type * as Duration from "effect/Duration";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 
@@ -7,6 +6,7 @@ import { TerminalEnd, type TerminalAddress, type TerminalSnapshot } from "../../
 import type { ChildReply } from "../../clients/pi-sessions/index.ts";
 import type { Role } from "./child.ts";
 import { Groups } from "./groups.ts";
+import { carried, deadlineOf, running } from "./lifetime.ts";
 import { Command, Draft, type Job, type LedgerState, type Step, type Woke, Verdict } from "./step.ts";
 import {
 	FailReason,
@@ -44,8 +44,8 @@ const startedOf = (request: StartRequest, ref: WorkRef, now: MonotonicNanos): St
 				childSessionId: childSession.id,
 			}),
 		],
-		Watch: ({ command }): Started => [
-			Work.Watch({ ...job, command }),
+		Watch: ({ command, deadline }): Started => [
+			Work.Watch({ ...job, command, deadline }),
 			WorkEntry.CommandStarted({ handle: ref, kind: "watch", command }),
 		],
 		Serve: ({ command }): Started => [
@@ -181,10 +181,12 @@ const watchEnded = (state: LedgerState, ref: WorkRef, end: TerminalEnd, tail: st
 	return settleJob(state, ref, outcome, Option.some(end));
 };
 
-const deadlinePassed = (state: LedgerState, ref: WorkRef, after: Duration.Duration): Woke => {
+const deadlinePassed = (state: LedgerState, ref: WorkRef): Woke => {
 	const draft = Draft.of(state);
 
-	Draft.halt(draft, ref, FailReason.Deadline({ after }));
+	for (const after of Option.toArray(Option.flatMap(Draft.find(draft, ref), deadlineOf))) {
+		Draft.halt(draft, ref, FailReason.Deadline({ after }));
+	}
 
 	return Draft.woke(draft);
 };
@@ -254,14 +256,9 @@ const resynced = (
 	return Draft.woke(draft);
 };
 
-/** The live work the agent holds itself: what a session switch would stop. */
-const running = (state: LedgerState): ReadonlyArray<WorkRef> =>
-	Arr.flatMap([...state.work.values()], (work) =>
-		Draft.isLive(work) && Option.isNone(work.heldBy) ? [work.ref] : [],
-	);
-
 export const Transitions = {
 	initial,
+	carried,
 	running,
 	start,
 	spawned,

@@ -6,8 +6,10 @@ import type * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import type * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
+import * as Latch from "effect/Latch";
 import * as Layer from "effect/Layer";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
@@ -17,20 +19,25 @@ import * as Scope from "effect/Scope";
 import * as Semaphore from "effect/Semaphore";
 import * as Str from "effect/String";
 
-import { type HcNotice, TerminalEnd } from "../../clients/hc/index.ts";
-import { piCliLayer } from "../../clients/pi-cli/index.ts";
+import { type Hc, type HcNotice, TerminalEnd } from "../../clients/hc/index.ts";
+import { PiCli, piCliLayer } from "../../clients/pi-cli/index.ts";
 import { piSessionsLayer } from "../../clients/pi-sessions/index.ts";
+import type { Slices } from "../../clients/systemd/index.ts";
 import { type ChildSession, type Role, Self } from "./child.ts";
 import { Host, Ledger, ledgerLayer } from "./ledger.ts";
 import { hcOf, slicesOf } from "./outside.fixture.ts";
-import type { Verdict } from "./step.ts";
+import type { LedgerState, Verdict } from "./step.ts";
 import { type FailReason, Outcome, type Settled, WorkEntry } from "./work.ts";
 
 export type HeldSpawn = "succeeds" | "fails";
 
 export interface World {
-	readonly ledger: (typeof Ledger)["Service"];
+	ledger: (typeof Ledger)["Service"];
+	/** Freezes this load's ledger and starts the next one from its state, as a pi reload does. */
+	readonly reload: Effect.Effect<void>;
 	readonly notices: Queue.Queue<HcNotice>;
+	/** Like hc's subscription, which each load opens on its first run: closed until then, so notices wait. */
+	readonly listening: Latch.Latch;
 	readonly spawns: Array<HeldSpawn>;
 	readonly gate: Semaphore.Semaphore;
 	readonly pending: Array<Fiber.Fiber<string>>;
@@ -126,7 +133,7 @@ export const writeAnswer =
 		}
 	};
 
-const hostOf = (world: Omit<World, "ledger" | "fs">) => {
+const hostOf = (world: Omit<World, "ledger" | "fs" | "reload">) => {
 	const record = (what: string, then: () => void) =>
 		Effect.sync(() => {
 			if (world.dead) {
@@ -184,46 +191,93 @@ export const steppable =
 		};
 	};
 
+type Outside = Omit<World, "ledger" | "fs" | "reload">;
+
+const blankWorld = (seed: Pick<Outside, "notices" | "listening" | "gate" | "scope" | "clock">): Outside => ({
+	...seed,
+	spawns: [],
+	pending: [],
+	sessions: new Map(),
+	delivered: [],
+	owed: [],
+	groups: new Map(),
+	terminals: new Map(),
+	wakes: [],
+	kills: [],
+	gone: new Set(),
+	slices: new Set(),
+	spawnLevels: [],
+	shown: [],
+	hostCallsAfterDeath: [],
+	settles: [],
+	settledRefs: [],
+	dead: false,
+});
+
+const selfOf = (role: Role) =>
+	role === "root" ? Self.Root({ role, level: 1 }) : Self.Delegate({ role, level: 2, slice: "pi-ow" });
+
 export const worldOf = (clock: World["clock"]) => (role: Role) =>
 	Effect.gen(function* () {
 		const notices = yield* Queue.unbounded<HcNotice>();
 		const gate = yield* Semaphore.make(0);
 		const scope = yield* Scope.make();
 
-		const world: Omit<World, "ledger" | "fs"> = {
-			notices,
-			spawns: [],
-			gate,
-			pending: [],
-			scope,
-			sessions: new Map(),
-			delivered: [],
-			owed: [],
-			groups: new Map(),
-			terminals: new Map(),
-			wakes: [],
-			kills: [],
-			gone: new Set(),
-			slices: new Set(),
-			spawnLevels: [],
-			shown: [],
-			hostCallsAfterDeath: [],
-			settles: [],
-			settledRefs: [],
-			clock,
-			dead: false,
-		};
+		const world = blankWorld({ notices, listening: yield* Latch.make(), gate, scope, clock });
 
-		const fakes = Layer.mergeAll(hcOf(world), hostOf(world), slicesOf(world), piSessionsLayer, node);
-		const self = role === "root" ? Self.Root({ role, level: 1 }) : Self.Delegate({ role, level: 2, slice: "pi-ow" });
-		const ledger = ledgerLayer({ self, cwd: sessionRoot, passEnv: {}, firstRef: 1 });
-		const context = yield* Layer.buildWithScope(Layer.provideMerge(ledger, fakes), scope);
+		const outside = Layer.mergeAll(hcOf(world), hostOf(world), slicesOf(world), NodeServices.layer);
+		const kept = yield* Layer.buildWithScope(outside, scope);
+		const load = loadOf(selfOf(role), kept, scope);
+		const loaded = { now: yield* load(Option.none()) };
 
-		return Object.assign(world, {
-			ledger: Context.get(context, Ledger),
-			fs: Context.get(context, FileSystem.FileSystem),
+		const full: World = Object.assign(world, {
+			ledger: loaded.now.ledger,
+			fs: Context.get(kept, FileSystem.FileSystem),
+			reload: Effect.suspend(() =>
+				Effect.map(reloaded(loaded.now, load, world.listening), (next) => {
+					loaded.now = next;
+					full.ledger = next.ledger;
+				}),
+			),
 		});
+
+		return full;
 	});
+
+const reloaded = (
+	current: Load,
+	load: (carried: Option.Option<LedgerState>) => Effect.Effect<Load>,
+	listening: Latch.Latch,
+) =>
+	Effect.gen(function* () {
+		const state = yield* current.ledger.freeze;
+
+		yield* current.cli.release;
+		yield* Scope.close(current.scope, Exit.void);
+		yield* listening.close;
+
+		return yield* load(Option.some(state));
+	});
+
+/** One load of the extension: what a reload rebuilds, while hc, systemd and the host outlive it. */
+interface Load {
+	readonly ledger: (typeof Ledger)["Service"];
+	readonly cli: (typeof PiCli)["Service"];
+	readonly scope: Scope.Closeable;
+}
+
+const loadOf =
+	(self: Self, kept: Context.Context<Hc | Host | Slices | NodeServices.NodeServices>, scope: Scope.Scope) =>
+	(carried: Option.Option<LedgerState>): Effect.Effect<Load> =>
+		Effect.gen(function* () {
+			const own = yield* Scope.fork(scope);
+			const clients = Layer.mergeAll(piSessionsLayer, piCliLayer(["/entrypoint.ts"]));
+			const ledger = ledgerLayer({ self, cwd: sessionRoot, passEnv: {}, firstRef: 1, carried });
+			const layer = Layer.provide(Layer.provideMerge(ledger, clients), Layer.succeedContext(kept));
+			const context = yield* Layer.buildWithScope(layer, own);
+
+			return { ledger: Context.get(context, Ledger), cli: Context.get(context, PiCli), scope: own };
+		});
 
 export const leftovers = (world: World) =>
 	Effect.gen(function* () {

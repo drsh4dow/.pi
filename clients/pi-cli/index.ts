@@ -27,6 +27,10 @@ export class PiCli extends Context.Service<
 			child: ChildPi,
 		) => Effect.Effect<readonly [string, ...Array<string>], PlatformError.PlatformError>;
 		readonly unstage: (session: SessionAddress) => Effect.Effect<void>;
+		/** Leaves every staged file on disk when this layer closes, because a running child reads its instructions each turn. */
+		readonly release: Effect.Effect<void>;
+		/** Takes over the staged files of children that a released layer started, so closing this one removes them. */
+		readonly adopt: (sessions: ReadonlyArray<SessionAddress>) => Effect.Effect<void>;
 	}
 >()("pi-harness/clients/pi-cli/PiCli") {}
 
@@ -97,6 +101,17 @@ export const piCliLayer = (childExtensions: ReadonlyArray<string>): Layer.Layer<
 					]).pipe(Effect.as(argvOf(childExtensions, child, files)));
 				},
 				unstage: (session) => remove(Rec.values(stagedFiles(session))),
+				release: Effect.sync(() => {
+					staged.clear();
+				}),
+				adopt: (sessions) =>
+					Effect.sync(() => {
+						for (const session of sessions) {
+							const files = stagedFiles(session);
+
+							staged.add(files.message).add(files.instructions);
+						}
+					}),
 			});
 		}),
 	);

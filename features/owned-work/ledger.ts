@@ -18,6 +18,7 @@ import { PiCli } from "../../clients/pi-cli/index.ts";
 import { PiSessions } from "../../clients/pi-sessions/index.ts";
 import { Slices } from "../../clients/systemd/index.ts";
 import { atLevel, launch, levels, type Self } from "./child.ts";
+import { liveDelegates } from "./lifetime.ts";
 import { Command, Draft, type LedgerError, type LedgerState, type Step, type Verdict } from "./step.ts";
 import { Transitions } from "./transitions.ts";
 import {
@@ -53,6 +54,8 @@ export class Ledger extends Context.Service<
 		readonly turnEnded: Effect.Effect<Verdict>;
 		readonly wentIdle: Effect.Effect<void>;
 		readonly running: Effect.Effect<ReadonlyArray<WorkRef>>;
+		/** The state, for the next load of this extension after a reload. The ledger makes no more changes, so nothing it does after reaches the agent twice. */
+		readonly freeze: Effect.Effect<LedgerState>;
 	}
 >()("pi-harness/features/owned-work/ledger") {}
 
@@ -62,6 +65,8 @@ export interface LedgerOptions {
 	readonly passEnv: Readonly<Record<string, string>>;
 	/** The number of the first ref, past every ref the session's transcript names already. */
 	readonly firstRef: number;
+	/** The state a reload handed over, whose work keeps running. */
+	readonly carried: Option.Option<LedgerState>;
 }
 
 interface Kit {
@@ -91,7 +96,7 @@ const labelOf = {
 } as const;
 
 export const commandSpec =
-	(options: LedgerOptions) =>
+	(options: Pick<LedgerOptions, "cwd" | "passEnv">) =>
 	(ref: WorkRef, command: string): Omit<RunSpec, "labels"> => ({
 		ref,
 		name: terminalNameOf(command),
@@ -156,7 +161,7 @@ const run = (kit: Kit, command: Command): Effect.Effect<unknown> =>
 				Effect.flatMap((tail) => apply(kit, (current) => Transitions.watchEnded(current, ref, end, tail))),
 			),
 		ArmDeadline: ({ ref, after }) => {
-			const passed = apply(kit, (current) => Transitions.deadlinePassed(current, ref, after));
+			const passed = apply(kit, (current) => Transitions.deadlinePassed(current, ref));
 
 			return FiberMap.run(kit.deadlines, ref, Effect.andThen(Effect.sleep(after), FiberSet.run(kit.fibers, passed)));
 		},
@@ -229,12 +234,17 @@ export const ledgerLayer = (
 				slices: yield* Slices,
 				sessions: yield* PiSessions,
 				cli: yield* PiCli,
-				state: yield* Ref.make(Transitions.initial(options.self.role, options.firstRef, now)),
+				state: yield* Ref.make(
+					Option.getOrElse(options.carried, () => Transitions.initial(options.self.role, options.firstRef, now)),
+				),
 				lock: yield* Semaphore.make(1),
 				fibers: yield* FiberSet.make(),
 				deadlines: yield* FiberMap.make<WorkRef>(),
 			};
 
+			yield* Effect.forEach(Option.toArray(options.carried), (state) =>
+				Effect.all([kit.hc.follow, kit.cli.adopt(liveDelegates(state)), apply(kit, Transitions.carried)]),
+			);
 			yield* Effect.forkScoped(follow(kit));
 
 			return {
@@ -245,6 +255,7 @@ export const ledgerLayer = (
 				turnEnded: apply(kit, Transitions.turnEnded),
 				wentIdle: Effect.asVoid(apply(kit, Transitions.wentIdle)),
 				running: Effect.map(Ref.get(kit.state), Transitions.running),
+				freeze: Effect.andThen(Semaphore.take(kit.lock, 1), Ref.get(kit.state)),
 			};
 		}),
 	);

@@ -1,5 +1,10 @@
 import { contentText } from "@earendil-works/pi-ai";
-import type { ExtensionContext, SessionBeforeForkEvent, SessionEntry } from "@earendil-works/pi-coding-agent";
+import type {
+	ExtensionContext,
+	SessionBeforeForkEvent,
+	SessionEntry,
+	SessionStartEvent,
+} from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
@@ -178,3 +183,20 @@ export const forkInTab = ({ event, ctx, terminal, env }: ForkRequest) =>
 
 		return true;
 	});
+
+/** A fork's pi puts back in the editor the prompt `/fork` took it from, once, when it starts. */
+export const restoreDraft = ({
+	event,
+	ctx,
+	env,
+}: {
+	readonly event: SessionStartEvent;
+	readonly ctx: ExtensionContext;
+	readonly env: Readonly<Record<string, string | undefined>>;
+}): void => {
+	const draft = Option.fromUndefinedOr(env[draftVariable]);
+
+	if (event.reason === "startup" && ctx.hasUI && Option.isSome(draft)) {
+		ctx.ui.setEditorText(draft.value);
+	}
+};

@@ -28,13 +28,13 @@ const shownAs = (what: string, labels: Readonly<Record<string, string>>) => {
 	return `${what} (${Arr.join(pairs, ", ")})`;
 };
 
-const recordSpawn = (world: Omit<World, "ledger" | "fs">, spec: RunSpec): void => {
+const recordSpawn = (world: Omit<World, "ledger" | "fs" | "reload">, spec: RunSpec): void => {
 	world.slices.add(spec.ref);
 	world.spawnLevels.push(`${spec.ref} at level ${spec.env["PI_OWNED_WORK_LEVEL"] ?? "none"}`);
 	world.shown.push(shownAs(spec.name, spec.labels));
 };
 
-export const hcOf = (world: Omit<World, "ledger" | "fs">) => {
+export const hcOf = (world: Omit<World, "ledger" | "fs" | "reload">) => {
 	const spawned = { count: 0 };
 
 	const recorded = (terminal: TerminalAddress) => () => {
@@ -47,6 +47,8 @@ export const hcOf = (world: Omit<World, "ledger" | "fs">) => {
 
 	const run = Effect.fn("run")(function* (spec: RunSpec) {
 		const held = world.spawns.shift();
+
+		yield* world.listening.open;
 
 		if (held !== undefined) {
 			yield* Semaphore.take(world.gate, 1);
@@ -65,6 +67,8 @@ export const hcOf = (world: Omit<World, "ledger" | "fs">) => {
 		return TerminalAddress(`t${String((spawned.count += 1))}`);
 	});
 
+	const queued = Stream.fromQueue(world.notices);
+
 	return Layer.succeed(Hc, {
 		run,
 		open: () => Effect.fail(failed("no window in a test")),
@@ -76,15 +80,19 @@ export const hcOf = (world: Omit<World, "ledger" | "fs">) => {
 			}),
 		waitForOutput: () => Effect.succeed(true),
 		tail: () => Effect.succeed("tail"),
-		notices: Stream.fromQueue(world.notices),
+		follow: world.listening.open,
+		notices: Stream.unwrap(Effect.as(world.listening.await, queued)),
 	});
 };
 
-export const slicesOf = (world: Omit<World, "ledger" | "fs">) =>
+export const slicesOf = (world: Omit<World, "ledger" | "fs" | "reload">) =>
 	Layer.succeed(Slices, {
 		wrap: (spec) => spec,
 		stop: (ref) =>
 			Effect.sync(() => {
 				world.slices.delete(ref);
 			}),
+		stopAll: Effect.sync(() => {
+			world.slices.clear();
+		}),
 	});

@@ -5,9 +5,15 @@ import * as Effect from "effect/Effect";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { exit, sessionRoot } from "./world.fixture.ts";
 
-const { Hook, Start, Answer, Group, Stop, Running, TurnEnds } = Act;
+const { Hook, Start, Answer, End, Group, Stop, Running, TurnEnds, Wakes, Killed, Leftovers, Pause } = Act;
 
 const runs = Hook({ event: "run starts" });
+
+const idles = Hook({ event: "goes idle" });
+
+const reloads = Hook({ event: "pi reloads" });
+
+const watch = Start({ kind: "watch" });
 
 const delegate = Start({ kind: "delegate" });
 
@@ -32,6 +38,73 @@ const rows: ReadonlyArray<Row> = [
 			}),
 			Running({ expect: [] }),
 		],
+	},
+	{
+		name: "a reload keeps the work running: a watch that ends after it wakes the agent once, and refs carry on",
+		role: "root",
+		acts: [
+			runs,
+			watch,
+			idles,
+			reloads,
+			runs,
+			watch,
+			Running({ expect: ["watch-1", "watch-2"] }),
+			idles,
+			End({ terminal: "t1", end: exit(0) }),
+			Wakes({ expect: ["watch-1 fired 0: tail"] }),
+			idles,
+			End({ terminal: "t2", end: exit(0) }),
+			Wakes({ expect: ["watch-2 fired 0: tail"] }),
+			Killed({ expect: [] }),
+		],
+	},
+	{
+		name: "after a reload a watch's deadline counts from when the watch started",
+		role: "root",
+		acts: [
+			runs,
+			Start({ kind: "watch", deadlineMs: 300 }),
+			idles,
+			Pause({ ms: 200 }),
+			reloads,
+			Pause({ ms: 150 }),
+			Wakes({ expect: ["watch-1 failed: deadline"] }),
+			Killed({ expect: ["t1"] }),
+		],
+	},
+	{
+		name: "a result a group holds survives a reload and reaches the agent with the group",
+		role: "root",
+		acts: [
+			runs,
+			delegate,
+			watch,
+			Group({ mode: "all", refs: ["delegate-1", "watch-2"], expect: "group-3" }),
+			End({ terminal: "t2", end: exit(0) }),
+			idles,
+			reloads,
+			Answer({ terminal: "t1", text: "a", end: exit(0) }),
+			Wakes({ expect: ["group-3 [delegate-1 done: a, watch-2 fired 0: tail]"] }),
+		],
+	},
+	{
+		name: "a running delegate keeps its staged files across a reload, until it settles",
+		role: "root",
+		acts: [
+			runs,
+			delegate,
+			idles,
+			reloads,
+			Leftovers({ expect: ["t1.instructions", "t1.message"] }),
+			Answer({ terminal: "t1", text: "a", end: exit(0) }),
+			Leftovers({ expect: [] }),
+		],
+	},
+	{
+		name: "a root that quits after a reload still leaves no staged files",
+		role: "root",
+		acts: [runs, delegate, idles, reloads, Hook({ event: "parent dies" }), Leftovers({ expect: [] })],
 	},
 ];
 

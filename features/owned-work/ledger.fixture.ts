@@ -45,7 +45,7 @@ import {
 } from "./world.fixture.ts";
 
 export type Act = Data.TaggedEnum<{
-	Hook: { readonly event: "run starts" | "goes idle" | "parent dies" };
+	Hook: { readonly event: "run starts" | "goes idle" | "parent dies" | "pi reloads" };
 	Start: {
 		readonly kind: "delegate" | "serve" | "watch";
 		readonly deadlineMs?: number;
@@ -223,6 +223,7 @@ const hook = (world: World, event: Data.TaggedEnum.Value<Act, "Hook">["event"]):
 	Match.value(event).pipe(
 		Match.when("run starts", () => world.ledger.runStarted),
 		Match.when("goes idle", () => world.ledger.wentIdle),
+		Match.when("pi reloads", () => world.reload),
 		Match.when("parent dies", () =>
 			Effect.andThen(
 				Scope.close(world.scope, Exit.void),

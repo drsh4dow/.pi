@@ -6,7 +6,7 @@ import * as Option from "effect/Option";
 
 import type { RunSpec } from "../../clients/hc/index.ts";
 import { PiCli } from "../../clients/pi-cli/index.ts";
-import { atLevel, childExtensions, inheritedEnv, launch, Self, selfFromEnv } from "./child.ts";
+import { atLevel, childExtensions, inheritedEnv, launch, selfFromEnv } from "./child.ts";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { commandSpec } from "./ledger.ts";
 import { WorkRef } from "./work.ts";
@@ -209,12 +209,7 @@ const launchRows = [
 	},
 	{
 		name: "a serve or watch runs at the last level, so a pi it starts has no delegate tool, and is named by its command",
-		spec: Effect.succeed(
-			commandSpec({ self: Self.Root({ role: "root", level: 1 }), cwd: "/", passEnv: parentEnv, firstRef: 1 })(
-				WorkRef("watch-1"),
-				"pi --print hi",
-			),
-		),
+		spec: Effect.succeed(commandSpec({ cwd: "/", passEnv: parentEnv })(WorkRef("watch-1"), "pi --print hi")),
 		expect: {
 			name: "pi-print-hi",
 			argv: ["choom", "-n", "1000", "--"],

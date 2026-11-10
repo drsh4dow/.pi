@@ -15,6 +15,8 @@ export class Slices extends Context.Service<
 	{
 		readonly wrap: (spec: RunSpec) => RunSpec;
 		readonly stop: (ref: string) => Effect.Effect<void>;
+		/** Stops every job the root started. A reload skips it, so the work outlives the extension and the next load takes it over. */
+		readonly stopAll: Effect.Effect<void>;
 	}
 >()("pi-harness/clients/systemd/Slices") {}
 
@@ -61,9 +63,16 @@ const systemd = (
 const stopUnit = (spawner: ChildProcessSpawner.ChildProcessSpawner["Service"], unit: string) =>
 	Effect.ignore(systemd(spawner, "systemctl", ["stop", "--no-block", unit], [0, notLoaded]), { log: "Warn" });
 
+/** Stops the root's watcher, whose ExecStopPost stops the root's slice and every job in it. */
+export const stopRoot = (slice: string) =>
+	Effect.flatMap(ChildProcessSpawner.ChildProcessSpawner, (spawner) => stopUnit(spawner, `${slice}.service`));
+
+const isActive = (spawner: ChildProcessSpawner.ChildProcessSpawner["Service"], unit: string) =>
+	Effect.isSuccess(systemd(spawner, "systemctl", ["is-active", "--quiet", unit], [0]));
+
 /**
  * The root's slice outlives a `kill -9` of the root, so a user service outside hc waits on the root's pid and stops
- * the slice once it exits.
+ * the slice once it exits. After a reload the watcher from the first load is still running, and it stays.
  */
 const watchRoot = (spawner: ChildProcessSpawner.ChildProcessSpawner["Service"], slice: string, pid: number) => {
 	const service = [
@@ -78,8 +87,10 @@ const watchRoot = (spawner: ChildProcessSpawner.ChildProcessSpawner["Service"], 
 		"/dev/null",
 	];
 
-	return Effect.acquireRelease(Effect.mapError(systemd(spawner, "systemd-run", service, [0]), noUserManager), () =>
-		stopUnit(spawner, `${slice}.service`),
+	const start = Effect.mapError(systemd(spawner, "systemd-run", service, [0]), noUserManager);
+
+	return Effect.flatMap(isActive(spawner, `${slice}.service`), (running) =>
+		running ? Effect.void : Effect.asVoid(start),
 	);
 };
 
@@ -115,6 +126,7 @@ export const slicesLayer = ({
 					};
 				},
 				stop: (ref) => stopUnit(spawner, `${unitOf(slice, ref)}.slice`),
+				stopAll: Option.isSome(rootPid) ? stopUnit(spawner, `${slice}.service`) : Effect.void,
 			});
 		}),
 	);

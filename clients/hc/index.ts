@@ -65,6 +65,8 @@ export class Hc extends Context.Service<
 		/** Starts a program in a terminal of its own, with no parent and none of the `ow.` labels that `run` adds. */
 		readonly open: (spec: Omit<RunSpec, "ref">) => Effect.Effect<TerminalAddress, HcError>;
 		readonly labelsOf: (terminal: TerminalAddress) => Effect.Effect<Readonly<Record<string, string>>, HcError>;
+		/** Subscribes now, where it would wait for the first `run`, for terminals a reload handed over. */
+		readonly follow: Effect.Effect<void>;
 		readonly kill: (terminal: TerminalAddress) => Effect.Effect<void>;
 		readonly label: (terminal: TerminalAddress, labels: Readonly<Record<string, string>>) => Effect.Effect<void>;
 		readonly waitForOutput: (
@@ -245,6 +247,7 @@ export const hcLayer = (options: HcOptions): Layer.Layer<Hc> =>
 				open: (spec) => Effect.map(runNamed(socket, { ...spec, no_parent: true }, 1), addressOf),
 				labelsOf: (terminal) =>
 					Effect.map(Effect.retry(call(socket)("terminal.get", { terminal }, Labelled), safely), labelsIn),
+				follow: Effect.asVoid(subscription),
 				kill: (terminal) => change(socket, "terminal.kill", { terminal }),
 				label: (terminal, labels) => change(socket, "terminal.label", { terminal, labels }),
 				waitForOutput: (terminal, pattern, timeout) => waitForOutput(socket, terminal, pattern, timeout),
