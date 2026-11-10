@@ -1,6 +1,7 @@
 ---
 name: context-engineering
 description: Optimizes agent context setup. Use when starting a new session, when agent output quality degrades, when switching between tasks, or when you need to configure rules files and context for a project.
+user-invocable: false
 ---
 
 # Context Engineering
@@ -39,7 +40,7 @@ Structure context from most persistent to most transient:
 
 Create a rules file that persists across sessions. This is the highest-leverage context you can provide.
 
-**CLAUDE.md** (for Claude Code):
+**AGENTS.md** or **CLAUDE.md** (for pi):
 
 ```markdown
 # Project: [Name]
@@ -77,11 +78,10 @@ Create a rules file that persists across sessions. This is the highest-leverage 
 [One short example of a well-written component in your style]
 ```
 
-**Equivalent files for other tools:**
+**Where pi loads them from:**
 
-- `.windsurfrules` (Windsurf)
-- `.github/copilot-instructions.md` (GitHub Copilot)
-- `AGENTS.md` (OpenAI Codex)
+- `~/.pi/agent/AGENTS.md` or `~/.pi/agent/CLAUDE.md` (every project)
+- `AGENTS.md` or `CLAUDE.md` in the working directory and each parent directory up to the filesystem root
 
 ### Level 2: Specs and Architecture
 
@@ -251,15 +251,15 @@ Put the most task-critical content **last** in context. Models recall content at
 
 ## MCP Integrations
 
-For richer context, use Model Context Protocol servers:
+For richer context, use Model Context Protocol servers, or the pi skill that does the same job:
 
-| MCP Server          | What It Provides                                  |
-| ------------------- | ------------------------------------------------- |
-| **Context7**        | Auto-fetches relevant documentation for libraries |
-| **Chrome DevTools** | Live browser state, DOM, console, network         |
-| **PostgreSQL**      | Direct database schema and query results          |
-| **Filesystem**      | Project file access and search                    |
-| **GitHub**          | Issue, PR, and repository context                 |
+| MCP Server or skill       | What It Provides                             |
+| ------------------------- | -------------------------------------------- |
+| **`web-docs` skill**      | Fetches relevant documentation for libraries |
+| **`agent-browser` skill** | Live browser state, DOM, console, network    |
+| **PostgreSQL**            | Direct database schema and query results     |
+| **Filesystem**            | Project file access and search               |
+| **GitHub**                | Issue, PR, and repository context            |
 
 ## Confusion Management
 

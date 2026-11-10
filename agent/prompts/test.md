@@ -1,9 +1,8 @@
 ---
 description: Run TDD workflow — write failing tests, implement, verify. For bugs, use the Prove-It pattern.
-disable-model-invocation: true
 ---
 
-Invoke the agent-skills:test-driven-development skill.
+Load the `test-driven-development` skill.
 
 For new features:
 
@@ -19,4 +18,4 @@ For bug fixes (Prove-It pattern):
 4. Confirm the test passes
 5. Run the full test suite for regressions
 
-For browser-related issues, also invoke agent-skills:browser-testing-with-devtools to verify with Chrome DevTools MCP.
+For browser-related issues, also load the `browser-testing-with-devtools` skill to verify with the `agent-browser` skill.

@@ -1,9 +1,8 @@
 ---
 description: Define and enforce this project's quality bar — interview, sane defaults, CONSTRAINTS.md
-disable-model-invocation: true
 ---
 
-Invoke the agent-skills:constraint-driven-development skill.
+Load the `constraint-driven-development` skill.
 
 $ARGUMENTS
 

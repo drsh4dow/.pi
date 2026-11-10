@@ -1,6 +1,7 @@
 ---
 name: observability-and-instrumentation
 description: Instruments code so production behavior is visible and diagnosable. Use when adding logging, metrics, tracing, or alerting. Use when shipping any feature that runs in production and you need evidence it works. Use when production issues are reported but you can't tell what happened from the available data.
+user-invocable: false
 ---
 
 # Observability and Instrumentation
@@ -240,4 +241,4 @@ After instrumenting a feature, confirm:
 - [ ] Every new alert is symptom-based, has a runbook link, and was test-fired once
 - [ ] An induced failure in staging was located via telemetry alone, without reading the source
 
-For the at-a-glance version of this list, including the pre-launch instrumentation gate, see `../../references/observability-checklist.md`.
+For the at-a-glance version of this list, including the pre-launch instrumentation gate, see `~/.pi/agent/references/observability-checklist.md`.

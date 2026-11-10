@@ -1,9 +1,8 @@
 ---
 description: Conduct a five-axis code review — correctness, readability, architecture, security, performance
-disable-model-invocation: true
 ---
 
-Invoke the agent-skills:code-review-and-quality skill.
+Load the `code-review-and-quality` skill.
 
 Review the current changes (staged or recent commits) across all five axes:
 

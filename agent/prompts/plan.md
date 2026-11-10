@@ -1,9 +1,8 @@
 ---
 description: Break work into small verifiable tasks with acceptance criteria and dependency ordering
-disable-model-invocation: true
 ---
 
-Invoke the agent-skills:planning-and-task-breakdown skill.
+Load the `planning-and-task-breakdown` skill.
 
 Read the existing spec (SPEC.md or equivalent) and the relevant codebase sections. Then:
 

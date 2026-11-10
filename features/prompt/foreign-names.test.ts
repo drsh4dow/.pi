@@ -33,11 +33,18 @@ test("a line that names Cursor's Task tool, a pstack skill or a .cursor path is 
 	expect(Arr.map(hitsIn("f.md", text), Str.slice(0, 7))).toEqual(["f.md:1:", "f.md:3:", "f.md:4:"]);
 });
 
-const promptFolders = ["agent/skills", "agent/instructions", "agent/roles", "features"];
+const promptFolders = [
+	"agent/skills",
+	"agent/instructions",
+	"agent/roles",
+	"agent/prompts",
+	"agent/references",
+	"features",
+];
 
 const isPromptFile = (file: string) => Str.endsWith(".md")(file) && !Str.includes("node_modules")(file);
 
-test("no skill, instructions file or role file names a tool, path or skill of another harness", () =>
+test("no skill, instructions file, role file, prompt template or reference names a tool, path or skill of another harness", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
 			const fs = yield* FileSystem.FileSystem;

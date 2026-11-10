@@ -1,6 +1,7 @@
 ---
 name: shipping-and-launch
 description: Prepares production launches. Use when preparing to deploy to production, or when asking what needs to be in place before shipping. Use when you need a pre-launch checklist, when setting up monitoring, when planning a staged rollout, or when you need a rollback strategy.
+user-invocable: false
 ---
 
 # Shipping and Launch
@@ -291,10 +292,10 @@ Every deployment needs a rollback plan before it happens:
 
 ## See Also
 
-- For the project-wide Definition of Done that every change must clear before this checklist, see `../../references/definition-of-done.md`
-- For security pre-launch checks, see `../../references/security-checklist.md`
-- For performance pre-launch checklist, see `../../references/performance-checklist.md`
-- For accessibility verification before launch, see `../../references/accessibility-checklist.md`
+- For the project-wide Definition of Done that every change must clear before this checklist, see `~/.pi/agent/references/definition-of-done.md`
+- For security pre-launch checks, see `~/.pi/agent/references/security-checklist.md`
+- For performance pre-launch checklist, see `~/.pi/agent/references/performance-checklist.md`
+- For accessibility verification before launch, see `~/.pi/agent/references/accessibility-checklist.md`
 - For the alerting rules and SLO-tied thresholds, see `observability-and-instrumentation`
 
 ## Common Rationalizations

@@ -1,6 +1,7 @@
 ---
 name: constraint-driven-development
 description: Establishes a project's quality bar as a written contract and stops agents quietly lowering it. Interviews the user on which dimensions matter, supplies sane default thresholds when they have no number in mind, records everything in CONSTRAINTS.md, and watches the diff for a weakened bar — new @ts-ignore or eslint-disable suppressions, skipped or deleted tests, assertions stripped out, unimplemented stubs, thresholds edited down. Use when no quality bar is written down, when the user says "set up constraints" or "define our standards", when the user wants dimensions they care about — accessibility, web performance, coverage — set up as enforced constraints, when an agent keeps silencing checks or skipping tests to get to green, when you need a coverage or performance threshold and don't know what number to pick, or when an agent writes more code than anyone will read.
+user-invocable: false
 ---
 
 # Constraint-Driven Development
@@ -35,7 +36,7 @@ Apply this skill when:
 
 ## Loading Constraints
 
-The interview needs a live user. **Don't run it in non-interactive contexts** (CI, `/loop`, autonomous runs). If constraints are missing and you're in one of those, apply the Floor below, note that you did, and flag the rest for a human.
+The interview needs a live user. **Don't run it in non-interactive contexts** (CI, a delegate, autonomous runs). If constraints are missing and you're in one of those, apply the Floor below, note that you did, and flag the rest for a human.
 
 ## The Process
 
@@ -50,7 +51,7 @@ Never ask what you can read. Before the first question, gather:
 | Existing linters   | `eslint.config.*`, `biome.json`, `.ruff.toml`            |
 | Coverage today     | `coverage/` output, or run the suite once                |
 | CI                 | `.github/workflows/`, `.gitlab-ci.yml`                   |
-| Agent harness      | `.claude/`, `.codex/`, `AGENTS.md`                       |
+| Agent harness      | `.pi/`, `AGENTS.md`, `CLAUDE.md`                         |
 
 Report what you found in two lines, then ask only what's left.
 

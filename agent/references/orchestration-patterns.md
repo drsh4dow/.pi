@@ -114,70 +114,57 @@ main agent → research sub-agent (reads 50 files) → digest → main agent con
 
 **Cost:** one isolated sub-agent context. Worth it any time the alternative is loading hundreds of files into the main context.
 
-**On Claude Code, use the built-in `Explore` subagent** rather than defining a custom research persona. `Explore` runs on Haiku, is denied write/edit tools, and is purpose-built for this pattern. Define a custom research subagent only when `Explore` doesn't fit (e.g. you need a domain-specific system prompt the model wouldn't infer).
+**In pi, start a plain `delegate` on the `worker` model** rather than defining a custom research persona. `worker` is a small, cheap model, and the delegate returns only its last message, which fits this pattern. Define a custom research instructions file only when a plain delegate doesn't fit (e.g. you need a domain-specific system prompt the model wouldn't infer).
 
 ---
 
-## Claude Code compatibility
+## Pi compatibility
 
-This catalog is harness-agnostic, but most readers will run it on Claude Code. Here's how each pattern maps onto Claude Code's primitives — and where the platform enforces our rules for us.
+This catalog is harness-agnostic, but this harness runs it on pi. Here's how each pattern maps onto pi's primitives — and where the platform enforces our rules for us.
 
 ### Where personas live
 
-Plugin subagents go in `agents/` at the plugin root. This repo is a plugin (`.claude-plugin/plugin.json`), so `agents/code-reviewer.md`, `agents/security-auditor.md`, and `agents/test-engineer.md` are auto-discovered when the plugin is enabled. No path configuration needed.
+Personas are instructions files in `~/.pi/agent/instructions/`: `code-reviewer.md`, `security-auditor.md`, `test-engineer.md`, and `web-performance-auditor.md`. Start one as a delegate with `instructionsFile: "~/.pi/agent/instructions/<persona>.md"`. No path configuration needed.
 
-### Subagents vs. Agent Teams
+### Delegates, not teams
 
-Claude Code has two parallelism primitives. Pattern 3 (parallel fan-out with merge) maps to **subagents**. If you need teammates that talk to each other, use **Agent Teams** instead.
+Pattern 3 (parallel fan-out with merge) maps to **delegates**. A delegate starts in a fresh context, gets exactly one message, cannot ask questions, and returns its last message as its report. Pi has no primitive for teammates that message each other or share a task list.
 
-|              | Subagents                                        | Agent Teams                                                      |
-| ------------ | ------------------------------------------------ | ---------------------------------------------------------------- |
-| Coordination | Main agent fans out, sub-agents only report back | Teammates message each other, share a task list                  |
-| Context      | Own context window per subagent                  | Own context window per teammate                                  |
-| When to use  | Independent tasks producing reports              | Collaborative work needing discussion                            |
-| Status       | Stable                                           | Experimental — requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` |
-| Cost         | Lower                                            | Higher — each teammate is a separate Claude instance             |
-
-**The personas in this repo work in both modes.** When spawned as subagents (e.g. by `/ship`), they report findings to the main session. When spawned as teammates (`Spawn a teammate using the security-auditor agent type…`), they can challenge each other's findings directly. The persona definition is the same; only the spawning context changes.
-
-One subtlety: the `skills` and `mcpServers` frontmatter fields in a persona are honored when it runs as a subagent but **ignored when it runs as a teammate** — teammates load skills and MCP servers from your project and user settings, the same as a regular session. If a persona depends on a specific skill or MCP server being loaded, configure it at the session level so it's available in both modes.
+A persona's instructions file carries no skill list. A delegate sees the same skill list as a regular session, so if a persona depends on a specific skill, name it in the persona's body and the delegate loads it by reading its `SKILL.md`.
 
 ### Platform-enforced rules
 
-Two rules in this catalog aren't just convention — Claude Code enforces them:
+One rule in this catalog is partly enforced by pi:
 
-- **"Subagents cannot spawn other subagents"** (verbatim from the docs). Anti-pattern B (persona-calls-persona) and Anti-pattern D (deep persona trees) cannot exist on Claude Code by construction.
-- **"No nested teams"** — teammates cannot spawn their own teams. Same anti-patterns blocked at the team level.
+- **Delegate depth is capped.** An agent at the last level has no `delegate` tool, so a chain of delegates cannot grow without bound. A persona started from the main session still has a `delegate` tool, so Anti-pattern B (persona-calls-persona) and Anti-pattern D (deep persona trees) are blocked by convention here, not by construction.
 
-This means you can adopt the patterns in this catalog without worrying about contributors accidentally building the anti-patterns. They'll just fail to load.
+This means contributors can still build the anti-patterns by accident. The "Do not invoke from another persona" rule in each persona's Composition section is what stops them.
 
-### Built-in subagents to know about
+### Delegate setups to know about
 
-Before defining a custom subagent, check whether one of these covers the role:
+Before defining a custom persona, check whether one of these covers the role:
 
-| Built-in          | Purpose                                                                              |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| `Explore`         | Read-only codebase search and analysis. Use this for Pattern 5 (research isolation). |
-| `Plan`            | Read-only research during plan mode.                                                 |
-| `general-purpose` | Multi-step tasks needing both exploration and modification.                          |
+| Setup                                                                        | Purpose                                                                          |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `delegate` with `model: "worker"`                                            | Cheap codebase search and analysis. Use this for Pattern 5 (research isolation). |
+| `delegate` with `instructionsFile: "~/.pi/agent/instructions/researcher.md"` | Read-only web research on one sub-question.                                      |
+| plain `delegate`                                                             | Multi-step tasks needing both exploration and modification.                      |
 
 Don't redefine these. Layer your specialist personas (code-reviewer, security-auditor, test-engineer) on top of them.
 
-### Frontmatter restrictions for plugin agents
+### Frontmatter restrictions for persona files
 
-Plugin subagents do **not** support the `hooks`, `mcpServers`, or `permissionMode` frontmatter fields — these are silently ignored. If a future persona needs any of those, the user must copy the file into `.claude/agents/` or `~/.claude/agents/` instead.
+An instructions file's frontmatter is a strict profile: only `model`, `thinking` (off|minimal|low|medium|high|xhigh|max), and `readonly` (boolean) are allowed, and any other key is an error. `readonly: true` removes the edit and write tools. Use `model` per-persona if you want to optimize cost (e.g. `worker` for `test-engineer` coverage scans, `judgment` for `security-auditor`).
 
-The fields that DO work in plugin agents are: `name`, `description`, `tools`, `disallowedTools`, `model`, `maxTurns`, `skills`, `memory`, `background`, `effort`, `isolation`, `color`, `initialPrompt`. Use `model` per-persona if you want to optimize cost (e.g. Haiku for `test-engineer` coverage scans, Sonnet for `code-reviewer`, Opus for `security-auditor`).
+### Spawning multiple delegates in parallel
 
-### Spawning multiple subagents in parallel
-
-In Claude Code, parallel fan-out (Pattern 3) requires issuing **multiple Agent tool calls in a single assistant turn**. Sequential turns serialize execution. `/ship` calls this out explicitly. Any new orchestrator command should do the same.
+In pi, parallel fan-out (Pattern 3) requires starting **every `delegate` before waiting on any**, then gathering them with the `group` tool (`mode: "all"` for one wake with every result). Waiting on each delegate before starting the next serializes execution. `/ship` calls this out explicitly. Any new orchestrator command should do the same.
 
 ---
 
-## Worked example: Agent Teams for competing-hypothesis debugging
+## Worked example: competing-hypothesis debugging
 
-This example shows when to reach for **Agent Teams** instead of `/ship`'s subagent fan-out. The two patterns look similar from a distance — both spawn the same three personas — but the value comes from a different place.
+Some harnesses offer teams whose members message each other to disprove each other's theories. Pi has no such primitive: delegates only report back. This example shows the case and what to do instead.
 
 ### The scenario
 
@@ -190,96 +177,13 @@ Plausible root causes (mutually exclusive, all fit the symptoms):
 3. A missing index on a query that scales with cart size
 4. A flaky third-party API where the SDK retries silently before timing out
 
-A single agent will pick the first plausible theory and stop investigating. A `/ship`-style subagent fan-out would have each persona report independently — but their reports never meet, so nothing rules out the wrong theories.
+A single agent will pick the first plausible theory and stop investigating. A `/ship`-style delegate fan-out would have each persona report independently — but their reports never meet, so nothing rules out the wrong theories.
 
-This is exactly the case the Agent Teams docs describe: _"With multiple independent investigators actively trying to disprove each other, the theory that survives is much more likely to be the actual root cause."_
-
-### Why this is _not_ a `/ship` job
-
-|                | `/ship` (subagents)                    | Agent Teams                                      |
-| -------------- | -------------------------------------- | ------------------------------------------------ |
-| Sub-agents see | The same diff, different lenses        | A shared task list, each other's messages        |
-| Output         | Three independent reports → one merge  | Adversarial debate → consensus root cause        |
-| Right when     | You want a verdict on a known artifact | You want to _find_ the artifact among hypotheses |
-
-`/ship` is a verdict; Agent Teams is an investigation.
-
-### Setup (one-time, per-environment)
-
-Agent Teams is experimental. In `~/.claude/settings.json`:
-
-```json
-{
-	"env": {
-		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-	}
-}
-```
-
-Requires Claude Code v2.1.32 or later. The personas in this repo are picked up automatically — no team-config files to author by hand.
-
-### The trigger prompt
-
-Type into the lead session, in natural language:
-
-```
-Users report checkout hangs for ~30 seconds intermittently after last
-week's release. No errors in logs.
-
-Create an agent team to debug this with competing hypotheses. Spawn
-three teammates using the existing agent types:
-
-  - code-reviewer  — investigate race conditions and blocking calls
-                     in the checkout code path
-  - security-auditor — investigate auth checks, session handling,
-                       and any synchronous network calls added recently
-  - test-engineer  — propose tests that would distinguish between the
-                     hypotheses and check coverage gaps in checkout
-
-Have them message each other directly to challenge each other's
-theories. Update findings as consensus emerges. Only converge when
-two teammates agree they can disprove the others'.
-```
-
-The lead spawns three teammates referencing the existing persona names. The persona body is **appended** to each teammate's system prompt as additional instructions (on top of the team-coordination instructions the lead installs); the trigger prompt above becomes their task.
-
-### What happens
-
-1. Each teammate runs in its own context window, exploring the codebase from its own lens.
-2. Teammates use `message` to send findings to each other directly. The lead doesn't have to relay.
-3. The shared task list shows who's investigating what — visible at any time with `Ctrl+T` (in-process mode) or in a tmux pane (split mode).
-4. When `code-reviewer` finds a `Promise.all` that should be sequential, it messages `security-auditor` to confirm the auth call isn't part of the race. `security-auditor` checks and replies — either confirming the race is the real issue or producing counter-evidence.
-5. `test-engineer` proposes a focused integration test for whichever theory is winning, which the team uses to verify before declaring consensus.
-6. The lead synthesizes the converged finding and presents it to you.
-
-You can interrupt at any teammate by cycling with `Shift+Down` and typing — useful for redirecting an investigator who's gone down a wrong path.
-
-### When to clean up
-
-When the investigation lands on a root cause, tell the lead:
-
-```
-Clean up the team
-```
-
-Always cleanup through the lead, not a teammate (per the docs: teammates lack full team context for cleanup).
-
-### Cost expectation
-
-Three Sonnet teammates running for ~10–15 minutes of investigation costs noticeably more than the same three personas spawned as subagents by `/ship`. The justification is _quality of conclusion_ — for production debugging where the wrong fix is expensive, the extra tokens are a bargain. For a routine PR review, stick with `/ship`.
+`/ship` is a verdict, not an investigation.
 
 ### Anti-pattern in this scenario
 
-Do **not** rebuild this as a `/debug` slash command that fans out subagents. Subagents can't message each other — you'd lose the adversarial debate that makes the pattern work. If a workflow keeps coming up, document the trigger prompt above as a snippet rather than wrapping it in a slash command that misuses subagents.
-
-### When _not_ to use Agent Teams
-
-- Production-bound verdict on a known diff → use `/ship` (subagents).
-- One specialist perspective on one artifact → direct persona invocation.
-- Sequential lifecycle (spec → plan → build) → user-driven slash commands (Pattern 4).
-- Read-heavy research with a small digest → built-in `Explore` subagent.
-
-Reach for Agent Teams only when teammates **need** to challenge each other to produce the right answer.
+Do **not** rebuild this as a `/debug` slash command that fans out delegates. Delegates can't message each other — you'd lose the adversarial debate that makes the pattern work. Keep the investigation in the main session with the `debugging-and-error-recovery` skill.
 
 ---
 

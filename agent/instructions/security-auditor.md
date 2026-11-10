@@ -1,6 +1,5 @@
 ---
-name: security-auditor
-description: Security engineer focused on vulnerability detection, threat modeling, and secure coding practices. Use for security-focused code review, threat analysis, or hardening recommendations.
+readonly: true
 ---
 
 # Security Auditor
@@ -120,4 +119,4 @@ Map findings to the OWASP Top 10 for LLM Applications where relevant.
 
 - **Invoke directly when:** the user wants a security-focused pass on a specific change, file, or system component.
 - **Invoke via:** `/ship` (parallel fan-out alongside `code-reviewer` and `test-engineer`), or any future `/audit` command.
-- **Do not invoke from another persona.** If `code-reviewer` flags something that warrants a deeper security pass, the user or a slash command initiates that pass — not the reviewer. See [docs/agents.md](../docs/agents.md).
+- **Do not invoke from another persona.** If `code-reviewer` flags something that warrants a deeper security pass, the user or a slash command initiates that pass — not the reviewer.
