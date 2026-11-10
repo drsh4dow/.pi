@@ -161,7 +161,7 @@ afterEach(() => {
 	globalThis.fetch = realFetch;
 });
 
-/** The requests a call on the provider's Haiku sends, answered with an error so nothing leaves the machine. */
+/** The requests a call on the provider's Opus sends, answered with an error so nothing leaves the machine. */
 const sentRequests = Effect.fn("sentRequests")(function* (
 	credentials: Readonly<Record<string, Credential>>,
 	provider: string,
@@ -178,10 +178,10 @@ const sentRequests = Effect.fn("sentRequests")(function* (
 	);
 
 	const models = modelsWith(credentials);
-	const model = models.getModel(provider, "claude-haiku-5-5");
+	const model = models.getModel(provider, "claude-opus-5-5");
 
 	if (model === undefined) {
-		return yield* Effect.die(`${provider} has no claude-haiku-5-5`);
+		return yield* Effect.die(`${provider} has no claude-opus-5-5`);
 	}
 
 	const context = { messages: [{ role: "user" as const, content: "hi", timestamp: 0 }] };

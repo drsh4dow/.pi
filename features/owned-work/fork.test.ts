@@ -10,7 +10,7 @@ const zero = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 const conversation = () => {
 	const session = SessionManager.inMemory("/p");
 
-	session.appendModelChange("anthropic", "claude-haiku-4-5");
+	session.appendModelChange("anthropic", "claude-opus-5-5");
 
 	const first = session.appendMessage({ role: "user", content: "Find the bug.", timestamp: 0 });
 
@@ -19,7 +19,7 @@ const conversation = () => {
 		content: [{ type: "text", text: "It is in the parser." }],
 		api: "anthropic-messages",
 		provider: "anthropic",
-		model: "claude-haiku-4-5",
+		model: "claude-opus-5-5",
 		usage: { ...zero, totalTokens: 0, cost: { ...zero, total: 0 } },
 		stopReason: "stop",
 		timestamp: 0,

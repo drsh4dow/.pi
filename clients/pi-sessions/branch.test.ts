@@ -32,7 +32,7 @@ const saved = () => {
 		content: [{ type: "text", text: "It is in the parser." }],
 		api: "anthropic-messages",
 		provider: "anthropic",
-		model: "claude-haiku-4-5",
+		model: "claude-opus-5-5",
 		usage: { ...zero, totalTokens: 0, cost: { ...zero, total: 0 } },
 		stopReason: "stop",
 		timestamp: 0,

@@ -124,7 +124,7 @@ export const writeAnswer =
 				content: [{ type: "text", text }],
 				api: "anthropic-messages",
 				provider: "anthropic",
-				model: "claude-haiku-4-5",
+				model: "claude-opus-5-5",
 				usage: { ...zero, totalTokens: 0, cost: { ...zero, total: 0 } },
 				stopReason: index === texts.length - 1 ? lastStopReason : "stop",
 				errorMessage: "429 rate limit",

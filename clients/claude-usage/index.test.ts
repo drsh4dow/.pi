@@ -153,7 +153,7 @@ test("a probe the weekly limit rejects still reads the limit from the headers, a
 	Effect.runPromise(
 		Effect.gen(function* () {
 			const claude = yield* ClaudeUsage;
-			const got = yield* claude.probe({ token, model: "claude-haiku-5-5" });
+			const got = yield* claude.probe({ token, model: "claude-opus-5-5" });
 
 			expect(got).toEqual([
 				{ name: "weekly", percent: 100, resetsAt: Option.some(DateTime.makeUnsafe(1_794_438_000_000)) },
@@ -163,7 +163,7 @@ test("a probe the weekly limit rejects still reads the limit from the headers, a
 
 			const body = yield* decodeSent(limited.sent[0]?.body ?? "");
 
-			expect(body).toEqual({ model: "claude-haiku-5-5", max_tokens: 1 });
+			expect(body).toEqual({ model: "claude-opus-5-5", max_tokens: 1 });
 		}).pipe(Effect.provide(limited.layer)),
 	));
 
@@ -171,7 +171,7 @@ test("a probe reply with no rate-limit headers fails with the status and reason"
 	Effect.runPromise(
 		Effect.gen(function* () {
 			const claude = yield* ClaudeUsage;
-			const got = yield* Effect.flip(claude.probe({ token, model: "claude-haiku-5-5" }));
+			const got = yield* Effect.flip(claude.probe({ token, model: "claude-opus-5-5" }));
 
 			expect(got.message).toBe("Claude probe answered HTTP 401: invalid x-api-key");
 		}).pipe(Effect.provide(rejected)),
