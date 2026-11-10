@@ -19,7 +19,7 @@ Use these terms exactly: don't substitute "component," "service," "API," or "bou
 
 **Depth**: leverage at the interface. The amount of behaviour a caller (or test) can exercise per unit of interface they have to learn. A module is **deep** when a large amount of behaviour sits behind a small interface, **shallow** when the interface is nearly as complex as the implementation.
 
-**Seam** _(Michael Feathers)_: a place where you can alter behaviour without editing in that place; the _location_ at which a module's interface lives. Where to put the seam is its own design decision, distinct from what goes behind it. _Avoid_: boundary (overloaded with DDD's bounded context).
+**Seam**: a place where you can alter behaviour without editing in that place; the _location_ at which a module's interface lives. Where to put the seam is its own design decision, distinct from what goes behind it. _Avoid_: boundary (overloaded with DDD's bounded context).
 
 **Adapter**: a concrete thing that satisfies an interface at a seam. Describes _role_ (what slot it fills), not substance (what's inside).
 
@@ -29,27 +29,9 @@ Use these terms exactly: don't substitute "component," "service," "API," or "bou
 
 ## Deep vs shallow
 
-**Deep module** = small interface + lots of implementation:
+**Deep module** = small interface + lots of implementation.
 
-```
-┌─────────────────────┐
-│   Small Interface   │  ← Few methods, simple params
-├─────────────────────┤
-│                     │
-│  Deep Implementation│  ← Complex logic hidden
-│                     │
-└─────────────────────┘
-```
-
-**Shallow module** = large interface + little implementation (avoid):
-
-```
-┌─────────────────────────────────┐
-│       Large Interface           │  ← Many methods, complex params
-├─────────────────────────────────┤
-│  Thin Implementation            │  ← Just passes through
-└─────────────────────────────────┘
-```
+**Shallow module** = large interface + little implementation (avoid).
 
 When designing an interface, ask:
 
@@ -104,11 +86,11 @@ Good interfaces make testing natural:
 
 ## Rejected framings
 
-- **Depth as ratio of implementation-lines to interface-lines** (Ousterhout): rewards padding the implementation. We use depth-as-leverage instead.
+- **Depth as ratio of implementation-lines to interface-lines**: rewards padding the implementation. We use depth-as-leverage instead.
 - **"Interface" as the TypeScript `interface` keyword or a class's public methods**: too narrow: interface here includes every fact a caller must know.
 - **"Boundary"**: overloaded with DDD's bounded context. Say **seam** or **interface**.
 
 ## Going deeper
 
 - **Deepening a cluster given its dependencies**, see [DEEPENING.md](DEEPENING.md): dependency categories, seam discipline, and replace-don't-layer testing.
-- **Exploring alternative interfaces**, see [DESIGN-IT-TWICE.md](DESIGN-IT-TWICE.md): spin up parallel sub-agents to design the interface several radically different ways, then compare on depth, locality, and seam placement.
+- **Exploring alternative interfaces**, see [DESIGN-IT-TWICE.md](DESIGN-IT-TWICE.md): start parallel delegates to design the interface several radically different ways, then compare on depth, locality, and seam placement.

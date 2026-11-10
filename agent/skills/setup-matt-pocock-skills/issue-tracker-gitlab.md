@@ -16,7 +16,7 @@ Infer the repo from `git remote -v`; `glab` does this automatically when run ins
 
 ## Merge requests as a triage surface
 
-**MRs as a request surface: no.** _(Set to `yes` if this repo treats external merge requests as feature requests; `/triage` reads this flag.)_
+**MRs as a request surface: no.** _(Set to `yes` if this repo treats external merge requests as feature requests; `/skill:triage` reads this flag.)_
 
 When set to `yes`, MRs run through the same labels and states as issues, using the `glab mr` equivalents:
 
@@ -36,7 +36,7 @@ Run `glab issue view <number> --comments`.
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
+Used by `/skill:wayfinder`. The **map** is a single issue with **child** issues as tickets.
 
 - **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `glab issue create --label wayfinder:map`. (On GitLab tiers with native epics, an epic may hold the map instead; a labelled issue works everywhere.)
 - **Child ticket**: an issue carrying `Part of #<map>` at the top of its description, linked to the map (`glab issue create --linked-issues <map> --link-type relates_to`), and labels `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
