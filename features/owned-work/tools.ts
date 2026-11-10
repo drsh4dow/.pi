@@ -30,7 +30,7 @@ const RefsParams = Type.Object({ of: Refs });
 
 const DelegateParams = Type.Object({
 	message: Type.String({
-		minLength: 1,
+		pattern: String.raw`\S`,
 		description: "Everything the delegate needs. You cannot send it anything later, and it cannot ask you.",
 	}),
 	instructionsFile: Type.Optional(

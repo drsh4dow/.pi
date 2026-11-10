@@ -4,6 +4,7 @@ import {
 	type AssistantMessageEventStream,
 	createAssistantMessageEventStream,
 	fauxAssistantMessage,
+	validateToolArguments,
 } from "@earendil-works/pi-ai";
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
@@ -256,4 +257,30 @@ for (const row of briefRows) {
 			}),
 		),
 	);
+}
+
+const messageRows = [
+	{ name: "refuses a message of only spaces, tabs and newlines", message: " \n\t ", valid: false },
+	{ name: "passes a message with a word in it", message: "\n Review it. ", valid: true },
+];
+
+for (const row of messageRows) {
+	test(`pi ${row.name}`, () => {
+		const call = { type: "toolCall" as const, id: "c", name: "delegate", arguments: { message: row.message } };
+
+		const validate = Effect.try({
+			try: () => {
+				validateToolArguments(delegate, call);
+			},
+			catch: String,
+		});
+
+		return Effect.runPromise(
+			Effect.gen(function* () {
+				const valid = yield* Effect.isSuccess(validate);
+
+				expect(valid).toBe(row.valid);
+			}),
+		);
+	});
 }
