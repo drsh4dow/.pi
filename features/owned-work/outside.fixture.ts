@@ -67,6 +67,8 @@ export const hcOf = (world: Omit<World, "ledger" | "fs">) => {
 
 	return Layer.succeed(Hc, {
 		run,
+		open: () => Effect.fail(failed("no window in a test")),
+		labelsOf: () => Effect.succeed({}),
 		kill,
 		label: (terminal, labels) =>
 			Effect.sync(() => {

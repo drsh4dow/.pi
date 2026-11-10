@@ -6,7 +6,6 @@ import type {
 	InputEvent,
 	SessionBeforeForkEvent,
 	SessionBeforeSwitchEvent,
-	SessionEntry,
 	SessionStartEvent,
 } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -19,20 +18,24 @@ import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
-import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { hcLayer, TerminalAddress } from "../../clients/hc/index.ts";
+import { type Hc, hcLayer, TerminalAddress } from "../../clients/hc/index.ts";
+import { type HerdrApp, herdrAppLayer } from "../../clients/herdr-app/index.ts";
 import { piCliLayer, unwrapMessage } from "../../clients/pi-cli/index.ts";
-import { piSessionsLayer } from "../../clients/pi-sessions/index.ts";
+import { type PiSessions, piSessionsLayer } from "../../clients/pi-sessions/index.ts";
 import { slicesLayer } from "../../clients/systemd/index.ts";
 import { inheritedEnv, Self, selfFromEnv } from "./child.ts";
+import { draftVariable, forkInTab } from "./fork.ts";
 import { Host, Ledger, ledgerLayer } from "./ledger.ts";
 import { Out } from "./out.ts";
+import { entryKind, firstRefAfter } from "./recorded.ts";
 import { Tools } from "./tools.ts";
 import type { Settled } from "./work.ts";
 
-type Runtime = ManagedRuntime.ManagedRuntime<Ledger | NodeServices.NodeServices, never>;
+type RuntimeServices = Ledger | Hc | PiSessions | HerdrApp | NodeServices.NodeServices;
+
+type Runtime = ManagedRuntime.ManagedRuntime<RuntimeServices, never>;
 
 interface Relay {
 	waiter: Option.Option<Deferred.Deferred<ReadonlyArray<Settled>>>;
@@ -41,14 +44,15 @@ interface Relay {
 interface Session {
 	readonly runtime: Runtime;
 	readonly relay: Relay;
+	/** The hc terminal pi runs in, when it runs in one. */
+	readonly terminal: Option.Option<TerminalAddress>;
+	readonly passEnv: Readonly<Record<string, string>>;
 }
-
-const kind = "owned-work";
 
 const messageOf = (settled: Settled) => {
 	const json = Out.result(settled);
 
-	return Effect.map(Out.text(json), (content) => ({ customType: kind, content, display: true, details: json }));
+	return Effect.map(Out.text(json), (content) => ({ customType: entryKind, content, display: true, details: json }));
 };
 
 const hostLayer = (pi: ExtensionAPI, relay: Relay) => {
@@ -71,33 +75,12 @@ const hostLayer = (pi: ExtensionAPI, relay: Relay) => {
 			}),
 		append: (entry) =>
 			Effect.sync(() => {
-				pi.appendEntry(kind, Out.entry(entry));
+				pi.appendEntry(entryKind, Out.entry(entry));
 			}),
 	});
 };
 
 type Env = Readonly<Record<string, string | undefined>>;
-
-const NumberedRef = Schema.String.check(Schema.isPattern(/^[a-z]+-\d+$/u));
-
-const RecordedWork = Schema.Struct({
-	type: Schema.Literal("custom"),
-	customType: Schema.Literal(kind),
-	data: Schema.Struct({ handle: NumberedRef }),
-});
-
-const refNumberOf = (entry: SessionEntry): Option.Option<number> => {
-	const recorded = Schema.decodeUnknownOption(RecordedWork)(entry);
-
-	return Option.map(recorded, ({ data }) => Number(Str.split(data.handle, "-")[1]));
-};
-
-/**
- * A fork or a resumed session already names work in its transcript, such as `delegate-3`, that this process never
- * started, so its own refs start past the highest one.
- */
-export const firstRefAfter = (entries: ReadonlyArray<SessionEntry>): number =>
-	Arr.reduce(Arr.getSomes(Arr.map(entries, refNumberOf)), 0, Math.max) + 1;
 
 const runtimeOf = (
 	pi: ExtensionAPI,
@@ -110,7 +93,8 @@ const runtimeOf = (
 	const parent = Option.map(Option.fromUndefinedOr(env["HC_TERMINAL_ID"]), TerminalAddress);
 	const relay: Relay = { waiter: Option.none() };
 	const firstRef = firstRefAfter(ctx.sessionManager.getEntries());
-	const ledger = ledgerLayer({ self, cwd: ctx.cwd, passEnv: inheritedEnv(env), firstRef });
+	const passEnv = inheritedEnv(env);
+	const ledger = ledgerLayer({ self, cwd: ctx.cwd, passEnv, firstRef });
 
 	const slices = Self.$is("Root")(self)
 		? slicesLayer({ slice: `pi-ow-${agentKey}`, rootPid: Option.some(process.pid) })
@@ -123,11 +107,12 @@ const runtimeOf = (
 			slices,
 			piSessionsLayer,
 			piCliLayer(childExtensions),
+			herdrAppLayer,
 		),
 		NodeServices.layer,
 	);
 
-	return { runtime: ManagedRuntime.make(Layer.provideMerge(ledger, services)), relay };
+	return { runtime: ManagedRuntime.make(Layer.provideMerge(ledger, services)), relay, terminal: parent, passEnv };
 };
 
 /**
@@ -204,6 +189,21 @@ const mayStopRunning = (ledger: (typeof Ledger)["Service"], ctx: ExtensionContex
 const cancelUnless = (ledger: (typeof Ledger)["Service"], ctx: ExtensionContext) =>
 	Effect.map(mayStopRunning(ledger, ctx), (agreed) => (agreed ? {} : { cancel: true }));
 
+const forkOrAsk =
+	(session: Session, event: SessionBeforeForkEvent, ctx: ExtensionContext) => (ledger: (typeof Ledger)["Service"]) =>
+		Effect.flatMap(forkInTab({ event, ctx, terminal: session.terminal, env: session.passEnv }), (opened) =>
+			opened ? Effect.succeed({ cancel: true }) : cancelUnless(ledger, ctx),
+		);
+
+/** A fork's pi puts back in the editor the prompt `/fork` took it from, once, when it starts. */
+const restoreDraft = (event: SessionStartEvent, ctx: ExtensionContext, env: Env): void => {
+	const draft = Option.fromUndefinedOr(env[draftVariable]);
+
+	if (event.reason === "startup" && ctx.hasUI && Option.isSome(draft)) {
+		ctx.ui.setEditorText(draft.value);
+	}
+};
+
 export const runHook =
 	<Services>(runtime: ManagedRuntime.ManagedRuntime<Services, never>) =>
 	<Reply>(hook: Effect.Effect<Reply, never, Services>): Promise<Reply | undefined> =>
@@ -220,7 +220,7 @@ export const ownedWork = (childExtensions: ReadonlyArray<string>) => (pi: Extens
 	const current = { session: Option.none<Session>() };
 
 	const withLedger = <Reply>(
-		use: (session: Session) => (ledger: (typeof Ledger)["Service"]) => Effect.Effect<Reply>,
+		use: (session: Session) => (ledger: (typeof Ledger)["Service"]) => Effect.Effect<Reply, never, RuntimeServices>,
 	) =>
 		Option.match(current.session, {
 			onNone: () => Promise.resolve(),
@@ -236,12 +236,13 @@ export const ownedWork = (childExtensions: ReadonlyArray<string>) => (pi: Extens
 	};
 
 	return {
-		sessionStart: (_event: SessionStartEvent, ctx: ExtensionContext) =>
+		sessionStart: (event: SessionStartEvent, ctx: ExtensionContext) =>
 			Effect.runPromise(
 				Effect.gen(function* () {
 					const session = yield* sessionOf(pi, ctx, env, childExtensions);
 
 					current.session = Option.some(session);
+					restoreDraft(event, ctx, env);
 				}),
 			),
 		input: ({ text }: InputEvent, ctx: ExtensionContext) => {
@@ -258,8 +259,8 @@ export const ownedWork = (childExtensions: ReadonlyArray<string>) => (pi: Extens
 		settled: () => withLedger(() => (ledger) => ledger.wentIdle),
 		beforeSwitch: (_event: SessionBeforeSwitchEvent, ctx: ExtensionContext) =>
 			withLedger(() => (ledger) => cancelUnless(ledger, ctx)),
-		beforeFork: (_event: SessionBeforeForkEvent, ctx: ExtensionContext) =>
-			withLedger(() => (ledger) => cancelUnless(ledger, ctx)),
+		beforeFork: (event: SessionBeforeForkEvent, ctx: ExtensionContext) =>
+			withLedger((session) => forkOrAsk(session, event, ctx)),
 		shutdown: dispose,
 	};
 };

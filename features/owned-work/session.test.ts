@@ -1,11 +1,10 @@
 import { expect, test } from "bun:test";
 
-import { SessionManager } from "@earendil-works/pi-coding-agent";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 
-import { delegatesDirOf, exitsWhenPromptResolves, firstRefAfter, runHook } from "./session.ts";
+import { delegatesDirOf, exitsWhenPromptResolves, runHook } from "./session.ts";
 
 const rows = [
 	{ mode: "print", exits: true },
@@ -51,21 +50,6 @@ for (const { name, sessionDir, dir } of places) {
 		expect(delegatesDirOf({ sessionDir, tmpDir: "/t" })).toMatch(dir);
 	});
 }
-
-test("a session that names group-7 in its transcript starts this process's refs at 8", () => {
-	const session = SessionManager.inMemory("/p");
-
-	session.appendCustomEntry("owned-work", { type: "delegate-started", handle: "delegate-2" });
-	session.appendCustomEntry("owned-work", { type: "group-started", handle: "group-7", members: ["delegate-2"] });
-	session.appendCustomEntry("owned-work", { type: "job-settled", handle: "delegate-2" });
-	session.appendCustomEntry("usage", { handle: "delegate-40" });
-
-	expect(firstRefAfter(session.getEntries())).toBe(8);
-});
-
-test("a session that never started work starts its refs at 1", () => {
-	expect(firstRefAfter(SessionManager.inMemory("/p").getEntries())).toBe(1);
-});
 
 test("two --no-session runs never share a delegates folder", () => {
 	expect(delegatesDirOf({ sessionDir: "", tmpDir: "/t" })).not.toBe(delegatesDirOf({ sessionDir: "", tmpDir: "/t" }));

@@ -62,6 +62,9 @@ export class Hc extends Context.Service<
 	Hc,
 	{
 		readonly run: (spec: RunSpec) => Effect.Effect<TerminalAddress, HcError>;
+		/** Starts a program in a terminal of its own, with no parent and none of the `ow.` labels that `run` adds. */
+		readonly open: (spec: Omit<RunSpec, "ref">) => Effect.Effect<TerminalAddress, HcError>;
+		readonly labelsOf: (terminal: TerminalAddress) => Effect.Effect<Readonly<Record<string, string>>, HcError>;
 		readonly kill: (terminal: TerminalAddress) => Effect.Effect<void>;
 		readonly label: (terminal: TerminalAddress, labels: Readonly<Record<string, string>>) => Effect.Effect<void>;
 		readonly waitForOutput: (
@@ -81,11 +84,14 @@ export interface HcOptions {
 }
 
 const Labels = Schema.Record(Schema.String, Schema.String);
+const Labelled = Schema.Struct({ labels: Labels });
+const labelsIn = ({ labels }: typeof Labelled.Type) => labels;
 const Code = Schema.OptionFromNullOr(Schema.Int);
 const WireEnd = Schema.Struct({ reason: Schema.NullOr(Schema.String), exit_code: Code, signal: Code });
 const WireTerminal = Schema.Struct({ ...WireEnd.fields, address: Schema.String, state: Schema.String, labels: Labels });
 const Terminals = Schema.Struct({ terminals: Schema.Array(WireTerminal) });
 const Address = Schema.Struct({ address: Schema.String });
+const addressOf = ({ address }: typeof Address.Type) => TerminalAddress(address);
 const EndEvent = Schema.Struct({ type: Schema.Literals(["finished", "lost"]), terminal: Schema.String, data: WireEnd });
 
 const Inbound = Schema.Union([
@@ -119,7 +125,7 @@ const ended = ({ terminal, type, data }: typeof EndEvent.Type) =>
 const notFound = (error: HcError) => error.kind === "not_found";
 const maxNameAttempts = 20;
 
-type RunParams = Omit<RunSpec, "ref"> & { readonly parent: string | null };
+type RunParams = Omit<RunSpec, "ref"> & ({ readonly parent: string | null } | { readonly no_parent: true });
 
 const runNamed = (socket: string, params: RunParams, attempt: number): Effect.Effect<typeof Address.Type, HcError> =>
 	call(socket)("terminal.run", { ...params, name: nameAt(attempt)(params.name), no_notify: true }, Address).pipe(
@@ -136,7 +142,7 @@ const start = (socket: string, own: typeof Labels.Type, params: RunParams) =>
 			found === undefined ? runNamed(socket, params, 1) : Effect.succeed(found),
 		),
 		Effect.retry({ ...safely, while: (error) => transient(error) || error.kind === "spawn_failed" }),
-		Effect.map(({ address }) => TerminalAddress(address)),
+		Effect.map(addressOf),
 	);
 
 /** A change to a terminal that may already be gone, which is then nothing left to do. */
@@ -236,6 +242,9 @@ export const hcLayer = (options: HcOptions): Layer.Layer<Hc> =>
 						labels: { ...labels, ...own },
 					});
 				}),
+				open: (spec) => Effect.map(runNamed(socket, { ...spec, no_parent: true }, 1), addressOf),
+				labelsOf: (terminal) =>
+					Effect.map(Effect.retry(call(socket)("terminal.get", { terminal }, Labelled), safely), labelsIn),
 				kill: (terminal) => change(socket, "terminal.kill", { terminal }),
 				label: (terminal, labels) => change(socket, "terminal.label", { terminal, labels }),
 				waitForOutput: (terminal, pattern, timeout) => waitForOutput(socket, terminal, pattern, timeout),
