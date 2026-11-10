@@ -83,7 +83,7 @@ const references = (text: string) => {
 const promptFiles = Effect.gen(function* () {
 	const fs = yield* FileSystem.FileSystem;
 
-	const listed = yield* Effect.forEach(["roles", "principles", "instructions"], (folder) =>
+	const listed = yield* Effect.forEach(["roles", "instructions"], (folder) =>
 		Effect.map(
 			fs.readDirectory(`${agentDir}/${folder}`),
 			Arr.map((name) => `${folder}/${name}`),
@@ -105,6 +105,21 @@ test("every shipped principle loads, and every principle-<name> in the prompt fi
 
 			expect(problems).toEqual([]);
 			expect(Arr.difference(named, names)).toEqual([]);
+		}).pipe(Effect.provide(NodeServices.layer)),
+	));
+
+test("a principle stands alone: none names a principle as principle-<name>", () =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const dir = `${agentDir}/principles`;
+			const files = yield* fs.readDirectory(dir);
+
+			const named = yield* Effect.forEach(files, (file) =>
+				Effect.map(fs.readFileString(`${dir}/${file}`), (text) => ({ file, names: references(text) })),
+			);
+
+			expect(Arr.filter(named, ({ names }) => Arr.isReadonlyArrayNonEmpty(names))).toEqual([]);
 		}).pipe(Effect.provide(NodeServices.layer)),
 	));
 
