@@ -6,6 +6,7 @@ import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import { accountOf, accountProvider, accounts, anthropicOf } from "./accounts.ts";
+import { endedOnRateLimit, failOver } from "./failover.ts";
 
 export { accounts, type Login } from "./accounts.ts";
 
@@ -100,6 +101,10 @@ export const claudeAccounts = (pi: ExtensionAPI) => {
 	for (const account of accounts) {
 		pi.registerProvider(accountProvider({ anthropic, account }));
 	}
+
+	pi.on("agent_end", (event, ctx) =>
+		endedOnRateLimit(event.messages) ? Effect.runPromise(failOver(pi, ctx)) : Promise.resolve(),
+	);
 
 	pi.registerCommand("account", {
 		description: "Keep the model, and move this session to another Claude account",
