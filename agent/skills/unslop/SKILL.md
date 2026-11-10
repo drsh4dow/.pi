@@ -1,6 +1,6 @@
 ---
 name: unslop
-description: Cut AI tells from any writing. Use when editing prose another person reads, such as a commit message, PR, ticket, doc, or report.
+description: Cut AI tells from any writing. Use for Any prose surface, your reply to the user included.
 ---
 
 # Unslop
