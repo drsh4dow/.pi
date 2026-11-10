@@ -1,4 +1,3 @@
-import * as NodeSocket from "@effect/platform-node/NodeSocket";
 import * as Arr from "effect/Array";
 import * as Brand from "effect/Brand";
 import * as Clock from "effect/Clock";
@@ -11,19 +10,20 @@ import * as Layer from "effect/Layer";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
-import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
-import * as Socket from "effect/socket/Socket";
 import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
 
 import { nameAt, type TerminalName } from "./name.ts";
+import { call, closed, Failure, HcError, lines, retrying, rpcError, safely, transient } from "./rpc.ts";
 
 export type TerminalAddress = string & Brand.Brand<"TerminalAddress">;
 
 export const TerminalAddress = Brand.nominal<TerminalAddress>();
 
 export { type TerminalName, terminalNameOf } from "./name.ts";
+
+export { HcError } from "./rpc.ts";
 
 export type TerminalEnd = Data.TaggedEnum<{
 	Exited: { readonly code: Option.Option<number>; readonly signal: Option.Option<number> };
@@ -58,12 +58,6 @@ export interface RunSpec {
 	readonly env: Readonly<Record<string, string>>;
 }
 
-export class HcError extends Schema.TaggedError<HcError, { readonly brand: unique symbol }>()("HcError", {
-	method: Schema.String,
-	kind: Schema.String,
-	message: Schema.String,
-}) {}
-
 export class Hc extends Context.Service<
 	Hc,
 	{
@@ -92,9 +86,6 @@ const WireEnd = Schema.Struct({ reason: Schema.NullOr(Schema.String), exit_code:
 const WireTerminal = Schema.Struct({ ...WireEnd.fields, address: Schema.String, state: Schema.String, labels: Labels });
 const Terminals = Schema.Struct({ terminals: Schema.Array(WireTerminal) });
 const Address = Schema.Struct({ address: Schema.String });
-const Kind = Schema.Struct({ kind: Schema.String });
-const Failure = Schema.Struct({ message: Schema.String, data: Schema.optionalKey(Kind) });
-const Request = Schema.fromJsonString(Schema.Struct({ id: Schema.Int, method: Schema.String, params: Schema.Json }));
 const EndEvent = Schema.Struct({ type: Schema.Literals(["finished", "lost"]), terminal: Schema.String, data: WireEnd });
 
 const Inbound = Schema.Union([
@@ -125,54 +116,13 @@ const resynced = (subscribedAt: bigint, { terminals }: typeof Terminals.Type) =>
 const ended = ({ terminal, type, data }: typeof EndEvent.Type) =>
 	HcNotice.Ended({ terminal: TerminalAddress(terminal), end: endOf(type === "lost", data) });
 
-const rpcError = (method: string, { message, data }: typeof Failure.Type) =>
-	HcError.make({ method, kind: data?.kind ?? "rpc", message });
-
-const transient = (error: HcError) => error.kind === "closed" || error.kind === "socket";
 const notFound = (error: HcError) => error.kind === "not_found";
-const closed = (method: string) => HcError.make({ method, kind: "closed", message: "the hc socket closed" });
-const retrying = Schedule.min([Schedule.exponential("100 millis"), Schedule.spaced("5 seconds")]);
-const safely = { while: transient, times: 10, schedule: retrying };
-
-/** The write side stays open, because hc ends a subscription when the client half-closes. */
-const exchange = (socket: string, request: string) =>
-	Effect.map(NodeSocket.makeNet({ path: socket }), (conn) =>
-		Stream.pipeThroughChannel(
-			Stream.concat(Stream.make(`${request}\n`), Stream.never),
-			Socket.toChannelString<never>(conn),
-		),
-	);
-
-const lines = <Out>(socket: string, method: string, params: Schema.Json, schema: Schema.Decoder<Out>) =>
-	Schema.encodeEffect(Request)({ id: 1, method, params }).pipe(
-		Effect.orDie,
-		Effect.flatMap((request) => exchange(socket, request)),
-		Stream.unwrap,
-		Stream.catchReason("SocketError", "SocketCloseError", (reason, error) =>
-			reason.code === 1000 ? Stream.empty : Stream.fail(error),
-		),
-		Stream.mapError((error) => HcError.make({ method, kind: "socket", message: error.message })),
-		Stream.splitLines,
-		Stream.mapEffect((line) =>
-			Schema.decodeEffect(Schema.fromJsonString(schema))(line).pipe(
-				Effect.mapError((error) => HcError.make({ method, kind: "decode", message: error.message })),
-			),
-		),
-	);
-
-const call = <Out>(socket: string, method: string, params: Schema.Json, result: Schema.Decoder<Out>) =>
-	lines(socket, method, params, Schema.Union([Schema.Struct({ result }), Schema.Struct({ error: Failure })])).pipe(
-		Stream.runHead,
-		Effect.flatMap(Effect.fromOption(() => closed(method))),
-		Effect.flatMap((it) => ("error" in it ? Effect.fail(rpcError(method, it.error)) : Effect.succeed(it.result))),
-	);
-
 const maxNameAttempts = 20;
 
 type RunParams = Omit<RunSpec, "ref"> & { readonly parent: string | null };
 
 const runNamed = (socket: string, params: RunParams, attempt: number): Effect.Effect<typeof Address.Type, HcError> =>
-	call(socket, "terminal.run", { ...params, name: nameAt(attempt)(params.name), no_notify: true }, Address).pipe(
+	call(socket)("terminal.run", { ...params, name: nameAt(attempt)(params.name), no_notify: true }, Address).pipe(
 		Effect.catchIf(
 			(error) => error.kind === "name_taken" && attempt < maxNameAttempts,
 			() => runNamed(socket, params, attempt + 1),
@@ -181,7 +131,7 @@ const runNamed = (socket: string, params: RunParams, attempt: number): Effect.Ef
 
 /** `own` finds a terminal an earlier try already started, so a retry never starts a second one. */
 const start = (socket: string, own: typeof Labels.Type, params: RunParams) =>
-	call(socket, "terminal.list", { all: true, labels: own }, Terminals).pipe(
+	call(socket)("terminal.list", { all: true, labels: own }, Terminals).pipe(
 		Effect.flatMap(({ terminals: [found] }) =>
 			found === undefined ? runNamed(socket, params, 1) : Effect.succeed(found),
 		),
@@ -191,14 +141,14 @@ const start = (socket: string, own: typeof Labels.Type, params: RunParams) =>
 
 /** A change to a terminal that may already be gone, which is then nothing left to do. */
 const change = (socket: string, method: string, params: Schema.JsonObject & { readonly terminal: TerminalAddress }) =>
-	call(socket, method, params, Address).pipe(
+	call(socket)(method, params, Address).pipe(
 		Effect.retry(safely),
 		Effect.catchIf(notFound, () => Effect.void),
 		Effect.ignore({ log: "Warn" }),
 	);
 
 const read = (socket: string, terminal: TerminalAddress, history: number) =>
-	call(socket, "terminal.read", { terminal, lines: history }, Schema.Struct({ text: Schema.String })).pipe(
+	call(socket)("terminal.read", { terminal, lines: history }, Schema.Struct({ text: Schema.String })).pipe(
 		Effect.retry(safely),
 		Effect.map(({ text }) => Str.trimEnd(text)),
 	);
@@ -208,7 +158,7 @@ const waitForOutput = (socket: string, terminal: TerminalAddress, pattern: strin
 	const printed = Effect.map(read(socket, terminal, 1000), Str.includes(pattern));
 	const params = { terminal, output: pattern, timeout: Duration.toSeconds(timeout) };
 
-	const wait = call(socket, "terminal.wait", params, Schema.Struct({ reason: Schema.String })).pipe(
+	const wait = call(socket)("terminal.wait", params, Schema.Struct({ reason: Schema.String })).pipe(
 		Effect.retry(safely),
 		Effect.flatMap(({ reason }) => (reason === "output" ? Effect.succeed(true) : printed)),
 	);
@@ -222,7 +172,7 @@ type Feed = Effect.Success<typeof makeFeed>;
 
 const handle = (feed: Feed, subscribedAt: bigint) =>
 	Match.type<typeof Inbound.Type>().pipe(
-		Match.when({ error: Match.defined }, ({ error }) => Effect.fail(rpcError("events.subscribe", error))),
+		Match.when({ error: Match.defined }, ({ error }) => Effect.fail(rpcError("events.subscribe")(error))),
 		Match.when({ result: Match.defined }, ({ result }) =>
 			Effect.andThen(feed.subscribed.open, Queue.offer(feed.notices, resynced(subscribedAt, result))),
 		),
@@ -234,7 +184,7 @@ const handle = (feed: Feed, subscribedAt: bigint) =>
 const follow = (socket: string, own: typeof Labels.Type, feed: Feed) =>
 	Clock.monotonicTimeNanos.pipe(
 		Effect.flatMap((subscribedAt) =>
-			lines(socket, "events.subscribe", { labels: own }, Inbound).pipe(
+			lines(socket)("events.subscribe", { labels: own }, Inbound).pipe(
 				Stream.tap(handle(feed, subscribedAt)),
 				Stream.runCount,
 			),
