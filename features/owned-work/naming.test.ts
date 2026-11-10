@@ -13,6 +13,7 @@ const rows = [
 		reply: '**"Review retry cap."**',
 		expect: "Review retry cap",
 	},
+	{ name: "a leading name label comes off", reply: "Task name: Review retry cap", expect: "Review retry cap" },
 	{
 		name: "only the first non-empty line counts",
 		reply: "\n Fix flaky test \nBecause it fails.",

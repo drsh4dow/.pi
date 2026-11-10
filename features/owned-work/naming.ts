@@ -25,7 +25,7 @@ const firstLine = (text: string) => {
 export const cleanName =
 	(message: string) =>
 	(reply: string): string => {
-		const bare = Str.trim(Str.replaceAll(/^["'`*]+|["'`*.!?:;,]+$/gu, "")(firstLine(reply)));
+		const bare = Str.trim(Str.replaceAll(/^(?:task )?name:\s*|^["'`*]+|["'`*.!?:;,]+$/giu, "")(firstLine(reply)));
 
 		return Str.slice(0, nameLength)(/[\p{L}\p{N}]/u.test(bare) ? bare : firstLine(message));
 	};
