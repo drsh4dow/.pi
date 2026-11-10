@@ -31,7 +31,7 @@ export interface ModelTable {
 /** An alias never looks like a `provider/id`, so a spelled model always means that model. */
 type Aliases = Readonly<Record<string, Alias> & Record<ModelKey, never>>;
 
-const aliases = {
+export const aliases = {
 	judgment: {
 		provider: "ultra-a",
 		id: "claude-opus-5-5",
