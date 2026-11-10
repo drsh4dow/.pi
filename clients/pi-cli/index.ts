@@ -11,24 +11,18 @@ import * as Str from "effect/String";
 import type { SessionAddress } from "../pi-sessions/index.ts";
 
 export interface ChildPi {
-	/** Give each child a fresh uuid as `id`, because pi reuses an existing session with the same id. */
 	readonly session: SessionAddress;
 	readonly name: string;
 	readonly message: string;
-	/** `provider/id`. */
 	readonly model: string;
-	/** The `--thinking` level the child runs at. None leaves pi's default for the model. */
 	readonly thinking: Option.Option<string>;
-	/** Starts the child without the `edit` and `write` tools. Its bash can still write. */
 	readonly readOnly: boolean;
-	/** The child's `<instructions>`. Its prompt extension reads them from the file `instructionsFlag` names. */
 	readonly instructions: Option.Option<{ readonly text: string }>;
 }
 
 export class PiCli extends Context.Service<
 	PiCli,
 	{
-		/** Stages the message, and the instructions when there are any, beside the child's session and returns the argv that starts the child. */
 		readonly launch: (
 			child: ChildPi,
 		) => Effect.Effect<readonly [string, ...Array<string>], PlatformError.PlatformError>;
@@ -36,25 +30,16 @@ export class PiCli extends Context.Service<
 	}
 >()("pi-harness/clients/pi-cli/PiCli") {}
 
-/** The child's flag for its instructions file, registered by the prompt extension every child loads. */
 export const instructionsFlag = "instructions";
 
-/**
- * One argv word holds at most 128 KiB, so the message and the instructions go in files beside the child's session.
- * pi reads `@message` as an included file. The prompt extension reads the instructions file itself.
- */
+/** One argv word holds at most 128 KiB, so the message and the instructions go in files beside the child's session. */
 const stagedFiles = ({ dir, id }: Pick<SessionAddress, "dir" | "id">) => ({
 	message: `${dir}/${id}.message`,
 	instructions: `${dir}/${id}.instructions`,
 });
 
-/** A task message or prompt can hold what the parent read behind a token. */
 const ownerOnly = 0o600;
 
-/**
- * The child keeps pi's default tools, the tools its extensions register, and codemode, which `--no-extensions` drops
- * until `-e builtin:codemode` loads it again.
- */
 const argvOf = (
 	childExtensions: ReadonlyArray<string>,
 	{ session, name, model, thinking, readOnly, instructions }: ChildPi,
@@ -82,7 +67,6 @@ const argvOf = (
 		`@${files.message}`,
 	] as const;
 
-/** `childExtensions` are the extensions every child loads first, each with `-e`. */
 export const piCliLayer = (childExtensions: ReadonlyArray<string>): Layer.Layer<PiCli, never, FileSystem.FileSystem> =>
 	Layer.effect(
 		PiCli,

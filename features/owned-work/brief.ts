@@ -10,7 +10,7 @@ import * as Str from "effect/String";
 import { type Static, Type } from "typebox";
 
 import type { Brief } from "./child.ts";
-import type { ModelTable } from "./models.ts";
+import { ModelName, modelNameOf, type ModelTable } from "./models.ts";
 import { nameOf } from "./naming.ts";
 import { parseProfile } from "./profile.ts";
 import { BadDelegate } from "./work.ts";
@@ -57,8 +57,15 @@ export type Caller = Pick<ExtensionContext, "cwd" | "model" | "thinkingLevel"> &
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll" | "streamSimple">;
 };
 
-/** The caller's own model keeps the caller's thinking level. A named model runs at pi's default for it. */
-const modelOf = (ctx: Caller, { aliases }: ModelTable, wanted: Option.Option<string>) =>
+type Checking = Pick<Caller, "cwd" | "model" | "thinkingLevel"> & {
+	readonly modelRegistry: Pick<Caller["modelRegistry"], "getAll">;
+};
+
+type Naming = Pick<Caller, "model"> & {
+	readonly modelRegistry: Pick<Caller["modelRegistry"], "streamSimple">;
+};
+
+const modelOf = (ctx: Checking, { aliases }: ModelTable, wanted: Option.Option<ModelName>) =>
 	Option.match(wanted, {
 		onNone: () =>
 			Effect.fromOption(Option.fromUndefinedOr(ctx.model), () =>
@@ -70,8 +77,14 @@ const modelOf = (ctx: Caller, { aliases }: ModelTable, wanted: Option.Option<str
 				})),
 			),
 		onSome: (name) => {
-			const model = Option.getOrElse(Rec.get(aliases, name), () => name);
-			const source = model === name ? "" : `, which the alias ${name} names,`;
+			const { model, source } = ModelName.$match(name, {
+				Spelled: ({ key }) => ({ model: key, source: "" }),
+				Alias: ({ alias }) =>
+					Option.match(Rec.get(aliases, alias), {
+						onNone: () => ({ model: alias, source: "" }),
+						onSome: (key) => ({ model: key, source: `, which the alias ${alias} names,` }),
+					}),
+			});
 
 			return Effect.fromOption(
 				Arr.findFirst(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === model),
@@ -113,15 +126,12 @@ const folderOf = Effect.fn("folderOf")(function* (cwd: string, folder: string) {
 	return info.type === "Directory" ? real : yield* refusal("not a folder");
 });
 
-/**
- * What one `delegate` call starts: the brief, and the folder when the call names one. The call's model wins over the
- * instructions file's, and the file's thinking level over the caller's. Every refusal comes before the naming call.
- */
-export const parseCall = Effect.fn("parseCall")(function* (
-	ctx: Caller,
-	table: ModelTable,
-	call: Static<DelegateParams>,
-) {
+interface Checked {
+	readonly brief: Omit<Brief, "name">;
+	readonly cwd: Option.Option<string>;
+}
+
+const check = Effect.fn("check")(function* (ctx: Checking, table: ModelTable, call: Static<DelegateParams>) {
 	const cwd = yield* Effect.transposeOption(
 		Option.map(Option.fromUndefinedOr(call.cwd), (folder) => folderOf(ctx.cwd, folder)),
 	);
@@ -130,12 +140,13 @@ export const parseCall = Effect.fn("parseCall")(function* (
 		Option.map(Option.fromUndefinedOr(call.instructionsFile), (file) => instructionsOf(ctx.cwd, file)),
 	);
 
-	const wanted = Option.orElse(Option.fromUndefinedOr(call.model), () => Option.flatMap(profile, (own) => own.model));
-	const { model, thinking } = yield* modelOf(ctx, table, wanted);
-	const name = yield* nameOf(ctx.modelRegistry, ctx.model, call.message);
+	const wanted = Option.orElse(Option.map(Option.fromUndefinedOr(call.model), modelNameOf), () =>
+		Option.flatMap(profile, (own) => own.model),
+	);
 
-	const brief: Brief = {
-		name,
+	const { model, thinking } = yield* modelOf(ctx, table, wanted);
+
+	const brief: Omit<Brief, "name"> = {
 		message: call.message,
 		model,
 		thinking: Option.orElse(
@@ -146,5 +157,23 @@ export const parseCall = Effect.fn("parseCall")(function* (
 		instructions: Option.map(profile, ({ file, text }) => ({ file, text })),
 	};
 
-	return { brief, cwd };
+	const checked: Checked = { brief, cwd };
+
+	return checked;
+});
+
+const named = (
+	ctx: Naming,
+	{ brief, cwd }: Checked,
+): Effect.Effect<{ readonly brief: Brief; readonly cwd: Option.Option<string> }> =>
+	Effect.map(nameOf(ctx.modelRegistry, ctx.model, brief.message), (name) => ({ brief: { ...brief, name }, cwd }));
+
+export const parseCall = Effect.fn("parseCall")(function* (
+	ctx: Caller,
+	table: ModelTable,
+	call: Static<DelegateParams>,
+) {
+	const checked = yield* check(ctx, table, call);
+
+	return yield* named(ctx, checked);
 });
