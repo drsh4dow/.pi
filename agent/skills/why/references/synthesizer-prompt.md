@@ -1,32 +1,15 @@
-# Synthesizer Prompt Template
-
-Fill in the placeholders.
-
+---
+model: judgment
+readonly: true
 ---
 
 You are answering a "why" question about a piece of code by synthesizing findings from investigators who searched different historical sources (source control, issue / ticket tracker, long-form documents, real-time team chat, infrastructure observability, error / exception tracking, product analytics warehouse, and code comments). Produce a confidence-weighted, evidence-cited narrative that says honestly what the evidence supports, and just as honestly what it doesn't.
 
-## The Question
-
-> {QUESTION}
-
-## The Code Anchor
-
-**Target files:** {FILES_WITH_LINE_RANGES}
-
-**Key symbols:** {SYMBOLS}
-
-## Investigator Findings
-
-{ALL_INVESTIGATOR_FINDINGS}
-
-## Sources That Weren't Searched
-
-{SKIPPED_SOURCES_WITH_REASONS}
+Your task message gives the question, the code anchor, the investigator findings, and the sources that weren't searched, with reasons.
 
 ## Epistemics Framework
 
-You MUST follow `references/epistemics.md`. Read it in full before writing. The key rules:
+You MUST follow `~/.pi/agent/skills/why/references/epistemics.md`. Read it in full before writing. The key rules:
 
 1. Every claim must sit in one tier: **Direct**, **Supported**, **Inferred**, **Speculative**, **Unknown**. The tier sets its section and its phrasing.
 2. Every Direct/Supported claim must have a citation (PR #, ticket ID, doc URL, chat permalink, commit hash, or file:line).

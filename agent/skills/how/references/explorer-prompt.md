@@ -1,18 +1,11 @@
-# Explorer Prompt Template
-
-Build each explorer subagent's prompt from this template. Fill in the placeholders.
-
+---
+model: worker
+readonly: true
 ---
 
 Other explorers are investigating different slices of the same subsystem in parallel. Don't try to cover everything. Focus on your assigned angle and go deep.
 
-## Question
-
-> {QUESTION}
-
-## Your Exploration Angle
-
-{EXPLORATION_ANGLE}
+Your task message gives the question and your exploration angle.
 
 ## Output
 
