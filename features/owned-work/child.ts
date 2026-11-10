@@ -53,11 +53,15 @@ export type ChildSession = SessionAddress;
 
 const extensionsFolder = `${import.meta.dirname}/../../agent/extensions`;
 
-/** The entrypoints every delegate loads first: owned-work, so it can report back, prompt, which builds its system prompt, and web, so every agent can search and read pages. */
+/**
+ * The entrypoints every delegate loads first: owned-work, so it can report back, prompt, which builds its system prompt,
+ * web, so every agent can search and read pages, and claude-accounts, so a delegate can run on its parent's Claude account.
+ */
 export const childExtensions: ReadonlyArray<string> = [
 	`${extensionsFolder}/owned-work/index.ts`,
 	`${extensionsFolder}/prompt/index.ts`,
 	`${extensionsFolder}/web/index.ts`,
+	`${extensionsFolder}/claude-accounts/index.ts`,
 ];
 
 export interface Brief extends Omit<ChildPi, "session"> {
