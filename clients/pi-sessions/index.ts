@@ -10,6 +10,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+export { SessionsUnreadable, type Spend, type SpendRequest, spendSince } from "./spend.ts";
+
 export interface SessionAddress {
 	readonly id: string;
 	readonly cwd: string;

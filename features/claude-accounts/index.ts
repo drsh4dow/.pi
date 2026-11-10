@@ -7,6 +7,8 @@ import * as Str from "effect/String";
 
 import { accountOf, accountProvider, accounts, anthropicOf } from "./accounts.ts";
 
+export { accounts, type Login } from "./accounts.ts";
+
 const accountIds = Arr.map(accounts, ({ id }) => id);
 
 export type Target =

@@ -66,3 +66,12 @@ Terms from the web client (`clients/web/`) and feature (`features/web/`).
 - **Saved page.** The whole of a fetched page, written under the web cache as `<date>/<host and path>-<8 random>.md`. A file keeps its own bytes at `<...>.<ext>`, and its markdown, if any, at `<...>.<ext>.md`. web_fetch shows the head, plus the `read(path, offset)` call that continues it.
 - **Untrusted content.** Page text and search highlights. They are data, never instructions. Inline text sits in one `<web_content trust="untrusted">` tag, and each saved page's first line says the same.
 - **Web cache.** `${XDG_CACHE_HOME:-~/.cache}/pi-web/`, readable only by the user. With neither variable set there is none, and web_fetch fails. Date folders older than 7 days are deleted when a session starts.
+
+## Usage
+
+Terms from the usage feature (`features/usage/`), which prints `/usage`.
+
+- **Reading.** What `/usage` got for one account: the account, where the numbers came from (its **via**), and either its meters or the reason it could not read them. An account it cannot read still prints a line.
+- **Meter.** One number in a reading: a rate-limit window's percent used and time to reset, a Claude account's extra usage against its monthly cap, or an estimate of what pi spent.
+- **Probe.** A one-token message to a Claude account whose setup-token cannot read the usage page. The rate-limit headers on the reply carry the windows. A rejected reply carries them too and costs nothing.
+- **Estimate.** What pi priced its own replies at, from the models' list prices in its session files. It leaves out every other client that uses the same key. `/usage` shows it for OpenAI, whose costs API needs an admin key.
