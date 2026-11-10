@@ -4,6 +4,7 @@ import * as Arr from "effect/Array";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import type * as FileSystem from "effect/FileSystem";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as Layer from "effect/Layer";
@@ -11,12 +12,15 @@ import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Redacted from "effect/Redacted";
+import * as Schedule from "effect/Schedule";
+import * as Schema from "effect/Schema";
 
 import { ClaudeUsage, claudeUsageLayer, type Window } from "../../clients/claude-usage/index.ts";
 import { OpencodeGo, opencodeGoLayer } from "../../clients/opencode-go/index.ts";
 import { spendSince } from "../../clients/pi-sessions/index.ts";
 import { accounts, type Login } from "../claude-accounts/index.ts";
-import { type Meter, type Outcome, type Reading, reportOf } from "./report.ts";
+import { type Block, blockOf, Card, type Meter, type Outcome, readAtOf } from "./card.ts";
+import { cardComponent, liveCard } from "./view.ts";
 
 type Services = ClaudeUsage | OpencodeGo | FileSystem.FileSystem;
 
@@ -87,7 +91,7 @@ const claudeSource = ({ id, login }: { readonly id: string; readonly login: Logi
 		}
 
 		case "setup-token": {
-			return { account: id, via: "rate-limit headers of a one-token probe", read: (ctx) => probeMeters(ctx, id) };
+			return { account: id, via: "one-token probe", read: (ctx) => probeMeters(ctx, id) };
 		}
 
 		default: {
@@ -140,32 +144,79 @@ const outcomeOf = (source: Source, ctx: ExtensionCommandContext) =>
 		}),
 	);
 
-const readingOf = (source: Source, ctx: ExtensionCommandContext) =>
-	Effect.map(outcomeOf(source, ctx), (outcome): Reading => ({ account: source.account, via: source.via, outcome }));
-
-const printUsage = (ctx: ExtensionCommandContext) =>
+const blockFor = (source: Source, ctx: ExtensionCommandContext) =>
 	Effect.gen(function* () {
-		yield* Effect.sync(() => {
-			ctx.ui.setWorkingMessage("Reading usage…");
-		});
-
-		const readings = yield* Effect.forEach(sources, (source) => readingOf(source, ctx), { concurrency: "unbounded" });
+		const outcome = yield* outcomeOf(source, ctx);
 		const now = yield* DateTime.now;
 
-		yield* Effect.sync(() => {
-			ctx.ui.setWorkingMessage();
-			ctx.ui.notify(reportOf({ readings, now }), "info");
-		});
+		return { account: source.account, via: source.via, body: blockOf({ outcome, now }) };
 	});
 
-/** Registers `/usage`, which prints what every account has used. */
-export const usage = (pi: Pick<ExtensionAPI, "registerCommand">) => {
+const cardType = "usage";
+
+/** The session stores a card as JSON, so a card read back from it is checked like any other input. */
+const decodeCard = Schema.decodeUnknownOption(Card);
+
+const widgetKey = "usage";
+
+const spinnerEvery = Duration.millis(80);
+
+type Host = Pick<ExtensionAPI, "appendEntry" | "registerCommand" | "registerEntryRenderer">;
+
+/**
+ * Shows a card under the transcript that fills in as each account answers, then swaps it for the same card stored in
+ * the session, so the result survives a reload.
+ */
+const showUsage = (pi: Host, ctx: ExtensionCommandContext) =>
+	Effect.gen(function* () {
+		const reading = Arr.map(sources, ({ account, via }): Block => ({ account, via, body: { kind: "reading" } }));
+		const live = liveCard(reading);
+
+		yield* Effect.sync(() => {
+			ctx.ui.setWidget(widgetKey, live.component);
+		});
+
+		const spinning = yield* Effect.forkChild(Effect.repeat(Effect.sync(live.tick), Schedule.spaced(spinnerEvery)));
+
+		const blocks = yield* Effect.forEach(
+			sources,
+			(source, index) =>
+				Effect.tap(blockFor(source, ctx), (block) =>
+					Effect.sync(() => {
+						live.update(index, block);
+					}),
+				),
+			{ concurrency: "unbounded" },
+		);
+
+		yield* Fiber.interrupt(spinning);
+
+		const now = yield* DateTime.now;
+		const card: Card = { readAt: readAtOf(now), blocks };
+
+		yield* Effect.sync(() => {
+			pi.appendEntry(cardType, card);
+		});
+	}).pipe(
+		Effect.ensuring(
+			Effect.sync(() => {
+				ctx.ui.setWidget(widgetKey, undefined);
+			}),
+		),
+	);
+
+/** Registers `/usage`, which shows what every account has used in a card. */
+export const usage = (pi: Host) => {
 	const clients = Layer.mergeAll(claudeUsageLayer, opencodeGoLayer).pipe(Layer.provide(FetchHttpClient.layer));
 	const runtime = ManagedRuntime.make(Layer.merge(clients, NodeServices.layer));
 
+	pi.registerEntryRenderer(cardType, (entry, _options, theme) =>
+		Option.getOrUndefined(Option.map(decodeCard(entry.data), (card) => cardComponent({ card, theme }))),
+	);
+
 	pi.registerCommand("usage", {
-		description: "Print what every account has used: Claude plans, extra usage, OpenCode Go, OpenAI spend",
-		handler: (_args, ctx) => runtime.runPromise(printUsage(ctx)),
+		description: "Show what every account has used: Claude plans, extra usage, OpenCode Go, OpenAI spend",
+		handler: (_args, ctx) => runtime.runPromise(showUsage(pi, ctx)),
 	});
 
 	return { shutdown: () => runtime.dispose() };
