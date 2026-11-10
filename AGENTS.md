@@ -13,7 +13,7 @@ My own coding harness, built on [pi](https://github.com/earendil-works/pi). This
 - When an Effect or pi convention conflicts with a lint rule, the Effect or pi convention wins. Turn the rule off in `.oxlintrc.jsonc` with a one-line reason, and add the idiom to `tools/oxlint/fixtures/effect-pi-idioms.ts`.
 - After changing `SYSTEM.md`, a role file, a principle, an extension's prompt guidelines, or an instructions file in `agent/instructions/`, run `bun run prompts [project-dir]`. It writes `system-prompts.md` (gitignored): the full system prompt stock pi, the root, a level-2 delegate on each instructions file, and a bare delegate at the last level get.
 - `tools/oxlint/anti-slop/` is vendored. Update it with the `install-anti-slop` skill and record changes in its `UPSTREAM.md`.
-- The code inside skills (`making-videos/scripts/` and `templates/`, `writing-good-prs/scripts/`, `dumpfile/cli/`) is vendored: oxfmt, oxlint and tsc skip it, and `bun test` still runs its tests.
+- The code inside skills (`making-videos/scripts/` and `templates/`, `writing-good-prs/scripts/`, `dumpfile/cli/`, `statechart/scripts/`) is vendored: oxfmt, oxlint and tsc skip it, and `bun test` still runs its tests.
 
 ## Agent skills
 
