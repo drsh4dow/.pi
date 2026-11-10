@@ -1,0 +1,10 @@
+{
+	"$schema": "https://pi.dev/schemas/keybindings.schema.json",
+	"tui.select.up": ["up", "ctrl+p"],
+	"tui.select.down": ["down", "ctrl+n"],
+	"app.session.togglePath": "alt+p",
+	"app.session.toggleNamedFilter": "alt+n",
+	"app.model.cycleForward": "alt+p",
+	"app.model.cycleBackward": "alt+shift+p",
+	"app.models.toggleProvider": "alt+p"
+}
