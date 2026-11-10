@@ -1,0 +1,17 @@
+---
+when: Writing, changing, or reviewing code.
+---
+
+# Engineering Standards
+
+Correct behavior is necessary but not sufficient. Bad code is hard to read, understand, and evolve. Changing one thing breaks something far away, a feature means patching many places and still missing one, the design's invariants are unclear, and tests need mocks that expose implementation details. Hold each design decision to that standard, and read your final diff against it before reporting.
+
+**Contracts.** Leave out checks and branches that re-establish what the types or preceding code already guarantee, per principle-boundary-discipline. Use direct calls for known contracts, and confine reflection and runtime structural inspection to code whose job is parsing or dynamic integration.
+
+**Dependencies.** Make dependencies explicit, construct them at the application's assembly points, and pass them to consumers.
+
+**Failures.** Handle each fallible operation where it is called, in a scope that covers only that operation, so the reader sees which call failed and what follows. Decide there whether to recover, add context and propagate, or stop. Represent expected failures as values in the form the language or stack owns, such as Go's `error`, Rust's `Result`, or Effect's error channel, and branch on them explicitly. When propagating, wrap the error with the operation and the identifiers needed to find the affected data, keeping the original as its cause. Where a failure stops propagating, by recovery or at a boundary, record it once through the project's logging or tracing. Catch everything only at a boundary that reports unhandled failures, such as a request handler or `main`.
+
+**Cost.** Choose data structures and algorithms for the expected workload, counting work hidden inside helpers, and avoid repeated scans or growing copies that turn quadratic. Copy for ownership, snapshots, or mutation isolation, and otherwise reuse references. Bound buffers, caches, and concurrency when input can grow. Leave speculative optimization out, and measure when costs are uncertain and consequential.
+
+**Readability.** Write beautiful, boring, explicit code for a tired, smart maintainer. Beautiful, readable code is a completion requirement, so correct output from ugly code is not done. Name things for their domain roles. Keep control flow direct and shallow. More than three levels of logical nesting means the design needs refactoring through guard clauses or a simpler state model. Moving nested code into arbitrary helpers does not count. Extract a helper only when its name and contract let the caller read without opening it. Group related statements and separate logical steps with a blank line, without spacing every line apart. Give each branch and each conditional field its own statement. Nested ternaries and clever compressed expressions become ordinary control flow. Keep an absent value distinct from an explicitly empty or null one. Declare each constant in the narrowest scope that covers its uses.
