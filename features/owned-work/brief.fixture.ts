@@ -19,7 +19,7 @@ const opus = getBuiltinModel("anthropic", "claude-opus-5-5");
 
 export const unlisted = { ...haiku, id: "claude-haiku-9-9" };
 
-const proxied = { ...haiku, provider: "proxy/anthropic" };
+export const proxied = { ...haiku, provider: "proxy/anthropic" };
 
 export const fixtures = `${Bun.env["TMPDIR"] ?? "/tmp"}/owned-work-tools-test-${String(process.pid)}`;
 
@@ -42,7 +42,8 @@ await Promise.all(
 );
 
 export const table = {
-	aliases: { deep: "anthropic/claude-opus-5-5", gone: "anthropic/nope" },
+	aliases: { deep: "claude-opus-5-5", quick: "claude-haiku-5-5", gone: "nope" },
+	fallbackProvider: "anthropic",
 	panel: ["anthropic/claude-opus-5-5", "proxy/anthropic/claude-haiku-5-5"],
 };
 

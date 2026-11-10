@@ -14,12 +14,13 @@ import { ModelName, modelNameOf, type ModelTable } from "./models.ts";
 import { parseProfile } from "./profile.ts";
 import { BadDelegate } from "./work.ts";
 
-const modelDescription = ({ aliases, panel }: ModelTable) => {
+const modelDescription = ({ aliases, fallbackProvider, panel }: ModelTable) => {
 	const entries = Rec.toEntries(aliases);
 	const named = Arr.map(entries, ([alias, id]) => `\`${alias}\` (${id})`);
 
 	const sentences = [
 		`\`provider/id\`, or an alias: ${Arr.join(named, ", ")}.`,
+		`An alias runs on your provider when it has that model, and on ${fallbackProvider} otherwise.`,
 		"It overrides the model an instructions file names. Your own model and thinking level when left out.",
 		`The panel, for work a skill runs once on each: ${Arr.join(panel, ", ")}.`,
 	];
@@ -61,7 +62,20 @@ export type Caller = Pick<ExtensionContext, "cwd" | "model" | "thinkingLevel"> &
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll">;
 };
 
-const modelOf = (ctx: Caller, { aliases }: ModelTable, wanted: Option.Option<ModelName>) =>
+/** `provider/id` of the alias's model on the caller's provider when that provider has it, so a delegate stays on its parent's account. */
+const aliasedModel = (ctx: Caller, fallbackProvider: string, id: string) => {
+	const registry = ctx.modelRegistry.getAll();
+
+	const own = Option.filter(Option.fromUndefinedOr(ctx.model), ({ provider }) =>
+		Arr.some(registry, (model) => model.provider === provider && model.id === id),
+	);
+
+	const provider = Option.match(own, { onNone: () => fallbackProvider, onSome: (model) => model.provider });
+
+	return `${provider}/${id}`;
+};
+
+const modelOf = (ctx: Caller, { aliases, fallbackProvider }: ModelTable, wanted: Option.Option<ModelName>) =>
 	Option.match(wanted, {
 		onNone: () =>
 			Effect.fromOption(Option.fromUndefinedOr(ctx.model), () =>
@@ -78,7 +92,10 @@ const modelOf = (ctx: Caller, { aliases }: ModelTable, wanted: Option.Option<Mod
 				Alias: ({ alias }) =>
 					Option.match(Rec.get(aliases, alias), {
 						onNone: () => ({ model: alias, source: "" }),
-						onSome: (key) => ({ model: key, source: `, which the alias ${alias} names,` }),
+						onSome: (id) => ({
+							model: aliasedModel(ctx, fallbackProvider, id),
+							source: `, which the alias ${alias} names,`,
+						}),
 					}),
 			});
 
