@@ -30,7 +30,6 @@ export const cleanName =
 		return Str.slice(0, nameLength)(/[\p{L}\p{N}]/u.test(bare) ? bare : firstLine(message));
 	};
 
-/** Leaving out `reasoning` turns thinking off in pi-ai's simple stream. */
 export const nameOf = Effect.fn("nameOf")(function* (
 	registry: Pick<ModelRegistry, "streamSimple">,
 	model: Model<Api> | undefined,
