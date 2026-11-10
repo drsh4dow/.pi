@@ -259,28 +259,11 @@ for (const row of briefRows) {
 	);
 }
 
-const messageRows = [
-	{ name: "refuses a message of only spaces, tabs and newlines", message: " \n\t ", valid: false },
-	{ name: "passes a message with a word in it", message: "\n Review it. ", valid: true },
-];
+const validated = (message: string) => () => {
+	validateToolArguments(delegate, { type: "toolCall", id: "c", name: "delegate", arguments: { message } });
+};
 
-for (const row of messageRows) {
-	test(`pi ${row.name}`, () => {
-		const call = { type: "toolCall" as const, id: "c", name: "delegate", arguments: { message: row.message } };
-
-		const validate = Effect.try({
-			try: () => {
-				validateToolArguments(delegate, call);
-			},
-			catch: String,
-		});
-
-		return Effect.runPromise(
-			Effect.gen(function* () {
-				const valid = yield* Effect.isSuccess(validate);
-
-				expect(valid).toBe(row.valid);
-			}),
-		);
-	});
-}
+test("pi refuses a delegate message of only spaces, tabs and newlines, and passes one with a word", () => {
+	expect(validated(" \n\t ")).toThrow();
+	expect(validated("\n Review it. ")).not.toThrow();
+});
