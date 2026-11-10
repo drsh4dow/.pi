@@ -1,0 +1,634 @@
+{
+	"api-and-interface-design": {
+		"positive": [
+			{
+				"prompt": "Design a REST endpoint for creating invoices, including error responses and versioning"
+			},
+			{
+				"prompt": "What should the public interface of this payments module expose to other teams?"
+			},
+			{
+				"prompt": "Help me define the contract between the frontend and the orders service"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "My unit test is failing with a null pointer exception",
+				"owner": "debugging-and-error-recovery"
+			},
+			{
+				"prompt": "Make this landing page responsive on mobile",
+				"owner": "frontend-ui-engineering"
+			}
+		]
+	},
+	"browser-testing-with-devtools": {
+		"positive": [
+			{
+				"prompt": "Use Chrome DevTools to figure out why the checkout button click does nothing"
+			},
+			{
+				"prompt": "Inspect the network requests the dashboard makes when it first loads"
+			},
+			{
+				"prompt": "Verify in a real browser that the form submits and the data persists in localStorage"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Write a spec for the new billing feature before we start",
+				"owner": "spec-driven-development"
+			},
+			{
+				"prompt": "Break this PRD into ordered implementation tasks",
+				"owner": "planning-and-task-breakdown"
+			}
+		]
+	},
+	"ci-cd-and-automation": {
+		"positive": [
+			{
+				"prompt": "Set up a GitHub Actions pipeline that runs the tests on every pull request"
+			},
+			{
+				"prompt": "Add a deploy stage to the pipeline with a manual approval gate"
+			},
+			{
+				"prompt": "Automate the quality gates so nothing merges without passing checks"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Refactor this function so it is easier to read",
+				"owner": "code-simplification"
+			},
+			{
+				"prompt": "Add structured logging to the checkout service",
+				"owner": "observability-and-instrumentation"
+			}
+		]
+	},
+	"code-review-and-quality": {
+		"positive": [
+			{
+				"prompt": "Review this pull request before I merge it"
+			},
+			{
+				"prompt": "Do a quality pass on this diff for correctness and readability"
+			},
+			{
+				"prompt": "Can you review the changes another model just wrote for me?"
+			},
+			{
+				"prompt": "Review this diff before I merge it. It adds paging to the orders endpoint."
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Deploy this to production now",
+				"owner": "shipping-and-launch"
+			},
+			{
+				"prompt": "Write a failing test for the bug before fixing it",
+				"owner": "test-driven-development"
+			}
+		]
+	},
+	"code-simplification": {
+		"positive": [
+			{
+				"prompt": "This function works but it is way too clever, simplify it without changing behavior"
+			},
+			{
+				"prompt": "Reduce the complexity of this module so juniors can maintain it"
+			},
+			{
+				"prompt": "Clean up this working code, it has grown hard to follow"
+			},
+			{
+				"prompt": "Simplify this function, it works but it is hard to read."
+			},
+			{
+				"prompt": "Clean this up, it works but it has grown hard to follow. Here is the function."
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Add a feature flag system to the app",
+				"owner": "incremental-implementation"
+			},
+			{
+				"prompt": "Diagnose why the build broke overnight",
+				"owner": "debugging-and-error-recovery"
+			}
+		]
+	},
+	"constraint-driven-development": {
+		"positive": [
+			{
+				"prompt": "Set up quality constraints for this project — I want to define our bar before the agent writes more code"
+			},
+			{
+				"prompt": "We have no written standards. Ask me what I care about and write it down with sane defaults"
+			},
+			{
+				"prompt": "The agent keeps adding @ts-ignore and skipping tests to get green. How do I stop that?"
+			},
+			{
+				"prompt": "What coverage threshold should we enforce, and where should it run so it doesn't slow us down?"
+			},
+			{
+				"prompt": "I care about accessibility and web performance — set those up as enforced constraints"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Review this pull request across correctness and security",
+				"owner": "code-review-and-quality"
+			},
+			{
+				"prompt": "Add a deploy stage to our pipeline with a manual approval gate",
+				"owner": "ci-cd-and-automation"
+			},
+			{
+				"prompt": "Write a failing test for this bug before we fix it",
+				"owner": "test-driven-development"
+			}
+		]
+	},
+	"context-engineering": {
+		"positive": [
+			{
+				"prompt": "What context should I load into the agent before starting this refactor?"
+			},
+			{
+				"prompt": "The model's output quality dropped mid-session, how do I fix its context?"
+			},
+			{
+				"prompt": "Set up rules files and context packing for my repository"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Write unit tests for the date parser",
+				"owner": "test-driven-development"
+			},
+			{
+				"prompt": "Harden this endpoint against SQL injection",
+				"owner": "security-and-hardening"
+			}
+		]
+	},
+	"debugging-and-error-recovery": {
+		"positive": [
+			{
+				"prompt": "The app crashes with a TypeError when I click save, help me find the root cause"
+			},
+			{
+				"prompt": "The API is throwing intermittent 500 errors in production, help me find the root cause"
+			},
+			{
+				"prompt": "This test passed yesterday and fails today, figure out what broke"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Write the API documentation for the orders service",
+				"owner": "documentation-and-adrs"
+			},
+			{
+				"prompt": "Simplify this working function for readability",
+				"owner": "code-simplification"
+			}
+		]
+	},
+	"deprecation-and-migration": {
+		"positive": [
+			{
+				"prompt": "We are sunsetting the v1 API, plan the deprecation"
+			},
+			{
+				"prompt": "Migrate users off the legacy auth system without breaking them"
+			},
+			{
+				"prompt": "How do I remove this old feature safely for existing users?"
+			},
+			{
+				"prompt": "Rename a database column without downtime"
+			},
+			{
+				"prompt": "How do I drop a column safely in production?"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Add dark mode to the settings page",
+				"owner": "frontend-ui-engineering"
+			},
+			{
+				"prompt": "Why is this test flaky on CI?",
+				"owner": "ci-cd-and-automation"
+			}
+		]
+	},
+	"documentation-and-adrs": {
+		"positive": [
+			{
+				"prompt": "Write an ADR for choosing Postgres over MongoDB"
+			},
+			{
+				"prompt": "Document the architecture decision behind the queue design"
+			},
+			{
+				"prompt": "Update the documentation for the new setup flow and record why it changed"
+			},
+			{
+				"prompt": "Our docs are out of date with the code"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Find the root cause of the memory leak in the worker",
+				"owner": "debugging-and-error-recovery"
+			},
+			{
+				"prompt": "Harden the login endpoint against brute force attacks",
+				"owner": "security-and-hardening"
+			}
+		]
+	},
+	"doubt-driven-development": {
+		"positive": [
+			{
+				"prompt": "This change touches production auth, cross-examine every assumption before we proceed"
+			},
+			{
+				"prompt": "I am not confident in this approach, adversarially review my reasoning in a fresh context"
+			},
+			{
+				"prompt": "High-stakes migration tomorrow, stress the plan for hidden failure modes"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Format this file with prettier"
+			},
+			{
+				"prompt": "Write the changelog entry for the release",
+				"owner": "git-workflow-and-versioning"
+			}
+		]
+	},
+	"frontend-ui-engineering": {
+		"positive": [
+			{
+				"prompt": "Make this page responsive and WCAG compliant",
+				"topK": 1
+			},
+			{
+				"prompt": "Build an accessible modal component with keyboard support"
+			},
+			{
+				"prompt": "Make the pricing page accessible and responsive on mobile",
+				"topK": 1
+			},
+			{
+				"prompt": "Refactor the dashboard into reusable components with sane state management"
+			},
+			{
+				"prompt": "Rework the profile page into reusable components with proper state management"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Optimize the slow database indexes",
+				"owner": "performance-optimization"
+			},
+			{
+				"prompt": "Tag and publish the release",
+				"owner": "git-workflow-and-versioning"
+			}
+		]
+	},
+	"git-workflow-and-versioning": {
+		"positive": [
+			{
+				"prompt": "Split this messy working tree into clean atomic commits"
+			},
+			{
+				"prompt": "Resolve the merge conflict on this feature branch"
+			},
+			{
+				"prompt": "How should we tag and version this release?"
+			},
+			{
+				"prompt": "Commit this work and open a pull request"
+			},
+			{
+				"prompt": "Write the changelog entry for this diff.",
+				"topK": 1
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Add a loading spinner to the submit button"
+			},
+			{
+				"prompt": "Write integration tests for the payments API",
+				"owner": "test-driven-development"
+			},
+			{
+				"prompt": "This test started failing right after this change, here is the diff, what broke?",
+				"owner": "debugging-and-error-recovery"
+			},
+			{
+				"prompt": "Write me a commit message for this diff.",
+				"owner": "writing-good-commits"
+			}
+		]
+	},
+	"idea-refine": {
+		"positive": [
+			{
+				"prompt": "I have a rough idea for a habit tracker, help me refine it"
+			},
+			{
+				"prompt": "Stress-test my plan for the new onboarding flow"
+			},
+			{
+				"prompt": "Ideate on ways to improve developer retention in the product"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Fix the failing CI pipeline",
+				"owner": "ci-cd-and-automation"
+			},
+			{
+				"prompt": "Audit the upload endpoint for vulnerabilities",
+				"owner": "security-and-hardening"
+			}
+		]
+	},
+	"incremental-implementation": {
+		"positive": [
+			{
+				"prompt": "Implement the next task from the plan as a small verifiable slice"
+			},
+			{
+				"prompt": "Build this feature step by step, committing after each working increment"
+			},
+			{
+				"prompt": "Ship this change behind a feature flag in thin slices"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "What alerts should we page on for the new service?",
+				"owner": "observability-and-instrumentation"
+			},
+			{
+				"prompt": "Interview me to figure out the real requirements",
+				"owner": "interview-me"
+			}
+		]
+	},
+	"interview-me": {
+		"positive": [
+			{
+				"prompt": "Interview me about what I actually want before you build anything"
+			},
+			{
+				"prompt": "Ask me one question at a time until you understand the feature"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Run the full test suite and report failures",
+				"owner": "test-driven-development"
+			},
+			{
+				"prompt": "Deploy the current build to staging",
+				"owner": "shipping-and-launch"
+			},
+			{
+				"prompt": "Grill me on the requirements, the ask is fuzzy",
+				"owner": "grilling"
+			}
+		]
+	},
+	"observability-and-instrumentation": {
+		"positive": [
+			{
+				"prompt": "Add structured logging and metrics to the checkout service"
+			},
+			{
+				"prompt": "Set up tracing so we can follow a request across services"
+			},
+			{
+				"prompt": "What alerts should we page on for this new endpoint?"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Simplify this over-clever component",
+				"owner": "code-simplification"
+			},
+			{
+				"prompt": "Draft the PRD for the referral program"
+			}
+		]
+	},
+	"performance-optimization": {
+		"positive": [
+			{
+				"prompt": "Optimize this N+1 query",
+				"topK": 1
+			},
+			{
+				"prompt": "The dashboard takes eight seconds to load, profile it and fix the bottleneck"
+			},
+			{
+				"prompt": "Profile these slow database queries and add the right indexes",
+				"topK": 1
+			},
+			{
+				"prompt": "The orders endpoint has a slow N+1 query pattern, profile it and fix the bottleneck"
+			},
+			{
+				"prompt": "Core Web Vitals are failing, improve our LCP"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Draft the deprecation notice for the v1 API",
+				"owner": "deprecation-and-migration"
+			},
+			{
+				"prompt": "Design the public interface for the billing module",
+				"owner": "api-and-interface-design"
+			}
+		]
+	},
+	"planning-and-task-breakdown": {
+		"positive": [
+			{
+				"prompt": "Break this spec into small verifiable tasks with acceptance criteria"
+			},
+			{
+				"prompt": "Turn the PRD into an ordered task list we can execute"
+			},
+			{
+				"prompt": "Plan the work into implementable chunks before we start coding"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Debug the crash on startup",
+				"owner": "debugging-and-error-recovery"
+			},
+			{
+				"prompt": "Encode the output so it is safe against XSS",
+				"owner": "security-and-hardening"
+			}
+		]
+	},
+	"security-and-hardening": {
+		"positive": [
+			{
+				"prompt": "Audit this file upload handler for vulnerabilities"
+			},
+			{
+				"prompt": "Is this login flow safe against the OWASP top ten?"
+			},
+			{
+				"prompt": "Harden the webhook endpoint that fetches user-supplied URLs"
+			},
+			{
+				"prompt": "Run a dependency audit and triage the findings"
+			},
+			{
+				"prompt": "Is this new package safe to install? Check for typosquatting and supply chain risk"
+			},
+			{
+				"prompt": "Add auth and rotate the session cookie"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Rename these variables for clarity",
+				"owner": "code-simplification"
+			},
+			{
+				"prompt": "Set up the release tagging workflow",
+				"owner": "git-workflow-and-versioning"
+			}
+		]
+	},
+	"shipping-and-launch": {
+		"positive": [
+			{
+				"prompt": "Run the pre-launch checklist before we go live tomorrow"
+			},
+			{
+				"prompt": "What needs to be in place before shipping this to production?"
+			},
+			{
+				"prompt": "Prepare the rollback plan for Friday's deploy"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Refine my rough product idea into something concrete",
+				"owner": "idea-refine"
+			},
+			{
+				"prompt": "Why is this function so slow on large inputs?"
+			}
+		]
+	},
+	"source-driven-development": {
+		"positive": [
+			{
+				"prompt": "Verify against the official Next.js docs before implementing this"
+			},
+			{
+				"prompt": "I want source-cited code for the new Stripe integration"
+			},
+			{
+				"prompt": "Ground every framework decision in the official documentation"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Fix the flaky test in CI",
+				"owner": "ci-cd-and-automation"
+			},
+			{
+				"prompt": "Break the spec into ordered tasks",
+				"owner": "planning-and-task-breakdown"
+			}
+		]
+	},
+	"spec-driven-development": {
+		"positive": [
+			{
+				"prompt": "Write a spec for the new billing feature before we write any code"
+			},
+			{
+				"prompt": "Draft a PRD with objectives and boundaries for this project"
+			},
+			{
+				"prompt": "We are starting a new service, define the requirements first"
+			},
+			{
+				"prompt": "This one requirement covers identity, billing, notifications, and reporting — decompose it into independently specifiable modules first"
+			},
+			{
+				"prompt": "Before we spec this platform, map the capabilities and their dependency order"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Trace this request across our services",
+				"owner": "observability-and-instrumentation"
+			},
+			{
+				"prompt": "Simplify this clever one-liner into readable code",
+				"owner": "code-simplification"
+			},
+			{
+				"prompt": "Break the approved spec into ordered implementation tasks",
+				"owner": "planning-and-task-breakdown"
+			}
+		]
+	},
+	"test-driven-development": {
+		"positive": [
+			{
+				"prompt": "Write a failing test for this bug before fixing it"
+			},
+			{
+				"prompt": "Implement the streak calculator using red-green-refactor"
+			},
+			{
+				"prompt": "What tests should cover this new parsing logic before I write it?"
+			},
+			{
+				"prompt": "Add unit tests for this function. There are none yet."
+			},
+			{
+				"prompt": "Fix this bug: splitCents(100, 3) returns [33, 33, 33] and a cent goes missing. Here is the function."
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Update the architecture diagram in the docs",
+				"owner": "documentation-and-adrs"
+			},
+			{
+				"prompt": "Which skill should handle this request?"
+			}
+		]
+	}
+}
