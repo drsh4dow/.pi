@@ -19,6 +19,8 @@ export interface ChildPi {
 	readonly model: string;
 	/** The `--thinking` level the child runs at. None leaves pi's default for the model. */
 	readonly thinking: Option.Option<string>;
+	/** Starts the child without the `edit` and `write` tools. Its bash can still write. */
+	readonly readOnly: boolean;
 	/** The child's `<instructions>`. Its prompt extension reads them from the file `instructionsFlag` names. */
 	readonly instructions: Option.Option<{ readonly text: string }>;
 }
@@ -55,7 +57,7 @@ const ownerOnly = 0o600;
  */
 const argvOf = (
 	childExtensions: ReadonlyArray<string>,
-	{ session, name, model, thinking, instructions }: ChildPi,
+	{ session, name, model, thinking, readOnly, instructions }: ChildPi,
 	files: ReturnType<typeof stagedFiles>,
 ) =>
 	[
@@ -75,6 +77,7 @@ const argvOf = (
 		"--no-context-files",
 		"--tools",
 		"+codemode",
+		...(readOnly ? ["--exclude-tools", "edit,write"] : []),
 		"--",
 		`@${files.message}`,
 	] as const;

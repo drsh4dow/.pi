@@ -140,10 +140,10 @@ const parentEnv = inheritedEnv({
 
 const brief = { name: "Review the retry cap, again!", message: "Do it.", model: "a/b", instructions: Option.none() };
 
-const delegateLaunch = (level: number, thinking: Option.Option<string>) =>
+const delegateLaunch = (level: number, thinking: Option.Option<string>, readOnly = false) =>
 	Effect.flatMap(PiCli, (pi) =>
 		launch(pi)({
-			brief: { ...brief, thinking },
+			brief: { ...brief, thinking, readOnly },
 			level,
 			ref: "delegate-12",
 			agentKey: "test",
@@ -165,6 +165,7 @@ const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) =
 		name,
 		argv: Arr.take(argv, 4),
 		tools: valuesOf("--tools"),
+		excluded: valuesOf("--exclude-tools"),
 		thinking: valuesOf("--thinking"),
 		env,
 	};
@@ -178,7 +179,20 @@ const launchRows = [
 			name: "review-the-retry-12-test",
 			argv: ["choom", "-n", "500", "--"],
 			tools: ["+codemode"],
+			excluded: [],
 			thinking: ["high"],
+			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "2" },
+		},
+	},
+	{
+		name: "a read-only delegate starts without the edit and write tools, and keeps codemode",
+		spec: delegateLaunch(2, Option.none(), true),
+		expect: {
+			name: "review-the-retry-12-test",
+			argv: ["choom", "-n", "500", "--"],
+			tools: ["+codemode"],
+			excluded: ["edit,write"],
+			thinking: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "2" },
 		},
 	},
@@ -189,6 +203,7 @@ const launchRows = [
 			name: "review-the-retry-12-test",
 			argv: ["choom", "-n", "1000", "--"],
 			tools: ["+codemode"],
+			excluded: [],
 			thinking: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "3" },
 		},
@@ -205,6 +220,7 @@ const launchRows = [
 			name: "watch-1-test",
 			argv: ["choom", "-n", "1000", "--"],
 			tools: [],
+			excluded: [],
 			thinking: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "3" },
 		},

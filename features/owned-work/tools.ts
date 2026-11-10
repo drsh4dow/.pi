@@ -1,51 +1,26 @@
 import { type JsonValue, uuidv7 } from "@earendil-works/pi-ai";
-import {
-	defineTool,
-	type ExtensionAPI,
-	type ExtensionContext,
-	type ToolDefinition,
-} from "@earendil-works/pi-coding-agent";
+import { defineTool, type ExtensionAPI, type ToolDefinition } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
-import * as Config from "effect/Config";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
+import type * as FileSystem from "effect/FileSystem";
 import type * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
-import * as Path from "effect/Path";
-import * as Str from "effect/String";
+import type * as Path from "effect/Path";
 import { type Static, Type } from "typebox";
 
-import { type Brief, type ChildSession, levels, type Self } from "./child.ts";
+import { type Caller, type DelegateParams, delegateParams, parseCall } from "./brief.ts";
+import { type ChildSession, levels, type Self } from "./child.ts";
 import { Ledger, type LedgerFailure } from "./ledger.ts";
-import { nameOf } from "./naming.ts";
+import { type ModelTable, modelTable } from "./models.ts";
 import { HandleOut, Out, ResultsOut } from "./out.ts";
-import { BadDelegate, StartRequest, WorkRef } from "./work.ts";
+import { type BadDelegate, StartRequest, WorkRef } from "./work.ts";
 
 const HandleRef = Type.Object({ ref: Type.String() });
 
 const Refs = Type.Array(HandleRef, { minItems: 1 });
 
 const RefsParams = Type.Object({ of: Refs });
-
-const DelegateParams = Type.Object({
-	message: Type.String({
-		pattern: String.raw`\S`,
-		description: "Everything the delegate needs. You cannot send it anything later, and it cannot ask you.",
-	}),
-	instructionsFile: Type.Optional(
-		Type.String({
-			description:
-				"A file whose text the delegate keeps as standing instructions, such as one a skill names. `~/` and paths relative to your working directory work.",
-		}),
-	),
-	model: Type.Optional(
-		Type.String({
-			description:
-				"`provider/id`, such as anthropic/claude-opus-5-5. Your own model and thinking level when left out.",
-		}),
-	),
-});
 
 const ServeParams = Type.Object({
 	command: Type.String({ minLength: 1 }),
@@ -78,7 +53,7 @@ const delegateGuidelines = [
 	"Use delegate to keep bulk out of your context. When the work means reading many files, a long transcript, or a large artifact, hand it to a delegate and keep only its answer and the evidence locations it names.",
 	"Treat every delegate hand-off as lossy. One agent, one round trip, is the baseline. Fan out only when the sub-tasks are independent (no shared mutable state, no ordering between them), each delegate brings back a different kind of finding, and merging the answers fits in your context.",
 	"Write each delegate task message as the delegate's whole world. Name the goal, the inputs, what counts as done, and the shape of the answer.",
-	"Give each delegate that commits its own branch or worktree.",
+	"Give each delegate that commits its own branch or worktree, and start it there with cwd.",
 	"A delegate's answer is a claim. Check what you will act on against the real artifact before you report it as done.",
 	"A delegate that reports something missing hands you a gap. Supply it in a fresh delegate's message. If only someone above you can settle it, it is your own open question now.",
 ];
@@ -113,70 +88,37 @@ const runTool =
 
 const refsOf = (of: ReadonlyArray<Static<typeof HandleRef>>) => Arr.map(of, ({ ref }) => WorkRef(ref));
 
-type Caller = Pick<ExtensionContext, "cwd" | "model" | "thinkingLevel"> & {
-	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll" | "streamSimple">;
-};
+const delegateTool = (
+	runtime: Runtime,
+	childLevel: number,
+	place: Omit<ChildSession, "id">,
+	table: ModelTable = modelTable,
+) => {
+	const parameters = delegateParams(table);
 
-const modelOf = (ctx: Caller, wanted: string | undefined) => {
-	if (wanted === undefined) {
-		const own = Option.fromUndefinedOr(ctx.model);
-		const thinking = Option.fromUndefinedOr(ctx.thinkingLevel);
-
-		return Effect.fromOption(own, () => BadDelegate.make({ why: "name a model, since you run on none" })).pipe(
-			Effect.map(({ provider, id }) => ({ model: `${provider}/${id}`, thinking })),
-		);
-	}
-
-	const found = Arr.findFirst(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === wanted);
-
-	return Effect.fromOption(found, () =>
-		BadDelegate.make({ why: `model ${wanted} is not in the model registry` }),
-	).pipe(Effect.as({ model: wanted, thinking: Option.none<string>() }));
-};
-
-const instructionsOf = Effect.fn("instructionsOf")(function* (cwd: string, file: string) {
-	const fs = yield* FileSystem.FileSystem;
-	const path = yield* Path.Path;
-	const home = yield* Effect.orElseSucceed(Config.String("HOME"), () => "~");
-	const absolute = path.resolve(cwd, Str.replace(/^~(?=\/)/u, home)(file));
-
-	const text = yield* Effect.mapError(fs.readFileString(absolute), (error) =>
-		BadDelegate.make({ why: `cannot read instructionsFile ${file}: ${error.reason._tag}` }),
-	);
-
-	return { file: absolute, text };
-});
-
-const briefOf = Effect.fn("briefOf")(function* (ctx: Caller, call: Static<typeof DelegateParams>) {
-	const { model, thinking } = yield* modelOf(ctx, call.model);
-
-	const instructions = yield* Effect.transposeOption(
-		Option.map(Option.fromUndefinedOr(call.instructionsFile), (file) => instructionsOf(ctx.cwd, file)),
-	);
-
-	const name = yield* nameOf(ctx.modelRegistry, ctx.model, call.message);
-
-	return { name, message: call.message, model, thinking, instructions } satisfies Brief;
-});
-
-const delegateTool = (runtime: Runtime, childLevel: number, place: Omit<ChildSession, "id">) =>
-	({
+	return {
 		name: "delegate",
 		label: "delegate",
 		promptSnippet: "Start a delegate on one task. It wakes you with its answer.",
 		description: "Start a delegate on one task. It wakes you with its answer.",
 		promptGuidelines: childLevel === levels ? [...delegateGuidelines, lastLevelGuideline] : delegateGuidelines,
-		parameters: DelegateParams,
+		parameters,
 		outputSchema: HandleOut,
 		execute: (_id, call, signal, _update, ctx: Caller) =>
 			runTool(runtime, signal)(
 				(ledger) =>
-					Effect.flatMap(briefOf(ctx, call), (brief) =>
-						ledger.start(StartRequest.Delegate({ brief, childSession: { ...place, id: uuidv7() } })),
+					Effect.flatMap(parseCall(ctx, table, call), ({ brief, cwd }) =>
+						ledger.start(
+							StartRequest.Delegate({
+								brief,
+								childSession: { ...place, cwd: Option.getOrElse(cwd, () => place.cwd), id: uuidv7() },
+							}),
+						),
 					),
 				Out.handle,
 			),
-	}) satisfies ToolDefinition<typeof DelegateParams, JsonValue>;
+	} satisfies ToolDefinition<DelegateParams, JsonValue>;
+};
 
 const serveTool = (runtime: Runtime) =>
 	defineTool({

@@ -8,6 +8,7 @@ import * as Str from "effect/String";
 
 import { PiCli, piCliLayer } from "../../clients/pi-cli/index.ts";
 import { childExtensions, inheritedEnv, launch, levels } from "./child.ts";
+import { parseProfile } from "./profile.ts";
 
 /** One delegate as its parent would start it, minus the systemd scope and hc terminal around it. */
 export interface StagedLaunch {
@@ -32,19 +33,27 @@ export const stagedLaunches = Effect.fn("stagedLaunches")(function* (cwd: string
 	const cli = Context.get(services, PiCli);
 
 	const withInstructions = yield* Effect.forEach(files, (file) =>
-		Effect.map(fs.readFileString(`${instructionsFolder}/${file}`), (text) => ({
+		Effect.map(Effect.flatMap(fs.readFileString(`${instructionsFolder}/${file}`), parseProfile), (profile) => ({
 			name: Str.replace(/\.md$/u, "")(file),
 			level: 2,
-			instructions: Option.some({ file, text }),
+			readOnly: profile.readOnly,
+			instructions: Option.some({ file, text: profile.text }),
 		})),
 	);
 
 	return yield* Effect.forEach(
-		[...withInstructions, { name: "bare", level: levels, instructions: Option.none() }],
-		({ name, level, instructions }) =>
+		[...withInstructions, { name: "bare", level: levels, readOnly: false, instructions: Option.none() }],
+		({ name, level, readOnly, instructions }) =>
 			Effect.map(
 				launch(cli)({
-					brief: { name, message, model: "anthropic/claude-opus-5-5", thinking: Option.none(), instructions },
+					brief: {
+						name,
+						message,
+						model: "anthropic/claude-opus-5-5",
+						thinking: Option.none(),
+						readOnly,
+						instructions,
+					},
 					level,
 					ref: "delegate-1",
 					agentKey: "prompts",

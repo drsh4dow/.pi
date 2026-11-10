@@ -24,6 +24,7 @@ const childOf = (session: SessionAddress, instructions = Option.some({ text: "Re
 	message: "m",
 	model: "a/b",
 	thinking: Option.none(),
+	readOnly: false,
 	instructions,
 });
 

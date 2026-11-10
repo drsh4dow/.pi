@@ -99,7 +99,7 @@ const requestOf = (act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
 	const message = act.messageKiB === undefined ? "Review it." : Str.repeat(act.messageKiB * 1024)("x");
 	const text = act.instructionsKiB === undefined ? "Review." : Str.repeat(act.instructionsKiB * 1024)("p");
 	const instructions = Option.some({ file: "/r.md", text });
-	const brief = { name: "Review it", message, model: "a/b", thinking: Option.none(), instructions };
+	const brief = { name: "Review it", message, model: "a/b", thinking: Option.none(), readOnly: false, instructions };
 
 	return Match.value(act.kind).pipe(
 		Match.when("delegate", () => StartRequest.Delegate({ brief, childSession })),
