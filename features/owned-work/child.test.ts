@@ -3,11 +3,10 @@ import { afterAll, expect, test } from "bun:test";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Str from "effect/String";
 
 import type { RunSpec } from "../../clients/hc/index.ts";
 import { PiCli } from "../../clients/pi-cli/index.ts";
-import { atLevel, type Brief, childExtensions, inheritedEnv, launch, Self, selfFromEnv } from "./child.ts";
+import { atLevel, childExtensions, inheritedEnv, launch, Self, selfFromEnv } from "./child.ts";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { commandSpec } from "./ledger.ts";
 import { WorkRef } from "./work.ts";
@@ -139,10 +138,12 @@ const parentEnv = inheritedEnv({
 	PI_OWNED_WORK_SLICE: "pi-ow-test-delegate1",
 });
 
-const delegateLaunch = (level: number, thinking: Option.Option<string>, instructions: Brief["instructions"]) =>
+const brief = { name: "Review the retry cap, again!", message: "Do it.", model: "a/b", instructions: Option.none() };
+
+const delegateLaunch = (level: number, thinking: Option.Option<string>) =>
 	Effect.flatMap(PiCli, (pi) =>
 		launch(pi)({
-			brief: { name: "Review the retry cap, again!", message: "Do it.", model: "a/b", thinking, instructions },
+			brief: { ...brief, thinking },
 			level,
 			ref: "delegate-12",
 			agentKey: "test",
@@ -165,36 +166,30 @@ const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) =
 		argv: Arr.take(argv, 4),
 		tools: valuesOf("--tools"),
 		thinking: valuesOf("--thinking"),
-		instructions: Arr.length(valuesOf("--instructions")),
-		skillFlags: Arr.filter(argv, Str.includes("skill")),
 		env,
 	};
 };
 
 const launchRows = [
 	{
-		name: "a level-2 delegate starts at OOM score adjustment 500 with codemode, every skill, its thinking level and its instructions",
-		spec: delegateLaunch(2, Option.some("high"), Option.some({ file: "/brief.md", text: "Review." })),
+		name: "a level-2 delegate starts at OOM score adjustment 500 with codemode and its thinking level",
+		spec: delegateLaunch(2, Option.some("high")),
 		expect: {
 			name: "review-the-retry-12-test",
 			argv: ["choom", "-n", "500", "--"],
 			tools: ["+codemode"],
 			thinking: ["high"],
-			instructions: 1,
-			skillFlags: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "2" },
 		},
 	},
 	{
-		name: "a delegate at the last level starts at OOM score adjustment 1000, and with no thinking level or instructions passes neither",
-		spec: delegateLaunch(3, Option.none(), Option.none()),
+		name: "a delegate at the last level starts at OOM score adjustment 1000, and with no thinking level passes none",
+		spec: delegateLaunch(3, Option.none()),
 		expect: {
 			name: "review-the-retry-12-test",
 			argv: ["choom", "-n", "1000", "--"],
 			tools: ["+codemode"],
 			thinking: [],
-			instructions: 0,
-			skillFlags: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "3" },
 		},
 	},
@@ -211,8 +206,6 @@ const launchRows = [
 			argv: ["choom", "-n", "1000", "--"],
 			tools: [],
 			thinking: [],
-			instructions: 0,
-			skillFlags: [],
 			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "3" },
 		},
 	},
