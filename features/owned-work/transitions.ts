@@ -20,9 +20,9 @@ import {
 	WorkRef,
 } from "./work.ts";
 
-const initial = (role: Role, now: MonotonicNanos): LedgerState => ({
+const initial = (role: Role, next: number, now: MonotonicNanos): LedgerState => ({
 	role,
-	next: 1,
+	next,
 	work: new Map(),
 	phase: "idle",
 	now,

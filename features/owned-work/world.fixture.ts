@@ -216,7 +216,7 @@ export const worldOf = (clock: World["clock"]) => (role: Role) =>
 
 		const fakes = Layer.mergeAll(hcOf(world), hostOf(world), slicesOf(world), piSessionsLayer, node);
 		const self = role === "root" ? Self.Root({ role, level: 1 }) : Self.Delegate({ role, level: 2, slice: "pi-ow" });
-		const ledger = ledgerLayer({ self, cwd: sessionRoot, passEnv: {} });
+		const ledger = ledgerLayer({ self, cwd: sessionRoot, passEnv: {}, firstRef: 1 });
 		const context = yield* Layer.buildWithScope(Layer.provideMerge(ledger, fakes), scope);
 
 		return Object.assign(world, {

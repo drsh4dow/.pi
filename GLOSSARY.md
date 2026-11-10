@@ -39,7 +39,7 @@ Terms from the owned-work feature (`features/owned-work/`).
 - **Group.** Work moved out of the agent's hands into one unit, under a name its caller gives. Mode **all** wakes the agent once with every result. Mode **each** wakes it once per result.
 - **Holder.** Who receives a piece of work's result: the agent, or the group it was moved into.
 - **Handle.** The plain JSON a start tool returns, such as `{ "ref": "delegate-3", "kind": "delegate", "terminal": "t7" }`.
-- **Ref.** A handle's id, such as `delegate-3`. Unique within one pi process.
+- **Ref.** A handle's id, such as `delegate-3`. Unique within a session's transcript: a pi process numbers its refs past the highest one its session names already, so a fork or a resumed session never reuses one.
 - **Settle.** A job's end: done, fired, failed, or a group's member results. The ledger also writes a settle entry when a serve ends, so every piece of work has one.
 - **Deliver.** Hand a settled result to the agent, exactly once: at the end of a turn, by a wake while idle, or in a `stop` reply.
 - **Wake.** A message that carries results to an idle agent and starts its next turn.

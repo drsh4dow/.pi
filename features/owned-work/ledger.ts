@@ -59,6 +59,8 @@ export interface LedgerOptions {
 	readonly self: Self;
 	readonly cwd: string;
 	readonly passEnv: Readonly<Record<string, string>>;
+	/** The number of the first ref, past every ref the session's transcript names already. */
+	readonly firstRef: number;
 }
 
 interface Kit {
@@ -226,7 +228,7 @@ export const ledgerLayer = (
 				slices: yield* Slices,
 				sessions: yield* PiSessions,
 				cli: yield* PiCli,
-				state: yield* Ref.make(Transitions.initial(options.self.role, now)),
+				state: yield* Ref.make(Transitions.initial(options.self.role, options.firstRef, now)),
 				lock: yield* Semaphore.make(1),
 				fibers: yield* FiberSet.make(),
 				deadlines: yield* FiberMap.make<WorkRef>(),

@@ -4,6 +4,7 @@ import type {
 	ExtensionAPI,
 	ExtensionContext,
 	InputEvent,
+	SessionEntry,
 	SessionStartEvent,
 } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -16,6 +17,7 @@ import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { hcLayer, TerminalAddress } from "../../clients/hc/index.ts";
@@ -74,6 +76,27 @@ const hostLayer = (pi: ExtensionAPI, relay: Relay) => {
 
 type Env = Readonly<Record<string, string | undefined>>;
 
+const NumberedRef = Schema.String.check(Schema.isPattern(/^[a-z]+-\d+$/u));
+
+const RecordedWork = Schema.Struct({
+	type: Schema.Literal("custom"),
+	customType: Schema.Literal(kind),
+	data: Schema.Struct({ handle: NumberedRef }),
+});
+
+const refNumberOf = (entry: SessionEntry): Option.Option<number> => {
+	const recorded = Schema.decodeUnknownOption(RecordedWork)(entry);
+
+	return Option.map(recorded, ({ data }) => Number(Str.split(data.handle, "-")[1]));
+};
+
+/**
+ * A fork or a resumed session already names work in its transcript, such as `delegate-3`, that this process never
+ * started, so its own refs start past the highest one.
+ */
+export const firstRefAfter = (entries: ReadonlyArray<SessionEntry>): number =>
+	Arr.reduce(Arr.getSomes(Arr.map(entries, refNumberOf)), 0, Math.max) + 1;
+
 const runtimeOf = (
 	pi: ExtensionAPI,
 	ctx: ExtensionContext,
@@ -84,7 +107,8 @@ const runtimeOf = (
 	const agentKey = Str.takeRight(uuidv7(), 8);
 	const parent = Option.map(Option.fromUndefinedOr(env["HC_TERMINAL_ID"]), TerminalAddress);
 	const relay: Relay = { waiter: Option.none() };
-	const ledger = ledgerLayer({ self, cwd: ctx.cwd, passEnv: inheritedEnv(env) });
+	const firstRef = firstRefAfter(ctx.sessionManager.getEntries());
+	const ledger = ledgerLayer({ self, cwd: ctx.cwd, passEnv: inheritedEnv(env), firstRef });
 
 	const slices = Self.$is("Root")(self)
 		? slicesLayer({ slice: `pi-ow-${agentKey}`, rootPid: Option.some(process.pid) })
