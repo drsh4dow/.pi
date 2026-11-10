@@ -114,7 +114,7 @@ const runTool =
 const refsOf = (of: ReadonlyArray<Static<typeof HandleRef>>) => Arr.map(of, ({ ref }) => WorkRef(ref));
 
 type Caller = Pick<ExtensionContext, "cwd" | "model" | "thinkingLevel"> & {
-	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "find" | "streamSimple">;
+	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll" | "streamSimple">;
 };
 
 const modelOf = (ctx: Caller, wanted: string | undefined) => {
@@ -127,8 +127,7 @@ const modelOf = (ctx: Caller, wanted: string | undefined) => {
 		);
 	}
 
-	const [provider, ...id] = Str.split(wanted, "/");
-	const found = Option.fromUndefinedOr(ctx.modelRegistry.find(provider, Arr.join(id, "/")));
+	const found = Arr.findFirst(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === wanted);
 
 	return Effect.fromOption(found, () =>
 		BadDelegate.make({ why: `model ${wanted} is not in the model registry` }),

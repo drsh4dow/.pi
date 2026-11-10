@@ -30,6 +30,8 @@ const opus = getBuiltinModel("anthropic", "claude-opus-5-5");
 
 const unlisted = { ...haiku, id: "claude-haiku-9-9" };
 
+const proxied = { ...haiku, provider: "proxy/anthropic" };
+
 const harness = Bun.fileURLToPath(new URL("../..", import.meta.url));
 
 const briefs: Array<Brief> = [];
@@ -122,8 +124,7 @@ const callerOf = (naming: Naming, asked: Array<string>): Parameters<typeof deleg
 	model: haiku,
 	thinkingLevel: "high",
 	modelRegistry: {
-		find: (provider, id) =>
-			Option.getOrUndefined(Arr.findFirst([haiku, opus], (model) => model.provider === provider && model.id === id)),
+		getAll: () => [haiku, opus, proxied],
 		streamSimple: (model, _context, options) => {
 			const stream = createAssistantMessageEventStream();
 
@@ -193,6 +194,12 @@ const briefRows = [
 		call: { message: "m", model: "anthropic/claude-opus-5-5" },
 		naming: replies("Opus task"),
 		expect: { ...handed, briefs: [["Opus task", "anthropic/claude-opus-5-5", undefined, undefined]] },
+	},
+	{
+		name: "a model whose provider id holds a slash is found whole",
+		call: { message: "m", model: "proxy/anthropic/claude-haiku-5-5" },
+		naming: offline,
+		expect: { ...handed, briefs: [["m", "proxy/anthropic/claude-haiku-5-5", undefined, undefined]] },
 	},
 	{
 		name: "an instructions file is read at the call, relative to the working directory",
