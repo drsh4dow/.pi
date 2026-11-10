@@ -52,6 +52,7 @@ export class Ledger extends Context.Service<
 		readonly runStarted: Effect.Effect<void>;
 		readonly turnEnded: Effect.Effect<Verdict>;
 		readonly wentIdle: Effect.Effect<void>;
+		readonly running: Effect.Effect<ReadonlyArray<WorkRef>>;
 	}
 >()("pi-harness/features/owned-work/ledger") {}
 
@@ -243,6 +244,7 @@ export const ledgerLayer = (
 				runStarted: Effect.asVoid(apply(kit, Transitions.runStarted)),
 				turnEnded: apply(kit, Transitions.turnEnded),
 				wentIdle: Effect.asVoid(apply(kit, Transitions.wentIdle)),
+				running: Effect.map(Ref.get(kit.state), Transitions.running),
 			};
 		}),
 	);

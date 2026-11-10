@@ -254,8 +254,15 @@ const resynced = (
 	return Draft.woke(draft);
 };
 
+/** The live work the agent holds itself: what a session switch would stop. */
+const running = (state: LedgerState): ReadonlyArray<WorkRef> =>
+	Arr.flatMap([...state.work.values()], (work) =>
+		Draft.isLive(work) && Option.isNone(work.heldBy) ? [work.ref] : [],
+	);
+
 export const Transitions = {
 	initial,
+	running,
 	start,
 	spawned,
 	spawnFailed,

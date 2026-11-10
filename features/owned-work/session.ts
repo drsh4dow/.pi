@@ -4,6 +4,8 @@ import type {
 	ExtensionAPI,
 	ExtensionContext,
 	InputEvent,
+	SessionBeforeForkEvent,
+	SessionBeforeSwitchEvent,
 	SessionEntry,
 	SessionStartEvent,
 } from "@earendil-works/pi-coding-agent";
@@ -186,6 +188,22 @@ const settle =
 			}),
 		);
 
+/** True when nothing runs, or the person agrees to stop what does, since leaving this session stops its work. */
+const mayStopRunning = (ledger: (typeof Ledger)["Service"], ctx: ExtensionContext) =>
+	Effect.flatMap(ledger.running, (refs) =>
+		Arr.isReadonlyArrayNonEmpty(refs) && ctx.hasUI
+			? Effect.promise(() =>
+					ctx.ui.confirm(
+						"Stop running work?",
+						`${Arr.join(refs, ", ")} still run. Leaving this session stops them.`,
+					),
+				)
+			: Effect.succeed(true),
+	);
+
+const cancelUnless = (ledger: (typeof Ledger)["Service"], ctx: ExtensionContext) =>
+	Effect.map(mayStopRunning(ledger, ctx), (agreed) => (agreed ? {} : { cancel: true }));
+
 export const runHook =
 	<Services>(runtime: ManagedRuntime.ManagedRuntime<Services, never>) =>
 	<Reply>(hook: Effect.Effect<Reply, never, Services>): Promise<Reply | undefined> =>
@@ -238,6 +256,10 @@ export const ownedWork = (childExtensions: ReadonlyArray<string>) => (pi: Extens
 		beforeSettle: (event: AgentBeforeSettleEvent, ctx: ExtensionContext) =>
 			withLedger((session) => settle(session, event, ctx)),
 		settled: () => withLedger(() => (ledger) => ledger.wentIdle),
+		beforeSwitch: (_event: SessionBeforeSwitchEvent, ctx: ExtensionContext) =>
+			withLedger(() => (ledger) => cancelUnless(ledger, ctx)),
+		beforeFork: (_event: SessionBeforeForkEvent, ctx: ExtensionContext) =>
+			withLedger(() => (ledger) => cancelUnless(ledger, ctx)),
 		shutdown: dispose,
 	};
 };

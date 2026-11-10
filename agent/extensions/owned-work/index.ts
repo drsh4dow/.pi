@@ -10,5 +10,7 @@ export default function (pi: ExtensionAPI) {
 	pi.on("agent_start", work.agentStart);
 	pi.on("agent_before_settle", work.beforeSettle);
 	pi.on("agent_settled", work.settled);
+	pi.on("session_before_switch", work.beforeSwitch);
+	pi.on("session_before_fork", work.beforeFork);
 	pi.on("session_shutdown", work.shutdown);
 }

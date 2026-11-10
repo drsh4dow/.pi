@@ -65,6 +65,7 @@ export type Act = Data.TaggedEnum<{
 	End: { readonly terminal: string; readonly end: TerminalEnd };
 	Group: { readonly mode: GroupMode; readonly refs: ReadonlyArray<string>; readonly expect: string };
 	Stop: { readonly refs: ReadonlyArray<string>; readonly expect: string };
+	Running: { readonly expect: ReadonlyArray<string> };
 	TurnEnds: { readonly expect: string };
 	Wakes: { readonly expect: ReadonlyArray<string> };
 	Killed: { readonly expect: ReadonlyArray<string> };
@@ -245,6 +246,8 @@ const perform = (world: World, act: Act): Effect.Effect<void> =>
 		End: ({ terminal, end }) => ended(world, terminal, end),
 		Group: (grouping) => group(world, grouping),
 		Stop: (stopping) => stop(world, stopping),
+		Running: ({ expect: expected }) =>
+			Effect.flatMap(world.ledger.running, (refs) => checked((): ReadonlyArray<string> => refs, expected)),
 		TurnEnds: ({ expect: expected }) => turnEnds(world, expected),
 		Wakes: ({ expect: expected }) => checked(() => world.wakes.splice(0), [...expected]),
 		Killed: ({ expect: expected }) => checked(() => world.kills.splice(0), [...expected]),
