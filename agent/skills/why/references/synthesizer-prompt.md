@@ -52,7 +52,7 @@ Claims with textual evidence, each quoted or paraphrased and cited precisely:
 
 ### What We Can Reasonably Infer
 
-Claims stated nowhere but well-supported by indirect evidence. Each bullet must make the inference chain visible ("Given A and B, it's likely that C"):
+Claims stated nowhere but well-supported by indirect evidence. Each bullet must make the inference chain visible ("Given A and B, C follows from D"):
 
 - **[Inferred]** {Claim}. Reasoning: {the specific evidence and the inference step}.
 

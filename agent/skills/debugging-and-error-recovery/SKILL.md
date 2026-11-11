@@ -272,7 +272,7 @@ After fixing a bug:
 
 - [ ] Root cause is identified and documented
 - [ ] Fix addresses the root cause, not just symptoms
-- [ ] A regression test exists that fails without the fix
+- [ ] A regression test exists that fails without the fix, unless the code is a prototype
 - [ ] All existing tests pass
 - [ ] Build succeeds
 - [ ] The original bug scenario is verified end-to-end

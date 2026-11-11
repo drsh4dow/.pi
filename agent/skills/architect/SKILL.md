@@ -27,7 +27,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 Run the **arena** skill ([`../arena/SKILL.md`](../arena/SKILL.md)) with the design-sketch task and the Phase A grounding artifacts. Give each runner `instructionsFile: ~/.pi/agent/skills/architect/references/runner-prompt.md`.
 
-Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is principle-exhaust-the-design-space made concrete. Whole-shape alternatives, not point fixes inside one shape.
+Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. When arena's candidates converge, rerun one runner with that shape ruled out. This is principle-exhaust-the-design-space made concrete. Whole-shape alternatives, not point fixes inside one shape.
 
 Screen every candidate against [`references/design-red-flags.md`](references/design-red-flags.md) before synthesis. Assume the next contributor is an agent that sees only the files it opened, copies the nearest example, and takes the shortest path that compiles. Prefer the design where a change that looks right from one file is right for the whole repo.
 

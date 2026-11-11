@@ -129,7 +129,7 @@ When the user confirms the statement of intent with an explicit "yes":
 
 1. **Deliver the confirmed Statement of Intent.**
 2. **Offer downstream paths** (offer to save it to `docs/intent/[topic].md`, draft a spec with `spec-driven-development`, or move to task planning after the spec).
-3. **STOP YOUR TURN IMMEDIATELY.** Do NOT invoke tools or start downstream work in this turn. Hand control back to the user to choose the next step.
+3. **Then continue or hand back.** When the original request asked for a deliverable, the yes settles its open decisions: continue with it. Otherwise end the turn, and the user picks the next step.
 
 ### The 95% Confidence Stop
 
@@ -210,7 +210,7 @@ Two questions in, the agent has discovered the actual ask isn't "a dashboard." I
 
 ## Red Flags
 
-- Three or more questions in a single message: that's batching, not interviewing
+- Three or more questions in a single message: that's batching, not interviewing. Your role's ASSUMPTIONS list counts as one
 - A question without your hypothesis attached: that's surveying, not committing
 - Accepting "whatever you think is best" as a terminal answer
 - Producing a spec, plan, or task list before the user has explicitly confirmed your restate

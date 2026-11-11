@@ -43,7 +43,7 @@ Rule numbers are stable ids that other skills cite. A removed rule leaves a gap.
 ### Filler
 
 23. **Filler phrases.** "In order to" becomes "To". "Due to the fact that" becomes "Because". Delete "It is important to note that".
-24. **Excessive hedging.** "could potentially possibly be argued that it might" becomes "may".
+24. **Excessive hedging.** "could potentially possibly be argued that it might" becomes the plain claim, flagged unverified when it is.
 25. **Generic conclusions.** "The future looks bright." State specific plans or facts.
 
 ### Jargon

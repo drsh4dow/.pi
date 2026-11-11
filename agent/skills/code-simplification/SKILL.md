@@ -330,6 +330,6 @@ After completing a simplification pass:
 - [ ] Each simplification is a reviewable, incremental change
 - [ ] The diff is clean — no unrelated changes mixed in
 - [ ] Simplified code follows project conventions (checked against CLAUDE.md or equivalent)
-- [ ] No error handling was removed or weakened
+- [ ] No error handling a caller relies on was removed or weakened
 - [ ] No dead code was left behind (unused imports, unreachable branches)
 - [ ] A teammate or review agent would approve the change as a net improvement
