@@ -214,35 +214,6 @@ Runtime error:
     └── Add logging at key points, verify data at each step
 ```
 
-## Safe Fallback Patterns
-
-When under time pressure, use safe fallbacks:
-
-```typescript
-// Safe default + warning (instead of crashing)
-function getConfig(key: string): string {
-  const value = process.env[key];
-  if (!value) {
-    console.warn(`Missing config: ${key}, using default`);
-    return DEFAULTS[key] ?? '';
-  }
-  return value;
-}
-
-// Graceful degradation (instead of broken feature)
-function renderChart(data: ChartData[]) {
-  if (data.length === 0) {
-    return <EmptyState message="No data available for this period" />;
-  }
-  try {
-    return <Chart data={data} />;
-  } catch (error) {
-    console.error('Chart render failed:', error);
-    return <ErrorState message="Unable to display chart" />;
-  }
-}
-```
-
 ## Instrumentation Guidelines
 
 Add logging only when it helps. Remove it when done.
