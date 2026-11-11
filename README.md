@@ -18,12 +18,14 @@ To set it up:
 
 1. Clone the repo as pi's config folder: `git clone git@github.com:drsh4dow/.pi.git ~/.pi`.
 2. Install the dependencies: `cd ~/.pi && bun install`.
-3. Open a tab in herdr-app and run `pi`.
+3. Link the Skills panel into herdr-app: `ln -s ~/.pi/herdr/mods/ow-skills ~/.pi/herdr/mods/ow-tabs ~/.config/herdr-app/mods/`. In your layout (a clone of `main`), point the `tabs` block at `ow-tabs` and make `panel-body` a stack holding one block, `{ "id": "skills", "type": "block", "content": { "mod": "ow-skills" } }`.
+4. Open a tab in herdr-app and run `pi`.
 
 Herdr then shows the agent's work beside it:
 
 - Each delegate, serve, and watch appears in herdr-app's agents list, under the agent that started it. A delegate shows the name its parent gave it. A serve or a watch shows its command, such as `bun-test`. Work in a group sits under the group's name.
 - `/fork` and `/clone` open the copy in a new tab in the same space. The original session keeps running, and so does its work.
+- The Skills panel, behind the Skills button at the top right, lists the skills and principles in the focused agent's context and in each of its delegates'. It follows `/tree` and compaction: a guide whose text left the context leaves the panel. A half-filled icon marks a guide the model saw only part of, and a person icon marks one you loaded with `/skill:`.
 
 Outside herdr-app, `/fork` and `/clone` replace the current session instead of opening a tab. The `delegate`, `serve`, and `watch` tools still need herdr-core, because they start every terminal through its socket.
 

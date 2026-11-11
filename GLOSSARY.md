@@ -80,3 +80,11 @@ Terms from the usage feature (`features/usage/`), which shows `/usage`.
 - **Meter.** One number read for an account, which becomes a row of its block: a rate-limit window's percent used and time to reset, a Claude account's extra usage against its monthly cap, or an estimate of what pi spent.
 - **Probe.** A one-token message to a Claude account whose setup-token cannot read the usage page. The rate-limit headers on the reply carry the windows. A rejected reply carries them too and costs nothing.
 - **Estimate.** What pi priced its own replies at, from the models' list prices in its session files. It leaves out every other client that uses the same key. `/usage` shows it for OpenAI, whose costs API needs an admin key.
+
+## Loaded
+
+Terms from the loaded feature (`features/loaded/`) and herdr-app's Skills panel (`herdr/mods/ow-skills/`).
+
+- **Guide.** A skill's `SKILL.md` or a principle's `<name>.md`: a file of instructions an agent reads into its context when its trigger matches.
+- **In context.** A guide is in context when the lines of its body that no other guide shares appear in text the model sees now: a tool result, a user message, a summary. pi's session projection decides what the model sees, after the branch, the latest compaction and context edits. A guide is **partial** when fewer than 90% of those lines appear, and at least three do, or all of them when it has fewer.
+- **Context label.** The `pi.context` hc label on an agent's own terminal: JSON with the guides in its context and how many skills and principles it could load. Each pi writes its own, so the panel finds a delegate's guides on the delegate's terminal. See ADR 0003.
