@@ -22,7 +22,7 @@ Apply this to every change before declaring it done.
 
 - [ ] All acceptance criteria for the task are met
 - [ ] Code runs and behaves as intended, verified at runtime, not just compiled or typechecked
-- [ ] Behavior a later change could silently break has a test that fails without the change. Prototypes and throwaway code need none.
+- [ ] Each silent-regression risk has a test that fails without the change. No tautological tests, none for prototypes
 - [ ] Existing tests still pass; no regressions introduced
 - [ ] Edge cases and error paths are handled, not just the happy path
 
@@ -31,7 +31,7 @@ Apply this to every change before declaring it done.
 - [ ] Code reveals intent through naming and structure; no comments needed to explain _what_ it does
 - [ ] No duplicated business logic
 - [ ] No dead code, debug output, or commented-out blocks left behind
-- [ ] Behavior changes are scoped to the task; deleting dead or redundant code is welcome
+- [ ] Behavior changes stay in scope, and the diff deletes what it can
 - [ ] Linting and formatting pass
 
 The depth behind these items lives in `code-review-and-quality` (the five-axis review) and `code-simplification` (reducing complexity without changing behavior).

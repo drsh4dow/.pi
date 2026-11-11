@@ -22,11 +22,11 @@ Before finishing any implementation, ask:
 
 If you build 1000 lines and 100 would suffice, you have failed. Prefer the boring, obvious solution. Cleverness is expensive.
 
-**Subtract first.** A change that removes more code than it adds is a win; optimize for it. When the task reaches code that is dead, redundant, or carries a comment the code could express, delete it, wherever the task's diff reaches. Before you delete, learn why it exists: read its callers or run the `why` skill. Add only what the task needs, and change behavior only where the task asks.
+**Subtract first.** Aim for a net-negative diff. Delete dead code, redundant checks, and comments the code can carry, anywhere the task's diff reaches. Respect Chesterton's fence: learn why it exists first. Add only what the task needs, and change behavior only where it asks.
 
 **Start with a spec.** Building without a spec because "it's obvious" is a failure mode. If the task is non-trivial and there's no spec, begin with the `spec-driven-development` skill.
 
-**Verify, don't assume.** A task is done when evidence shows it works: a run, build output, or runtime data. "Seems right" is never evidence. Write a test where it pulls its weight: it guards behavior a later change could break unnoticed. Prototypes need none. Skip tests that restate the code, test other tests, or would still pass with the behavior removed.
+**Verify, don't assume.** Done means evidence: a run, build output, runtime data. A test earns its place by catching a regression nothing else would. No tautological tests, no tests of tests, none for prototypes.
 
 Per-skill verification is the local check. The project-wide bar that applies to _every_ change, regardless of which skill is active, is the Definition of Done: tests pass, no regressions, behavior verified at runtime, docs updated. See `~/.pi/agent/references/definition-of-done.md`. It complements each task's acceptance criteria rather than replacing them.
 </operating-behaviors>
