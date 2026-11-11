@@ -190,7 +190,7 @@ Agent starts work
     └── Feature complete → All commits form a clean history
 ```
 
-This pattern means you never lose more than one increment of work. If an agent goes off the rails, `git reset --hard HEAD` takes you back to the last successful state.
+You never lose more than one increment of work. Revert an increment with `git restore <its paths>`, so unrelated changes in the tree survive.
 
 ## Change Summaries
 

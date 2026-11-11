@@ -245,7 +245,7 @@ After completing all increments for a task:
 - [ ] The full test suite passes
 - [ ] The build is clean
 - [ ] The feature works end-to-end as specified
-- [ ] No uncommitted changes remain
+- [ ] Every change this task made is committed
 
 ## See Also
 
