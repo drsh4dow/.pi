@@ -53,7 +53,9 @@ If you can't name the trust boundaries for a feature, you're not ready to secure
 - **Use httpOnly, secure, sameSite cookies** for sessions
 - **Run the detected package manager's native audit** against the committed lockfile before every release
 
-### Ask First (Requires Human Approval)
+### Surface First
+
+Each of these widens the attack surface. One the task did not name is an open decision under your role's collaboration rules.
 
 - Adding new authentication flows or changing auth logic
 - Storing new categories of sensitive data (PII, payment info)

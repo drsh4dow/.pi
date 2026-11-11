@@ -126,7 +126,6 @@ Add explicit checkpoints to the task list target:
 - [ ] All tests pass
 - [ ] Application builds without errors
 - [ ] Core user flow works end-to-end
-- [ ] Review with human before proceeding
 ```
 
 ## Task Sizing Guidelines
@@ -268,7 +267,7 @@ Before starting implementation, confirm:
 - [ ] No pre-existing incomplete plan was overwritten without explicit user confirmation
 - [ ] No task touches more than ~5 files
 - [ ] Checkpoints exist between major phases
-- [ ] The human has reviewed and approved the plan
+- [ ] Every open decision the plan settles has the human's answer
 
 ## See Also
 

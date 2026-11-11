@@ -18,19 +18,11 @@ Write a structured specification before writing any code. The spec is the shared
 - You're about to make an architectural decision
 - The task would take more than 30 minutes to implement
 
-**When NOT to use:** Single-line fixes, typo corrections, or changes where requirements are unambiguous and self-contained.
+**When NOT to use:** Trivial changes, such as a one-line fix or a typo.
 
 ## The Gated Workflow
 
-Spec-driven development has four phases, preceded by a scope check (Phase 0) that activates only when one request bundles several independently testable capabilities. Do not advance to the next phase until the current one is validated.
-
-```
-SPECIFY ──→ PLAN ──→ TASKS ──→ IMPLEMENT
-   │          │        │          │
-   ▼          ▼        ▼          ▼
- Human      Human    Human      Human
- reviews    reviews  reviews    reviews
-```
+Spec-driven development has four phases, SPECIFY → PLAN → TASKS → IMPLEMENT, preceded by a scope check (Phase 0) that activates only when one request bundles several independently testable capabilities. Do not advance to the next phase until the current one passes its checks. A phase waits for the human only when it settles an open decision.
 
 ### Phase 0: Scope Check
 
@@ -61,7 +53,7 @@ Build order: identity → billing, notifications → reporting
 - **Dependency direction, no cycles.** Arrows point one way. If two modules each need the other, they are one module.
 - **Interfaces live at the boundary.** The map records that `billing` depends on `identity`; the contract between them belongs in the provider module's spec (see `api-and-interface-design` for designing it).
 
-**The map is gated like every phase.** The human reviews module boundaries, dependency direction, and build order before any module spec is written. Getting the map wrong is expensive; reviewing ten lines is not.
+**The map is an open decision.** Every module spec builds on its boundaries, so the human reviews module boundaries, dependency direction, and build order before any module spec is written. Getting the map wrong is expensive; reviewing ten lines is not.
 
 **Then recurse per module.** Run Specify → Plan → Tasks → Implement for each module in dependency order. Each module gets its own spec, scoped to that module's objective, boundaries, and success criteria. Save the approved map at the project root and each module's spec alongside it, named by module id (`SPEC-identity.md`, `SPEC-billing.md`) — the map, not filename guessing, is the index of what exists.
 
@@ -69,16 +61,7 @@ Build order: identity → billing, notifications → reporting
 
 Start with a high-level vision. Ask the human clarifying questions until requirements are concrete.
 
-**Surface assumptions immediately.** Before writing any spec content, list what you're assuming:
-
-```
-ASSUMPTIONS I'M MAKING:
-1. This is a web application (not native mobile)
-2. Authentication uses session-based cookies (not JWT)
-3. The database is PostgreSQL (based on existing Prisma schema)
-4. We're targeting modern browsers only (no IE11)
-→ Correct me now or I'll proceed with these.
-```
+**Surface assumptions first,** before any spec content, in the form your role's collaboration rules give.
 
 Don't silently fill in ambiguous requirements. The spec's entire purpose is to surface misunderstandings _before_ code gets written — assumptions are the most dangerous form of misunderstanding.
 
@@ -162,8 +145,8 @@ Don't silently fill in ambiguous requirements. The spec's entire purpose is to s
 **External spec tools:** This workflow is format-agnostic. If the project
 already uses OpenSpec or another specification system, keep that system's
 artifact format and storage conventions instead of creating a duplicate
-`SPEC.md`. This skill owns the clarification, content, and approval gates; the
-external tool owns how the approved spec is represented.
+`SPEC.md`. This skill owns the clarification and content; the
+external tool owns how the spec is represented.
 
 **Reframe instructions as success criteria.** When receiving vague requirements, translate them into concrete conditions:
 
@@ -179,11 +162,7 @@ REFRAMED SUCCESS CRITERIA:
 
 This lets you loop, retry, and problem-solve toward a clear goal rather than guessing what "faster" means.
 
-**Stop after writing the spec (CRITICAL).** Once the spec is saved:
-
-1. Summarize it and list any Open Questions.
-2. Ask the human to approve it or request changes.
-3. **STOP YOUR TURN IMMEDIATELY.** Do NOT start Phase 2, invoke `planning-and-task-breakdown`, or write code in this turn. Planning starts only after the human approves the spec in a later turn.
+**After saving the spec,** summarize it. When it settles an open decision under your role's collaboration rules, end the turn on those questions. Otherwise continue to Phase 2.
 
 ### Phase 2: Plan
 
@@ -254,7 +233,7 @@ The spec is a living document, not a one-time artifact:
 - Implementing features not mentioned in any spec or task list
 - Making architectural decisions without documenting them
 - Skipping the spec because "it's obvious what to build"
-- Writing the spec and starting the plan or code in the same turn
+- Building on a spec that settles an open decision the human has not answered
 - One spec whose requirements span several independently testable capabilities
 - Module boundaries or build order decided implicitly during implementation because no capability map was approved up front
 
@@ -263,8 +242,7 @@ The spec is a living document, not a one-time artifact:
 Before proceeding to implementation, confirm:
 
 - [ ] The spec covers all six core areas
-- [ ] The human has reviewed and approved the spec
-- [ ] The turn ended after saving the spec; approval came in a later turn
+- [ ] Every open decision the spec settles has the human's answer
 - [ ] Success criteria are specific and testable
 - [ ] Boundaries (Always/Ask First/Never) are defined
 - [ ] The spec is saved to a file in the repository
