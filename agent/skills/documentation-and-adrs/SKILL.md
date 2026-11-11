@@ -40,65 +40,13 @@ Before creating an ADR, inspect the available repository context for an establis
 
 - **Location and format** — e.g. `docs/adr/*.md`, `Documentation/Decisions/*.rst`, a MADR layout, or an `adr-tools` setup. Match the existing directory, file extension, and markup (Markdown vs reStructuredText).
 - **Numbering and naming** — continue the existing sequence and filename pattern (`ADR-004-Title.rst`, `0004-title.md`, …); don't restart at 001 or introduce a second scheme.
-- **Section headings** — reuse the project's heading set rather than imposing this template's.
+- **Section headings** — reuse the project's heading set rather than imposing the default format's.
 
 If the available evidence conflicts, surface the conflict rather than silently introducing another scheme. Only when no convention can be established do you apply the default below.
 
-### ADR Template
+### Default format
 
-Store ADRs in `docs/adr/` with sequential numbering (unless the project already uses another location — see above):
-
-```markdown
-# ADR-001: Use PostgreSQL for primary database
-
-## Status
-
-Proposed | Accepted | Superseded by ADR-XXX | Deprecated
-
-## Date
-
-2025-01-15
-
-## Context
-
-We need a primary database for the task management application. Key requirements:
-
-- Relational data model (users, tasks, teams with relationships)
-- ACID transactions for task state changes
-- Support for full-text search on task content
-- Managed hosting available (for small team, limited ops capacity)
-
-## Decision
-
-Use PostgreSQL with Prisma ORM.
-
-## Alternatives Considered
-
-### MongoDB
-
-- Pros: Flexible schema, easy to start with
-- Cons: Our data is inherently relational; would need to manage relationships manually
-- Rejected: Relational data in a document store leads to complex joins or data duplication
-
-### SQLite
-
-- Pros: Zero configuration, embedded, fast for reads
-- Cons: Limited concurrent write support, no managed hosting for production
-- Rejected: Not suitable for multi-user web application in production
-
-### MySQL
-
-- Pros: Mature, widely supported
-- Cons: PostgreSQL has better JSON support, full-text search, and ecosystem tooling
-- Rejected: PostgreSQL is the better fit for our feature requirements
-
-## Consequences
-
-- Prisma provides type-safe database access and migration management
-- We can use PostgreSQL's full-text search instead of adding Elasticsearch
-- Team needs PostgreSQL knowledge (standard skill, low risk)
-- Hosting on managed service (Supabase, Neon, or RDS)
-```
+Write the ADR in the format of `../domain-modeling/ADR-FORMAT.md`.
 
 ### ADR Lifecycle
 

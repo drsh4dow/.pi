@@ -12,7 +12,9 @@ Git is your safety net. Treat commits as save points, branches as sandboxes, and
 
 ## When to Use
 
-Always. Every code change flows through git.
+- Branching, resolving conflicts, pushing, or running parallel work streams
+- Splitting a messy working tree into atomic commits
+- Cutting a release (version bump, tag) or writing a changelog entry
 
 ## Core Principles
 
@@ -53,48 +55,19 @@ Each commit does one logical thing:
 ```
 # Good: Each commit is self-contained
 git log --oneline
-a1b2c3d Add task creation endpoint with validation
-d4e5f6g Add task creation form component
-h7i8j9k Connect form to API and add loading state
-m1n2o3p Add task creation tests (unit + integration)
+a1b2c3d feat(tasks): add the creation endpoint with validation
+d4e5f6g feat(tasks): add the creation form
+h7i8j9k feat(tasks): connect the form to the API with a loading state
+m1n2o3p test(tasks): cover task creation end to end
 
 # Bad: Everything mixed together
 git log --oneline
 x1y2z3a Add task feature, fix sidebar, update deps, refactor utils
 ```
 
-### 3. Descriptive Messages
+### 3. Commit Messages
 
-Commit messages explain the _why_, not just the _what_:
-
-```
-# Good: Explains intent
-feat: add email validation to registration endpoint
-
-Prevents invalid email formats from reaching the database.
-Uses Zod schema validation at the route handler level,
-consistent with existing validation patterns in auth.ts.
-
-# Bad: Describes what's obvious from the diff
-update auth.ts
-```
-
-**Format:**
-
-```
-<type>: <short description>
-
-<optional body explaining why, not what>
-```
-
-**Types:**
-
-- `feat` — New feature
-- `fix` — Bug fix
-- `refactor` — Code change that neither fixes a bug nor adds a feature
-- `test` — Adding or updating tests
-- `docs` — Documentation only
-- `chore` — Tooling, dependencies, config
+Write each message by the `writing-good-commits` skill.
 
 ### 4. Keep Concerns Separate
 
@@ -354,7 +327,7 @@ Write the entry in the same change that makes the change, while the impact is fr
 For every commit:
 
 - [ ] Commit does one logical thing
-- [ ] Message explains the why, follows type conventions
+- [ ] Message follows the `writing-good-commits` skill
 - [ ] Tests pass before committing
 - [ ] No secrets in the diff
 - [ ] No formatting-only changes mixed with behavior changes
