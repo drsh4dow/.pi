@@ -178,6 +178,11 @@ const contradictions = [
 		delegates: false,
 	},
 	{
+		phrase: /tasks one at a time/iu,
+		rule: "the agent leading a build hands each slice to an owner",
+		delegates: false,
+	},
+	{
 		phrase: /STOP YOUR TURN/u,
 		rule: "a delegate has no later turn, and the roles decide when to stop",
 		delegates: true,
