@@ -114,26 +114,9 @@ SIMPLICITY CHECK:
 
 Three similar lines of code is better than a premature abstraction. Implement the naive, obviously-correct version first. Optimize only after correctness is proven with tests.
 
-### Rule 0.5: Scope Discipline
+### Rule 0.5: Subtract Within Reach
 
-Touch only what the task requires.
-
-Do NOT:
-
-- "Clean up" code adjacent to your change
-- Refactor imports in files you're not modifying
-- Remove comments you don't fully understand
-- Add features not in the spec because they "seem useful"
-- Modernize syntax in files you're only reading
-
-If you notice something worth improving outside your task scope, note it — don't fix it:
-
-```
-NOTICED BUT NOT TOUCHING:
-- src/utils/format.ts has an unused import (unrelated to this task)
-- The auth middleware could use better error messages (separate task)
-→ Want me to create tasks for these?
-```
+Wherever your diff reaches, delete dead code, redundant checks, and comments the code can carry, after learning why each exists. Change behavior only where the task asks, and add no feature the spec lacks. Report improvements beyond the diff instead of making them.
 
 ### Rule 1: One Thing at a Time
 

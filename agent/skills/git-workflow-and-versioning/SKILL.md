@@ -194,23 +194,25 @@ You never lose more than one increment of work. Revert an increment with `git re
 
 ## Change Summaries
 
-After any modification, provide a structured summary. This makes review easier, documents scope discipline, and surfaces unintended changes:
+After any modification, provide a structured summary that surfaces unintended changes:
 
 ```
 CHANGES MADE:
 - src/routes/tasks.ts: Added validation middleware to POST endpoint
 - src/lib/validation.ts: Added TaskCreateSchema using Zod
 
-THINGS I DIDN'T TOUCH (intentionally):
-- src/routes/auth.ts: Has similar validation gap but out of scope
-- src/middleware/error.ts: Error format could be improved (separate task)
+DELETED (and why it was safe):
+- src/lib/legacy-validate.ts: no callers since the Zod schema replaced it
+
+NOTICED BEYOND THE DIFF:
+- src/routes/auth.ts: Has a similar validation gap
 
 POTENTIAL CONCERNS:
 - The Zod schema is strict — rejects extra fields. Confirm this is desired.
 - Added zod as a dependency (72KB gzipped) — already in package.json
 ```
 
-This pattern catches wrong assumptions early and gives reviewers a clear map of the change. The "DIDN'T TOUCH" section is especially important — it shows you exercised scope discipline and didn't go on an unsolicited renovation.
+This pattern catches wrong assumptions early and gives reviewers a clear map of the change.
 
 ## Pre-Commit Hygiene
 
