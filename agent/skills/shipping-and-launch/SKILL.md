@@ -18,6 +18,20 @@ Ship with confidence. The goal is not just to deploy — it's to deploy safely, 
 - Opening a beta or early access program
 - Any deployment that carries risk (all of them)
 
+## Specialist Reviews
+
+Before the checklist, start three delegates on the change (the staged changes, the branch, or the scope the user named). Start all three in one turn with one `group` name, so they run in parallel:
+
+- `instructionsFile: "~/.pi/agent/instructions/code-reviewer.md"`
+- `instructionsFile: "~/.pi/agent/instructions/security-auditor.md"`
+- `instructionsFile: "~/.pi/agent/instructions/test-engineer.md"`
+
+Each persona file says what to check and what to report, so each task message names only the change. With no `delegate` tool, follow the three files yourself, one after another.
+
+Skip the reviews only when the change touches 2 files or fewer, the diff is under 50 lines, and it touches no auth, payments, data access, or config/env. A small diff with a wide blast radius still gets them.
+
+Merge the reports into the checklist yourself, and collapse a finding two reviewers both raise into one. Critical and Required `code-reviewer` findings go under Code Quality, Critical and High `security-auditor` findings are launch blockers under Security, and `code-reviewer`'s performance axis goes under Performance. No persona covers Accessibility, Infrastructure, or Documentation, so check those sections directly.
+
 ## The Pre-Launch Checklist
 
 ### Code Quality
@@ -290,6 +304,34 @@ Every deployment needs a rollback plan before it happens:
 - Database rollback: < 15 minutes
 ```
 
+## The Ship Decision
+
+End with one decision. Any Critical finding makes it NO-GO unless the user explicitly accepts the risk, and a GO needs the rollback plan above.
+
+```markdown
+## Ship Decision: GO | NO-GO
+
+### Blockers (must fix before ship)
+
+- [persona: Critical finding, or a High security finding, file:line]
+
+### Recommended fixes (should fix before ship)
+
+- [persona: finding below blocker severity, file:line]
+
+### Acknowledged risks (shipping anyway)
+
+- [risk and its mitigation]
+
+### Rollback plan
+
+[trigger conditions, steps, time to roll back]
+
+### Specialist reports
+
+[the three reports in full]
+```
+
 ## See Also
 
 - For the project-wide Definition of Done that every change must clear before this checklist, see `~/.pi/agent/references/definition-of-done.md`
@@ -324,7 +366,9 @@ Every deployment needs a rollback plan before it happens:
 
 Before deploying:
 
+- [ ] Specialist reports merged, or the skip rule's three conditions all hold
 - [ ] Pre-launch checklist completed (all sections green)
+- [ ] Ship decision written: GO or NO-GO, with every Critical finding a blocker or an accepted risk
 - [ ] Feature flag configured (if applicable)
 - [ ] Rollback plan documented
 - [ ] Monitoring dashboards set up

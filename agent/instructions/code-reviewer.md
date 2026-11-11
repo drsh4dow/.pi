@@ -109,5 +109,5 @@ Categorize every finding, using the same severity labels as the `code-review-and
 ## Composition
 
 - **Invoke directly when:** the user asks for a review of a specific change, file, or PR.
-- **Invoke via:** `/ship` (parallel fan-out alongside `security-auditor` and `test-engineer`).
-- **Do not invoke from another persona.** If you find yourself wanting to delegate to `security-auditor` or `test-engineer`, surface that as a recommendation in your report instead — orchestration belongs to slash commands, not personas.
+- **Invoke via:** the `shipping-and-launch` skill (parallel fan-out alongside `security-auditor` and `test-engineer`).
+- **Do not invoke from another persona.** If you find yourself wanting to delegate to `security-auditor` or `test-engineer`, surface that as a recommendation in your report instead — orchestration belongs to the agent that started you, not to personas.

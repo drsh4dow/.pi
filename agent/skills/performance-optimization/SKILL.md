@@ -60,6 +60,8 @@ onINP(console.log);
 onCLS(console.log);
 ```
 
+**Web audit.** For a web app, start a delegate with `instructionsFile: "~/.pi/agent/instructions/web-performance-auditor.md"`. Libraries, CLIs, and server-only code with no browser-facing output skip it. Its message names the files, components, or diff; any artifact paths or pasted JSON (Lighthouse, PageSpeed Insights, CrUX, a trace); the URL or page, if known; and the mode you expect. A URL or an artifact means Deep mode with measured numbers, and source files alone mean Quick mode with potential issues. Show the user its report in full. When they asked only for an audit, the report is the answer; otherwise its ranked findings feed Step 2.
+
 **Backend:**
 
 ```javascript

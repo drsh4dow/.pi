@@ -1,6 +1,6 @@
 # Orchestration patterns
 
-How an agent splits work with its delegates in this harness. Read this before adding a slash command that starts several delegates, or a new persona.
+How an agent splits work with its delegates in this harness. Read this before adding a skill step that starts several delegates, or a new persona.
 
 The governing rule: **the agent that owns a task leads it.** It settles what the task is, hands out the parts that fit a delegate, checks what comes back, and reports. A persona gives one perspective on one artifact and starts no other persona.
 
@@ -23,9 +23,9 @@ For an answer much smaller than its reading: tracing code across files, finding 
 ### 3. Parallel fan-out with merge
 
 ```
-                    ┌─→ code-reviewer    ─┐
-/ship → fan out  ───┼─→ security-auditor ─┤→ merge → go or no-go, with a rollback plan
-                    └─→ test-engineer    ─┘
+                                  ┌─→ code-reviewer    ─┐
+shipping-and-launch → fan out  ───┼─→ security-auditor ─┤→ merge → go or no-go, with a rollback plan
+                                  └─→ test-engineer    ─┘
 ```
 
 For independent parts: no two write the same file, and none needs another's result. Start every `delegate` in one turn with one `group` name, and the group wakes you once with every result. Delegates cannot message each other, so the starting agent merges and compares; ask each for an answer short enough that all of them fit.

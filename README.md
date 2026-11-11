@@ -67,7 +67,8 @@ Type any of these requests as written. The skill each one is meant to load is in
 | "Interrogate PR #123"                                                                         | Has adversaries on several models try to break the change, and keeps only the findings a run proves (`interrogate`)                                         |
 | "Simplify this function, it works but it is hard to read"                                     | Simplifies the code and keeps its behavior (`code-simplification`)                                                                                          |
 | "We have no written standards. Ask me what I care about and write it down with sane defaults" | Interviews you and writes `CONSTRAINTS.md` (`constraint-driven-development`)                                                                                |
-| "What needs to be in place before shipping this to production?"                               | Works through the pre-launch checklist and the rollback plan in the main session (`shipping-and-launch`)                                                    |
+| "What needs to be in place before shipping this to production?"                               | Starts the code-reviewer, security-auditor, and test-engineer delegates in parallel, then returns go or no-go with a rollback plan (`shipping-and-launch`)  |
+| "The invoices page at https://staging.example.com/invoices is slow"                           | Starts the web-performance-auditor delegate. A URL gets measured numbers, and source files alone get likely issues (`performance-optimization`)             |
 | "How does the retry queue work?"                                                              | Walks through the code's runtime behavior (`how`)                                                                                                           |
 | "Why does checkout retry three times?"                                                        | Gives a cited answer from git history and the other evidence it can reach (`why`)                                                                           |
 | "Run an arena on the cache design"                                                            | Runs parallel candidates, picks a base, and grafts in the best parts of the rest (`arena`)                                                                  |
@@ -76,18 +77,9 @@ Type any of these requests as written. The skill each one is meant to load is in
 
 For a small change, say it: "rename `fetchUser` to `loadUser`" or "commit this".
 
-## Three commands do what a plain request does not
+## Two commands
 
-A command exists only where it carries behavior no skill has. `/build` takes its mode from its argument, and `/ship` and `/webperf` start reviewer delegates, which a plain request does not do. The three live in `agent/prompts/`.
-
-| Command                   | Use it when                        | What it does                                                                                                                    |
-| ------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `/build`                  | You want the next task on the plan | One task: failing test, code, full suite, build, commit. Then it stops                                                          |
-| `/build auto`             | You trust the plan                 | You approve the plan once, and it runs every task with one commit each. It stops on failures, gaps in the spec, and risky steps |
-| `/ship [scope]`           | Before you deploy                  | Starts the code-reviewer, security-auditor, and test-engineer delegates in parallel. Returns go or no-go with a rollback plan   |
-| `/webperf [url or files]` | A web app feels slow               | Starts the web-performance-auditor delegate. A URL gets measured numbers, and source files alone get likely issues              |
-
-The extensions add two more commands. `/account <name>` moves the session to another Claude account and keeps the model. `/usage` shows what every account has used.
+The harness has no prompt templates. The extensions add two commands. `/account <name>` moves the session to another Claude account and keeps the model. `/usage` shows what every account has used.
 
 ## Start from where the work arrives
 
@@ -120,19 +112,19 @@ A PRD says what to build and why. A TRD says how. Neither one is a spec, because
 1. Say "write a spec that implements docs/prd.md following docs/trd.md". The agent reads both docs and the code, asks only about what they leave out, and writes `SPEC.md` with the two docs as its sources. A conflict between the docs becomes a blocking open question.
 2. Settle the open questions, then approve `SPEC.md`. If the PRD covers several features that can ship separately, the agent proposes a capability map first, and you get one spec per feature.
 3. Say "plan it", or "plan it and file the tasks as sub-issues of #42" if the work has an epic.
-4. Run `/build` one task at a time, or `/build auto` once you trust the plan. `/build auto` requires `SPEC.md`, so it refuses to start from the PRD and the TRD alone.
-5. Say "review the branch", then run `/ship`.
+4. Say "build the next task", or "build the plan" to hand each task to an owner delegate. Each task gets a failing test first and its own commit.
+5. Say "review the branch", then "prepare the deploy". The second loads `shipping-and-launch`, which starts the three reviewer delegates and returns go or no-go with a rollback plan.
 
 ### Smaller entry points
 
 - **A bug report.** Paste it: "splitCents(100, 7) returns cents that sum to 98".
 - **Code that works but is hard to read.** Say "simplify src/billing/", then "review it".
 - **A repo with no written quality bar.** Say "set up quality constraints for this project". Before a merge, say "check this diff for a lowered quality bar", which catches skipped tests and new lint suppressions.
-- **A slow page.** `/webperf https://staging.example.com/invoices`.
+- **A slow page.** Say "the invoices page at https://staging.example.com/invoices is slow". `performance-optimization` starts the web-performance-auditor delegate, which measures the URL.
 
 ## What's in the repo
 
-- `agent/skills/` holds the skills, and `agent/prompts/` holds the three slash commands.
+- `agent/skills/` holds the skills.
 - `agent/principles/` holds the hard rules an agent reads when a principle's `when` line matches its task.
 - `agent/SYSTEM.md` and `agent/roles/` make up the system prompt. `agent/instructions/` holds the delegate briefs, such as `code-reviewer.md`.
 - `agent/extensions/`, `features/`, and `clients/` hold the TypeScript extensions. `docs/adr/0001-harness-layout.md` explains how the code splits across them.
