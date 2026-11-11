@@ -68,6 +68,7 @@ const ledger = Layer.mock(Ledger)({
 				ref: WorkRef("delegate-1"),
 				kind: "delegate" as const,
 				terminal: Option.none(),
+				group: Option.none(),
 				ready: Option.none(),
 			};
 		}),

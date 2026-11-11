@@ -5,13 +5,59 @@ import * as Effect from "effect/Effect";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { exit, sessionRoot } from "./world.fixture.ts";
 
-const { Hook, Start, Spawned, Answer, Group, Cancel, TurnEnds, Shown } = Act;
+const { Hook, Start, Spawned, Answer, Group, Cancel, TurnEnds, Wakes, Shown } = Act;
 
 const runs = Hook({ event: "run starts" });
 
+const idles = Hook({ event: "goes idle" });
+
 const delegate = Start({ kind: "delegate" });
 
+const reviewing = (ref: string, terminal: string, group: string) =>
+	Start({ kind: "delegate", group: "review", handle: { ref, kind: "delegate", terminal, group } });
+
 const rows: ReadonlyArray<Row> = [
+	{
+		name: "delegates started with one group name share one group, which wakes once with all their answers",
+		role: "root",
+		acts: [
+			runs,
+			reviewing("delegate-1", "t1", "group-2"),
+			reviewing("delegate-3", "t2", "group-2"),
+			reviewing("delegate-4", "t3", "group-2"),
+			Shown({
+				expect: [
+					"review-it (ow.kind=delegate)",
+					"t1 (ow.group=group-2, ow.group.name=review)",
+					"review-it (ow.kind=delegate)",
+					"t2 (ow.group=group-2, ow.group.name=review)",
+					"review-it (ow.kind=delegate)",
+					"t3 (ow.group=group-2, ow.group.name=review)",
+				],
+			}),
+			TurnEnds({ expect: "idle: delegate-1, group-2, delegate-3, delegate-4" }),
+			idles,
+			Answer({ terminal: "t1", text: "a", end: exit(0) }),
+			Answer({ terminal: "t2", text: "b", end: exit(0) }),
+			Wakes({ expect: [] }),
+			Answer({ terminal: "t3", text: "c", end: exit(0) }),
+			Wakes({ expect: ["group-2 [delegate-1 done: a, delegate-3 done: b, delegate-4 done: c]"] }),
+		],
+	},
+	{
+		name: "a delegate started with the name of a group that already settled starts a new group",
+		role: "root",
+		acts: [
+			runs,
+			reviewing("delegate-1", "t1", "group-2"),
+			Answer({ terminal: "t1", text: "a", end: exit(0) }),
+			reviewing("delegate-3", "t2", "group-4"),
+			TurnEnds({ expect: "continue: group-2 [delegate-1 done: a]" }),
+			TurnEnds({ expect: "idle: delegate-3, group-4" }),
+			Answer({ terminal: "t2", text: "b", end: exit(0) }),
+			TurnEnds({ expect: "continue: group-4 [delegate-3 done: b]" }),
+		],
+	},
 	{
 		name: "each terminal is named for the list of running agents and labeled with its kind",
 		role: "root",

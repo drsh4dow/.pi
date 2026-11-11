@@ -80,7 +80,8 @@ export type Work = Data.TaggedEnum<{
 export const Work = Data.taggedEnum<Work>();
 
 export type StartRequest = Data.TaggedEnum<{
-	Delegate: { readonly brief: Brief; readonly childSession: ChildSession };
+	/** `group` names the group the delegate joins, or starts when none of that name is live. */
+	Delegate: { readonly brief: Brief; readonly childSession: ChildSession; readonly group: Option.Option<string> };
 	Serve: { readonly command: string; readonly ready: Option.Option<string> };
 	Watch: { readonly command: string; readonly deadline: Option.Option<Duration.Duration> };
 }>;
@@ -100,6 +101,7 @@ export interface Handle {
 	readonly ref: WorkRef;
 	readonly kind: WorkKind;
 	readonly terminal: Option.Option<TerminalAddress>;
+	readonly group: Option.Option<WorkRef>;
 	readonly ready: Option.Option<boolean>;
 }
 

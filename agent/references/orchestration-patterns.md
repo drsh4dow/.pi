@@ -28,7 +28,7 @@ For an answer much smaller than its reading: tracing code across files, finding 
                     └─→ test-engineer    ─┘
 ```
 
-For independent parts: no two write the same file, and none needs another's result. Start every `delegate` in one turn, then gather them with `group`, which wakes you once with every result. Delegates cannot message each other, so the starting agent merges and compares; ask each for an answer short enough that all of them fit.
+For independent parts: no two write the same file, and none needs another's result. Start every `delegate` in one turn with one `group` name, and the group wakes you once with every result. Delegates cannot message each other, so the starting agent merges and compares; ask each for an answer short enough that all of them fit.
 
 ### 4. Owner
 

@@ -14,7 +14,7 @@ import {
 	type MonotonicNanos,
 	Outcome,
 	type Spawn,
-	StartRequest,
+	type StartRequest,
 	Work,
 	WorkEntry,
 	WorkRef,
@@ -55,6 +55,23 @@ const startedOf = (request: StartRequest, ref: WorkRef, now: MonotonicNanos): St
 	});
 };
 
+/** A delegate joins the group it names, and a watch's deadline starts counting. */
+const arrange = (draft: Draft, ref: WorkRef, request: StartRequest): void => {
+	Match.valueTags(request, {
+		Delegate: ({ group }) => {
+			for (const name of Option.toArray(group)) {
+				Groups.join(draft, name, ref);
+			}
+		},
+		Watch: ({ deadline }) => {
+			for (const after of Option.toArray(deadline)) {
+				draft.commands.push(Command.ArmDeadline({ ref, after }));
+			}
+		},
+		Serve: () => {},
+	});
+};
+
 const start = (state: LedgerState, request: StartRequest): Step<WorkRef> => {
 	const draft = Draft.of(state);
 	const ref = WorkRef(`${Draft.kindOf(request)}-${String(state.next)}`);
@@ -63,10 +80,7 @@ const start = (state: LedgerState, request: StartRequest): Step<WorkRef> => {
 	draft.next += 1;
 	draft.work.set(ref, work);
 	draft.commands.push(Command.Append({ entry }));
-
-	if (StartRequest.$is("Watch")(request) && Option.isSome(request.deadline)) {
-		draft.commands.push(Command.ArmDeadline({ ref, after: request.deadline.value }));
-	}
+	arrange(draft, ref, request);
 
 	return Draft.finish(draft, ref);
 };

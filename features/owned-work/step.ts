@@ -106,6 +106,7 @@ const handleOf = (work: Work): Handle => ({
 	ref: work.ref,
 	kind: kindOf(work),
 	terminal: terminalOf(work),
+	group: work.heldBy,
 	ready: Option.none(),
 });
 
