@@ -22,11 +22,11 @@ Phrasing: confident but clearly derived, citing each item. "The evidence points 
 
 A reasonable reading of the context that nothing explicitly supports. It is _your interpretation_, not a fact from the record. For example, the PR doesn't say why, but the error was happening in production (per the incident channel timing) and the fix was rushed (merged the same day), so it was likely a hotfix. Or the function name suggests retry logic, and its retry count of 3 matches the team's 3-retry convention elsewhere in the codebase.
 
-Phrasing: hedged, with the chain explicit. "Given A and B, C seems likely because D."
+Phrasing: the `[Inferred]` label, then the chain: "Given A and B, C follows from D."
 
 ### 4. Speculative
 
-A plausible hypothesis on thin evidence, where other explanations fit equally well. Worth presenting, since the user may know which is right, but mark it as a guess. For example, "This might be a workaround for a browser bug that's since been fixed, but we found no contemporary evidence of that", or "It's possible this threshold was chosen to match an SLA commitment, but no SLA doc references it."
+A plausible hypothesis on thin evidence, where other explanations fit equally well. Worth presenting, since the user may know which is right, labeled `[Speculative]`. For example, "[Speculative] A workaround for a browser bug since fixed; no contemporary evidence found", or "[Speculative] The threshold matches an SLA commitment; no SLA doc references it."
 
 Phrasing: "One possibility is X, but we have no direct evidence." Usually lives in Competing Hypotheses, alongside other possibilities.
 
@@ -40,7 +40,7 @@ Phrasing: "We searched X, Y, and Z and found no evidence of why." Be specific ab
 
 **Confidence words** imply Direct or Supported evidence and need a citation immediately adjacent. Never use them for inferences: "because", "the reason is", "was designed to" (claims author intent), "fixes" / "addresses" / "solves" (claims the change achieved its goal), "the team decided" (claims a group decision happened).
 
-**Hedges** signal interpretation, not report. Use them liberally in What We Can Reasonably Infer: "appears to", "seems to", "likely", "suggests", "is consistent with", "one reading is", "plausibly", "may have been", "the evidence points toward".
+**Tier labels** mark interpretation, not report. Put `[Inferred]` or `[Speculative]` on the claim and state it plainly: the label carries the uncertainty, so "appears to", "seems", and "likely" add nothing.
 
 **Words to avoid:**
 
@@ -48,7 +48,7 @@ Phrasing: "We searched X, Y, and Z and found no evidence of why." Be specific ab
 - "clearly". Almost always precedes a claim that isn't clear
 - "of course". Same
 - "just" (as in "it's just X for performance"). Dismissive and usually hides uncertainty
-- "I think" / "I believe". You're synthesizing evidence, not giving a personal opinion. Use "the evidence suggests" instead.
+- "I think" / "I believe". You're synthesizing evidence, not giving a personal opinion. State the evidence and its tier instead.
 
 ## Avoid Rationalization
 
