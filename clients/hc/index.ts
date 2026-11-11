@@ -205,6 +205,15 @@ const follow = (socket: string, own: typeof Labels.Type, feed: Feed) =>
 const socketOf = ({ HC_TERMINAL_SOCKET, XDG_RUNTIME_DIR = "/tmp", HC_SESSION = "default" }: NodeJS.ProcessEnv) =>
 	HC_TERMINAL_SOCKET ?? `${XDG_RUNTIME_DIR}/herdr-core/${HC_SESSION}.sock`;
 
+/** Sets labels on any terminal, outside the owned-work service, which needs an agent key. An empty value removes one. */
+export const labelTerminal = ({
+	terminal,
+	labels,
+}: {
+	readonly terminal: TerminalAddress;
+	readonly labels: Readonly<Record<string, string>>;
+}) => change(socketOf(process.env), "terminal.label", { terminal, labels });
+
 const lastLines = (count: number) => (text: string) => Arr.join(Arr.takeRight(Str.split(text, "\n"), count), "\n");
 
 const notSubscribed = HcError.make({
