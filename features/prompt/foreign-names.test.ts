@@ -23,7 +23,7 @@ const hitsIn = (file: string, text: string) =>
 test("a line that names Cursor's Task tool, a pstack skill or a .cursor path is a hit, and a pi line is not", () => {
 	const lines = [
 		"Spawn a Task subagent with `subagent_type: generalPurpose`.",
-		"Start one delegate per angle and group them with mode `all`.",
+		"Start one delegate per angle and group them.",
 		"Write `.cursor/skills/verify-app/SKILL.md`.",
 		"Per the **prove-it-works** principle skill.",
 	];

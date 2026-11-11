@@ -109,7 +109,7 @@ const entryOut = (entry: WorkEntry) =>
 			child_session_id: childSessionId,
 		}),
 		CommandStarted: ({ handle, kind, command }) => ({ type: "command-started", handle, kind, command }),
-		GroupStarted: ({ handle, name, mode, members }) => ({ type: "group-started", handle, name, mode, members }),
+		GroupStarted: ({ handle, name, members }) => ({ type: "group-started", handle, name, members }),
 		JobSettled: ({ handle, outcome, end, durationMs }) => ({
 			type: "job-settled",
 			handle,

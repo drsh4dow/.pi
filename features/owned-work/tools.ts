@@ -42,9 +42,6 @@ const GroupParams = Type.Object({
 		description:
 			"A few words for what the group's work has in common, such as `principles eval`. The human sees its members under it in their list of running agents.",
 	}),
-	mode: Type.Enum(["all", "each"], {
-		description: "all: one wake with every result once all settle. each: one wake per result.",
-	}),
 	of: Refs,
 });
 
@@ -167,8 +164,8 @@ const groupTool = (runtime: Runtime) =>
 		description: "Move work you hold into one group, which wakes you instead of its members.",
 		parameters: GroupParams,
 		outputSchema: HandleOut,
-		execute: (_id, { name, mode, of }, signal) =>
-			runTool(runtime, signal)((ledger) => ledger.group({ name, mode, members: refsOf(of) }), Out.handle),
+		execute: (_id, { name, of }, signal) =>
+			runTool(runtime, signal)((ledger) => ledger.group({ name, members: refsOf(of) }), Out.handle),
 	});
 
 const cancelTool = (runtime: Runtime) =>

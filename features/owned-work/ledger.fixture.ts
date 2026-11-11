@@ -21,15 +21,7 @@ import type { Role } from "./child.ts";
 import type { LedgerFailure } from "./ledger.ts";
 import { Out } from "./out.ts";
 import { type LedgerError, Verdict } from "./step.ts";
-import {
-	type GroupMode,
-	type Handle,
-	MonotonicNanos,
-	monotonicNow,
-	type Settled,
-	StartRequest,
-	WorkRef,
-} from "./work.ts";
+import { type Handle, MonotonicNanos, monotonicNow, type Settled, StartRequest, WorkRef } from "./work.ts";
 import {
 	deliveredRefs,
 	leftovers,
@@ -63,7 +55,7 @@ export type Act = Data.TaggedEnum<{
 		readonly end: TerminalEnd;
 	};
 	End: { readonly terminal: string; readonly end: TerminalEnd };
-	Group: { readonly mode: GroupMode; readonly refs: ReadonlyArray<string>; readonly expect: string };
+	Group: { readonly refs: ReadonlyArray<string>; readonly expect: string };
 	Cancel: { readonly refs: ReadonlyArray<string>; readonly expect: string };
 	Running: { readonly expect: ReadonlyArray<string> };
 	TurnEnds: { readonly expect: string };
@@ -186,14 +178,14 @@ const group = (world: World, act: Data.TaggedEnum.Value<Act, "Group">) => {
 	const adopted = ({ ref }: Handle) => {
 		world.groups.set(ref, act.refs);
 
-		if (act.mode === "all" && !world.owed.includes(ref)) {
+		if (!world.owed.includes(ref)) {
 			world.owed.push(ref);
 		}
 
 		return ref;
 	};
 
-	const request = { name: "principles eval", mode: act.mode, members: Arr.map(act.refs, WorkRef) };
+	const request = { name: "principles eval", members: Arr.map(act.refs, WorkRef) };
 
 	return replied(world.ledger.group(request), adopted, act.expect);
 };

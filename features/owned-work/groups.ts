@@ -14,10 +14,7 @@ import {
 	type Woke,
 	UnknownRef,
 } from "./step.ts";
-import { FailReason, type GroupMode, type GroupRequest, type Handle, Work, WorkEntry, WorkRef } from "./work.ts";
-
-const eachSettled =
-	"it is an each group that already settled: its members' results reach you one by one, and it has none of its own";
+import { FailReason, type GroupRequest, type Handle, Work, WorkEntry, WorkRef } from "./work.ts";
 
 const refused = (draft: Draft, ref: WorkRef): Option.Option<LedgerError> => {
 	const work = draft.work.get(ref);
@@ -34,14 +31,11 @@ const refused = (draft: Draft, ref: WorkRef): Option.Option<LedgerError> => {
 		Option.exists(job.settled, (settlement) => settlement.delivered),
 	);
 
-	const why = Draft.passesThrough(work) ? eachSettled : "its result was already delivered";
-
-	return Option.as(delivered, NotYours.make({ ref, why }));
+	return Option.as(delivered, NotYours.make({ ref, why: "its result was already delivered" }));
 };
 
-const sameGroup = (work: Work, mode: GroupMode, members: ReadonlyArray<WorkRef>): boolean =>
+const sameGroup = (work: Work, members: ReadonlyArray<WorkRef>): boolean =>
 	Work.$is("Group")(work) &&
-	work.mode === mode &&
 	work.members.length === members.length &&
 	Arr.every(members, (ref) => work.members.includes(ref));
 
@@ -59,7 +53,7 @@ const showInGroup = (draft: Draft, holder: Group, members: ReadonlyArray<Work>):
 	}
 };
 
-const adopt = (draft: Draft, { name, mode, members }: GroupRequest): Work => {
+const adopt = (draft: Draft, { name, members }: GroupRequest): Work => {
 	const ref = WorkRef(`group-${String(draft.next)}`);
 
 	const created = Work.Group({
@@ -68,7 +62,6 @@ const adopt = (draft: Draft, { name, mode, members }: GroupRequest): Work => {
 		startedAt: draft.now,
 		settled: Option.none(),
 		name,
-		mode,
 		members,
 	});
 
@@ -79,7 +72,7 @@ const adopt = (draft: Draft, { name, mode, members }: GroupRequest): Work => {
 		draft.work.set(member.ref, { ...member, heldBy: Option.some(ref) });
 	}
 
-	draft.commands.push(Command.Append({ entry: WorkEntry.GroupStarted({ handle: ref, name, mode, members }) }));
+	draft.commands.push(Command.Append({ entry: WorkEntry.GroupStarted({ handle: ref, name, members }) }));
 	showInGroup(draft, created, Arr.filter(Draft.findAll(draft, members), Draft.isLive));
 	Draft.settleGroup(draft, created);
 
@@ -89,7 +82,7 @@ const adopt = (draft: Draft, { name, mode, members }: GroupRequest): Work => {
 const group = (state: LedgerState, request: GroupRequest): Result.Result<Step<Handle>, LedgerError> => {
 	const draft = Draft.of(state);
 	const members = Arr.dedupe(request.members);
-	const same = Arr.findFirst(draft.work.values(), (work) => sameGroup(work, request.mode, members));
+	const same = Arr.findFirst(draft.work.values(), (work) => sameGroup(work, members));
 	const problem = Option.isSome(same) ? Option.none() : rejected(draft, members);
 
 	if (Option.isSome(problem)) {

@@ -23,7 +23,7 @@ List the phases in your reply before launching anything.
 
 ## Phase B: Fan out
 
-Start all N workers as delegates on the step 3 model, and group them with mode `all`. A worker that writes starts in its own git worktree, with `cwd`. When a worker must start from another branch, create its worktree from that branch.
+Start all N workers as delegates on the step 3 model, and group them. A worker that writes starts in its own git worktree, with `cwd`. When a worker must start from another branch, create its worktree from that branch.
 
 Every brief stands alone. Include the goal, scope, exact slice or race arm, how to verify, and what to report. Reports use `PASS`, `ISSUES`, or `BLOCKED` with evidence. A worker that can prove a defect reports `ISSUES` and lists every issue it can prove, not only the first.
 

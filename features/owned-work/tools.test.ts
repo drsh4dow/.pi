@@ -78,7 +78,7 @@ const group = Arr.findFirst(toolsOf(Self.Root({ role: "root", level: 1 })), ({ n
 
 const nameRows = [
 	{ tool: "delegate", args: { message: "Review it." } },
-	{ tool: "group", args: { mode: "all", of: [{ ref: "delegate-1" }] } },
+	{ tool: "group", args: { of: [{ ref: "delegate-1" }] } },
 ];
 
 for (const row of nameRows) {

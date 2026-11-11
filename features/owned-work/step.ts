@@ -124,13 +124,7 @@ const findAll = (draft: Draft, refs: ReadonlyArray<WorkRef>): Array<Work> =>
 
 const job = (draft: Draft, ref: WorkRef): Option.Option<Job> => Option.filter(find(draft, ref), isJob);
 
-const passesThrough = (work: Work): boolean => isGroup(work) && work.mode === "each" && Option.isNone(work.heldBy);
-
-const isDeliverable = (draft: Draft, candidate: Work): boolean => {
-	const holder = Option.flatMap(candidate.heldBy, (ref) => find(draft, ref));
-
-	return isUnconsumed(candidate) && Option.match(holder, { onNone: () => true, onSome: passesThrough });
-};
+const isDeliverable = (candidate: Work): boolean => isUnconsumed(candidate) && Option.isNone(candidate.heldBy);
 
 const markDelivered = (draft: Draft, taken: ReadonlyArray<Work>): void => {
 	for (const work of taken) {
@@ -147,7 +141,7 @@ const resultsOf = (taken: ReadonlyArray<Work>): Array<Settled> =>
 	);
 
 const deliverable = (draft: Draft, within: (ref: WorkRef) => boolean): Array<Work> =>
-	Arr.filter([...draft.work.values()], (candidate) => within(candidate.ref) && isDeliverable(draft, candidate));
+	Arr.filter([...draft.work.values()], (candidate) => within(candidate.ref) && isDeliverable(candidate));
 
 const hand = (draft: Draft, ready: ReadonlyArray<Work>): Array<Settled> => {
 	markDelivered(draft, ready);
@@ -240,11 +234,10 @@ const settleGroup = (draft: Draft, holder: Group): void => {
 		halt(draft, serve.ref, FailReason.Cancelled({ group: Option.some(holder.ref) }));
 	}
 
-	const through = passesThrough(holder);
-	const taken = through ? [] : Arr.filter(findAll(draft, holder.members), isUnconsumed);
+	const taken = Arr.filter(findAll(draft, holder.members), isUnconsumed);
 
 	settle(draft, holder, Outcome.Members({ results: resultsOf(taken) }), Option.none());
-	markDelivered(draft, through ? Option.toArray(job(draft, holder.ref)) : taken);
+	markDelivered(draft, taken);
 };
 
 const failure = (end: TerminalEnd): Outcome =>
@@ -271,7 +264,6 @@ export const Draft = {
 	settleGroup,
 	holderOf,
 	halt,
-	passesThrough,
 	find,
 	findAll,
 	job,

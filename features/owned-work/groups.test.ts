@@ -38,7 +38,7 @@ const rows: ReadonlyArray<Row> = [
 			Start({ kind: "delegate", heldThen: "succeeds" }),
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
 			Shown({ expect: ["review-it (ow.kind=delegate)", "review-it (ow.kind=delegate)"] }),
-			Group({ mode: "all", refs: ["delegate-1", "delegate-2", "delegate-3"], expect: "group-4" }),
+			Group({ refs: ["delegate-1", "delegate-2", "delegate-3"], expect: "group-4" }),
 			Shown({ expect: ["t2 (ow.group=group-4, ow.group.name=principles eval)"] }),
 			Spawned({ expect: "delegate-3" }),
 			Shown({ expect: ["review-it (ow.kind=delegate)", "t3 (ow.group=group-4, ow.group.name=principles eval)"] }),
@@ -51,30 +51,13 @@ const rows: ReadonlyArray<Row> = [
 		],
 	},
 	{
-		name: "grouping an each group that already settled says so, and its member's result still arrives",
-		role: "root",
-		acts: [
-			runs,
-			delegate,
-			Answer({ terminal: "t1", text: "a", end: exit(0) }),
-			Group({ mode: "each", refs: ["delegate-1"], expect: "group-2" }),
-			Group({
-				mode: "all",
-				refs: ["group-2"],
-				expect:
-					"group-2: it is an each group that already settled: its members' results reach you one by one, and it has none of its own",
-			}),
-			TurnEnds({ expect: "continue: delegate-1 done: a" }),
-		],
-	},
-	{
-		name: "cancelling an all group hands over the answers its members already gave",
+		name: "cancelling a group hands over the answers its members already gave",
 		role: "root",
 		acts: [
 			runs,
 			delegate,
 			delegate,
-			Group({ mode: "all", refs: ["delegate-1", "delegate-2"], expect: "group-3" }),
+			Group({ refs: ["delegate-1", "delegate-2"], expect: "group-3" }),
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
 			Cancel({
 				refs: ["group-3"],
@@ -84,15 +67,15 @@ const rows: ReadonlyArray<Row> = [
 		],
 	},
 	{
-		name: "cancelling a nested all group hands each member's result over once, inside its groups",
+		name: "cancelling a nested group hands each member's result over once, inside its groups",
 		role: "root",
 		acts: [
 			runs,
 			delegate,
 			delegate,
-			Group({ mode: "all", refs: ["delegate-1", "delegate-2"], expect: "group-3" }),
+			Group({ refs: ["delegate-1", "delegate-2"], expect: "group-3" }),
 			delegate,
-			Group({ mode: "all", refs: ["group-3", "delegate-4"], expect: "group-5" }),
+			Group({ refs: ["group-3", "delegate-4"], expect: "group-5" }),
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
 			Cancel({
 				refs: ["group-5"],
@@ -103,13 +86,13 @@ const rows: ReadonlyArray<Row> = [
 		],
 	},
 	{
-		name: "cancelling a member together with its all group still hands over the group's result",
+		name: "cancelling a member together with its group still hands over the group's result",
 		role: "root",
 		acts: [
 			runs,
 			delegate,
 			delegate,
-			Group({ mode: "all", refs: ["delegate-1", "delegate-2"], expect: "group-3" }),
+			Group({ refs: ["delegate-1", "delegate-2"], expect: "group-3" }),
 			Answer({ terminal: "t2", text: "b", end: exit(0) }),
 			Cancel({
 				refs: ["delegate-1", "group-3"],

@@ -9,7 +9,7 @@ Load the `shipping-and-launch` skill.
 
 ## Phase A — Parallel fan-out
 
-Start three delegates concurrently with the `delegate` tool. **Start all three before waiting on any, then gather them with the `group` tool (`mode: "all"`) so they execute in parallel** — sequential calls defeat the purpose of this command.
+Start three delegates concurrently with the `delegate` tool. **Start all three before waiting on any, then gather them with the `group` tool so they execute in parallel** — sequential calls defeat the purpose of this command.
 
 Each call passes `instructionsFile: "~/.pi/agent/instructions/<persona>.md"` for its persona:
 
