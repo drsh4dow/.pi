@@ -156,29 +156,6 @@
 			}
 		]
 	},
-	"context-engineering": {
-		"positive": [
-			{
-				"prompt": "What context should I load into the agent before starting this refactor?"
-			},
-			{
-				"prompt": "The model's output quality dropped mid-session, how do I fix its context?"
-			},
-			{
-				"prompt": "Set up rules files and context packing for my repository"
-			}
-		],
-		"negative": [
-			{
-				"prompt": "Write unit tests for the date parser",
-				"owner": "test-driven-development"
-			},
-			{
-				"prompt": "Harden this endpoint against SQL injection",
-				"owner": "security-and-hardening"
-			}
-		]
-	},
 	"debugging-and-error-recovery": {
 		"positive": [
 			{
