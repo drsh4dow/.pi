@@ -33,13 +33,9 @@ const bullets = (lines: ReadonlyArray<string>) =>
 /** Built-in tools whose guidelines restate their own schema description, or `<codemode>` in `SYSTEM.md`. */
 const restating = ["edit", "codemode"];
 
-/** The `<tools>` and `<rules>` sections pi builds for its default prompt, without the rules and footer pi hardcodes. */
-const toolSections = (options: NormalizedBuildSystemPromptOptions) => {
+/** The `<rules>` section pi builds for its default prompt, without the rules pi hardcodes. */
+const rulesSection = (options: NormalizedBuildSystemPromptOptions) => {
 	const declared = Arr.difference(options.selectedTools, options.hiddenTools);
-
-	const described = Arr.filter(declared, (name) => Str.isNonEmpty(options.toolSnippets[name] ?? ""));
-	const tools = Arr.map(described, (name) => `${name}: ${options.toolSnippets[name] ?? ""}`);
-
 	const guided = Arr.difference(declared, restating);
 
 	const guidelines = [
@@ -50,7 +46,7 @@ const toolSections = (options: NormalizedBuildSystemPromptOptions) => {
 	const trimmed = Arr.map(guidelines, Str.trim);
 	const rules = Arr.dedupe(Arr.filter(trimmed, Str.isNonEmpty));
 
-	return { tools: bullets(tools), rules: bullets(rules) };
+	return bullets(rules);
 };
 
 const docs = () =>
@@ -68,9 +64,10 @@ const instructionsBlock = (text: string) => `<instructions>\n${Str.trim(text)}\n
 
 /**
  * Writes `SYSTEM.md`, the role file, the delegate's instructions and the principles index into pi's preamble, so they
- * render before `<project_context>`. A custom preamble makes pi drop its `<tools>`, `<rules>` and `<docs>`, so this adds
- * them back as custom sections, which pi renders last. The `<skills>` section replaces pi's own in place. pi builds fresh
- * options for each run, so running this again never stacks.
+ * render before `<project_context>`. A custom preamble makes pi drop its `<tools>`, `<rules>` and `<docs>`. This adds
+ * back `<rules>` and `<docs>` as custom sections, which pi renders last, and leaves `<tools>` out, since each tool's
+ * schema already describes it. The `<skills>` section replaces pi's own in place. pi builds fresh options for each
+ * run, so running this again never stacks.
  */
 export const compose = (layers: Layers) => (event: BeforeAgentStartEvent) => {
 	const options = event.systemPromptOptions;
@@ -83,7 +80,7 @@ export const compose = (layers: Layers) => (event: BeforeAgentStartEvent) => {
 	];
 
 	options.customPrompt = Arr.join(Arr.filter(Arr.map(parts, Str.trim), Str.isNonEmpty), "\n\n");
-	Object.assign(options.sections, toolSections(options), { docs: docs() });
+	Object.assign(options.sections, { rules: rulesSection(options), docs: docs() });
 
 	options.skills = [...layers.skills];
 

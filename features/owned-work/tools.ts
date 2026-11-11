@@ -103,7 +103,6 @@ const delegateTool = (
 	return {
 		name: "delegate",
 		label: "delegate",
-		promptSnippet: "Start a delegate on one task. It wakes you with its answer.",
 		description: "Start a delegate on one task. It wakes you with its answer.",
 		promptGuidelines: childLevel === levels ? [...delegateGuidelines, lastLevelGuideline] : delegateGuidelines,
 		parameters,
@@ -128,7 +127,6 @@ const serveTool = (runtime: Runtime) =>
 	defineTool({
 		name: "serve",
 		label: "serve",
-		promptSnippet: "Run a long-running command, such as a dev server.",
 		description:
 			"Start a long-running command, such as a dev server. It runs until you stop it, or until the group holding it settles.",
 		promptGuidelines,
@@ -145,7 +143,6 @@ const watchTool = (runtime: Runtime) =>
 	defineTool({
 		name: "watch",
 		label: "watch",
-		promptSnippet: "Run a command that wakes you once it exits.",
 		description: "Start a command that wakes you once it exits, with its exit code and last lines.",
 		parameters: WatchParams,
 		outputSchema: HandleOut,
@@ -163,7 +160,6 @@ const groupTool = (runtime: Runtime) =>
 	defineTool({
 		name: "group",
 		label: "group",
-		promptSnippet: "Gather work you hold so it wakes you as one result, or once per job.",
 		description: "Move work you hold into one group, which wakes you instead of its members.",
 		parameters: GroupParams,
 		outputSchema: HandleOut,
@@ -175,7 +171,6 @@ const stopTool = (runtime: Runtime) =>
 	defineTool({
 		name: "stop",
 		label: "stop",
-		promptSnippet: "Stop work and get back any result not yet handed to you.",
 		description: "Stop work, and everything a group holds. Returns any result not yet handed to you.",
 		parameters: RefsParams,
 		outputSchema: ResultsOut,

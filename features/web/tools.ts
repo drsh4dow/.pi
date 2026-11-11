@@ -78,7 +78,6 @@ export const webTools = (runtime: Runtime) => [
 	defineTool({
 		name: "web_search",
 		label: "web search",
-		promptSnippet: "Search the web. Returns titles, URLs, dates and short excerpts.",
 		description:
 			"Search the web. Returns up to 10 results, each with its title, URL, date and a short excerpt. Read a result with web_fetch.",
 		annotations,
@@ -88,7 +87,6 @@ export const webTools = (runtime: Runtime) => [
 	defineTool({
 		name: "web_fetch",
 		label: "web fetch",
-		promptSnippet: "Read a URL as markdown, or save a PDF or other file and get its path.",
 		description:
 			"Read one URL. Web pages, GitHub files, issues and trees, npm, Hacker News and Reddit come back as markdown, a PDF as a saved file plus its markdown, other files as a saved path. The whole result is saved to disk and its start is shown.",
 		annotations,
