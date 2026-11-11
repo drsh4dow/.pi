@@ -25,7 +25,7 @@ Herdr then shows the agent's work beside it:
 
 - Each delegate, serve, and watch appears in herdr-app's agents list, under the agent that started it. A delegate shows the name its parent gave it. A serve or a watch shows its command, such as `bun-test`. Work in a group sits under the group's name.
 - `/fork` and `/clone` open the copy in a new tab in the same space. The original session keeps running, and so does its work.
-- The Skills panel, behind the Skills button at the top right, lists the skills and principles in the focused agent's context and in each of its delegates'. It follows `/tree` and compaction: a guide whose text left the context leaves the panel. A half-filled icon marks a guide the model saw only part of, and a person icon marks one you loaded with `/skill:`.
+- The Skills panel, behind the Skills button at the top right, lists the skills and principles in the focused agent's context and in each of its delegates', in the order they were read. It follows `/tree` and compaction: a guide whose text left the context leaves the panel. A hollow dot and `partial` mark a guide the model saw only part of, such as a ranged read, and `you` marks one you loaded with `/skill:`.
 
 Outside herdr-app, `/fork` and `/clone` replace the current session instead of opening a tab. The `delegate`, `serve`, and `watch` tools still need herdr-core, because they start every terminal through its socket.
 
