@@ -77,7 +77,7 @@ const spaceOf = (terminal: Option.Option<TerminalAddress>): Effect.Effect<Option
 const noteOf = (refs: ReadonlyArray<string>) =>
 	Option.map(Arr.match(refs, { onEmpty: Option.none, onNonEmpty: Option.some }), (named) => ({
 		customType: entryKind,
-		content: `This session is a fork. ${Arr.join(named, ", ")} kept running in the session it was forked from: their results go there, and stop cannot reach them from here.`,
+		content: `This session is a fork. ${Arr.join(named, ", ")} kept running in the session it was forked from: their results go there, and cancel cannot reach them from here.`,
 	}));
 
 interface TabRequest {

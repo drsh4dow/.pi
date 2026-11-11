@@ -25,6 +25,7 @@ import { piSessionsLayer } from "../../clients/pi-sessions/index.ts";
 import type { Slices } from "../../clients/systemd/index.ts";
 import { type ChildSession, type Role, Self } from "./child.ts";
 import { Host, Ledger, ledgerLayer } from "./ledger.ts";
+import { Out } from "./out.ts";
 import { hcOf, slicesOf } from "./outside.fixture.ts";
 import type { LedgerState, Verdict } from "./step.ts";
 import { type FailReason, Outcome, type Settled, WorkEntry } from "./work.ts";
@@ -77,7 +78,7 @@ const reasonOf = (reason: FailReason): string =>
 		Deadline: () => "deadline",
 		SpawnFailed: () => "spawn failed",
 		Errored: ({ why }) => `errored: ${why}`,
-		Stopped: ({ by }) => `stopped by ${by}`,
+		Cancelled: (cancelled) => Out.reason(cancelled).detail,
 	});
 
 const show = ({ ref, outcome }: Pick<Settled, "ref" | "outcome">): string =>

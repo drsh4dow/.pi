@@ -49,7 +49,7 @@ export class Ledger extends Context.Service<
 	{
 		readonly start: (request: StartRequest) => Effect.Effect<Handle, SpawnError>;
 		readonly group: (request: GroupRequest) => Effect.Effect<Handle, LedgerError>;
-		readonly stop: (refs: ReadonlyArray<WorkRef>) => Effect.Effect<ReadonlyArray<Settled>, LedgerError>;
+		readonly cancel: (refs: ReadonlyArray<WorkRef>) => Effect.Effect<ReadonlyArray<Settled>, LedgerError>;
 		readonly runStarted: Effect.Effect<void>;
 		readonly turnEnded: Effect.Effect<Verdict>;
 		readonly wentIdle: Effect.Effect<void>;
@@ -250,7 +250,7 @@ export const ledgerLayer = (
 			return {
 				start: (request) => start(kit, request),
 				group: (request) => attempt(kit, (current) => Transitions.group(current, request)),
-				stop: (refs) => attempt(kit, (current) => Transitions.stop(current, refs)),
+				cancel: (refs) => attempt(kit, (current) => Transitions.cancel(current, refs)),
 				runStarted: Effect.asVoid(apply(kit, Transitions.runStarted)),
 				turnEnded: apply(kit, Transitions.turnEnded),
 				wentIdle: Effect.asVoid(apply(kit, Transitions.wentIdle)),

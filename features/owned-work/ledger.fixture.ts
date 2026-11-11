@@ -64,7 +64,7 @@ export type Act = Data.TaggedEnum<{
 	};
 	End: { readonly terminal: string; readonly end: TerminalEnd };
 	Group: { readonly mode: GroupMode; readonly refs: ReadonlyArray<string>; readonly expect: string };
-	Stop: { readonly refs: ReadonlyArray<string>; readonly expect: string };
+	Cancel: { readonly refs: ReadonlyArray<string>; readonly expect: string };
 	Running: { readonly expect: ReadonlyArray<string> };
 	TurnEnds: { readonly expect: string };
 	Wakes: { readonly expect: ReadonlyArray<string> };
@@ -198,14 +198,14 @@ const group = (world: World, act: Data.TaggedEnum.Value<Act, "Group">) => {
 	return replied(world.ledger.group(request), adopted, act.expect);
 };
 
-const stop = (world: World, act: Data.TaggedEnum.Value<Act, "Stop">) => {
+const cancel = (world: World, act: Data.TaggedEnum.Value<Act, "Cancel">) => {
 	const handed = (results: ReadonlyArray<Settled>) => {
 		world.delivered.push(...results);
 
 		return showAll(results);
 	};
 
-	return replied(world.ledger.stop(Arr.map(act.refs, WorkRef)), handed, act.expect);
+	return replied(world.ledger.cancel(Arr.map(act.refs, WorkRef)), handed, act.expect);
 };
 
 const turnEnds = (world: World, expected: string) =>
@@ -246,7 +246,7 @@ const perform = (world: World, act: Act): Effect.Effect<void> =>
 		Answer: (answering) => answer(world, answering),
 		End: ({ terminal, end }) => ended(world, terminal, end),
 		Group: (grouping) => group(world, grouping),
-		Stop: (stopping) => stop(world, stopping),
+		Cancel: (cancelling) => cancel(world, cancelling),
 		Running: ({ expect: expected }) =>
 			Effect.flatMap(world.ledger.running, (refs) => checked((): ReadonlyArray<string> => refs, expected)),
 		TurnEnds: ({ expect: expected }) => turnEnds(world, expected),

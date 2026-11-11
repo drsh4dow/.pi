@@ -101,29 +101,29 @@ const group = (state: LedgerState, request: GroupRequest): Result.Result<Step<Ha
 	return Result.succeed(Draft.finish(draft, Draft.handleOf(created)));
 };
 
-const closure = (draft: Draft, refs: ReadonlyArray<WorkRef>): Map<WorkRef, WorkRef> => {
-	const found = new Map<WorkRef, WorkRef>();
+const closure = (draft: Draft, refs: ReadonlyArray<WorkRef>): Set<WorkRef> => {
+	const found = new Set<WorkRef>();
 
-	const visit = (ref: WorkRef, by: WorkRef): void => {
+	const visit = (ref: WorkRef): void => {
 		const work = draft.work.get(ref);
 
 		if (work !== undefined && !found.has(ref)) {
-			found.set(ref, by);
+			found.add(ref);
 
 			for (const member of Work.$is("Group")(work) ? work.members : []) {
-				visit(member, by);
+				visit(member);
 			}
 		}
 	};
 
 	for (const ref of refs) {
-		visit(ref, ref);
+		visit(ref);
 	}
 
 	return found;
 };
 
-const stop = (state: LedgerState, refs: ReadonlyArray<WorkRef>): Result.Result<Woke, UnknownRef> => {
+const cancel = (state: LedgerState, refs: ReadonlyArray<WorkRef>): Result.Result<Woke, UnknownRef> => {
 	const draft = Draft.of(state);
 	const unknown = Arr.findFirst(refs, (ref) => !draft.work.has(ref));
 
@@ -131,20 +131,20 @@ const stop = (state: LedgerState, refs: ReadonlyArray<WorkRef>): Result.Result<W
 		return Result.fail(UnknownRef.make({ ref: unknown.value }));
 	}
 
-	const stopping = closure(draft, refs);
+	const cancelling = closure(draft, refs);
 
-	for (const [ref, by] of stopping) {
+	for (const ref of cancelling) {
 		if (!Draft.isGroup(Option.getOrThrow(Draft.find(draft, ref)))) {
-			Draft.halt(draft, ref, FailReason.Stopped({ by }));
+			Draft.halt(draft, ref, FailReason.Cancelled({ group: Option.none() }));
 		}
 	}
 
 	const handed = Draft.hand(
 		draft,
-		Draft.deliverable(draft, (ref) => stopping.has(ref)),
+		Draft.deliverable(draft, (ref) => cancelling.has(ref)),
 	);
 
 	return Result.succeed(Draft.finish(draft, handed));
 };
 
-export const Groups = { group, stop, showInGroup };
+export const Groups = { group, cancel, showInGroup };

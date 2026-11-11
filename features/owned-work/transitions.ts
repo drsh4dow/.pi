@@ -268,7 +268,7 @@ export const Transitions = {
 	watchEnded,
 	deadlinePassed,
 	group: Groups.group,
-	stop: Groups.stop,
+	cancel: Groups.cancel,
 	runStarted,
 	turnEnded,
 	wentIdle,

@@ -22,7 +22,7 @@ const DoneOut = Type.Object({ status: Type.Literal("done"), text: Type.String() 
 
 const FiredOut = Type.Object({ status: Type.Literal("fired"), exit_code: Type.Number(), tail: Type.String() });
 
-const FailedReason = Type.Enum(["oom", "exited", "lost", "deadline", "spawn-failed", "errored", "stopped"]);
+const FailedReason = Type.Enum(["oom", "exited", "lost", "deadline", "spawn-failed", "errored", "cancelled"]);
 
 const FailedOut = Type.Object({ status: Type.Literal("failed"), reason: FailedReason, detail: Type.String() });
 
@@ -59,7 +59,13 @@ const reasonOut = (reason: FailReason): { readonly reason: string; readonly deta
 		Deadline: ({ after }) => ({ reason: "deadline", detail: `still running after ${Duration.format(after)}` }),
 		SpawnFailed: ({ why }) => ({ reason: "spawn-failed", detail: why }),
 		Errored: ({ why }) => ({ reason: "errored", detail: why }),
-		Stopped: ({ by }) => ({ reason: "stopped", detail: `stopped by ${by}` }),
+		Cancelled: ({ group }) => ({
+			reason: "cancelled",
+			detail: Option.match(group, {
+				onNone: () => "cancelled by your cancel call",
+				onSome: (ref) => `cancelled when ${ref} settled`,
+			}),
+		}),
 	});
 
 const outcomeOut = (outcome: Outcome): OutcomeJson =>
@@ -129,6 +135,7 @@ const text = (json: JsonValue): Effect.Effect<string> => Effect.orDie(encode(jso
 
 export const Out = {
 	handle: handleOut,
+	reason: reasonOut,
 	result: resultOut,
 	entry: entryOut,
 	error: (error: LedgerFailure | BadDelegate) => ({ error: error._tag, message: errorText(error) }),

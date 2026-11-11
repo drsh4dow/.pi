@@ -30,7 +30,8 @@ export type FailReason = Data.TaggedEnum<{
 	Deadline: { readonly after: Duration.Duration };
 	SpawnFailed: { readonly why: string };
 	Errored: { readonly why: string };
-	Stopped: { readonly by: WorkRef };
+	/** `group` is the group whose settling ended a serve; none when the agent's own `cancel` call did. */
+	Cancelled: { readonly group: Option.Option<WorkRef> };
 }>;
 
 export const FailReason = Data.taggedEnum<FailReason>();

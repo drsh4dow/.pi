@@ -237,7 +237,7 @@ const settleGroup = (draft: Draft, holder: Group): void => {
 	}
 
 	for (const serve of Arr.filter(members, isServe)) {
-		halt(draft, serve.ref, FailReason.Stopped({ by: holder.ref }));
+		halt(draft, serve.ref, FailReason.Cancelled({ group: Option.some(holder.ref) }));
 	}
 
 	const through = passesThrough(holder);

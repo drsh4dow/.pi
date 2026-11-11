@@ -5,7 +5,8 @@ import * as Effect from "effect/Effect";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { exit, sessionRoot } from "./world.fixture.ts";
 
-const { Hook, Start, Spawned, Resync, Answer, End, Group, Stop, TurnEnds, Wakes, Killed, Settles, Timers, Pause } = Act;
+const { Hook, Start, Spawned, Resync, Answer, End, Group, Cancel, TurnEnds, Wakes, Killed, Settles, Timers, Pause } =
+	Act;
 
 const runs = Hook({ event: "run starts" });
 
@@ -15,7 +16,7 @@ const delegate = Start({ kind: "delegate" });
 
 const rows: ReadonlyArray<Row> = [
 	{
-		name: "proposed all: one wake with every result, naming the serve the group stopped",
+		name: "proposed all: one wake with every result, naming the serve the group cancelled",
 		role: "root",
 		acts: [
 			runs,
@@ -30,13 +31,17 @@ const rows: ReadonlyArray<Row> = [
 			Killed({ expect: [] }),
 			Answer({ terminal: "t3", text: "b", end: exit(0) }),
 			Killed({ expect: ["t1"] }),
-			Wakes({ expect: ["group-4 [delegate-2 done: a, delegate-3 done: b, serve-1 failed: stopped by group-4]"] }),
+			Wakes({
+				expect: [
+					"group-4 [delegate-2 done: a, delegate-3 done: b, serve-1 failed: cancelled when group-4 settled]",
+				],
+			}),
 			Settles({
 				expect: [
 					"delegate-2 done: a",
 					"delegate-3 done: b",
-					"serve-1 failed: stopped by group-4",
-					"group-4 [delegate-2 done: a, delegate-3 done: b, serve-1 failed: stopped by group-4]",
+					"serve-1 failed: cancelled when group-4 settled",
+					"group-4 [delegate-2 done: a, delegate-3 done: b, serve-1 failed: cancelled when group-4 settled]",
 				],
 			}),
 			runs,
@@ -145,17 +150,17 @@ const rows: ReadonlyArray<Row> = [
 		],
 	},
 	{
-		name: "careless calls: stop twice, unknown refs, regrouping, the same delegate twice",
+		name: "careless calls: cancel twice, unknown refs, regrouping, the same delegate twice",
 		role: "root",
 		acts: [
 			runs,
 			delegate,
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
 			TurnEnds({ expect: "continue: delegate-1 done: a" }),
-			Stop({ refs: ["delegate-1"], expect: "" }),
+			Cancel({ refs: ["delegate-1"], expect: "" }),
 			Group({ mode: "all", refs: ["delegate-1"], expect: "delegate-1: its result was already delivered" }),
 			Group({ mode: "all", refs: ["nope"], expect: "no work is called nope" }),
-			Stop({ refs: ["nope"], expect: "no work is called nope" }),
+			Cancel({ refs: ["nope"], expect: "no work is called nope" }),
 			Start({ kind: "serve" }),
 			Group({
 				mode: "all",
@@ -166,32 +171,32 @@ const rows: ReadonlyArray<Row> = [
 			Group({ mode: "each", refs: ["delegate-3", "delegate-3"], expect: "group-4" }),
 			Group({ mode: "each", refs: ["delegate-3"], expect: "group-4" }),
 			Group({ mode: "all", refs: ["delegate-3"], expect: "delegate-3: group-4 holds it" }),
-			Stop({ refs: ["group-4"], expect: "delegate-3 failed: stopped by group-4" }),
-			Stop({ refs: ["group-4"], expect: "" }),
+			Cancel({ refs: ["group-4"], expect: "delegate-3 failed: cancelled by your cancel call" }),
+			Cancel({ refs: ["group-4"], expect: "" }),
 			Killed({ expect: ["t3"] }),
 			TurnEnds({ expect: "idle: " }),
 		],
 	},
 	{
-		name: "a serve stopped before hc confirms its spawn is killed once it spawns",
+		name: "a serve cancelled before hc confirms its spawn is killed once it spawns",
 		role: "root",
 		acts: [
 			runs,
 			Start({ kind: "serve", heldThen: "succeeds" }),
-			Stop({ refs: ["serve-1"], expect: "serve-1 failed: stopped by serve-1" }),
+			Cancel({ refs: ["serve-1"], expect: "serve-1 failed: cancelled by your cancel call" }),
 			Spawned({ expect: "serve-1" }),
 			Killed({ expect: ["t1"] }),
 			TurnEnds({ expect: "idle: " }),
 		],
 	},
 	{
-		name: "a serve whose spawn fails stays known: its caller gets the error, and stopping it does nothing",
+		name: "a serve whose spawn fails stays known: its caller gets the error, and cancelling it does nothing",
 		role: "root",
 		acts: [
 			runs,
 			Start({ kind: "serve", heldThen: "fails" }),
 			Spawned({ expect: "hc terminal.run failed (spawn_failed): no such program" }),
-			Stop({ refs: ["serve-1"], expect: "" }),
+			Cancel({ refs: ["serve-1"], expect: "" }),
 			Killed({ expect: [] }),
 			TurnEnds({ expect: "idle: " }),
 		],
@@ -210,15 +215,15 @@ const rows: ReadonlyArray<Row> = [
 		],
 	},
 	{
-		name: "a serve that exits on its own, or is stopped, records its end once and reaches the agent only beside a stop or a job's result",
+		name: "a serve that exits on its own, or is cancelled, records its end once and reaches the agent only beside a cancel or a job's result",
 		role: "root",
 		acts: [
 			runs,
 			Start({ kind: "serve" }),
 			Start({ kind: "serve" }),
 			End({ terminal: "t1", end: exit(1) }),
-			Stop({ refs: ["serve-2"], expect: "serve-2 failed: stopped by serve-2" }),
-			Settles({ expect: ["serve-1 failed: exited", "serve-2 failed: stopped by serve-2"] }),
+			Cancel({ refs: ["serve-2"], expect: "serve-2 failed: cancelled by your cancel call" }),
+			Settles({ expect: ["serve-1 failed: exited", "serve-2 failed: cancelled by your cancel call"] }),
 			TurnEnds({ expect: "idle: " }),
 			idles,
 			delegate,
@@ -256,7 +261,9 @@ const rows: ReadonlyArray<Row> = [
 			Wakes({ expect: [] }),
 			Answer({ terminal: "t3", text: "a", end: exit(0) }),
 			Killed({ expect: ["t2"] }),
-			Wakes({ expect: ["delegate-3 done: a; serve-1 failed: exited; serve-2 failed: stopped by group-4"] }),
+			Wakes({
+				expect: ["delegate-3 done: a; serve-1 failed: exited; serve-2 failed: cancelled when group-4 settled"],
+			}),
 		],
 	},
 	{

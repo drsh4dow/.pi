@@ -59,7 +59,7 @@ for (const row of levelRows) {
 				Arr.flatMap(tools, ({ promptGuidelines }) => promptGuidelines ?? []),
 				Str.includes("cannot start delegates of their own"),
 			),
-		}).toEqual({ rest: ["serve", "watch", "group", "stop"], ...row.expect });
+		}).toEqual({ rest: ["serve", "watch", "group", "cancel"], ...row.expect });
 	});
 }
 
