@@ -10,7 +10,7 @@ A video here is a script voiced first, a picture cued to that voice, one cut, an
 
 ## The user's rules
 
-Each rule cost the user at least one round of rework. They outrank every brief, including one you wrote.
+Each rule cost the user at least one round of rework. A brief changes one only by naming it, and a brief you wrote changes none.
 
 - **Real product, real data.** "I care more about the real product proof rather than the quality of the video itself." Record the real thing doing the work. Every fact the video states or draws traces to a file, a run, or a receipt in `CLAIMS.md`. Label what is staged or drawn. Use synthetic records only where a real one would expose a person.
 - **The whole screen at one scale.** "the browser view should be complete, the full browser, not a zoom in that looks like shit." A web app is the full browser window, tabs and address bar included, at 1:1. A phone is its whole screen with the status and navigation bars, at one scale for the whole video. Words go outside the picture or in a subtitle track.
