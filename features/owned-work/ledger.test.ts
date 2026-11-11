@@ -16,6 +16,32 @@ const delegate = Start({ kind: "delegate" });
 
 const rows: ReadonlyArray<Row> = [
 	{
+		name: "a job's handle names the work that wakes the agent, and a serve's, which never wakes it, names none",
+		role: "root",
+		acts: [
+			runs,
+			Start({
+				kind: "watch",
+				handle: { ref: "watch-1", kind: "watch", terminal: "t1", next: "end your turn; watch-1 wakes you" },
+			}),
+			Start({
+				kind: "delegate",
+				handle: {
+					ref: "delegate-2",
+					kind: "delegate",
+					terminal: "t2",
+					next: "end your turn; delegate-2 wakes you",
+				},
+			}),
+			Start({ kind: "serve", handle: { ref: "serve-3", kind: "serve", terminal: "t3", ready: true } }),
+			Cancel({
+				refs: ["watch-1", "delegate-2", "serve-3"],
+				expect:
+					"watch-1 failed: cancelled by your cancel call; delegate-2 failed: cancelled by your cancel call; serve-3 failed: cancelled by your cancel call",
+			}),
+		],
+	},
+	{
 		name: "a group wakes once with every result, naming the serve the group cancelled",
 		role: "root",
 		acts: [
