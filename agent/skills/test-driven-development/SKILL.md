@@ -18,7 +18,7 @@ Write a failing test before writing the code that makes it pass. For bug fixes, 
 - Adding edge case handling
 - Any change that could break existing behavior
 
-**When NOT to use:** Pure configuration changes, documentation updates, or static content changes that have no behavioral impact.
+**When NOT to use:** Pure configuration changes, documentation updates, static content changes that have no behavioral impact, or throwaway prototypes.
 
 **Related:** For browser-based changes, combine TDD with runtime verification using the `agent-browser` skill — see the Browser Testing section below.
 
@@ -365,7 +365,7 @@ For JavaScript/TypeScript testing patterns illustrating these principles — Jes
 | Rationalization                                    | Reality                                                                                                                                                  |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | "I'll write tests after the code works"            | You won't. And tests written after the fact test implementation, not behavior.                                                                           |
-| "This is too simple to test"                       | Simple code gets complicated. The test documents the expected behavior.                                                                                  |
+| "This is too simple to test"                       | Test it when a later change could break it unnoticed and nothing else would catch that.                                                                  |
 | "Tests slow me down"                               | Tests slow you down now. They speed you up every time you change the code later.                                                                         |
 | "I tested it manually"                             | Manual testing doesn't persist. Tomorrow's change might break it with no way to know.                                                                    |
 | "The code is self-explanatory"                     | Tests ARE the specification. They document what the code should do, not what it does.                                                                    |

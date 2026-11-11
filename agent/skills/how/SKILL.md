@@ -9,8 +9,6 @@ Explore the codebase to answer "how does X work?" questions. Produce architectur
 
 ## 1. Assess complexity
 
-If the scope is ambiguous, state your interpretation and explore. The user can redirect.
-
 - **Simple** (a single module, a small utility, a narrow question such as "how does function X work"): no explorers. Start one explainer delegate that explores and explains in one pass, with `instructionsFile: ~/.pi/agent/skills/how/references/explainer-prompt.md` and the question as its task message. Go to step 4.
 - **Complex** (a subsystem spanning multiple files or services, a cross-cutting feature, a full architectural overview): go to step 2.
 

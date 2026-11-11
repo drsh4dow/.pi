@@ -46,7 +46,7 @@ If the available evidence conflicts, surface the conflict rather than silently i
 
 ### ADR Template
 
-Store ADRs in `docs/decisions/` with sequential numbering (unless the project already uses another location — see above):
+Store ADRs in `docs/adr/` with sequential numbering (unless the project already uses another location — see above):
 
 ```markdown
 # ADR-001: Use PostgreSQL for primary database
@@ -307,7 +307,7 @@ After checking the technical content, review the prose for the people who will u
 
 After documenting:
 
-- [ ] ADRs exist for all significant architectural decisions
+- [ ] Each decision that is hard to reverse, surprising without context, and a real trade-off has an ADR
 - [ ] README covers quick start, commands, and architecture overview
 - [ ] API functions have parameter and return type documentation
 - [ ] Known gotchas are documented inline where they matter
