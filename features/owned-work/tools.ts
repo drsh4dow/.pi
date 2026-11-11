@@ -54,13 +54,17 @@ const promptGuidelines = [
 
 /** Only an agent that may start delegates gets these, since pi shows a tool's guidelines only while the tool is active. */
 const delegateGuidelines = [
-	"Use delegate to keep bulk out of your context. When the work means reading many files, a long transcript, or a large artifact, hand it to a delegate and keep only its answer and the evidence locations it names.",
-	"Treat every delegate hand-off as lossy. One agent, one round trip, is the baseline. Fan out only when the sub-tasks are independent (no shared mutable state, no ordering between them), each delegate brings back a different kind of finding, and merging the answers fits in your context.",
-	"Write each delegate task message as the delegate's whole world. Name the goal, the inputs, what counts as done, and the shape of the answer.",
+	"Decide what goes to a delegate before you start, while your context is small. Work of a handful of tool calls, or that needs context a task message cannot carry, stays with you.",
+	"Reading of more than about 1,500 lines, or of three or more areas, goes to delegates, one per area in parallel, each asked for the facts you need with file, line, and quotes. This holds when the reading serves your own plan. Context spent on reading never comes back, so read yourself only what you will edit.",
+	"Run independent parts, where no two write the same file and none needs another's result, as delegates started in one turn, then group them.",
+	"Hand implementation to one owner per slice when a slice has written acceptance criteria or the work has two or more slices. Coupled code gets one owner.",
+	"Write each delegate task message as the delegate's whole world. Name the user's goal, the task, the inputs as file paths, what counts as done, and the shape of the answer.",
 	"Give each delegate that commits its own branch or worktree, and start it there with cwd.",
 	"A delegate's answer is a claim. Check what you will act on against the real artifact before you report it as done.",
 	"A delegate that reports something missing hands you a gap. Supply it in a fresh delegate's message. If only someone above you can settle it, it is your own open question now.",
 ];
+
+const nestingGuideline = "Your delegates can start delegates of their own, so hand an owner its whole slice.";
 
 const lastLevelGuideline =
 	"Your delegates cannot start delegates of their own, so give each one work it can finish alone.";
@@ -104,7 +108,7 @@ const delegateTool = (
 		name: "delegate",
 		label: "delegate",
 		description: "Start a delegate on one task. It wakes you with its answer.",
-		promptGuidelines: childLevel === levels ? [...delegateGuidelines, lastLevelGuideline] : delegateGuidelines,
+		promptGuidelines: [...delegateGuidelines, childLevel === levels ? lastLevelGuideline : nestingGuideline],
 		parameters,
 		outputSchema: HandleOut,
 		execute: (_id, call, signal, _update, ctx: Caller) =>
