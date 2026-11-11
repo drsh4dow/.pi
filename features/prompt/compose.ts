@@ -4,6 +4,7 @@ import {
 	getExamplesPath,
 	getReadmePath,
 	type NormalizedBuildSystemPromptOptions,
+	type Skill,
 } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
@@ -19,6 +20,8 @@ export interface Layers {
 	readonly instructions: Option.Option<string>;
 	/** The `<principles>` index. */
 	readonly principles: Option.Option<string>;
+	/** The skills this agent's role may load. */
+	readonly skills: ReadonlyArray<Skill>;
 }
 
 const bullets = (lines: ReadonlyArray<string>) =>
@@ -77,7 +80,9 @@ export const compose = (layers: Layers) => (event: BeforeAgentStartEvent) => {
 	options.customPrompt = Arr.join(Arr.filter(Arr.map(parts, Str.trim), Str.isNonEmpty), "\n\n");
 	Object.assign(options.sections, toolSections(options), { docs: docs() });
 
-	const skills = skillsSection(options.skills);
+	options.skills = [...layers.skills];
+
+	const skills = skillsSection(layers.skills);
 
 	if (Option.isSome(skills)) {
 		options.sections["skills"] = skills.value;

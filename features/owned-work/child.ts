@@ -16,6 +16,9 @@ export const Role = Schema.Literals(["root", "delegate"]);
 
 export type Role = typeof Role.Type;
 
+/** The roles a prompt file fits, from its frontmatter's `for`. */
+export const Roles = Role.pipe(Schema.NonEmptyArray);
+
 const Level = Schema.FiniteFromString.pipe(Schema.check(Schema.isBetween({ minimum: 2, maximum: levels })));
 
 const ChildEnv = Schema.Struct({ PI_OWNED_WORK_LEVEL: Level, PI_OWNED_WORK_SLICE: Schema.String });
