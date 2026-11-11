@@ -3,7 +3,7 @@ import { expect, test } from "bun:test";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 
-import { Inheritance, inheritanceOf } from "./handover.ts";
+import { Inheritance, inheritanceOf, rootSliceOf } from "./handover.ts";
 import { Transitions } from "./transitions.ts";
 import { MonotonicNanos } from "./work.ts";
 
@@ -39,5 +39,31 @@ const rows = [
 for (const { name, got, expected } of rows) {
 	test(name, () => {
 		expect(got).toEqual(expected);
+	});
+}
+
+const manager = "0::/user.slice/user-1000.slice/user@1000.service";
+
+const slices = [
+	{
+		name: "a root started outside owned work gets a slice of its own",
+		cgroup: `${manager}/app.slice/app-herdr-core.scope\n`,
+		expected: "pi-ow-k1",
+	},
+	{
+		name: "a root a watch started nests its slice in the watch's, so stopping the watch stops the root's delegates",
+		cgroup: `${manager}/pi.slice/pi-ow.slice/pi-ow-ab.slice/pi-ow-ab-watch3.slice/pi-ow-ab-watch3.scope\n`,
+		expected: "pi-ow-ab-watch3-k1",
+	},
+	{
+		name: "a root with no cgroup to read gets a slice of its own",
+		cgroup: "",
+		expected: "pi-ow-k1",
+	},
+];
+
+for (const { name, cgroup, expected } of slices) {
+	test(name, () => {
+		expect(rootSliceOf(cgroup)("k1")).toBe(expected);
 	});
 }

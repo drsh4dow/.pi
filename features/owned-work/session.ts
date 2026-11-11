@@ -36,6 +36,7 @@ import {
 	leave,
 	ledgerStamp,
 	type Lineage,
+	rootSlices,
 	stateOf,
 	stopStale,
 	take,
@@ -97,7 +98,7 @@ const hostLayer = (pi: ExtensionAPI, relay: Relay) => {
 
 type Env = Readonly<Record<string, string | undefined>>;
 
-const runtimeOf = (pi: ExtensionAPI, { ctx, env, childExtensions, inheritance, stamp }: Start, self: Self) => {
+const runtimeOf = (pi: ExtensionAPI, { ctx, env, childExtensions, inheritance, stamp, sliceOf }: Start, self: Self) => {
 	const { agentKey } = inheritance;
 	const parent = Option.map(Option.fromUndefinedOr(env["HC_TERMINAL_ID"]), TerminalAddress);
 	const relay: Relay = { waiter: Option.none() };
@@ -106,7 +107,7 @@ const runtimeOf = (pi: ExtensionAPI, { ctx, env, childExtensions, inheritance, s
 	const ledger = ledgerLayer({ self, cwd: ctx.cwd, passEnv, firstRef, carried: stateOf(inheritance) });
 
 	const slices = Self.$is("Root")(self)
-		? slicesLayer({ slice: `pi-ow-${agentKey}`, rootPid: Option.some(process.pid) })
+		? slicesLayer({ slice: sliceOf(agentKey), rootPid: Option.some(process.pid) })
 		: slicesLayer({ slice: self.slice, rootPid: Option.none() });
 
 	const services = Layer.provideMerge(
@@ -146,6 +147,7 @@ interface Start {
 	readonly childExtensions: ReadonlyArray<string>;
 	readonly inheritance: Inheritance;
 	readonly stamp: number;
+	readonly sliceOf: (agentKey: string) => string;
 }
 
 const sessionOf = (pi: ExtensionAPI, start: Start) =>
@@ -234,12 +236,13 @@ const begin =
 	(event: SessionStartEvent, ctx: ExtensionContext) =>
 		Effect.gen(function* () {
 			const stamp = yield* ledgerStamp;
+			const sliceOf = yield* rootSlices;
 			const inheritance = inheritanceOf({ stamp, agentKey: newAgentKey() })(event.reason, take());
-			const session = yield* sessionOf(pi, { ctx, env, childExtensions, inheritance, stamp });
+			const session = yield* sessionOf(pi, { ctx, env, childExtensions, inheritance, stamp, sliceOf });
 
 			current.session = Option.some(session);
 			restoreDraft({ event, ctx, env });
-			yield* Effect.promise(() => runHook(session.runtime)(stopStale(ctx.ui)(inheritance)));
+			yield* Effect.promise(() => runHook(session.runtime)(stopStale({ ui: ctx.ui, sliceOf })(inheritance)));
 		}).pipe(Effect.provide(NodeServices.layer), Effect.runPromise);
 
 /** Forgets the session before it stops, so no hook reaches a ledger that froze for a reload. */
