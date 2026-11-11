@@ -4,6 +4,8 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Function from "effect/Function";
 import * as Option from "effect/Option";
+import * as Record from "effect/Record";
+import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
@@ -56,26 +58,38 @@ Rank: the rest of this prompt outranks a skill. A step that asks the user follow
 
 No reason to skip: a small task, a familiar skill (the description is not the workflow), hurry, or a step already done (record its result).
 
-Relative paths in a skill resolve against its directory. Tool calls take absolute paths.`;
-
-const escapeXml = Function.flow(
-	Str.replaceAll("&", "&amp;"),
-	Str.replaceAll("<", "&lt;"),
-	Str.replaceAll(">", "&gt;"),
-	Str.replaceAll('"', "&quot;"),
-	Str.replaceAll("'", "&apos;"),
-);
+A skill's file is \`<dir>/<name>/SKILL.md\`, with the \`dir\` its list names, or the path in parentheses after its name. Relative paths in a skill resolve against its directory. Tool calls take absolute paths.`;
 
 type Listed = Pick<Skill, "name" | "description" | "filePath" | "disableModelInvocation">;
 
-const entry = ({ name, description, filePath }: Listed) =>
-	`  <skill>\n    <name>${escapeXml(name)}</name>\n    <description>${escapeXml(description)}</description>\n    <location>${escapeXml(filePath)}</location>\n  </skill>`;
+const oneLine = Function.flow(Str.replaceAll(/\s+/gu, " "), Str.trim);
 
-/** The `<skills>` section, in place of pi's: the rule for loading and running skills, then each skill the model may invoke. */
+/** The skill's line under its folder when its file is `<dir>/<name>/SKILL.md`, or a line naming its file when pi found it elsewhere. */
+const located = ({ name, description, filePath }: Listed) => {
+	const tail = `/${name}/SKILL.md`;
+
+	return Str.endsWith(tail)(filePath)
+		? Result.succeed({ dir: Str.slice(0, -tail.length)(filePath), line: `- ${name}: ${oneLine(description)}` })
+		: Result.fail(`- ${name} (${filePath}): ${oneLine(description)}`);
+};
+
+const list = (attribute: string, lines: ReadonlyArray<string>) =>
+	`<available_skills${attribute}>\n${Arr.join(lines, "\n")}\n</available_skills>`;
+
+/** The `<skills>` section, in place of pi's: the rule for loading and running skills, then each skill the model may invoke, one list per folder. */
 export const skillsSection = (skills: ReadonlyArray<Listed>) => {
 	const shown = Arr.filter(skills, (skill) => !skill.disableModelInvocation);
+	const [placed, unplaced] = Arr.partition(shown, located);
 
-	return Arr.isReadonlyArrayNonEmpty(shown)
-		? Option.some(`${rule}\n\n<available_skills>\n${Arr.join(Arr.map(shown, entry), "\n")}\n</available_skills>`)
-		: Option.none();
+	const folders = Record.map(
+		Arr.groupBy(placed, ({ dir }) => dir),
+		Arr.map(({ line }) => line),
+	);
+
+	const lists = [
+		...Arr.map(Record.toEntries(folders), ([dir, lines]) => list(` dir="${dir}"`, lines)),
+		...(Arr.isReadonlyArrayNonEmpty(unplaced) ? [list("", unplaced)] : []),
+	];
+
+	return Arr.isReadonlyArrayNonEmpty(lists) ? Option.some(`${rule}\n\n${Arr.join(lists, "\n")}`) : Option.none();
 };
