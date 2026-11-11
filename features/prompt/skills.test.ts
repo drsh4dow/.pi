@@ -173,6 +173,11 @@ const contradictions = [
 	{ phrase: /ask before delet/iu, rule: "Subtract first deletes once it knows why the code exists", delegates: false },
 	{ phrase: /when you run as a delegate/iu, rule: "delegate.md owns what a delegate does", delegates: false },
 	{
+		phrase: /multiple agents or sessions/iu,
+		rule: "the delegate rules say when parts run in parallel",
+		delegates: false,
+	},
+	{
 		phrase: /STOP YOUR TURN/u,
 		rule: "a delegate has no later turn, and the roles decide when to stop",
 		delegates: true,
