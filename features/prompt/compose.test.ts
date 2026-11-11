@@ -44,8 +44,6 @@ const composed = (given: NormalizedBuildSystemPromptOptions, layers: Layers) => 
 	return given;
 };
 
-const readAndBash = "- read: Read file contents\n- bash: Run a command";
-
 const preambleRows = [
 	{
 		name: "the root reads SYSTEM.md, then its role file",
@@ -79,59 +77,39 @@ for (const row of preambleRows) {
 	});
 }
 
-const sectionRows = [
-	{ name: "lists each selected tool with its snippet", given: {}, tools: readAndBash, rules: "" },
-	{
-		name: "leaves out a hidden tool",
-		given: { hiddenTools: ["bash"] },
-		tools: "- read: Read file contents",
-		rules: "",
-	},
-	{
-		name: "leaves out a tool with no snippet",
-		given: { toolSnippets: { read: "Read file contents" } },
-		tools: "- read: Read file contents",
-		rules: "",
-	},
+const ruleRows = [
 	{
 		name: "gathers tool and prompt guidelines, trimmed and once each",
 		given: {
 			toolGuidelines: { read: [" Use read, not cat. "], bash: ["Quote paths."] },
 			promptGuidelines: ["Quote paths.", " "],
 		},
-		tools: readAndBash,
 		rules: "- Use read, not cat.\n- Quote paths.",
 	},
 	{
 		name: "drops the guidelines of edit and codemode, which restate their own schema",
 		given: {
 			selectedTools: ["read", "edit", "codemode"],
-			toolSnippets: {},
 			toolGuidelines: { read: ["Use read."], edit: ["Use edit."], codemode: ["Use codemode."] },
 		},
-		tools: "",
 		rules: "- Use read.",
 	},
 	{
 		name: "drops the guidelines of a hidden tool",
-		given: { hiddenTools: ["read"], toolGuidelines: { read: ["Use read."] } },
-		tools: "- bash: Run a command",
-		rules: "",
+		given: { hiddenTools: ["read"], toolGuidelines: { read: ["Use read."], bash: ["Quote paths."] } },
+		rules: "- Quote paths.",
 	},
-] satisfies ReadonlyArray<{
-	name: string;
-	given: Partial<NormalizedBuildSystemPromptOptions>;
-	tools: string;
-	rules: string;
-}>;
+] satisfies ReadonlyArray<{ name: string; given: Partial<NormalizedBuildSystemPromptOptions>; rules: string }>;
 
-for (const { name, given, tools, rules } of sectionRows) {
-	test(`the tool context ${name}`, () => {
-		const { sections } = composed(options(given), root);
-
-		expect({ tools: sections["tools"], rules: sections["rules"] }).toEqual({ tools, rules });
+for (const { name, given, rules } of ruleRows) {
+	test(`the rules section ${name}`, () => {
+		expect(composed(options(given), root).sections["rules"]).toBe(rules);
 	});
 }
+
+test("the prompt gets no tools list, since each tool's schema already describes it", () => {
+	expect(composed(options({}), root).sections).not.toHaveProperty("tools");
+});
 
 test("every prompt gets pi's docs paths back", () => {
 	expect(composed(options({}), root).sections["docs"]).toContain("- Docs: ");
