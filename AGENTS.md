@@ -5,6 +5,7 @@ My own coding harness, built on [pi](https://github.com/earendil-works/pi). This
 ## Rules
 
 - Run `bun run check` before every commit. It must exit clean.
+- Before you change the harness itself (an extension, `SYSTEM.md`, a role file, or a principle), read pi's docs: `node_modules/@earendil-works/pi-coding-agent/README.md`, and its `docs/` and `examples/`.
 - Use bun as the package manager. `bun install` runs `effect-tsgo patch --oxlint`, which swaps the TypeScript, oxlint, and tsgolint binaries for Effect's builds.
 - Fix the code, never the gate. Don't disable or downgrade lint rules, and don't add `oxlint-disable` or `@ts-expect-error` to get green.
 - Relative imports end in `.ts`. Use only erasable TypeScript syntax: no `enum`, `namespace`, or parameter properties.
