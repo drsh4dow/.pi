@@ -38,6 +38,8 @@ When anything unexpected happens:
 
 Work through these steps in order. Do not skip steps.
 
+Reproducing, localizing, reducing and fixing stay with you. Hand wide reading, such as a long log, git history, or code across many files, to a delegate with the failure and its question, and go on once it names the lines, commits, or files that matter.
+
 ### Step 1: Reproduce
 
 Make the failure happen reliably. If you can't reproduce it, you can't fix it with confidence.
