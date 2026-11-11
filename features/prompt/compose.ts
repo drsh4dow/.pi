@@ -1,8 +1,5 @@
 import {
 	type BeforeAgentStartEvent,
-	getDocsPath,
-	getExamplesPath,
-	getReadmePath,
 	type NormalizedBuildSystemPromptOptions,
 	type Skill,
 } from "@earendil-works/pi-coding-agent";
@@ -49,25 +46,14 @@ const rulesSection = (options: NormalizedBuildSystemPromptOptions) => {
 	return bullets(rules);
 };
 
-const docs = () =>
-	Arr.join(
-		[
-			"Pi is the host this harness runs in. Read its docs before you change the harness itself: an extension, SYSTEM.md, a role file, or a principle.",
-			`- README: ${getReadmePath()}`,
-			`- Docs: ${getDocsPath()}`,
-			`- Examples: ${getExamplesPath()}`,
-		],
-		"\n",
-	);
-
 const instructionsBlock = (text: string) => `<instructions>\n${Str.trim(text)}\n</instructions>`;
 
 /**
  * Writes `SYSTEM.md`, the role file, the delegate's instructions and the principles index into pi's preamble, so they
  * render before `<project_context>`. A custom preamble makes pi drop its `<tools>`, `<rules>` and `<docs>`. This adds
- * back `<rules>` and `<docs>` as custom sections, which pi renders last, and leaves `<tools>` out, since each tool's
- * schema already describes it. The `<skills>` section replaces pi's own in place. pi builds fresh options for each
- * run, so running this again never stacks.
+ * back `<rules>` as a custom section, which pi renders last. It leaves `<tools>` out, since each tool's schema already
+ * describes it, and `<docs>`, which only work on this harness needs and its `AGENTS.md` carries. The `<skills>` section
+ * replaces pi's own in place. pi builds fresh options for each run, so running this again never stacks.
  */
 export const compose = (layers: Layers) => (event: BeforeAgentStartEvent) => {
 	const options = event.systemPromptOptions;
@@ -80,7 +66,7 @@ export const compose = (layers: Layers) => (event: BeforeAgentStartEvent) => {
 	];
 
 	options.customPrompt = Arr.join(Arr.filter(Arr.map(parts, Str.trim), Str.isNonEmpty), "\n\n");
-	Object.assign(options.sections, { rules: rulesSection(options), docs: docs() });
+	options.sections["rules"] = rulesSection(options);
 
 	options.skills = [...layers.skills];
 

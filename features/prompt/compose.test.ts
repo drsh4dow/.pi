@@ -111,8 +111,8 @@ test("the prompt gets no tools list, since each tool's schema already describes 
 	expect(composed(options({}), root).sections).not.toHaveProperty("tools");
 });
 
-test("every prompt gets pi's docs paths back", () => {
-	expect(composed(options({}), root).sections["docs"]).toContain("- Docs: ");
+test("the prompt gets no docs section, since only work on the harness needs pi's docs", () => {
+	expect(composed(options({}), root).sections).not.toHaveProperty("docs");
 });
 
 const skill = (
