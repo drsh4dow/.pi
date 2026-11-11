@@ -14,7 +14,7 @@ Decompose work into small, verifiable tasks with explicit acceptance criteria. G
 
 - You have a spec and need to break it into implementable units
 - A task feels too large or vague to start
-- Work needs to be parallelized across multiple agents or sessions
+- The work splits into slices that owner delegates can build in parallel
 - You need to communicate scope to a human
 - The implementation order isn't obvious
 
@@ -100,6 +100,8 @@ Each task follows this structure, whether it lands in the markdown task list or 
 - [ ] Manual check: [description of what to verify]
 
 **Dependencies:** [Task numbers this depends on, or "None"]
+
+**Runs:** [inline | owner | owner, in parallel with Tasks N, M]
 
 **Files likely touched:**
 
@@ -229,7 +231,7 @@ When tasks live in an external tracker, keep the Task List section above as an o
 
 ## Parallelization Opportunities
 
-When multiple agents or sessions are available:
+Each task's **Runs** field tells the build who builds it: `inline` for the agent leading the build, `owner` for one owner delegate, or `owner, in parallel with Tasks N, M`. Set it from these:
 
 - **Safe to parallelize:** Independent feature slices, tests for already-implemented features, documentation
 - **Must be sequential:** Database migrations, shared state changes, dependency chains
@@ -263,6 +265,7 @@ Before starting implementation, confirm:
 - [ ] Every task has acceptance criteria
 - [ ] Every task has a verification step
 - [ ] Task dependencies are identified and ordered correctly
+- [ ] Every task's **Runs** field says inline, owner, or owner in parallel with named tasks
 - [ ] Tasks are recorded in the task list target (default `tasks/todo.md`)
 - [ ] No pre-existing incomplete plan was overwritten without explicit user confirmation
 - [ ] No task touches more than ~5 files
