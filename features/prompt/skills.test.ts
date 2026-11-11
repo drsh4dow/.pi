@@ -113,4 +113,48 @@ test("every shipped skill's `for` names known roles", () =>
 		}),
 	));
 
+const dirOf = (filePath: string) => Str.replace(/\/SKILL\.md$/u, "")(filePath);
+
+const nameOf = (filePath: string) => Str.replace(/^.*\//u, "")(dirOf(filePath));
+
+const hiddenFromModel = /^disable-model-invocation: true$/mu;
+
+/** The skills `text` points the agent at, written as `name` or **name**, out of `names`. */
+const pointsAt = (text: string, names: ReadonlyArray<string>) =>
+	Arr.filter(names, (name) => Str.includes(`\`${name}\``)(text) || Str.includes(`**${name}**`)(text));
+
+test("no skill a delegate loads points it at a skill hidden from delegates", () =>
+	run(
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const skills = yield* shippedSkills;
+			const forRoot = yield* skillsFor({ role: "root", skills });
+			const forDelegates = yield* skillsFor({ role: "delegate", skills });
+
+			const hidden = Arr.difference(
+				Arr.map(forRoot.skills, ({ filePath }) => nameOf(filePath)),
+				Arr.map(forDelegates.skills, ({ filePath }) => nameOf(filePath)),
+			);
+
+			const pointers = yield* Effect.forEach(forDelegates.skills, ({ filePath }) =>
+				Effect.gen(function* () {
+					const dir = dirOf(filePath);
+					const skillText = yield* fs.readFileString(filePath);
+
+					if (hiddenFromModel.test(skillText)) {
+						return [];
+					}
+
+					const entries = yield* fs.readDirectory(dir, { recursive: true });
+					const docs = Arr.filter(entries, Str.endsWith(".md"));
+					const texts = yield* Effect.forEach(docs, (doc) => fs.readFileString(`${dir}/${doc}`));
+
+					return Arr.map(pointsAt(Arr.join(texts, "\n"), hidden), (name) => `${nameOf(filePath)} → ${name}`);
+				}),
+			);
+
+			expect(Arr.flatten(pointers)).toEqual([]);
+		}),
+	));
+
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${scratch}`.quiet())));
