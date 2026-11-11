@@ -103,6 +103,16 @@ const sectionRows = [
 		rules: "- Use read, not cat.\n- Quote paths.",
 	},
 	{
+		name: "drops the guidelines of edit and codemode, which restate their own schema",
+		given: {
+			selectedTools: ["read", "edit", "codemode"],
+			toolSnippets: {},
+			toolGuidelines: { read: ["Use read."], edit: ["Use edit."], codemode: ["Use codemode."] },
+		},
+		tools: "",
+		rules: "- Use read.",
+	},
+	{
 		name: "drops the guidelines of a hidden tool",
 		given: { hiddenTools: ["read"], toolGuidelines: { read: ["Use read."] } },
 		tools: "- bash: Run a command",

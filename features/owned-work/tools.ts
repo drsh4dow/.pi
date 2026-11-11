@@ -50,7 +50,6 @@ const GroupParams = Type.Object({
 
 const promptGuidelines = [
 	"Starting work returns a handle at once. End your turn to be woken with results; do not poll.",
-	"Use group(name, mode, of: [handles]) to scope work: a group stops its serves when its jobs settle. Work you never group is yours and wakes you itself.",
 ];
 
 /** Only an agent that may start delegates gets these, since pi shows a tool's guidelines only while the tool is active. */
