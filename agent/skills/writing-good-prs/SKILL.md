@@ -183,8 +183,6 @@ Write the body to a file and run both gates.
 
    Run the read once. Answer every `unanswered` and `unclear` it reports with a witness in Verification or the evidence comment, or list it under Not checked. Rewrite every quoted sentence as a fact about this PR's change. Then move on without a second read.
 
-   Run this read yourself even when you run as a delegate, and publish only after it has run. Only when you have no `delegate` tool, write the files, publish nothing, and name the read in your report for your parent to run.
-
 Publish the same file with `scripts/publish-pr.ts create <body-file> --title "<title>"` or `scripts/publish-pr.ts edit <number> <body-file> --title "<title>"`, never with a bare `gh pr create --body-file` or `gh pr edit --body-file`. Both verbs take `--repo` and `--template`, `create` also takes `--base`, `--head`, and `--draft`, and `edit` also takes `--replace`. Pass `--draft` when step 1 says to keep the PR a draft. Keep the title out of the body file.
 
 - It reruns check-body and calls `gh` only after check-body exits 0.
