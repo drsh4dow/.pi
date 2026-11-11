@@ -44,6 +44,8 @@ export type Act = Data.TaggedEnum<{
 		readonly messageKiB?: number;
 		readonly instructionsKiB?: number;
 		readonly heldThen?: HeldSpawn;
+		readonly group?: string;
+		readonly handle?: Readonly<Record<string, string>>;
 	};
 	Spawned: { readonly expect: string };
 	Resync: { readonly askedMsAgo: number };
@@ -97,7 +99,9 @@ const requestOf = (act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
 	const brief = { name: "Review it", message, model: "a/b", thinking: Option.none(), readOnly: false, instructions };
 
 	return Match.value(act.kind).pipe(
-		Match.when("delegate", () => StartRequest.Delegate({ brief, childSession })),
+		Match.when("delegate", () =>
+			StartRequest.Delegate({ brief, childSession, group: Option.fromUndefinedOr(act.group) }),
+		),
 		Match.when("serve", () => StartRequest.Serve({ command: "serve", ready: Option.some("ready") })),
 		Match.when("watch", () => StartRequest.Watch({ command: "watch", deadline })),
 		Match.exhaustive,
@@ -106,20 +110,34 @@ const requestOf = (act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
 
 const refusal = (error: LedgerFailure): string => Out.error(error).message;
 
+const owe = (world: World, ref: string): void => {
+	if (!world.owed.includes(ref)) {
+		world.owed.push(ref);
+	}
+};
+
+const handleChecked = (expected: Readonly<Record<string, string>> | undefined, handle: Handle): void => {
+	if (expected !== undefined) {
+		expect<object>(Out.handle(handle)).toEqual(expected);
+	}
+};
+
 const start = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
 	const request = requestOf(act);
 
-	const started = ({ ref, terminal }: Handle) => {
+	const started = (handle: Handle) => {
+		const { ref, terminal, group } = handle;
 		const address = Option.getOrElse(terminal, () => "");
 
+		handleChecked(act.handle, handle);
 		world.terminals.set(ref, address);
 
 		if (StartRequest.$is("Delegate")(request)) {
 			world.sessions.set(address, request.childSession);
 		}
 
-		if (act.kind !== "serve") {
-			world.owed.push(ref);
+		for (const job of [...Option.toArray(group), ...(act.kind === "serve" ? [] : [ref])]) {
+			owe(world, job);
 		}
 
 		return ref;
@@ -177,10 +195,7 @@ const replied = <Reply>(reply: Effect.Effect<Reply, LedgerError>, render: (value
 const group = (world: World, act: Data.TaggedEnum.Value<Act, "Group">) => {
 	const adopted = ({ ref }: Handle) => {
 		world.groups.set(ref, act.refs);
-
-		if (!world.owed.includes(ref)) {
-			world.owed.push(ref);
-		}
+		owe(world, ref);
 
 		return ref;
 	};

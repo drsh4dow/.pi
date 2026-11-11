@@ -15,6 +15,7 @@ export const HandleOut = Type.Object({
 	ref: Type.String(),
 	kind: Type.Enum(["delegate", "serve", "watch", "group"]),
 	terminal: Type.Optional(Type.String()),
+	group: Type.Optional(Type.String()),
 	ready: Type.Optional(Type.Boolean()),
 });
 
@@ -79,10 +80,11 @@ const outcomeOut = (outcome: Outcome): OutcomeJson =>
 		Failed: ({ reason }): OutcomeJson => ({ status: "failed", ...reasonOut(reason) }),
 	});
 
-const handleOut = ({ ref, kind, terminal, ready }: Handle) => ({
+const handleOut = ({ ref, kind, terminal, group, ready }: Handle) => ({
 	ref,
 	kind,
 	...Option.match(terminal, { onNone: () => ({}), onSome: (address) => ({ terminal: address }) }),
+	...Option.match(group, { onNone: () => ({}), onSome: (holder) => ({ group: holder }) }),
 	...Option.match(ready, { onNone: () => ({}), onSome: (matched) => ({ ready: matched }) }),
 });
 

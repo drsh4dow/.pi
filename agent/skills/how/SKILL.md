@@ -17,7 +17,7 @@ When in doubt, take the simple path.
 
 ## 2. Explore (complex only)
 
-Decompose the question into 2 to 4 angles, each a distinct slice of the subsystem. Start one explorer delegate per angle, each with `instructionsFile: ~/.pi/agent/skills/how/references/explorer-prompt.md` and the question and its angle as its task message. Group them.
+Decompose the question into 2 to 4 angles, each a distinct slice of the subsystem. Start one explorer delegate per angle, each with `instructionsFile: ~/.pi/agent/skills/how/references/explorer-prompt.md` and the question and its angle as its task message, and one `group` name for all of them.
 
 ## 3. Synthesize (complex only)
 

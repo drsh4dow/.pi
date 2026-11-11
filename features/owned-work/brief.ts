@@ -52,6 +52,13 @@ export const delegateParams = (table: ModelTable) => {
 				description: "The folder the delegate starts in, such as its own git worktree. Yours when left out.",
 			}),
 		),
+		group: Type.Optional(
+			Type.String({
+				pattern: String.raw`\S`,
+				description:
+					"A few words for what the group's work has in common, such as `principles eval`. Delegates you start with the same `group` while that group runs join it, and it wakes you once with all their answers.",
+			}),
+		),
 	});
 };
 

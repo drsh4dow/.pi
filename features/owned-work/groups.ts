@@ -79,6 +79,26 @@ const adopt = (draft: Draft, { name, members }: GroupRequest): Work => {
 	return created;
 };
 
+/** A delegate started with a group's name joins the live group of that name the agent holds, or starts one. */
+const join = (draft: Draft, name: string, member: WorkRef): void => {
+	const open = Arr.findFirst(
+		Arr.filter([...draft.work.values()], Draft.isGroup),
+		(holder) => holder.name === name && Draft.isLive(holder) && Option.isNone(holder.heldBy),
+	);
+
+	if (Option.isNone(open)) {
+		adopt(draft, { name, members: [member] });
+
+		return;
+	}
+
+	draft.work.set(open.value.ref, { ...open.value, members: [...open.value.members, member] });
+
+	for (const work of Draft.findAll(draft, [member])) {
+		draft.work.set(member, { ...work, heldBy: Option.some(open.value.ref) });
+	}
+};
+
 const group = (state: LedgerState, request: GroupRequest): Result.Result<Step<Handle>, LedgerError> => {
 	const draft = Draft.of(state);
 	const members = Arr.dedupe(request.members);
@@ -140,4 +160,4 @@ const cancel = (state: LedgerState, refs: ReadonlyArray<WorkRef>): Result.Result
 	return Result.succeed(Draft.finish(draft, handed));
 };
 
-export const Groups = { group, cancel, showInGroup };
+export const Groups = { group, join, cancel, showInGroup };
