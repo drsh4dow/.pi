@@ -119,6 +119,18 @@ const nameOf = (filePath: string) => Str.replace(/^.*\//u, "")(dirOf(filePath));
 
 const hiddenFromModel = /^disable-model-invocation: true$/mu;
 
+/** Every `.md` in a skill's folder, `SKILL.md` and the files it points at, keyed `<skill>/<path>`. */
+const docsOf = (filePath: string) =>
+	Effect.gen(function* () {
+		const fs = yield* FileSystem.FileSystem;
+		const dir = dirOf(filePath);
+		const entries = yield* fs.readDirectory(dir, { recursive: true });
+
+		return yield* Effect.forEach(Arr.filter(entries, Str.endsWith(".md")), (doc) =>
+			Effect.map(fs.readFileString(`${dir}/${doc}`), (text) => ({ doc: `${nameOf(filePath)}/${doc}`, text })),
+		);
+	});
+
 /** The skills `text` points the agent at, written as `name` or **name**, out of `names`. */
 const pointsAt = (text: string, names: ReadonlyArray<string>) =>
 	Arr.filter(names, (name) => Str.includes(`\`${name}\``)(text) || Str.includes(`**${name}**`)(text));
@@ -138,22 +150,53 @@ test("no skill a delegate loads points it at a skill hidden from delegates", () 
 
 			const pointers = yield* Effect.forEach(forDelegates.skills, ({ filePath }) =>
 				Effect.gen(function* () {
-					const dir = dirOf(filePath);
 					const skillText = yield* fs.readFileString(filePath);
 
 					if (hiddenFromModel.test(skillText)) {
 						return [];
 					}
 
-					const entries = yield* fs.readDirectory(dir, { recursive: true });
-					const docs = Arr.filter(entries, Str.endsWith(".md"));
-					const texts = yield* Effect.forEach(docs, (doc) => fs.readFileString(`${dir}/${doc}`));
+					const docs = yield* docsOf(filePath);
+					const texts = Arr.map(docs, ({ text }) => text);
 
 					return Arr.map(pointsAt(Arr.join(texts, "\n"), hidden), (name) => `${nameOf(filePath)} → ${name}`);
 				}),
 			);
 
 			expect(Arr.flatten(pointers)).toEqual([]);
+		}),
+	));
+
+/** Skill text that contradicts a rule the always-on prompt owns. `delegates` limits a phrase to the skills a delegate loads. */
+const contradictions = [
+	{ phrase: /reset --hard/u, rule: "<git> preserves unrelated changes", delegates: false },
+	{ phrase: /ask before delet/iu, rule: "Subtract first deletes once it knows why the code exists", delegates: false },
+	{ phrase: /when you run as a delegate/iu, rule: "delegate.md owns what a delegate does", delegates: false },
+	{
+		phrase: /STOP YOUR TURN/u,
+		rule: "a delegate has no later turn, and the roles decide when to stop",
+		delegates: true,
+	},
+];
+
+test("no skill contradicts a rule the always-on prompt owns", () =>
+	run(
+		Effect.gen(function* () {
+			const skills = yield* shippedSkills;
+			const forDelegates = yield* skillsFor({ role: "delegate", skills });
+			const delegateSees = new Set(Arr.map(forDelegates.skills, ({ filePath }) => filePath));
+
+			const found = yield* Effect.forEach(skills, ({ filePath }) =>
+				Effect.map(docsOf(filePath), (docs) =>
+					Arr.flatMap(docs, ({ doc, text }) =>
+						Arr.flatMap(contradictions, ({ phrase, rule, delegates }) =>
+							phrase.test(text) && (!delegates || delegateSees.has(filePath)) ? [`${doc}: ${rule}`] : [],
+						),
+					),
+				),
+			);
+
+			expect(Arr.flatten(found)).toEqual([]);
 		}),
 	));
 
