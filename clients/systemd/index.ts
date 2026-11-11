@@ -36,6 +36,9 @@ export interface SliceOptions {
 
 const notLoaded = 5;
 
+/** How long a stopped job has after SIGTERM before systemd sends SIGKILL to what is left of it, as `pi.exec` waits. */
+const stopGrace = "5s";
+
 const unitOf = (slice: string, ref: string) => `${slice}-${Str.replaceAll("-", "")(ref)}`;
 
 const finished = (handle: ChildProcessSpawner.ChildProcessHandle) =>
@@ -117,6 +120,7 @@ export const slicesLayer = ({
 							"--scope",
 							"--quiet",
 							"--collect",
+							`--property=TimeoutStopSec=${stopGrace}`,
 							`--slice=${unit}.slice`,
 							`--unit=${unit}`,
 							"--",
