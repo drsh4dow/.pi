@@ -9,11 +9,17 @@ import { type MonotonicNanos, Work, type WorkRef } from "./work.ts";
 export const deadlineOf = (work: Work): Option.Option<Duration.Duration> =>
 	Work.$is("Watch")(work) ? work.deadline : Option.none();
 
+const held = (state: LedgerState): ReadonlyArray<Work> =>
+	Arr.filter([...state.work.values()], (work) => Draft.isLive(work) && Option.isNone(work.heldBy));
+
+const refsOf = (works: ReadonlyArray<Work>): ReadonlyArray<WorkRef> => Arr.map(works, ({ ref }) => ref);
+
 /** The live work the agent holds itself: what a session switch would stop. */
-export const running = (state: LedgerState): ReadonlyArray<WorkRef> =>
-	Arr.flatMap([...state.work.values()], (work) =>
-		Draft.isLive(work) && Option.isNone(work.heldBy) ? [work.ref] : [],
-	);
+export const running = (state: LedgerState): ReadonlyArray<WorkRef> => refsOf(held(state));
+
+/** The live jobs the agent holds itself: what will wake it, since a serve's end never does. */
+export const waking = (state: LedgerState): ReadonlyArray<WorkRef> =>
+	refsOf(Arr.filter(held(state), (work) => !Draft.isServe(work)));
 
 const rearmed =
 	(now: MonotonicNanos) =>

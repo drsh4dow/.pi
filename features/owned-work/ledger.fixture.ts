@@ -60,6 +60,7 @@ export type Act = Data.TaggedEnum<{
 	Group: { readonly refs: ReadonlyArray<string>; readonly expect: string };
 	Cancel: { readonly refs: ReadonlyArray<string>; readonly expect: string };
 	Running: { readonly expect: ReadonlyArray<string> };
+	Waking: { readonly expect: ReadonlyArray<string> };
 	TurnEnds: { readonly expect: string };
 	Wakes: { readonly expect: ReadonlyArray<string> };
 	Killed: { readonly expect: ReadonlyArray<string> };
@@ -110,12 +111,6 @@ const requestOf = (act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
 
 const refusal = (error: LedgerFailure): string => Out.error(error).message;
 
-const owe = (world: World, ref: string): void => {
-	if (!world.owed.includes(ref)) {
-		world.owed.push(ref);
-	}
-};
-
 const handleChecked = (expected: Readonly<Record<string, string | boolean>> | undefined, handle: Handle): void => {
 	if (expected !== undefined) {
 		expect<object>(Out.handle(handle)).toEqual(expected);
@@ -136,8 +131,10 @@ const start = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
 			world.sessions.set(address, request.childSession);
 		}
 
-		for (const job of [...Option.toArray(group), ...(act.kind === "serve" ? [] : [ref])]) {
-			owe(world, job);
+		world.owed.push(...Option.toArray(group));
+
+		if (act.kind !== "serve") {
+			world.owed.push(ref);
 		}
 
 		return ref;
@@ -195,7 +192,7 @@ const replied = <Reply>(reply: Effect.Effect<Reply, LedgerError>, render: (value
 const group = (world: World, act: Data.TaggedEnum.Value<Act, "Group">) => {
 	const adopted = ({ ref }: Handle) => {
 		world.groups.set(ref, act.refs);
-		owe(world, ref);
+		world.owed.push(ref);
 
 		return ref;
 	};
@@ -242,6 +239,9 @@ const hook = (world: World, event: Data.TaggedEnum.Value<Act, "Hook">["event"]):
 		Match.exhaustive,
 	);
 
+const refsAre = (refs: Effect.Effect<ReadonlyArray<string>>, expected: ReadonlyArray<string>) =>
+	Effect.flatMap(refs, (got) => checked(() => got, expected));
+
 const breather = Effect.sleep(Duration.millis(20));
 
 const perform = (world: World, act: Act): Effect.Effect<void> =>
@@ -254,8 +254,8 @@ const perform = (world: World, act: Act): Effect.Effect<void> =>
 		End: ({ terminal, end }) => ended(world, terminal, end),
 		Group: (grouping) => group(world, grouping),
 		Cancel: (cancelling) => cancel(world, cancelling),
-		Running: ({ expect: expected }) =>
-			Effect.flatMap(world.ledger.running, (refs) => checked((): ReadonlyArray<string> => refs, expected)),
+		Running: ({ expect: expected }) => refsAre(world.ledger.running, expected),
+		Waking: ({ expect: expected }) => refsAre(world.ledger.waking, expected),
 		TurnEnds: ({ expect: expected }) => turnEnds(world, expected),
 		Wakes: ({ expect: expected }) => checked(() => world.wakes.splice(0), [...expected]),
 		Killed: ({ expect: expected }) => checked(() => world.kills.splice(0), [...expected]),
