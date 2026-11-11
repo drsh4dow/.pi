@@ -6,6 +6,7 @@ import {
 	type Skill,
 } from "@earendil-works/pi-coding-agent";
 import * as Option from "effect/Option";
+import * as Str from "effect/String";
 
 import { compose, type Layers } from "./compose.ts";
 
@@ -126,28 +127,49 @@ test("every prompt gets pi's docs paths back", () => {
 	expect(composed(options({}), root).sections["docs"]).toContain("- Docs: ");
 });
 
-const skill = (name: string, description: string, disableModelInvocation = false): Skill => ({
+const skill = (
+	name: string,
+	description: string,
+	{ disableModelInvocation = false, filePath = `/skills/${name}/SKILL.md` } = {},
+): Skill => ({
 	name,
 	description,
-	filePath: `/skills/${name}/SKILL.md`,
-	baseDir: `/skills/${name}`,
-	sourceInfo: createSyntheticSourceInfo(`/skills/${name}/SKILL.md`, { source: "local" }),
+	filePath,
+	baseDir: Str.replace(/\/[^/]+$/u, "")(filePath),
+	sourceInfo: createSyntheticSourceInfo(filePath, { source: "local" }),
 	disableModelInvocation,
 });
 
-test("the skills section lists each skill the model may invoke, escaped, under the rule", () => {
-	const skills = [skill("grilling", "Grill the user's plan."), skill("handoff", "Hand off.", true)];
+test("the skills section lists each skill the model may invoke as one line under its folder, after the rule", () => {
+	const skills = [
+		skill("grilling", "Grill the user's plan."),
+		skill("agent-browser", "Drive a\n  real browser.\n", { filePath: "/web/agent-browser/SKILL.md" }),
+		skill("handoff", "Hand off.", { disableModelInvocation: true }),
+		skill("tdd", "Red, then green."),
+	];
+
 	const section = composed(options({}), { ...root, skills }).sections["skills"] ?? "";
 
 	expect(section).toStartWith("Skills are workflows, not suggestions.");
 
 	expect(section).toEndWith(
-		"<available_skills>\n  <skill>\n    <name>grilling</name>\n    <description>Grill the user&apos;s plan.</description>\n    <location>/skills/grilling/SKILL.md</location>\n  </skill>\n</available_skills>",
+		'\n\n<available_skills dir="/skills">\n- grilling: Grill the user\'s plan.\n- tdd: Red, then green.\n</available_skills>\n<available_skills dir="/web">\n- agent-browser: Drive a real browser.\n</available_skills>',
+	);
+});
+
+test("a skill whose file is not <dir>/<name>/SKILL.md is listed with its path", () => {
+	const skills = [
+		skill("notes", "Take notes.", { filePath: "/skills/notes.md" }),
+		skill("renamed", "Renamed.", { filePath: "/skills/old-name/SKILL.md" }),
+	];
+
+	expect(composed(options({}), { ...root, skills }).sections["skills"]).toEndWith(
+		"\n\n<available_skills>\n- notes (/skills/notes.md): Take notes.\n- renamed (/skills/old-name/SKILL.md): Renamed.\n</available_skills>",
 	);
 });
 
 test("with no skill the model may invoke, the prompt gets no skills section", () => {
-	const skills = [skill("handoff", "Hand off.", true)];
+	const skills = [skill("handoff", "Hand off.", { disableModelInvocation: true })];
 
 	expect(composed(options({}), { ...root, skills }).sections).not.toHaveProperty("skills");
 });
