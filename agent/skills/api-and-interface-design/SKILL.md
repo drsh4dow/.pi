@@ -13,7 +13,7 @@ Design stable, well-documented interfaces that are hard to misuse. Good interfac
 ## When to Use
 
 - Designing new API endpoints
-- Defining module boundaries or contracts between teams
+- Defining a module's public interface or a contract between teams
 - Creating component prop interfaces
 - Establishing database schema that informs API shape
 - Changing existing public interfaces

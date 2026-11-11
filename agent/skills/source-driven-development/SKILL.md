@@ -12,12 +12,10 @@ Every framework-specific code decision must be backed by official documentation.
 
 ## When to Use
 
-- The user wants code that follows current best practices for a given framework
-- Building boilerplate, starter code, or patterns that will be copied across a project
-- The user explicitly asks for documented, verified, or "correct" implementation
-- Implementing features where the framework's recommended approach matters (forms, routing, data fetching, state management, auth)
-- Reviewing or improving code that uses framework-specific patterns
-- Any time you are about to write framework-specific code from memory
+- The user asks you to verify an approach against official documentation
+- The user asks for documented, source-cited code
+
+To look up a library's docs at the version this project uses, follow the `web-docs` skill.
 
 **When NOT to use:**
 
