@@ -54,6 +54,7 @@ export class Ledger extends Context.Service<
 		readonly turnEnded: Effect.Effect<Verdict>;
 		readonly wentIdle: Effect.Effect<void>;
 		readonly running: Effect.Effect<ReadonlyArray<WorkRef>>;
+		readonly waking: Effect.Effect<ReadonlyArray<WorkRef>>;
 		/** The state, for the next load of this extension after a reload. The ledger makes no more changes, so nothing it does after reaches the agent twice. */
 		readonly freeze: Effect.Effect<LedgerState>;
 	}
@@ -255,6 +256,7 @@ export const ledgerLayer = (
 				turnEnded: apply(kit, Transitions.turnEnded),
 				wentIdle: Effect.asVoid(apply(kit, Transitions.wentIdle)),
 				running: Effect.map(Ref.get(kit.state), Transitions.running),
+				waking: Effect.map(Ref.get(kit.state), Transitions.waking),
 				freeze: Effect.andThen(Semaphore.take(kit.lock, 1), Ref.get(kit.state)),
 			};
 		}),

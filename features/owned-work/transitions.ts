@@ -6,7 +6,7 @@ import { TerminalEnd, type TerminalAddress, type TerminalSnapshot } from "../../
 import type { ChildReply } from "../../clients/pi-sessions/index.ts";
 import type { Role } from "./child.ts";
 import { Groups } from "./groups.ts";
-import { carried, deadlineOf, running } from "./lifetime.ts";
+import { carried, deadlineOf, running, waking } from "./lifetime.ts";
 import { Command, Draft, type Job, type LedgerState, type Step, type Woke, Verdict } from "./step.ts";
 import {
 	FailReason,
@@ -274,6 +274,7 @@ export const Transitions = {
 	initial,
 	carried,
 	running,
+	waking,
 	start,
 	spawned,
 	spawnFailed,
