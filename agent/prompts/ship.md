@@ -21,7 +21,7 @@ If you have no `delegate` tool (a delegate at the last level), follow each perso
 
 Constraints (from pi's delegate model):
 
-- Delegates do not start their own delegates — do not let one persona delegate to another.
+- A persona does not start another persona.
 - Each delegate gets its own context window and one message, cannot ask questions, and returns only its report (its last message) to this main session.
 - Delegates cannot talk to each other; they only report back (see `~/.pi/agent/references/orchestration-patterns.md`).
 

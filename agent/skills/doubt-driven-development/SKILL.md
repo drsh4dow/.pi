@@ -44,7 +44,7 @@ If you doubt every keystroke, you ship nothing. The skill applies only to non-tr
 
 This skill is designed for the **main-session orchestrator**, where Step 3 (DOUBT, detailed below) can spawn a fresh-context reviewer.
 
-- **Do NOT name this skill in a persona's instructions file.** A persona that follows Step 3 would spawn another persona — the orchestration anti-pattern explicitly forbidden by `~/.pi/agent/references/orchestration-patterns.md` ("personas do not invoke other personas").
+- **Do NOT name this skill in a persona's instructions file.** A persona that follows Step 3 would spawn another persona — the anti-pattern `~/.pi/agent/references/orchestration-patterns.md` names ("Persona that calls a persona").
 - **Without a `delegate` tool** (a delegate at the last level), run Steps 1–5 yourself on ARTIFACT + CONTRACT rewritten as a fresh self-prompt, and flag the result as degraded: it is not fresh-context review.
 
 ## The Process
@@ -186,7 +186,7 @@ If 3 cycles is "obviously insufficient" because the artifact is large: the artif
 - **`source-driven-development`**: SDD verifies _facts about frameworks_ against official docs. Doubt-driven verifies _your reasoning about the artifact_. SDD checks the API exists; doubt-driven checks you used it correctly under the contract.
 - **`test-driven-development`**: TDD's RED step is doubt made concrete — a failing test is a disproof attempt. When TDD applies, that failing test _is_ the doubt step for behavioral claims.
 - **`debugging-and-error-recovery`**: when the reviewer surfaces a real failure mode, drop into the debugging skill to localize and fix.
-- **Repo orchestration rules** (`~/.pi/agent/references/orchestration-patterns.md`): this skill orchestrates from the main session. A persona calling another persona is anti-pattern B — see Loading Constraints above.
+- **Repo orchestration rules** (`~/.pi/agent/references/orchestration-patterns.md`): this skill orchestrates from the main session. A persona that calls a persona is an anti-pattern there — see Loading Constraints above.
 
 ## Verification
 
