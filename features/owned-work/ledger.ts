@@ -96,15 +96,25 @@ const labelOf = {
 	groupName: "ow.group.name",
 } as const;
 
-export const commandSpec =
+/** Copies the command's output to the log at `$2`, and exits with the command's code rather than tee's. */
+const teed = 'set -o pipefail; sh -c "$1" 2>&1 | tee -- "$2"';
+
+const shellSpec =
 	(options: Pick<LedgerOptions, "cwd" | "passEnv">) =>
-	(ref: WorkRef, command: string): Omit<RunSpec, "labels"> => ({
+	(ref: WorkRef, command: string, shell: ReadonlyArray<string>): Omit<RunSpec, "labels"> => ({
 		ref,
 		name: terminalNameOf(command),
-		argv: ["choom", "-n", lastLevel.oomScoreAdj, "--", "sh", "-c", command],
+		argv: ["choom", "-n", lastLevel.oomScoreAdj, "--", "sh", ...shell],
 		cwd: options.cwd,
 		env: { ...options.passEnv, ...lastLevel.env },
 	});
+
+export const commandSpec = (options: Pick<LedgerOptions, "cwd" | "passEnv">) => (ref: WorkRef, command: string) =>
+	shellSpec(options)(ref, command, ["-c", command]);
+
+export const watchSpec =
+	(options: Pick<LedgerOptions, "cwd" | "passEnv">) => (ref: WorkRef, command: string, log: string) =>
+		shellSpec(options)(ref, command, ["-c", teed, "sh", command, log]);
 
 const specOf = ({ options, cli }: Kit, ref: WorkRef, request: StartRequest): Effect.Effect<RunSpec, SpawnError> => {
 	const labels = { [labelOf.kind]: Draft.kindOf(request) };
@@ -116,7 +126,7 @@ const specOf = ({ options, cli }: Kit, ref: WorkRef, request: StartRequest): Eff
 				(spawn) => ({ ref, cwd: childSession.cwd, labels, ...spawn }),
 			),
 		Serve: ({ command }) => Effect.succeed({ ...commandSpec(options)(ref, command), labels }),
-		Watch: ({ command }) => Effect.succeed({ ...commandSpec(options)(ref, command), labels }),
+		Watch: ({ command, log }) => Effect.succeed({ ...watchSpec(options)(ref, command, log), labels }),
 	});
 };
 

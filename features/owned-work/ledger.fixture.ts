@@ -104,7 +104,7 @@ const requestOf = (act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
 			StartRequest.Delegate({ brief, childSession, group: Option.fromUndefinedOr(act.group) }),
 		),
 		Match.when("serve", () => StartRequest.Serve({ command: "serve", ready: Option.some("ready") })),
-		Match.when("watch", () => StartRequest.Watch({ command: "watch", deadline })),
+		Match.when("watch", () => StartRequest.Watch({ command: "watch", deadline, log: "watch.log" })),
 		Match.exhaustive,
 	);
 };

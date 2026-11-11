@@ -22,11 +22,23 @@ export const HandleOut = Type.Object({
 
 const DoneOut = Type.Object({ status: Type.Literal("done"), text: Type.String() });
 
-const FiredOut = Type.Object({ status: Type.Literal("fired"), exit_code: Type.Number(), tail: Type.String() });
+const LogOut = Type.Optional(Type.String());
+
+const FiredOut = Type.Object({
+	status: Type.Literal("fired"),
+	exit_code: Type.Number(),
+	log: LogOut,
+	tail: Type.String(),
+});
 
 const FailedReason = Type.Enum(["oom", "exited", "lost", "deadline", "spawn-failed", "errored", "cancelled"]);
 
-const FailedOut = Type.Object({ status: Type.Literal("failed"), reason: FailedReason, detail: Type.String() });
+const FailedOut = Type.Object({
+	status: Type.Literal("failed"),
+	reason: FailedReason,
+	detail: Type.String(),
+	log: LogOut,
+});
 
 const MemberOut = Type.Object({ ref: Type.String(), outcome: Type.Ref("Outcome") });
 
@@ -40,8 +52,8 @@ export const ResultsOut = Type.Object({ results: Type.Array(ResultOut) });
 
 type OutcomeJson =
 	| { readonly status: "done"; readonly text: string }
-	| { readonly status: "fired"; readonly exit_code: number; readonly tail: string }
-	| { readonly status: "failed"; readonly reason: string; readonly detail: string }
+	| { readonly status: "fired"; readonly exit_code: number; readonly log?: string; readonly tail: string }
+	| { readonly status: "failed"; readonly reason: string; readonly detail: string; readonly log?: string }
 	| {
 			readonly status: "settled";
 			readonly members: ReadonlyArray<{ readonly ref: string; readonly outcome: OutcomeJson }>;
@@ -70,15 +82,21 @@ const reasonOut = (reason: FailReason): { readonly reason: string; readonly deta
 		}),
 	});
 
-const outcomeOut = (outcome: Outcome): OutcomeJson =>
+const logOut = (log: Option.Option<string>) =>
+	Option.match(log, { onNone: () => ({}), onSome: (path) => ({ log: path }) });
+
+const outcomeOut = (outcome: Outcome, log: Option.Option<string>): OutcomeJson =>
 	Match.valueTags(outcome, {
 		Done: ({ text }): OutcomeJson => ({ status: "done", text }),
-		Fired: ({ exitCode, tail }): OutcomeJson => ({ status: "fired", exit_code: exitCode, tail }),
+		Fired: ({ exitCode, tail }): OutcomeJson => ({ status: "fired", exit_code: exitCode, ...logOut(log), tail }),
 		Members: ({ results }): OutcomeJson => ({
 			status: "settled",
-			members: Arr.map(results, ({ ref, outcome: member }) => ({ ref, outcome: outcomeOut(member) })),
+			members: Arr.map(results, ({ ref, outcome: member, log: memberLog }) => ({
+				ref,
+				outcome: outcomeOut(member, memberLog),
+			})),
 		}),
-		Failed: ({ reason }): OutcomeJson => ({ status: "failed", ...reasonOut(reason) }),
+		Failed: ({ reason }): OutcomeJson => ({ status: "failed", ...reasonOut(reason), ...logOut(log) }),
 	});
 
 /** How to wait for the work. A serve's end never wakes the agent, so its handle has none. */
@@ -97,7 +115,7 @@ const handleOut = ({ ref, kind, terminal, group, ready }: Handle) => ({
 	),
 });
 
-const resultOut = ({ ref, kind, outcome }: Settled) => ({ ref, kind, outcome: outcomeOut(outcome) });
+const resultOut = ({ ref, kind, outcome, log }: Settled) => ({ ref, kind, outcome: outcomeOut(outcome, log) });
 
 const endOut = (end: Option.Option<TerminalEnd>) =>
 	Option.match(end, {
@@ -121,10 +139,10 @@ const entryOut = (entry: WorkEntry) =>
 		}),
 		CommandStarted: ({ handle, kind, command }) => ({ type: "command-started", handle, kind, command }),
 		GroupStarted: ({ handle, name, members }) => ({ type: "group-started", handle, name, members }),
-		JobSettled: ({ handle, outcome, end, durationMs }) => ({
+		JobSettled: ({ handle, outcome, log, end, durationMs }) => ({
 			type: "job-settled",
 			handle,
-			outcome: outcomeOut(outcome),
+			outcome: outcomeOut(outcome, log),
 			...endOut(end),
 			duration_ms: durationMs,
 		}),

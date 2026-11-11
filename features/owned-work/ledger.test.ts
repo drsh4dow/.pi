@@ -37,7 +37,7 @@ const rows: ReadonlyArray<Row> = [
 			Cancel({
 				refs: ["watch-1", "delegate-2", "serve-3"],
 				expect:
-					"watch-1 failed: cancelled by your cancel call; delegate-2 failed: cancelled by your cancel call; serve-3 failed: cancelled by your cancel call",
+					"watch-1 failed: cancelled by your cancel call (log watch.log); delegate-2 failed: cancelled by your cancel call; serve-3 failed: cancelled by your cancel call",
 			}),
 		],
 	},
@@ -83,7 +83,7 @@ const rows: ReadonlyArray<Row> = [
 			TurnEnds({ expect: "idle: watch-1" }),
 			idles,
 			End({ terminal: "t1", end: exit(3) }),
-			Wakes({ expect: ["watch-1 fired 3: tail"] }),
+			Wakes({ expect: ["watch-1 fired 3 (log watch.log): tail"] }),
 			runs,
 			TurnEnds({ expect: "finish: " }),
 		],
@@ -151,7 +151,7 @@ const rows: ReadonlyArray<Row> = [
 			idles,
 			Pause({ ms: 40 }),
 			Killed({ expect: ["t1"] }),
-			Wakes({ expect: ["watch-1 failed: deadline"] }),
+			Wakes({ expect: ["watch-1 failed: deadline (log watch.log)"] }),
 		],
 	},
 	{
@@ -270,7 +270,7 @@ const rows: ReadonlyArray<Row> = [
 			Timers({ expect: 1 }),
 			End({ terminal: "t1", end: exit(0) }),
 			Timers({ expect: 0 }),
-			TurnEnds({ expect: "continue: watch-1 fired 0: tail" }),
+			TurnEnds({ expect: "continue: watch-1 fired 0 (log watch.log): tail" }),
 		],
 	},
 ];

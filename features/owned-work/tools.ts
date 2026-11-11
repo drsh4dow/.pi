@@ -3,7 +3,7 @@ import { defineTool, type ExtensionAPI, type ToolDefinition } from "@earendil-wo
 import * as Arr from "effect/Array";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
-import type * as FileSystem from "effect/FileSystem";
+import * as FileSystem from "effect/FileSystem";
 import type * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
 import type * as Path from "effect/Path";
@@ -30,7 +30,10 @@ const ServeParams = Type.Object({
 });
 
 const WatchParams = Type.Object({
-	command: Type.String({ minLength: 1 }),
+	command: Type.String({
+		minLength: 1,
+		description: "Write it as you would run it. The wake carries its exit code, last lines, and log path.",
+	}),
 	deadline: Type.Optional(
 		Type.Number({ exclusiveMinimum: 0, description: "Seconds. Only for commands that might hang." }),
 	),
@@ -139,20 +142,23 @@ const serveTool = (runtime: Runtime) =>
 			),
 	});
 
-const watchTool = (runtime: Runtime) =>
+/** A watch's log sits beside the delegate sessions of the session that started it, and stays as long as they do. */
+const watchTool = (runtime: Runtime, place: Omit<ChildSession, "id">) =>
 	defineTool({
 		name: "watch",
 		label: "watch",
-		description: "Start a command that wakes you once it exits, with its exit code and last lines.",
+		description: "Start a command that wakes you once it exits, with its exit code, last lines, and log path.",
 		parameters: WatchParams,
 		outputSchema: HandleOut,
 		execute: (_id, { command, deadline }, signal) => {
 			const after = Option.map(Option.fromUndefinedOr(deadline), Duration.seconds);
+			const request = StartRequest.Watch({ command, deadline: after, log: `${place.dir}/${uuidv7()}.log` });
 
-			return runTool(runtime, signal)(
-				(ledger) => ledger.start(StartRequest.Watch({ command, deadline: after })),
-				Out.handle,
+			const ownerOnlyDir = Effect.flatMap(FileSystem.FileSystem, (fs) =>
+				fs.makeDirectory(place.dir, { recursive: true, mode: 0o700 }),
 			);
+
+			return runTool(runtime, signal)((ledger) => Effect.andThen(ownerOnlyDir, ledger.start(request)), Out.handle);
 		},
 	});
 
@@ -189,7 +195,7 @@ const register = (
 	place: Omit<ChildSession, "id">,
 ) => {
 	pi.registerTool(serveTool(runtime));
-	pi.registerTool(watchTool(runtime));
+	pi.registerTool(watchTool(runtime, place));
 	pi.registerTool(groupTool(runtime));
 	pi.registerTool(cancelTool(runtime));
 

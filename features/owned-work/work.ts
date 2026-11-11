@@ -3,7 +3,7 @@ import * as Clock from "effect/Clock";
 import * as Data from "effect/Data";
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
-import type * as Option from "effect/Option";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 import type { TerminalAddress, TerminalEnd } from "../../clients/hc/index.ts";
@@ -47,6 +47,8 @@ export interface Settled {
 	readonly ref: WorkRef;
 	readonly kind: WorkKind;
 	readonly outcome: Outcome;
+	/** The file holding a watch's full output, once its command started. */
+	readonly log: Option.Option<string>;
 }
 
 export interface Settlement {
@@ -71,6 +73,7 @@ export type Work = Data.TaggedEnum<{
 	Watch: Common & {
 		readonly command: string;
 		readonly deadline: Option.Option<Duration.Duration>;
+		readonly log: string;
 		readonly spawn: Option.Option<Spawn>;
 	};
 	Serve: Common & { readonly command: string; readonly spawn: Option.Option<Spawn> };
@@ -79,11 +82,15 @@ export type Work = Data.TaggedEnum<{
 
 export const Work = Data.taggedEnum<Work>();
 
+/** A watch has a log once its command started. */
+export const logOf = (work: Work): Option.Option<string> =>
+	Work.$is("Watch")(work) ? Option.as(work.spawn, work.log) : Option.none();
+
 export type StartRequest = Data.TaggedEnum<{
 	/** `group` names the group the delegate joins, or starts when none of that name is live. */
 	Delegate: { readonly brief: Brief; readonly childSession: ChildSession; readonly group: Option.Option<string> };
 	Serve: { readonly command: string; readonly ready: Option.Option<string> };
-	Watch: { readonly command: string; readonly deadline: Option.Option<Duration.Duration> };
+	Watch: { readonly command: string; readonly deadline: Option.Option<Duration.Duration>; readonly log: string };
 }>;
 
 export const StartRequest = Data.taggedEnum<StartRequest>();
@@ -122,6 +129,7 @@ export type WorkEntry = Data.TaggedEnum<{
 	JobSettled: {
 		readonly handle: WorkRef;
 		readonly outcome: Outcome;
+		readonly log: Option.Option<string>;
 		readonly end: Option.Option<TerminalEnd>;
 		readonly durationMs: number;
 	};

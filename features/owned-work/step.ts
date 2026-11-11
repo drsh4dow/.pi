@@ -10,6 +10,7 @@ import { TerminalEnd, type TerminalAddress } from "../../clients/hc/index.ts";
 import type { ChildSession, Role } from "./child.ts";
 import {
 	FailReason,
+	logOf,
 	type MonotonicNanos,
 	type Handle,
 	Outcome,
@@ -136,10 +137,11 @@ const markDelivered = (draft: Draft, taken: ReadonlyArray<Work>): void => {
 	}
 };
 
+const resultOf = (work: Work): Option.Option<Settled> =>
+	Option.map(work.settled, ({ outcome }) => ({ ref: work.ref, kind: kindOf(work), outcome, log: logOf(work) }));
+
 const resultsOf = (taken: ReadonlyArray<Work>): Array<Settled> =>
-	Arr.flatMap([...Arr.filter(taken, isJob), ...Arr.filter(taken, isServe)], (work: Work) =>
-		Option.toArray(Option.map(work.settled, ({ outcome }) => ({ ref: work.ref, kind: kindOf(work), outcome }))),
-	);
+	Arr.getSomes(Arr.map([...Arr.filter(taken, isJob), ...Arr.filter(taken, isServe)], resultOf));
 
 const deliverable = (draft: Draft, within: (ref: WorkRef) => boolean): Array<Work> =>
 	Arr.filter([...draft.work.values()], (candidate) => within(candidate.ref) && isDeliverable(candidate));
@@ -179,8 +181,9 @@ const woke = (draft: Draft): Woke => stepOf(draft, wake(draft));
 
 const recordEnd = (draft: Draft, work: Work, outcome: Outcome, end: Option.Option<TerminalEnd>): void => {
 	const durationMs = Number((draft.now - work.startedAt) / 1_000_000n);
+	const entry = WorkEntry.JobSettled({ handle: work.ref, outcome, log: logOf(work), end, durationMs });
 
-	draft.commands.push(Command.Append({ entry: WorkEntry.JobSettled({ handle: work.ref, outcome, end, durationMs }) }));
+	draft.commands.push(Command.Append({ entry }));
 
 	if (!isGroup(work)) {
 		draft.commands.push(Command.StopSlice({ ref: work.ref }), Command.Disarm({ ref: work.ref }));
