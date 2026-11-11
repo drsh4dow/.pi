@@ -81,13 +81,16 @@ const reasonOf = (reason: FailReason): string =>
 		Cancelled: (cancelled) => Out.reason(cancelled).detail,
 	});
 
-const show = ({ ref, outcome }: Pick<Settled, "ref" | "outcome">): string =>
-	Match.valueTags(outcome, {
+const show = ({ ref, outcome, log }: Pick<Settled, "ref" | "outcome" | "log">): string => {
+	const logged = Option.match(log, { onNone: () => "", onSome: (path) => ` (log ${path})` });
+
+	return Match.valueTags(outcome, {
 		Done: ({ text }) => `${ref} done: ${text}`,
-		Fired: ({ exitCode, tail }) => `${ref} fired ${String(exitCode)}: ${tail}`,
+		Fired: ({ exitCode, tail }) => `${ref} fired ${String(exitCode)}${logged}: ${tail}`,
 		Members: ({ results }) => `${ref} [${Arr.join(Arr.map(results, show), ", ")}]`,
-		Failed: ({ reason }) => `${ref} failed: ${reasonOf(reason)}`,
+		Failed: ({ reason }) => `${ref} failed: ${reasonOf(reason)}${logged}`,
 	});
+};
 
 export const showAll = (results: ReadonlyArray<Settled>): string => Arr.join(Arr.map(results, show), "; ");
 
@@ -154,7 +157,7 @@ const hostOf = (world: Omit<World, "ledger" | "fs" | "reload">) => {
 		append: (entry) =>
 			record("append", () => {
 				if (WorkEntry.$is("JobSettled")(entry)) {
-					world.settles.push(show({ ref: entry.handle, outcome: entry.outcome }));
+					world.settles.push(show({ ref: entry.handle, outcome: entry.outcome, log: entry.log }));
 					world.settledRefs.push(entry.handle);
 				}
 			}),

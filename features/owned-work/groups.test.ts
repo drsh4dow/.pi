@@ -74,7 +74,7 @@ const rows: ReadonlyArray<Row> = [
 			Cancel({
 				refs: ["delegate-1", "watch-2", "serve-3"],
 				expect:
-					"delegate-1 failed: cancelled by your cancel call; watch-2 failed: cancelled by your cancel call; serve-3 failed: cancelled by your cancel call",
+					"delegate-1 failed: cancelled by your cancel call; watch-2 failed: cancelled by your cancel call (log watch.log); serve-3 failed: cancelled by your cancel call",
 			}),
 		],
 	},
