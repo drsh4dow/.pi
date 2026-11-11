@@ -17,6 +17,7 @@
 		".roo/**",
 		".windsurf/**",
 		"tools/oxlint/anti-slop/**",
+		"herdr/**",
 		"agent/skills/unslop/SKILL.md",
 		"agent/skills/typescript-best-practices/SKILL.md",
 		"agent/skills/making-videos/scripts/**",

@@ -1,0 +1,179 @@
+import { View, div, svg } from "gpui-kit";
+import { v_flex, h_flex } from "gpui-base";
+import { theme, props } from "herdr";
+import { agentTree, keyOf } from "./context.js";
+
+const ICON = { skill: "mods/ow-skills/skill.svg", principle: "mods/ow-skills/principle.svg" };
+const FADE = 260;
+
+const kindColor = (t, kind) => (kind === "skill" ? t.ansi4 : t.ansi5);
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+function about(guide) {
+  const how = guide.state === "partial" ? "Partly in context" : "In context";
+  const who = guide.by === "person" ? ", loaded by you" : "";
+  return `${how}${who}\n${guide.path}`;
+}
+
+export default class Skills extends View {
+  init() {
+    this.root = null;
+    this.shown = new Map();
+    this.leaving = new Map();
+    this.entering = new Set();
+  }
+
+  // Keeps what just left for one fade, and marks what just arrived so it fades in on the next frame.
+  track(root, agents, cx) {
+    const now = new Map();
+    for (const agent of agents) for (const guide of agent.context.loaded) now.set(keyOf(agent.address, guide), { agent: agent.address, guide });
+    if (root !== this.root) {
+      this.root = root; this.shown = now; this.leaving.clear(); this.entering.clear();
+      return;
+    }
+    let left = false, arrived = false;
+    for (const [key, item] of this.shown) if (!now.has(key)) { this.leaving.set(key, item); left = true; }
+    for (const key of now.keys()) if (!this.shown.has(key)) { this.entering.add(key); this.leaving.delete(key); arrived = true; }
+    this.shown = now;
+    if (arrived) cx.timer.after(30, (cx) => { this.entering.clear(); cx.notify(); });
+    if (left) cx.timer.after(FADE + 60, (cx) => { this.leaving.clear(); cx.notify(); });
+  }
+
+  // Each agent's guides with the ones fading out kept at the end, so nothing jumps while it fades.
+  guidesOf(agent) {
+    const live = agent.context.loaded.map((guide) => ({ guide, key: keyOf(agent.address, guide), gone: false }));
+    const gone = [...this.leaving].filter(([, item]) => item.agent === agent.address).map(([key, item]) => ({ guide: item.guide, key, gone: true }));
+    return [...live, ...gone];
+  }
+
+  fade(el, key, gone) {
+    return el.id(key).opacity(gone || this.entering.has(key) ? 0 : 1).transition("opacity", { duration: FADE, easing: "ease-out" });
+  }
+
+  header(t, agents) {
+    const loaded = agents.flatMap((a) => a.context.loaded);
+    const count = (kind) => new Set(loaded.filter((g) => g.kind === kind).map((g) => g.path)).size;
+    const available = agents[0]?.context.available;
+    const stat = (kind, label) => h_flex().gap(5).items_center()
+      .child(svg(ICON[kind]).size(12).text_color(kindColor(t, kind)))
+      .child(div().text_color(t.foreground).child(String(count(kind))))
+      .child(div().text_color(t.dim).child(available ? `/ ${available[kind]} ${label}` : label));
+    return h_flex().h(42).flex_none().px(14).gap(12).items_center().border_b(1).border_color(t.border)
+      .child(div().font_semibold().child("Skills"))
+      .child(div().flex_1())
+      .child(h_flex().gap(12).text_size(11).child(stat("skill", "skills")).child(stat("principle", "principles")));
+  }
+
+  empty(t, title, body) {
+    return v_flex().flex_1().items_center().justify_center().gap(6).p(24)
+      .child(h_flex().gap(6).text_color(t.dim).child(svg(ICON.skill).size(16)).child(svg(ICON.principle).size(16)))
+      .child(div().text_color(t.muted).font_semibold().child(title))
+      .child(div().text_size(12).text_color(t.dim).text_center().max_w(240).child(body));
+  }
+
+  agentName(agent) {
+    return agent.depth === 0 ? agent.terminal.program?.name ?? "Pi" : agent.terminal.name || agent.address;
+  }
+
+  agentCaption(t, agent) {
+    const status = agent.terminal.status;
+    return h_flex().gap(7).items_center().min_w(0)
+      .child(div().size(7).flex_none().rounded(4).bg(t[status] ?? t.idle)
+        .when(status === "working", (el) => el.loop("opacity", { from: 0.35, to: 1, period: 1400 })))
+      .child(div().truncate().font_semibold().text_color(t.foreground).child(this.agentName(agent)))
+      .when(agent.depth > 0, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("delegate")));
+  }
+
+  // Variant "cards": one card per agent, its skills and principles as chips.
+  cards(t, agents) {
+    const chip = ({ guide, key, gone }) => this.fade(h_flex(), key, gone).h(24).px(8).gap(6).items_center().rounded(12)
+      .border_1().border_color(guide.state === "partial" ? t.border : kindColor(t, guide.kind) + "55")
+      .bg(guide.state === "partial" ? t.background : kindColor(t, guide.kind) + "14")
+      .tooltip(about(guide))
+      .child(svg(guide.state === "partial" ? "mods/ow-skills/partial.svg" : ICON[guide.kind]).size(11).text_color(kindColor(t, guide.kind)))
+      .child(div().text_size(12).text_color(guide.state === "partial" ? t.muted : t.foreground).child(guide.name))
+      .when(guide.by === "person", (el) => el.child(svg("mods/ow-skills/person.svg").size(10).text_color(t.ansi3)));
+    const group = (items, kind, label) => {
+      const mine = items.filter((i) => i.guide.kind === kind);
+      return mine.length === 0 ? null : v_flex().gap(6)
+        .child(div().text_size(10).text_color(t.dim).child(label.toUpperCase()))
+        .child(h_flex().flex_wrap().gap(5).children(mine.map(chip)));
+    };
+    return agents.map((agent) => {
+      const items = this.guidesOf(agent);
+      return v_flex().id(`card-${agent.address}`).ml(agent.depth * 14).p(12).gap(10).rounded(10).bg(t.surface).border_1().border_color(t.border)
+        .child(this.agentCaption(t, agent))
+        .children([group(items, "skill", "Skills"), group(items, "principle", "Principles")].filter(Boolean))
+        .when(items.length === 0, (el) => el.child(div().text_size(12).text_color(t.dim).child("Nothing loaded")));
+    });
+  }
+
+  // Variant "timeline": guides in the order they entered each agent's context, on a rail.
+  timeline(t, agents) {
+    const row = ({ guide, key, gone }) => this.fade(h_flex(), key, gone).h(26).gap(10).items_center().tooltip(about(guide))
+      .child(div().w(9).flex_none().flex().justify_center()
+        .child(div().size(9).rounded(5).border_2().border_color(kindColor(t, guide.kind)).bg(guide.state === "partial" ? t.background : kindColor(t, guide.kind))))
+      .child(div().flex_1().min_w(0).truncate().text_color(guide.state === "partial" ? t.muted : t.foreground).child(guide.name))
+      .child(h_flex().flex_none().gap(6).items_center().text_size(10).text_color(t.dim)
+        .when(guide.by === "person", (el) => el.child(div().text_color(t.ansi3).child("you")))
+        .when(guide.state === "partial", (el) => el.child(div().child("partial")))
+        .child(div().text_color(kindColor(t, guide.kind)).child(guide.kind)));
+    return agents.map((agent) => {
+      const items = this.guidesOf(agent);
+      return v_flex().id(`line-${agent.address}`).ml(agent.depth * 16).gap(4)
+        .child(this.agentCaption(t, agent))
+        .child(v_flex().ml(3).pl(10).border_l(1).border_color(t.border).py(2)
+          .children(items.map(row))
+          .when(items.length === 0, (el) => el.child(div().h(24).text_size(12).text_color(t.dim).child("Nothing loaded"))));
+    });
+  }
+
+  // Variant "ledger": every guide once, by kind, with a badge for each agent that has it.
+  ledger(t, agents) {
+    const initials = (agent) => this.agentName(agent).split(/[\s-]+/).map((w) => w[0] ?? "").join("").slice(0, 2).toUpperCase();
+    const section = (kind, label) => {
+      const byPath = new Map();
+      for (const agent of agents) for (const item of this.guidesOf(agent)) {
+        if (item.guide.kind !== kind) continue;
+        const entry = byPath.get(item.guide.path) ?? { guide: item.guide, holders: [] };
+        entry.holders.push({ agent, ...item });
+        byPath.set(item.guide.path, entry);
+      }
+      const entries = [...byPath.values()];
+      if (entries.length === 0) return null;
+      return v_flex().gap(2)
+        .child(h_flex().gap(6).items_center().pb(4).child(svg(ICON[kind]).size(12).text_color(kindColor(t, kind)))
+          .child(div().text_size(11).font_semibold().text_color(t.muted).child(label)))
+        .children(entries.map(({ guide, holders }) => {
+          const allGone = holders.every((h) => h.gone);
+          return this.fade(h_flex(), `${kind}-${guide.path}`, allGone).h(28).px(8).gap(8).items_center().rounded(7).hover((s) => s.bg(t.hover)).tooltip(about(guide))
+            .child(div().flex_1().min_w(0).truncate().text_color(guide.state === "partial" ? t.muted : t.foreground).child(guide.name))
+            .when(guide.state === "partial", (el) => el.child(svg("mods/ow-skills/partial.svg").size(11).text_color(t.dim)))
+            .child(h_flex().gap(3).children(holders.map((h) => this.fade(div(), `badge-${h.key}`, h.gone)
+              .h(18).min_w(18).px(4).rounded(9).flex().items_center().justify_center().text_size(9).font_semibold()
+              .bg(h.guide.by === "person" ? t.ansi3 + "33" : t.raised).text_color(h.guide.by === "person" ? t.ansi3 : t.muted)
+              .tooltip(`${this.agentName(h.agent)}${h.guide.by === "person" ? ", loaded by you" : ""}`)
+              .child(h.agent.depth === 0 ? "•" : initials(h.agent)))));
+        }));
+    };
+    return [section("skill", "Skills"), section("principle", "Principles")].filter(Boolean);
+  }
+
+  render(cx) {
+    const t = theme();
+    const { root, agents } = agentTree();
+    this.track(root?.address ?? null, agents, cx);
+    const variant = props()?.variant ?? "cards";
+    const loaded = agents.some((a) => a.context.loaded.length > 0) || this.leaving.size > 0;
+    const body = agents.length === 0
+      ? this.empty(t, "No pi agent here", "Focus a pi terminal to see the skills and principles in its context.")
+      : !loaded
+        ? this.empty(t, "Nothing in context", `${plural(agents.length, "agent")} running. Skills and principles show here as they are read.`)
+        : v_flex().id("skills-list").flex_1().min_h(0).overflow_y_scrollbar().p(10).gap(variant === "timeline" ? 14 : 8)
+          .children(this[variant](t, agents));
+    return v_flex().id("skills").size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border)
+      .text_color(t.foreground).text_size(13)
+      .child(this.header(t, agents))
+      .child(body);
+  }
+}

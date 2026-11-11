@@ -39,6 +39,7 @@
 		"agent/git",
 		"agent/tmp",
 		"tools/oxlint/anti-slop",
+		"herdr",
 		"agent/skills/making-videos/scripts",
 		"agent/skills/making-videos/templates",
 		"agent/skills/writing-good-prs/scripts",

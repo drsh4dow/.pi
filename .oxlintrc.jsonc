@@ -33,6 +33,8 @@
 		".roo/**",
 		".windsurf/**",
 		"tools/oxlint/anti-slop/**",
+		// herdr-app mods run in its gpui-shell, not Node, and ow-tabs is a clone of Herdr's own tabs mod
+		"herdr/**",
 		"tools/oxlint/fixtures/harness-layout/**",
 		"agent/skills/making-videos/scripts/**",
 		"agent/skills/making-videos/templates/**",

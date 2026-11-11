@@ -18,3 +18,7 @@ __pycache__/
 
 # bun run prompts output: machine-specific paths, skills and context files
 /system-prompts.md
+
+# herdr-app writes these into every mod folder on start
+/herdr/mods/*/gpui-kit.d.ts
+/herdr/mods/*/jsconfig.json
