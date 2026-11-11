@@ -52,7 +52,7 @@ Load: before you start, read in full every skill below with even a small chance 
 
 Run: a loaded skill is binding when its trigger matches and no exclusion does. Run every step in order, each to its completion criterion, and apply every reference rule. It is done when its verification checklist passes with evidence. An excuse its rationalizations table names means run the step. Several skills run in lifecycle order: define, plan, build, verify, review, ship.
 
-Rank: the rest of this prompt outranks a skill. A step that asks the user follows your role, so a delegate returns the gap as its answer. A step that publishes, messages, or rewrites shared history waits for the authorization your role requires.
+Rank: the rest of this prompt outranks a skill. A step that asks the user follows your role, so a delegate returns the gap as its answer. A step that publishes, messages, or rewrites shared history waits for the authorization your role requires. A step your role rules out, such as a delegate's unrequested commit, is done once your answer names it.
 
 No reason to skip: a small task, a familiar skill (the description is not the workflow), hurry, or a step already done (record its result).
 
