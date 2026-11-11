@@ -28,6 +28,7 @@ const root: Layers = {
 	role: "<role>\nroot\n</role>",
 	instructions: Option.none(),
 	principles: Option.none(),
+	skills: [],
 };
 
 const composed = (given: NormalizedBuildSystemPromptOptions, layers: Layers) => {
@@ -58,6 +59,7 @@ const preambleRows = [
 			role: "<role>\ndelegate\n</role>\n",
 			instructions: Option.some("Review one diff.\n"),
 			principles: Option.some("<principles>\n…\n</principles>"),
+			skills: [],
 		},
 		expect:
 			"you are a coding agent.\n\n<role>\ndelegate\n</role>\n\n<instructions>\nReview one diff.\n</instructions>\n\n<principles>\n…\n</principles>",
@@ -135,7 +137,7 @@ const skill = (name: string, description: string, disableModelInvocation = false
 
 test("the skills section lists each skill the model may invoke, escaped, under the rule", () => {
 	const skills = [skill("grilling", "Grill the user's plan."), skill("handoff", "Hand off.", true)];
-	const section = composed(options({ skills }), root).sections["skills"] ?? "";
+	const section = composed(options({}), { ...root, skills }).sections["skills"] ?? "";
 
 	expect(section).toStartWith("Skills are workflows, not suggestions.");
 
@@ -147,5 +149,12 @@ test("the skills section lists each skill the model may invoke, escaped, under t
 test("with no skill the model may invoke, the prompt gets no skills section", () => {
 	const skills = [skill("handoff", "Hand off.", true)];
 
-	expect(composed(options({ skills }), root).sections).not.toHaveProperty("skills");
+	expect(composed(options({}), { ...root, skills }).sections).not.toHaveProperty("skills");
+});
+
+test("pi keeps only the skills the role may load, so its own list never brings back a hidden one", () => {
+	const loaded = [skill("grilling", "Grill the user's plan."), skill("handoff", "Hand off.")];
+	const fitting = [skill("handoff", "Hand off.")];
+
+	expect(composed(options({ skills: loaded }), { ...root, skills: fitting }).skills).toEqual(fitting);
 });

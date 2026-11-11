@@ -7,12 +7,10 @@ import * as Order from "effect/Order";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { Role } from "../owned-work/index.ts";
+import { Role, Roles } from "../owned-work/index.ts";
 
 /** One line the agent matches against its task. No angle brackets, since it renders inside `<principles>`. */
 const When = Schema.NonEmptyString.pipe(Schema.check(Schema.isPattern(/^[^\n<>]+$/u)));
-
-const Roles = Role.pipe(Schema.NonEmptyArray);
 
 const Frontmatter = Schema.Struct({
 	when: When,

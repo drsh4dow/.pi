@@ -3,6 +3,7 @@ import {
 	type ExtensionAPI,
 	type ExtensionContext,
 	getAgentDir,
+	type Skill,
 } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Effect from "effect/Effect";
@@ -14,12 +15,14 @@ import { instructionsFlag } from "../../clients/pi-cli/index.ts";
 import { type Role, selfFromEnv } from "../owned-work/index.ts";
 import { compose } from "./compose.ts";
 import { loadPrinciples, principleIndex } from "./principles.ts";
+import { skillsFor } from "./skills.ts";
 
 /** Reads the prompt files on every run, so an edit lands on the next turn. Unchanged files give the same text, so pi sends no patch. */
 const layersOf = Effect.fn("layersOf")(function* (
 	agentDir: string,
 	role: Role,
 	instructionsFile: Option.Option<string>,
+	loaded: ReadonlyArray<Skill>,
 ) {
 	const fs = yield* FileSystem.FileSystem;
 	const roleText = yield* fs.readFileString(`${agentDir}/roles/${role}.md`);
@@ -31,14 +34,16 @@ const layersOf = Effect.fn("layersOf")(function* (
 
 	const principlesDir = `${agentDir}/principles`;
 	const { principles, problems } = yield* loadPrinciples(principlesDir);
+	const skills = yield* skillsFor({ role, skills: loaded });
 
 	return {
 		layers: {
 			role: roleText,
 			instructions,
 			principles: principleIndex({ role, dir: principlesDir, principles }),
+			skills: skills.skills,
 		},
-		problems,
+		problems: [...problems, ...skills.problems],
 	};
 });
 
@@ -48,12 +53,12 @@ export const prompt = (pi: ExtensionAPI) => {
 	const run = Effect.fn("prompt")(function* (event: BeforeAgentStartEvent, ctx: ExtensionContext) {
 		const file = Schema.decodeUnknownOption(Schema.String)(pi.getFlag(instructionsFlag));
 		const { role } = yield* selfFromEnv(process.env);
-		const { layers, problems } = yield* layersOf(getAgentDir(), role, file);
+		const { layers, problems } = yield* layersOf(getAgentDir(), role, file, event.systemPromptOptions.skills);
 
 		compose(layers)(event);
 
 		for (const { file: broken, why } of problems) {
-			const warning = `principle left out, ${broken}: ${why}`;
+			const warning = `left out of the prompt, ${broken}: ${why}`;
 
 			yield* ctx.hasUI
 				? Effect.sync(() => {
