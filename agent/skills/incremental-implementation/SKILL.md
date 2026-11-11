@@ -19,6 +19,17 @@ Build in thin vertical slices — implement one piece, test it, verify it, then 
 
 **When NOT to use:** Single-file, single-function changes where the scope is already minimal.
 
+## Handing Slices to Owners
+
+When the plan has two or more slices, or a slice has written acceptance criteria, hand each slice to one owner delegate, which runs the increment cycle below on it. Build a single small slice yourself.
+
+1. **Start the owners**, each in its own git worktree, as the task's **Runs** field says. Start independent slices in one turn, and a dependent slice once what it needs is on your branch.
+2. **Check each result**: read the owner's diff and run the slice's tests in its worktree against its acceptance criteria.
+3. **Bring the commits over** by rebase or cherry-pick, and run the full test suite on your branch.
+4. **Report** each slice, its commits, and how you checked it.
+
+Done when every slice's commits are on your branch and the full test suite passes there.
+
 ## The Increment Cycle
 
 ```
@@ -165,22 +176,6 @@ Each increment should be independently revertable:
 - Modifications to existing code should be minimal and focused
 - Database migrations should have corresponding rollback migrations
 - Avoid deleting something in one commit and replacing it in the same commit — separate them
-
-## Working with Agents
-
-When directing an agent to implement incrementally:
-
-```
-"Let's implement Task 3 from the plan.
-
-Start with just the database schema change and the API endpoint.
-Don't touch the UI yet — we'll do that in the next increment.
-
-After implementing, run the repository's test and build commands to
-verify nothing is broken."
-```
-
-Be explicit about what's in scope and what's NOT in scope for each increment.
 
 ## Increment Checklist
 

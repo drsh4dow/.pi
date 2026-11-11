@@ -203,7 +203,7 @@ Break the plan into discrete, implementable tasks:
 
 ### Phase 4: Implement
 
-Execute tasks one at a time following the `incremental-implementation` and `test-driven-development` skills.
+Build the tasks following the `incremental-implementation` and `test-driven-development` skills.
 
 ## Keeping the Spec Alive
 

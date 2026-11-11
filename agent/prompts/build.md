@@ -14,7 +14,7 @@ The requested mode is `${1:-default}`. Treat `auto` (canonical) or `all` as auto
 
 ## Default: one task
 
-Pick the next pending task from the plan. Then:
+Pick the next pending task from the plan and hand it to an owner, per the `incremental-implementation` skill's Handing Slices to Owners. Whoever builds it runs these steps:
 
 1. Read the task's acceptance criteria
 2. Load relevant context (existing code, patterns, types)
@@ -23,7 +23,8 @@ Pick the next pending task from the plan. Then:
 5. Run the full test suite to check for regressions
 6. Run the build to verify compilation
 7. Commit with a descriptive message
-8. Mark the task complete and stop
+
+Once the task's commits are on your branch, mark it complete, amend that update into the task's last commit, and stop.
 
 ## Autonomous: the whole plan (`/build auto`)
 
@@ -33,7 +34,7 @@ Use this once a spec exists and you want to collapse plan + build into one run. 
 2. **Establish a clean baseline.** Run `git status --porcelain`. If there are uncommitted changes outside the expected planning artifacts (`SPEC.md`, `docs/SPEC.md`, `spec/*`, `tasks/plan.md`, `tasks/todo.md`), stop and ask the user to commit, stash, or confirm how to handle them. Autonomous per-task commits must not absorb unrelated local work, or the clean-rollback guarantee breaks.
 3. **Plan if needed.** If there is no `tasks/plan.md`, follow the `planning-and-task-breakdown` skill to generate one.
 4. **Single checkpoint.** Present the full plan and wait for an unambiguous affirmative (e.g. "approve", "go", "yes"). Treat hedged responses ("looks reasonable", "I guess") as **not** approved. This is the only human gate — after approval, run autonomously. If you generated `tasks/plan.md`, commit it as a single preparatory commit now so it doesn't bleed into the first task's commit.
-5. **Execute every task in dependency order.** Use each task's declared dependencies; if they aren't explicit, execute in the order the plan lists them. For each task, run the full default loop above (RED → GREEN → regression → build → commit → mark complete). Stage only the files that task touched plus its task-status update — never `git add -A` blindly — and make one commit per task so any point is a clean rollback.
+5. **Build every task in dependency order.** Follow each task's dependencies and **Runs** field, or the plan's order when they aren't explicit. Independent tasks go to their owners in one turn; a task starts once its dependencies are on your branch. Each task runs the full default loop above (RED → GREEN → regression → build → commit → mark complete). Stage only the files that task touched — never `git add -A` blindly — and make one commit per task so any point is a clean rollback.
 6. **Stop and ask the user** (do not push through) when:
    - a test can't be made to pass or the build breaks without an obvious fix → follow the `debugging-and-error-recovery` skill
    - the spec is ambiguous, or a task needs a decision the spec doesn't cover
