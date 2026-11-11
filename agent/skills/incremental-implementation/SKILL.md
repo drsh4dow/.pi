@@ -218,7 +218,7 @@ After each increment, verify with the repository's own commands (see the test-dr
 - Building abstractions before the third use case demands it
 - Touching files outside the task scope "while I'm here"
 - Creating new utility files for one-time operations
-- Running the same build/test command twice in a row without any intervening code change
+- Running the same build/test command twice in a row without any intervening code change, except to measure spread
 
 ## Verification
 
