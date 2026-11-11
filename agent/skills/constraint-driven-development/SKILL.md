@@ -195,12 +195,12 @@ The commands now live in two places — the `Checked by` column in `CONSTRAINTS.
 
 The single biggest mistake is running everything everywhere. A check that stalls the agent gets switched off, and a gate people switched off is worse than no gate, because the bar still looks like it exists.
 
-| Phase  | Command   | What runs                                | Budget                      |
-| ------ | --------- | ---------------------------------------- | --------------------------- |
-| BUILD  | `/build`  | Types, lint, secrets, the floor          | under 5s, changed file only |
-| VERIFY | `/test`   | Related tests, coverage on changed lines | under 90s                   |
-| REVIEW | `/review` | Everything, plus the guards below        | minutes                     |
-| SHIP   | `/ship`   | Direction checks, no regressions         | CI                          |
+| Phase  | What runs                                | Budget                      |
+| ------ | ---------------------------------------- | --------------------------- |
+| BUILD  | Types, lint, secrets, the floor          | under 5s, changed file only |
+| VERIFY | Related tests, coverage on changed lines | under 90s                   |
+| REVIEW | Everything, plus the guards below        | minutes                     |
+| SHIP   | Direction checks, no regressions         | CI                          |
 
 Two rules that keep this tolerable:
 

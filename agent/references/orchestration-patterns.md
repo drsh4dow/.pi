@@ -33,12 +33,12 @@ user → code-reviewer → report → user
 A slash command that wraps one persona with the project's skills. Saves the user from re-explaining the workflow every time.
 
 ```
-/review → code-reviewer (with code-review-and-quality skill) → report
+/webperf → web-performance-auditor → report
 ```
 
 **Use when:** the same single-persona invocation happens repeatedly with the same setup.
 
-**Examples in this repo:** `/review`, `/test`, `/code-simplify`.
+**Examples in this repo:** `/webperf`.
 
 **Cost:** same as direct invocation. The slash command is just a saved prompt.
 
@@ -78,12 +78,12 @@ If any answer is "no," fall back to direct invocation or a single-persona comman
 
 ---
 
-### 4. Sequential pipeline as user-driven slash commands
+### 4. Sequential pipeline driven by the user
 
-The user runs slash commands in a defined order, carrying context (or commit history) between them. There is no orchestrator agent — the user IS the orchestrator.
+The user asks for each phase in order, carrying context (or commit history) between them. There is no orchestrator agent — the user IS the orchestrator.
 
 ```
-user runs:  /spec  →  /plan  →  /build  →  /test  →  /review  →  /ship
+user asks for:  spec  →  plan  →  build  →  test  →  review  →  ship
 ```
 
 **Use when:** the workflow has dependencies (each step needs the previous step's output) and human judgment between steps adds value.
@@ -201,10 +201,10 @@ A persona whose job is to decide which other persona to call.
 
 - Pure routing layer with no domain value
 - Adds two paraphrasing hops → information loss + roughly 2× token cost
-- The user already knew they wanted a review; they could have called `/review` directly
-- Replicates the work that slash commands and intent mapping in `AGENTS.md` already do
+- The user already knew they wanted a review; they could have asked for one directly
+- Replicates the routing that skill descriptions already do
 
-**What to do instead:** add or refine slash commands. Document intent → command mapping in `AGENTS.md`.
+**What to do instead:** sharpen the skill's description so a plain request reaches it.
 
 ---
 
@@ -225,7 +225,7 @@ A `code-reviewer` that internally invokes `security-auditor` when it sees auth c
 
 ### C. Sequential orchestrator that paraphrases
 
-An agent that calls `/spec`, then `/plan`, then `/build`, etc. on the user's behalf.
+An agent that runs the spec, the plan, the build, and the rest on the user's behalf.
 
 **Why it fails:**
 
@@ -262,7 +262,7 @@ Is the work one perspective on one artifact?
 └── No  → Will the same composition repeat?
          ├── No  → Direct invocation, ad hoc. Stop.
          └── Yes → Are sub-tasks independent?
-                  ├── No  → Sequential slash commands run by user (Pattern 4).
+                  ├── No  → Sequential phases run by the user (Pattern 4).
                   └── Yes → Parallel fan-out with merge (Pattern 3).
                            Validate against the checklist above.
                            If any check fails → fall back to single-persona command (Pattern 2).

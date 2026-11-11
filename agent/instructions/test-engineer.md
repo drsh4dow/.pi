@@ -95,5 +95,5 @@ When analyzing test coverage:
 ## Composition
 
 - **Invoke directly when:** the user asks for test design, coverage analysis, or a Prove-It test for a specific bug.
-- **Invoke via:** `/ship` (parallel fan-out for coverage gap analysis alongside `code-reviewer` and `security-auditor`). `/test` runs the `test-driven-development` skill in the main session and does not spawn this persona.
+- **Invoke via:** `/ship` (parallel fan-out for coverage gap analysis alongside `code-reviewer` and `security-auditor`).
 - **Do not invoke from another persona.** Recommendations to add tests belong in your report; the user or a slash command decides when to act on them.

@@ -162,7 +162,7 @@ REFRAMED SUCCESS CRITERIA:
 
 This lets you loop, retry, and problem-solve toward a clear goal rather than guessing what "faster" means.
 
-**After saving the spec,** summarize it. When it settles an open decision under your role's collaboration rules, end the turn on those questions. Otherwise continue to Phase 2.
+**After saving the spec as `SPEC.md` at the project root,** summarize it. When it settles an open decision under your role's collaboration rules, end the turn on those questions. Otherwise continue to Phase 2.
 
 ### Phase 2: Plan
 
