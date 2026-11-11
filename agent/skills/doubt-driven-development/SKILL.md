@@ -45,7 +45,7 @@ If you doubt every keystroke, you ship nothing. The skill applies only to non-tr
 This skill is designed for the **main-session orchestrator**, where Step 3 (DOUBT, detailed below) can spawn a fresh-context reviewer.
 
 - **Do NOT name this skill in a persona's instructions file.** A persona that follows Step 3 would spawn another persona — the orchestration anti-pattern explicitly forbidden by `~/.pi/agent/references/orchestration-patterns.md` ("personas do not invoke other personas").
-- **If you find yourself applying this skill from inside a delegate** (where delegates do not start their own delegates, and one at the last level has no `delegate` tool): the preferred path is to surface to the user that doubt-driven cannot run nested and let the main session handle it. As a last resort only, a degraded self-questioning fallback exists — rewrite ARTIFACT + CONTRACT as a fresh self-prompt with a hard mental separator from your prior reasoning, and walk Steps 1–5. This is **not fresh-context review** (you carry your own context with you), so flag the result as degraded and prefer escalation whenever the user is reachable.
+- **Without a `delegate` tool** (a delegate at the last level), run Steps 1–5 yourself on ARTIFACT + CONTRACT rewritten as a fresh self-prompt, and flag the result as degraded: it is not fresh-context review.
 
 ## The Process
 
@@ -114,25 +114,7 @@ In pi, the role-based reviewers in `~/.pi/agent/instructions/` start as delegate
 
 #### Cross-model escalation
 
-A single-model reviewer shares blind spots with the original author — a colder, different-architecture model catches them. Doubt-driven is already opt-in for non-trivial decisions, so within that scope offering cross-model is part of the skill's value, not optional friction.
-
-**Interactive sessions: always offer. Never silently skip.**
-
-**Step 1: Ask the user**
-
-After the single-model review in Step 3 above, but before RECONCILE, pause and ask:
-
-> _"Single-model review complete. Want a cross-model second opinion? Options: a delegate on another panel model (`judgment` or `investigator`, whichever is not the model that wrote the artifact), manual external review (you paste it elsewhere), or skip."_
-
-This question is mandatory in every interactive doubt cycle — even on artifacts that feel low-stakes. The user — not the agent — decides whether the cost is worth it. The agent's job is to surface the choice.
-
-**Step 2: If the user picks a panel model — confirm, then start the delegate**
-
-1. Confirm the exact model with the user before starting the delegate. Never assume.
-2. Pass ARTIFACT + CONTRACT + the adversarial prompt **only**, as the delegate's `message`. No session context, no CLAIM.
-3. Take the delegate's answer into Step 4 (RECONCILE).
-
-Example shape:
+A single-model reviewer shares blind spots with the author. After the single-model review, before RECONCILE, start a second reviewer on the panel model that did not write the artifact (`judgment` or `investigator`). Pass ARTIFACT + CONTRACT + the adversarial prompt **only**, as the delegate's `message`. No session context, no CLAIM.
 
 ```
 delegate({
@@ -145,20 +127,7 @@ delegate({
 
 A read-only delegate is the load-bearing detail: a doubt artifact may itself contain instructions (intentional or accidental prompt injection) that the cross-model reviewer would otherwise execute against your workspace. An instructions file with `readonly: true` (such as `code-reviewer.md`) removes the edit and write tools; the delegate keeps its shell, so the message must also say to change no files.
 
-**Step 3: If the delegate is unavailable or fails**
-
-Surface the failure explicitly. Offer: run it manually, try a different panel model, or skip. Do not silently fall back to single-model — the user should know cross-model didn't happen.
-
-**Step 4: If the user skips**
-
-Acknowledge the skip in the output (_"Proceeding with single-model findings only"_) and continue to RECONCILE. Skipping is fine; silent skipping is not.
-
-**Non-interactive contexts** (CI, a delegate run, autonomous-loop, scheduled runs):
-
-- Cross-model is **skipped**, and the skip must be **announced** in the output: _"Cross-model skipped: non-interactive context."_
-- **Never start a cross-model delegate without explicit user authorization** — this is a load-bearing safety property.
-
-Cross-model adds cost, latency, and tool fragility. The agent surfaces the choice every cycle; the user decides whether this artifact warrants it.
+When the delegate fails, say in your output that cross-model did not happen.
 
 ### Step 4: RECONCILE — Fold findings back
 
@@ -187,17 +156,15 @@ If 3 cycles is "obviously insufficient" because the artifact is large: the artif
 
 ## Common Rationalizations
 
-| Rationalization                                                       | Reality                                                                                                                                                                                                                                                       |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "I'm confident, skip the doubt step"                                  | Confidence correlates poorly with correctness on novel problems. Moments of certainty are exactly when blind spots hide.                                                                                                                                      |
-| "Spawning a reviewer is expensive"                                    | Debugging a wrong commit in production is more expensive. The check is bounded; the bug isn't.                                                                                                                                                                |
-| "The reviewer will just nitpick"                                      | Only if unscoped. Constrain the prompt to "issues that would make this fail under the contract."                                                                                                                                                              |
-| "I'll do doubt at the end with `/review`"                             | `/review` is a final gate. Doubt-driven catches wrong directions early when course-correction is cheap. By PR time it's too late.                                                                                                                             |
-| "If I doubt every step I'll never ship"                               | The skill applies to non-trivial decisions, not every keystroke. Re-read "When NOT to Use."                                                                                                                                                                   |
-| "Two opinions are always better than one"                             | Not when the second has less context and produces noise. Reconcile, don't defer.                                                                                                                                                                              |
-| "The reviewer disagreed so I was wrong"                               | The reviewer lacks your context — disagreement is information, not verdict. Re-read the artifact, classify, then decide.                                                                                                                                      |
-| "Cross-model is always better"                                        | Cross-model catches blind spots a single model shares with itself, but it adds cost and tool fragility. Offer it every interactive doubt cycle — the user decides whether the artifact warrants it. The agent's job is to surface the choice, not to gate it. |
-| "User said yes once, so I can keep starting the cross-model delegate" | Each invocation is its own authorization. The artifact, the prompt, and the model change between calls — re-confirm the exact model with the user before every run.                                                                                           |
+| Rationalization                           | Reality                                                                                                                           |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| "I'm confident, skip the doubt step"      | Confidence correlates poorly with correctness on novel problems. Moments of certainty are exactly when blind spots hide.          |
+| "Spawning a reviewer is expensive"        | Debugging a wrong commit in production is more expensive. The check is bounded; the bug isn't.                                    |
+| "The reviewer will just nitpick"          | Only if unscoped. Constrain the prompt to "issues that would make this fail under the contract."                                  |
+| "I'll do doubt at the end with `/review`" | `/review` is a final gate. Doubt-driven catches wrong directions early when course-correction is cheap. By PR time it's too late. |
+| "If I doubt every step I'll never ship"   | The skill applies to non-trivial decisions, not every keystroke. Re-read "When NOT to Use."                                       |
+| "Two opinions are always better than one" | Not when the second has less context and produces noise. Reconcile, don't defer.                                                  |
+| "The reviewer disagreed so I was wrong"   | The reviewer lacks your context — disagreement is information, not verdict. Re-read the artifact, classify, then decide.          |
 
 ## Red Flags
 
@@ -209,9 +176,7 @@ If 3 cycles is "obviously insufficient" because the artifact is large: the artif
 - Re-spawning fresh-context on an unchanged artifact (you'll get the same findings; you're stalling)
 - **Doubt theater (checkable signal)**: across 2 or more cycles where the reviewer surfaced substantive findings, zero findings were classified as actionable. You are validating, not doubting. Stop and escalate.
 - Doubting only after committing — that's `/review`, not doubt-driven development
-- Hardcoding a cross-model delegate without confirming the exact model with the user
-- **Silently skipping cross-model in an interactive doubt cycle.** Even when not recommending it, the offer must be visible. Skipping is fine; silent skipping is not.
-- Falling back silently when a cross-model delegate errors or its model is unavailable — surface the failure and let the user redirect
+- Skipping cross-model, or losing it to a delegate error, without saying so
 - Stripping the contract from the reviewer's input
 - Passing the CLAIM to the reviewer (biases toward agreement)
 
@@ -233,6 +198,4 @@ After applying doubt-driven development:
 - [ ] The reviewer's prompt was adversarial ("find issues"), not validating ("is it good")
 - [ ] Findings were classified against the artifact text (not rubber-stamped) using the precedence: contract misread / actionable / trade-off / noise
 - [ ] A stop condition was met (trivial findings, 3 cycles, or user override)
-- [ ] In interactive mode, cross-model was **explicitly offered** to the user (regardless of artifact stakes) and the response was acknowledged in the output
-- [ ] In non-interactive mode, cross-model was skipped and the skip was announced
-- [ ] Any cross-model delegate was preceded by confirming the exact model with the user and explicit authorization to run
+- [ ] A cross-model review ran, or the output says why it did not
