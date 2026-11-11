@@ -21,8 +21,6 @@ export const monotonicNow = Effect.map(Clock.monotonicTimeNanos, MonotonicNanos)
 
 export type WorkKind = "delegate" | "serve" | "watch" | "group";
 
-export type GroupMode = "all" | "each";
-
 export type FailReason = Data.TaggedEnum<{
 	Oom: { readonly signal: number };
 	Exited: { readonly code: Option.Option<number>; readonly signal: Option.Option<number> };
@@ -76,7 +74,7 @@ export type Work = Data.TaggedEnum<{
 		readonly spawn: Option.Option<Spawn>;
 	};
 	Serve: Common & { readonly command: string; readonly spawn: Option.Option<Spawn> };
-	Group: Common & { readonly name: string; readonly mode: GroupMode; readonly members: ReadonlyArray<WorkRef> };
+	Group: Common & { readonly name: string; readonly members: ReadonlyArray<WorkRef> };
 }>;
 
 export const Work = Data.taggedEnum<Work>();
@@ -91,7 +89,6 @@ export const StartRequest = Data.taggedEnum<StartRequest>();
 
 export interface GroupRequest {
 	readonly name: string;
-	readonly mode: GroupMode;
 	readonly members: ReadonlyArray<WorkRef>;
 }
 
@@ -118,7 +115,6 @@ export type WorkEntry = Data.TaggedEnum<{
 	GroupStarted: {
 		readonly handle: WorkRef;
 		readonly name: string;
-		readonly mode: GroupMode;
 		readonly members: ReadonlyArray<WorkRef>;
 	};
 	JobSettled: {

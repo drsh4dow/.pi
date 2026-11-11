@@ -41,7 +41,7 @@ Map each available MCP to one evidence category:
 
 Source control is always available through git and `gh`. For the other six, classify using the MCP name, server instructions, tool names, and resource descriptors. If an MCP could fit more than one category, choose the one matching its primary evidence. Record ambiguous cases in the coverage map.
 
-Start one investigator delegate for source control and one per other category that has a matching MCP, each owning exactly one tool or MCP, and group them with mode `all`. Don't ask one agent to cover multiple MCPs.
+Start one investigator delegate for source control and one per other category that has a matching MCP, each owning exactly one tool or MCP, and group them. Don't ask one agent to cover multiple MCPs.
 
 Each investigator gets `instructionsFile: ~/.pi/agent/skills/why/references/investigator-prompt.md`. Its task message carries:
 
