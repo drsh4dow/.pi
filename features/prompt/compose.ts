@@ -30,6 +30,9 @@ const bullets = (lines: ReadonlyArray<string>) =>
 		"\n",
 	);
 
+/** Built-in tools whose guidelines restate their own schema description, or `<codemode>` in `SYSTEM.md`. */
+const restating = ["edit", "codemode"];
+
 /** The `<tools>` and `<rules>` sections pi builds for its default prompt, without the rules and footer pi hardcodes. */
 const toolSections = (options: NormalizedBuildSystemPromptOptions) => {
 	const declared = Arr.difference(options.selectedTools, options.hiddenTools);
@@ -37,8 +40,10 @@ const toolSections = (options: NormalizedBuildSystemPromptOptions) => {
 	const described = Arr.filter(declared, (name) => Str.isNonEmpty(options.toolSnippets[name] ?? ""));
 	const tools = Arr.map(described, (name) => `${name}: ${options.toolSnippets[name] ?? ""}`);
 
+	const guided = Arr.difference(declared, restating);
+
 	const guidelines = [
-		...Arr.flatMap(declared, (name) => options.toolGuidelines[name] ?? []),
+		...Arr.flatMap(guided, (name) => options.toolGuidelines[name] ?? []),
 		...options.promptGuidelines,
 	];
 

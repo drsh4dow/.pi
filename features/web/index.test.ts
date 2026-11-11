@@ -20,7 +20,7 @@ const registered = () => {
 	return { feature, tools };
 };
 
-const definitionsHash = "5664cca77f140ea098388c1a84fc835778a8d99d707c0a998a98800cd7ef2988";
+const definitionsHash = "1fd9f59a4503bcaf8fe5fdf24727021f810091397411c9aa4d231fd328181617";
 
 const sha256 = (text: string) => new Bun.CryptoHasher("sha256").update(text).digest("hex");
 
