@@ -11,7 +11,7 @@ Optimize for the intended, verifiable end state rather than preserving smooth in
 **Core rule:**
 
 - Prioritize end-state integrity over transitional stability.
-- Intermediate breakage is acceptable when it is planned, scoped, and reversible.
+- Intermediate breakage is acceptable inside a phase when it is planned, scoped, and reversible. Commit at the phase boundary, where the checks pass.
 
 **Guardrails:**
 
