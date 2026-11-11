@@ -217,7 +217,7 @@ After each increment, verify with the repository's own commands (see the test-dr
 - Large uncommitted changes accumulating
 - Building abstractions before the third use case demands it
 - Touching files outside the task scope "while I'm here"
-- Creating new utility files for one-time operations
+- Shipping a utility module for a one-time operation (a scratch script is fine)
 - Running the same build/test command twice in a row without any intervening code change, except to measure spread
 
 ## Verification

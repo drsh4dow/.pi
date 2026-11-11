@@ -32,7 +32,7 @@ Remember that all work goes through two stages: implementation and review. The i
 
 The review agent has the least context pressure - it receives a diff, so no exploration needed. It often does not need to write code or debug.
 
-This means that the review agent should be responsible for imposing coding standards, not the implementation agent.
+This means that the review agent should enforce coding standards, on top of the ones the implementation agent follows.
 
 ### Files
 
