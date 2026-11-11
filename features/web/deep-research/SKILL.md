@@ -1,6 +1,6 @@
 ---
 name: deep-research
-description: Research a question that needs many sources, such as comparing tools, surveying options, or tracing a behavior across docs, code and issues. Use when one or two searches will not settle it, or when the user asks for research.
+description: "A question needs many sources: comparing tools, surveying options, or tracing a behavior across docs, code and issues."
 ---
 
 # Deep research

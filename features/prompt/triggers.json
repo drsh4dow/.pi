@@ -299,9 +299,6 @@
 				"prompt": "How should we tag and version this release?"
 			},
 			{
-				"prompt": "Commit this work and open a pull request"
-			},
-			{
 				"prompt": "Write the changelog entry for this diff.",
 				"topK": 1
 			}
@@ -607,5 +604,13 @@
 				"prompt": "Which skill should handle this request?"
 			}
 		]
+	},
+	"writing-good-commits": {
+		"positive": [
+			{
+				"prompt": "Commit this work and open a pull request"
+			}
+		],
+		"negative": []
 	}
 }

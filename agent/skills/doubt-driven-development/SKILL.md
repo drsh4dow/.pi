@@ -1,6 +1,6 @@
 ---
 name: doubt-driven-development
-description: Subjects every non-trivial decision to a fresh-context adversarial review before it stands. Use when you want every assumption cross-examined before proceeding, when stress-testing a plan for hidden failure modes, when correctness matters more than speed, when working in unfamiliar code, when stakes are high (production auth, security-sensitive logic, a high-stakes migration, irreversible operations), or any time a confident output would be cheaper to verify now than to debug later.
+description: "Stakes are high (production auth, security-sensitive logic, a high-stakes migration, an irreversible operation), the code is unfamiliar, or asked to cross-examine assumptions or stress a plan for hidden failure modes: a fresh-context review of each non-trivial decision as you make it."
 user-invocable: false
 ---
 

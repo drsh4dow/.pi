@@ -1,6 +1,6 @@
 ---
 name: maintain-formal-verification-skill
-description: Bring a project's formal verification back in line with changed code, and say whether each failure is drift in the verification or a bug in the code. Use when a change touched verified code without rechecking it, or when asked whether the model still matches the code.
+description: A change touched formally verified code without rechecking it, or asked whether the model still matches the code.
 ---
 
 # Maintain a formal verification skill

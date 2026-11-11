@@ -1,6 +1,6 @@
 ---
 name: web-docs
-description: Look up a library's docs at the version this project uses. Use before relying on an API whose behavior may differ by version, or when a library question needs its docs, types or changelog.
+description: About to rely on a library API whose behavior may differ by version, or a library question needs its docs, types or changelog at the version this project uses.
 ---
 
 # Docs at the right version

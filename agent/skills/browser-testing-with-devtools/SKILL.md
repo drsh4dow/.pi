@@ -1,6 +1,6 @@
 ---
 name: browser-testing-with-devtools
-description: Tests in real browsers via the agent-browser skill. Use when building or debugging anything that runs in a browser. Use when you need to inspect the DOM, capture console errors, analyze network requests, profile performance, or verify visual output with real runtime data. Requires the agent-browser CLI.
+description: Building or debugging anything that runs in a browser, or needing its DOM, console errors, network requests, performance profile, or rendered output as runtime evidence.
 user-invocable: false
 ---
 
