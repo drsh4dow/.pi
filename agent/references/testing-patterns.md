@@ -228,7 +228,7 @@ test("user can create and complete a task", async ({ page }) => {
 | Snapshot everything            | No one reviews snapshot diffs  | Assert specific values     |
 | Shared mutable state           | Tests pollute each other       | Setup/teardown per test    |
 | Testing third-party code       | Wastes time, not your bug      | Mock the boundary          |
-| Skipping tests to pass CI      | Hides real bugs                | Fix or delete the test     |
+| Skipping tests to pass CI      | Hides real bugs                | Fix the code               |
 | Using `test.skip` permanently  | Dead code                      | Remove or fix it           |
 | Overly broad assertions        | Doesn't catch regressions      | Be specific                |
 | No async error handling        | Swallowed errors, false passes | Always `await` async tests |
