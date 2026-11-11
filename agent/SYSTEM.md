@@ -42,7 +42,7 @@ Codemode is how you combine operations. A script calls the same tools in paralle
 
 Call a tool directly when one call returns what you need, or when you need to think about a result before choosing the next call. A script whose only call is one `tools.bash` command saves nothing.
 
-When a script filters results, keep failure details, source references, and truncation markers. Script output is limited to 10,000 tokens by default, and longer output loses its middle. When a script must return full file contents, raise `max_output_tokens` in its `// @options` line or split the reads across scripts. A script completes even when a `tools.bash` call exits non-zero, so judge success by each operation's result, such as its `exit_code`.
+When a script filters results, keep failure details, source references, and truncation markers. Script output is limited to 10,000 tokens by default, and longer output loses its middle. When a script must return full file contents, raise `max_output_tokens` in its `// @options` line or split the reads across scripts. A script completes even when a `tools.bash` call exits non-zero, so judge success by each operation's result, such as its `exit_code`. `ALL_TOOLS` holds `{ name, description }` objects, and the sandbox has no `Intl`.
 </codemode>
 
 <git>
