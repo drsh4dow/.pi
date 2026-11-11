@@ -132,7 +132,7 @@ const serveTool = (runtime: Runtime) =>
 		name: "serve",
 		label: "serve",
 		description:
-			"Start a long-running command, such as a dev server. It runs until you stop it, or until the group holding it settles.",
+			"Start a long-running command, such as a dev server. It runs until you cancel it, or until the group holding it settles.",
 		promptGuidelines,
 		parameters: ServeParams,
 		outputSchema: HandleOut,
@@ -171,16 +171,17 @@ const groupTool = (runtime: Runtime) =>
 			runTool(runtime, signal)((ledger) => ledger.group({ name, mode, members: refsOf(of) }), Out.handle),
 	});
 
-const stopTool = (runtime: Runtime) =>
+const cancelTool = (runtime: Runtime) =>
 	defineTool({
-		name: "stop",
-		label: "stop",
-		description: "Stop work, and everything a group holds. Returns any result not yet handed to you.",
+		name: "cancel",
+		label: "cancel",
+		description:
+			"Cancel work and everything a group holds, killing its processes. Returns results not yet woken to you.",
 		parameters: RefsParams,
 		outputSchema: ResultsOut,
 		execute: (_id, { of }, signal) =>
 			runTool(runtime, signal)(
-				(ledger) => ledger.stop(refsOf(of)),
+				(ledger) => ledger.cancel(refsOf(of)),
 				(results) => ({ results: Arr.map(results, Out.result) }),
 			),
 	});
@@ -194,7 +195,7 @@ const register = (
 	pi.registerTool(serveTool(runtime));
 	pi.registerTool(watchTool(runtime));
 	pi.registerTool(groupTool(runtime));
-	pi.registerTool(stopTool(runtime));
+	pi.registerTool(cancelTool(runtime));
 
 	if (self.level < levels) {
 		pi.registerTool(delegateTool(runtime, self.level + 1, place));

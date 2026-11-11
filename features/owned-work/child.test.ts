@@ -12,7 +12,7 @@ import { commandSpec } from "./ledger.ts";
 import { WorkRef } from "./work.ts";
 import { exit, killed, node, sessionRoot } from "./world.fixture.ts";
 
-const { Hook, Start, Answer, Stop, TurnEnds, Wakes, Leftovers } = Act;
+const { Hook, Start, Answer, Cancel, TurnEnds, Wakes, Leftovers } = Act;
 
 const runs = Hook({ event: "run starts" });
 
@@ -98,7 +98,7 @@ const rows: ReadonlyArray<Row> = [
 			Act.Slices({ expect: ["delegate-1", "delegate-2", "delegate-3"] }),
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
 			Answer({ terminal: "t2", text: "half", end: killed(9) }),
-			Stop({ refs: ["delegate-3"], expect: "delegate-3 failed: stopped by delegate-3" }),
+			Cancel({ refs: ["delegate-3"], expect: "delegate-3 failed: cancelled by your cancel call" }),
 			Leftovers({ expect: [] }),
 			TurnEnds({ expect: "continue: delegate-1 done: a; delegate-2 failed: oom" }),
 		],

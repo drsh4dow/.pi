@@ -38,7 +38,7 @@ Terms from the owned-work feature (`features/owned-work/`).
 - **Owner.** A delegate handed one implementation slice to build, verify and report on. An owner at level 2 can start delegates of its own.
 - **Read-only delegate.** A delegate whose profile sets `readonly: true`. It starts without the `edit` and `write` tools. Its bash can still write, so the instructions say so too.
 - **Level.** How deep an agent sits: the root is level 1, its delegates are level 2, and theirs are level 3, the last (`levels`). An agent at the last level has no `delegate` tool. A serve or watch runs at the last level, so a pi it starts cannot delegate. The **role**, `root` or `delegate`, follows from the level.
-- **Serve.** A long-running command, such as a dev server. It runs until stopped, or until the group holding it settles. Its end never wakes anyone: it is delivered in its group's result, beside a job's result, or in a `stop` reply. A serve that fails to spawn fails its own `serve` call instead.
+- **Serve.** A long-running command, such as a dev server. It runs until cancelled, or until the group holding it settles. Its end never wakes anyone: it is delivered in its group's result, beside a job's result, or in a `cancel` reply. A serve that fails to spawn fails its own `serve` call instead.
 - **Watch.** A command whose exit wakes the agent with its exit code and last lines.
 - **Job.** A delegate, a watch or a group: work that settles with a result. A serve is not a job.
 - **Group.** Work moved out of the agent's hands into one unit, under a name its caller gives. Mode **all** wakes the agent once with every result. Mode **each** wakes it once per result.
@@ -46,7 +46,7 @@ Terms from the owned-work feature (`features/owned-work/`).
 - **Handle.** The plain JSON a start tool returns, such as `{ "ref": "delegate-3", "kind": "delegate", "terminal": "t7" }`.
 - **Ref.** A handle's id, such as `delegate-3`. Unique within a session's transcript: a pi process numbers its refs past the highest one its session names already, so a fork or a resumed session never reuses one.
 - **Settle.** A job's end: done, fired, failed, or a group's member results. The ledger also writes a settle entry when a serve ends, so every piece of work has one.
-- **Deliver.** Hand a settled result to the agent, exactly once: at the end of a turn, by a wake while idle, or in a `stop` reply.
+- **Deliver.** Hand a settled result to the agent, exactly once: at the end of a turn, by a wake while idle, or in a `cancel` reply.
 - **Wake.** A message that carries results to an idle agent and starts its next turn.
 - **Ledger.** The one module that records owned work, who holds it and what was delivered. It writes the `owned-work` session entries.
 - **Terminal name.** What Herdr's agents list shows for a delegate, serve or watch: the delegate's name, or the serve's or watch's command, as hc accepts it (`terminalNameOf`), such as `bun-test`. A live terminal that holds it already makes it `bun-test-2`. Each terminal sits under the agent's own, carries `ow.agent` and `ow.kind`, and, once grouped, `ow.group` and `ow.group.name`.
