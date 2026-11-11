@@ -240,16 +240,13 @@ After any refactoring or implementation change, check for orphaned code:
 
 1. Identify code that is now unreachable or unused
 2. List it explicitly
-3. **Ask before deleting:** "Should I remove these now-unused elements: [list]?"
-
-Don't leave dead code lying around — it confuses future readers and agents. But don't silently delete things you're not sure about. When in doubt, ask.
+3. **Delete it once you know why it existed** (`git blame`, its callers). Keep and flag only what you cannot explain.
 
 ```
 DEAD CODE IDENTIFIED:
 - formatLegacyDate() in src/utils/date.ts — replaced by formatDate()
 - OldTaskCard component in src/components/ — replaced by TaskCard
 - LEGACY_API_URL constant in src/config.ts — no remaining references
-→ Safe to remove these?
 ```
 
 ## Review Speed

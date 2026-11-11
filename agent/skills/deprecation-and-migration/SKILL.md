@@ -47,7 +47,7 @@ Before deprecating anything, answer these questions:
    → Quantify the migration scope.
 
 3. Does a replacement exist?
-   → If no, build the replacement first. Don't deprecate without an alternative.
+   → If no, building one is scope to surface first. Don't deprecate without an alternative.
 
 4. What's the migration cost for each consumer?
    → If trivially automated, do it. If manual and high-effort, weigh against maintenance cost.
@@ -94,6 +94,8 @@ NewService handles both automatically.
 ```
 
 ### Step 3: Migrate Incrementally
+
+An internal API with no external consumers skips this step and the adapter: follow principle-migrate-callers-then-delete-legacy-apis.
 
 Migrate consumers one at a time, not all at once. For each consumer:
 
