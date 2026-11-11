@@ -45,9 +45,7 @@ const GroupParams = Type.Object({
 	of: Refs,
 });
 
-const promptGuidelines = [
-	"Starting work returns a handle at once. End your turn to be woken with results; do not poll.",
-];
+const promptGuidelines = ["Starting work returns a handle at once. To wait, end your turn; each result wakes you."];
 
 /** Only an agent that may start delegates gets these, since pi shows a tool's guidelines only while the tool is active. */
 const delegateGuidelines = [
