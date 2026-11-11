@@ -9,6 +9,8 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
+import { skillsSection } from "./skills.ts";
+
 /** What the harness adds after `SYSTEM.md`. The role and principles arrive rendered. The instructions arrive raw, and `compose` wraps them. */
 export interface Layers {
 	/** The role file: its `<role>` and `<collaboration>` blocks. */
@@ -59,8 +61,8 @@ const instructionsBlock = (text: string) => `<instructions>\n${Str.trim(text)}\n
 /**
  * Writes `SYSTEM.md`, the role file, the delegate's instructions and the principles index into pi's preamble, so they
  * render before `<project_context>`. A custom preamble makes pi drop its `<tools>`, `<rules>` and `<docs>`, so this adds
- * them back as custom sections, which pi renders last. pi builds fresh options for each run, so running this again never
- * stacks.
+ * them back as custom sections, which pi renders last. The `<skills>` section replaces pi's own in place. pi builds fresh
+ * options for each run, so running this again never stacks.
  */
 export const compose = (layers: Layers) => (event: BeforeAgentStartEvent) => {
 	const options = event.systemPromptOptions;
@@ -74,4 +76,10 @@ export const compose = (layers: Layers) => (event: BeforeAgentStartEvent) => {
 
 	options.customPrompt = Arr.join(Arr.filter(Arr.map(parts, Str.trim), Str.isNonEmpty), "\n\n");
 	Object.assign(options.sections, toolSections(options), { docs: docs() });
+
+	const skills = skillsSection(options.skills);
+
+	if (Option.isSome(skills)) {
+		options.sections["skills"] = skills.value;
+	}
 };

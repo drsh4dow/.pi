@@ -1,6 +1,10 @@
 import { expect, test } from "bun:test";
 
-import type { NormalizedBuildSystemPromptOptions } from "@earendil-works/pi-coding-agent";
+import {
+	createSyntheticSourceInfo,
+	type NormalizedBuildSystemPromptOptions,
+	type Skill,
+} from "@earendil-works/pi-coding-agent";
 import * as Option from "effect/Option";
 
 import { compose, type Layers } from "./compose.ts";
@@ -118,4 +122,30 @@ for (const { name, given, tools, rules } of sectionRows) {
 
 test("every prompt gets pi's docs paths back", () => {
 	expect(composed(options({}), root).sections["docs"]).toContain("- Docs: ");
+});
+
+const skill = (name: string, description: string, disableModelInvocation = false): Skill => ({
+	name,
+	description,
+	filePath: `/skills/${name}/SKILL.md`,
+	baseDir: `/skills/${name}`,
+	sourceInfo: createSyntheticSourceInfo(`/skills/${name}/SKILL.md`, { source: "local" }),
+	disableModelInvocation,
+});
+
+test("the skills section lists each skill the model may invoke, escaped, under the rule", () => {
+	const skills = [skill("grilling", "Grill the user's plan."), skill("handoff", "Hand off.", true)];
+	const section = composed(options({ skills }), root).sections["skills"] ?? "";
+
+	expect(section).toStartWith("Skills are workflows, not suggestions.");
+
+	expect(section).toEndWith(
+		"<available_skills>\n  <skill>\n    <name>grilling</name>\n    <description>Grill the user&apos;s plan.</description>\n    <location>/skills/grilling/SKILL.md</location>\n  </skill>\n</available_skills>",
+	);
+});
+
+test("with no skill the model may invoke, the prompt gets no skills section", () => {
+	const skills = [skill("handoff", "Hand off.", true)];
+
+	expect(composed(options({ skills }), root).sections).not.toHaveProperty("skills");
 });
