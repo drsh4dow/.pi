@@ -108,7 +108,7 @@ const plainStart: Shown = {
 
 export const handed = (start: Partial<Shown> = {}) => ({
 	isError: false,
-	details: { ref: "delegate-1", kind: "delegate" },
+	details: { ref: "delegate-1", kind: "delegate", next: "end your turn; delegate-1 wakes you" },
 	started: [{ ...plainStart, ...start }],
 });
 

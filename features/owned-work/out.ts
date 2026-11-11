@@ -9,7 +9,7 @@ import { Type } from "typebox";
 
 import type { TerminalEnd } from "../../clients/hc/index.ts";
 import type { LedgerFailure } from "./ledger.ts";
-import type { BadDelegate, FailReason, Handle, Outcome, Settled, WorkEntry } from "./work.ts";
+import type { BadDelegate, FailReason, Handle, Outcome, Settled, WorkEntry, WorkKind, WorkRef } from "./work.ts";
 
 export const HandleOut = Type.Object({
 	ref: Type.String(),
@@ -17,6 +17,7 @@ export const HandleOut = Type.Object({
 	terminal: Type.Optional(Type.String()),
 	group: Type.Optional(Type.String()),
 	ready: Type.Optional(Type.Boolean()),
+	next: Type.Optional(Type.String()),
 });
 
 const DoneOut = Type.Object({ status: Type.Literal("done"), text: Type.String() });
@@ -80,12 +81,20 @@ const outcomeOut = (outcome: Outcome): OutcomeJson =>
 		Failed: ({ reason }): OutcomeJson => ({ status: "failed", ...reasonOut(reason) }),
 	});
 
+/** How to wait for the work. A serve's end never wakes the agent, so its handle has none. */
+const nextOf = (kind: WorkKind, waker: WorkRef) =>
+	kind === "serve" ? {} : { next: `end your turn; ${waker} wakes you` };
+
 const handleOut = ({ ref, kind, terminal, group, ready }: Handle) => ({
 	ref,
 	kind,
 	...Option.match(terminal, { onNone: () => ({}), onSome: (address) => ({ terminal: address }) }),
 	...Option.match(group, { onNone: () => ({}), onSome: (holder) => ({ group: holder }) }),
 	...Option.match(ready, { onNone: () => ({}), onSome: (matched) => ({ ready: matched }) }),
+	...nextOf(
+		kind,
+		Option.getOrElse(group, () => ref),
+	),
 });
 
 const resultOut = ({ ref, kind, outcome }: Settled) => ({ ref, kind, outcome: outcomeOut(outcome) });

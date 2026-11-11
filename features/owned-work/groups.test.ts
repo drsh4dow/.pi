@@ -14,7 +14,11 @@ const idles = Hook({ event: "goes idle" });
 const delegate = Start({ kind: "delegate" });
 
 const reviewing = (ref: string, terminal: string, group: string) =>
-	Start({ kind: "delegate", group: "review", handle: { ref, kind: "delegate", terminal, group } });
+	Start({
+		kind: "delegate",
+		group: "review",
+		handle: { ref, kind: "delegate", terminal, group, next: `end your turn; ${group} wakes you` },
+	});
 
 const rows: ReadonlyArray<Row> = [
 	{

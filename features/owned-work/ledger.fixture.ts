@@ -45,7 +45,7 @@ export type Act = Data.TaggedEnum<{
 		readonly instructionsKiB?: number;
 		readonly heldThen?: HeldSpawn;
 		readonly group?: string;
-		readonly handle?: Readonly<Record<string, string>>;
+		readonly handle?: Readonly<Record<string, string | boolean>>;
 	};
 	Spawned: { readonly expect: string };
 	Resync: { readonly askedMsAgo: number };
@@ -116,7 +116,7 @@ const owe = (world: World, ref: string): void => {
 	}
 };
 
-const handleChecked = (expected: Readonly<Record<string, string>> | undefined, handle: Handle): void => {
+const handleChecked = (expected: Readonly<Record<string, string | boolean>> | undefined, handle: Handle): void => {
 	if (expected !== undefined) {
 		expect<object>(Out.handle(handle)).toEqual(expected);
 	}
