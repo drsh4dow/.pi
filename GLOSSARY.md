@@ -81,6 +81,13 @@ Terms from the usage feature (`features/usage/`), which shows `/usage`.
 - **Probe.** A one-token message to a Claude account whose setup-token cannot read the usage page. The rate-limit headers on the reply carry the windows. A rejected reply carries them too and costs nothing.
 - **Estimate.** What pi priced its own replies at, from the models' list prices in its session files. It leaves out every other client that uses the same key. `/usage` shows it for OpenAI, whose costs API needs an admin key.
 
+## Cost
+
+Terms from the cost feature (`features/cost/`) and herdr-app's status bar (`herdr/mods/ow-status/`).
+
+- **Spend.** What a session priced its model calls at: replies, tool results that called a model, compactions and branch summaries, at the list price pi stored on each. A fork's spend starts at its own header. Unlike an **Estimate**, it covers one session tree, delegates included.
+- **Cost label.** The `pi.cost` hc label on a root agent's own terminal: JSON with the root's own spend and each delegate's below it, at any level. Only the root writes one, from the session files, so a delegate that settled still counts. See ADR 0004.
+
 ## Loaded
 
 Terms from the loaded feature (`features/loaded/`) and herdr-app's Skills panel (`herdr/mods/ow-skills/`).
