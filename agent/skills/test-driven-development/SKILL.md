@@ -394,4 +394,4 @@ After completing any implementation:
 - [ ] No tests were skipped or disabled
 - [ ] Coverage hasn't decreased (if tracked)
 
-**Note:** Run each test command after a change that could affect the result. After a clean run, don't repeat the same command unless the code has changed since — re-running on unchanged code adds no confidence.
+**Note:** After a clean run, rerun a test command only when the code has changed since, or to measure the spread of a benchmark or a flaky test.
