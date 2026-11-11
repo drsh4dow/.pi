@@ -1,6 +1,6 @@
 ---
 name: how
-description: 'Use for "how does X work", code walkthroughs before changing something, and placement questions ("where should this live", "is this the right layer"). Explains subsystem architecture and runtime flow. Use why for motivation.'
+description: Asked how something works, for a code walkthrough before a change, or where code should live. `why` covers motivation.
 ---
 
 # How

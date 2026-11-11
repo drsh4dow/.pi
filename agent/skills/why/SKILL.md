@@ -1,6 +1,6 @@
 ---
 name: why
-description: "Use for 'why does X work this way', 'why we picked Y', design rationale, regressions, postmortems, or data-backed thresholds. Queries git history and each available MCP evidence source in parallel, then returns a cited read on decisions and tradeoffs. Use how for runtime behavior."
+description: "A cited read from git history and evidence sources. Asked why something works this way or why a choice was made: design rationale, regressions, postmortems, data-backed thresholds. `how` covers runtime behavior."
 ---
 
 # Why

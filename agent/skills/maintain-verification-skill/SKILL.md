@@ -1,6 +1,6 @@
 ---
 name: maintain-verification-skill
-description: Audit a project's verification skill and feature map against the live app, and open at most one PR of proven corrections. Use when asked to audit the verification skill.
+description: Asked to audit a project's verification skill against the live app.
 ---
 
 # Maintain a verification skill

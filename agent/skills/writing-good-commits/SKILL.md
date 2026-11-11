@@ -1,6 +1,6 @@
 ---
 name: writing-good-commits
-description: Write or reword a git commit message and size the commit it describes. Use when committing, or when reshaping commits during a rebase.
+description: Committing, or rewording or resizing commits during a rebase.
 disable-model-invocation: false
 ---
 

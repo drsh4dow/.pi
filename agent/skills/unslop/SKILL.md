@@ -1,6 +1,6 @@
 ---
 name: unslop
-description: Cut AI tells from any writing. Use for Any prose surface, your reply to the user included.
+description: "Writing any prose, your reply to the user included: cut AI tells."
 ---
 
 # Unslop

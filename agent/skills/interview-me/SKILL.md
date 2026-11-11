@@ -1,6 +1,6 @@
 ---
 name: interview-me
-description: Extracts what the user actually wants instead of what they think they should want. Achieves this through one-question-at-a-time interview until ~95% confidence about the underlying intent. Use when an ask is underspecified ("build me X" without "for whom" or "why now"), when the user explicitly invokes ("interview me", "are we sure?"), or when you catch yourself silently filling in ambiguous requirements before any plan, spec, or code exists.
+description: "An ask is underspecified ('build me X' with no 'for whom' or 'why now'), the user says 'interview me' or 'are we sure?', or you catch yourself filling in ambiguous requirements before a plan, spec, or code exists: one question at a time."
 user-invocable: false
 for: [root]
 ---

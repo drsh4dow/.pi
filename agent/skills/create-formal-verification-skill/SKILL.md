@@ -1,6 +1,6 @@
 ---
 name: create-formal-verification-skill
-description: Generate a project skill that formally verifies the code where a bug costs the most and tests reach the least. Use when asked to model-check or prove a property, or when concurrency, retries, state machines, parsers or unsafe code need more than tests.
+description: "Asked to model-check or prove a property, or concurrency, retries, state machines, parsers or unsafe code need more than tests: generate a project skill that formally verifies them."
 ---
 
 # Create a formal verification skill

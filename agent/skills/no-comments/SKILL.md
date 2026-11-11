@@ -1,6 +1,6 @@
 ---
 name: no-comments
-description: Delete the comments code can carry, fix what they flag, and offer to encode the constraints they claim. Use when asked to remove or audit comments.
+description: Asked to remove or audit code comments.
 ---
 
 # No comments

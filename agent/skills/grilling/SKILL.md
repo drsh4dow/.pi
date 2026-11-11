@@ -1,6 +1,6 @@
 ---
 name: grilling
-description: Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.
+description: The user says 'grill', or wants a plan, decision, or idea of theirs questioned relentlessly.
 user-invocable: false
 for: [root]
 ---

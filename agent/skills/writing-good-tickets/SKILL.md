@@ -1,6 +1,6 @@
 ---
 name: writing-good-tickets
-description: Write, file, or update an issue or ticket that an agent or a developer can take to one PR. Use when filing a bug or feature, updating an issue, or breaking a plan into tickets.
+description: Filing or updating an issue or ticket, or breaking a plan into tickets.
 disable-model-invocation: false
 ---
 

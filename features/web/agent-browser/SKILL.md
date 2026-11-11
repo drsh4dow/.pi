@@ -1,6 +1,6 @@
 ---
 name: agent-browser
-description: Drive a real browser with the agent-browser CLI. Use when a page needs a login, a form, clicks or its JavaScript, when web_fetch says a page needs a browser, or to test or screenshot a running web app.
+description: A page needs a login, a form, clicks or its JavaScript, or web_fetch says it needs a browser.
 allowed-tools: Bash(agent-browser:*)
 ---
 
