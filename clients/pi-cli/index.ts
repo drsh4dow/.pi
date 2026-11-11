@@ -62,7 +62,7 @@ const argvOf = (
 		"--name",
 		name,
 		"--no-extensions",
-		...Arr.flatMap([...childExtensions, "builtin:codemode"], (extension) => ["-e", extension]),
+		...Arr.flatMap([...childExtensions, "builtin:codemode", "builtin:mcp"], (extension) => ["-e", extension]),
 		"--no-context-files",
 		"--tools",
 		"+codemode",
