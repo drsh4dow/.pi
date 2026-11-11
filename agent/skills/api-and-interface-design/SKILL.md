@@ -123,7 +123,6 @@ Where validation does NOT belong:
 
 - Between internal functions that share type contracts
 - In utility functions called by already-validated code
-- On data that just came from your own database
 
 ### 4. Prefer Addition Over Modification
 

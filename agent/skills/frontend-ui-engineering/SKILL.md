@@ -334,7 +334,7 @@ For detailed accessibility requirements and testing tools, see `~/.pi/agent/refe
 
 ## Red Flags
 
-- Components with more than 200 lines (split them)
+- Components with more than 200 lines that do more than one job (split by job, not by length)
 - Inline styles or arbitrary pixel values
 - Missing error states, loading states, or empty states
 - No keyboard navigation testing
