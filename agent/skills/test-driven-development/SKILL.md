@@ -369,7 +369,6 @@ For JavaScript/TypeScript testing patterns illustrating these principles — Jes
 | "Tests slow me down"                               | Tests slow you down now. They speed you up every time you change the code later.                                                                         |
 | "I tested it manually"                             | Manual testing doesn't persist. Tomorrow's change might break it with no way to know.                                                                    |
 | "The code is self-explanatory"                     | Tests ARE the specification. They document what the code should do, not what it does.                                                                    |
-| "It's just a prototype"                            | Prototypes become production code. Tests from day one prevent the "test debt" crisis.                                                                    |
 | "Let me run the tests again just to be extra sure" | After a clean test run, repeating the same command adds nothing unless the code has changed since. Run again after subsequent edits, not as reassurance. |
 
 ## Red Flags
@@ -388,7 +387,7 @@ For JavaScript/TypeScript testing patterns illustrating these principles — Jes
 
 After completing any implementation:
 
-- [ ] Every new behavior has a corresponding test
+- [ ] Each behavior a later change could silently break has a test
 - [ ] The full suite passes, run with the repository's own test command (`npm test`, `./gradlew test`, `pytest`, `go test ./...`, ...)
 - [ ] Bug fixes include a reproduction test that failed before the fix
 - [ ] Test names describe the behavior being verified

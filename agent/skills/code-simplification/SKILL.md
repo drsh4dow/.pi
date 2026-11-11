@@ -324,7 +324,7 @@ function UserBadge({ user }: Props) {
 
 After completing a simplification pass:
 
-- [ ] All existing tests pass without modification
+- [ ] All existing tests pass, and a test changed only because it pinned an implementation detail
 - [ ] Build succeeds with no new warnings
 - [ ] Linter/formatter passes (no style regressions)
 - [ ] Each simplification is a reviewable, incremental change

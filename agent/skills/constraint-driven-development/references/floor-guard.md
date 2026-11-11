@@ -206,7 +206,9 @@ if (findings.some((f) => f.rule === "threshold-removed")) {
 		'\nA threshold-removed finding can also mean a number gained or lost its direction words (">= 80%" becoming "80%", or the reverse): compare the two lines before assuming a threshold was deleted.',
 	);
 }
-console.error("\nEach is a move that lowers the bar. Fix the code, or route it through a tracked exception.");
+console.error(
+	"\nEach is a move that lowers the bar. Fix the code, or route it through a tracked exception, such as a deleted test that could not catch a regression.",
+);
 process.exit(1);
 ```
 
