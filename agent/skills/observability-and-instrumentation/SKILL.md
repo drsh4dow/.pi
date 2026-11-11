@@ -200,7 +200,7 @@ Instrumentation is code; it can be wrong. Before calling the work done, trigger 
 - Force an error in staging → find it in the logs by `requestId`, confirm fields are structured (not `[object Object]`)
 - Send test traffic → confirm metric series appear with the expected labels and sane values
 - Follow one request across services in the tracing UI → no broken spans
-- Fire each new alert once (lower the threshold temporarily) → confirm it reaches the right channel and the runbook link works
+- Fire each new alert once into a test channel (lower the threshold temporarily) → confirm it arrives and the runbook link works
 
 ## Common Rationalizations
 

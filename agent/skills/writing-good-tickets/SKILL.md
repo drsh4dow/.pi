@@ -140,7 +140,6 @@ Size each ticket as a vertical slice. It cuts a narrow path through every layer 
 
 ## Before you file
 
-- When you run as a delegate, file only the planned-work tickets your brief asks for. Never file or comment on a bug ticket. List each bug in your report instead.
 - Search the tracker for the same symptom, error text, area, and cause. For a bug, an open ticket that shares the cause is a duplicate even when its symptom differs. Add any evidence it lacks and file nothing, whether the match is confident or possible. When only a closed ticket shares the cause, file a new one and relate the closed one. For planned work, add new evidence to a confident duplicate instead of filing, and for a possible match, file it, then comment on the match with a link and say why it is not a duplicate.
 - For complex agent-facing workflow instructions inside a ticket, use the **writing-for-agents** skill.
 
@@ -155,8 +154,6 @@ Write the body to a file and run the three gates.
    3. As the implementer, list what it would still need to start, or write `nothing`.
 
    Run the read once. Fix every gap its answers show, then move on without a second read.
-
-   Run this read yourself even when you run as a delegate, and publish only after it has run. Only when you have no `delegate` tool, write the body file, publish nothing, and name the read in your report for your parent to run.
 
 3. **Facts.** The implementer read finds gaps, not false facts. Settle each claim you marked inferred with the read that decides it, such as one query or one `curl`, or carry its label word for word into every copy of the claim, including each comment that records a decision. When the user's answer to a compliance or health-data question reads two ways, restate it to them and get a yes before you write it as a fact.
 
