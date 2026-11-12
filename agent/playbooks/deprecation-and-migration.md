@@ -1,7 +1,5 @@
 ---
-name: deprecation-and-migration
-description: Removing or sunsetting an old system, API, or feature; migrating users off it; migrating a production database schema without downtime, such as renaming or dropping a column; or deciding whether to maintain or sunset code.
-user-invocable: false
+when: Removing or sunsetting an old system, API, or feature; migrating users off it; migrating a production database schema without downtime, such as renaming or dropping a column; or deciding whether to maintain or sunset code.
 ---
 
 # Deprecation and Migration

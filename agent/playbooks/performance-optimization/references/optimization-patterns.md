@@ -1,6 +1,6 @@
 # Optimization Patterns
 
-Worked fixes for the anti-patterns named in Step 3 of the `performance-optimization` skill. The skill states the rule and the signature to look for; this file shows one concrete implementation. Open the section you need after Step 2 has identified the bottleneck — it is not meant to be read top to bottom.
+Worked fixes for the anti-patterns named in Step 3 of `playbooks/performance-optimization.md`. The skill states the rule and the signature to look for; this file shows one concrete implementation. Open the section you need after Step 2 has identified the bottleneck — it is not meant to be read top to bottom.
 
 Checklists, measurement commands, TTFB diagnosis, and caching read/write strategies live in `~/.pi/agent/references/performance-checklist.md`.
 

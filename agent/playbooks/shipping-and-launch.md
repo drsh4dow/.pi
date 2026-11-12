@@ -1,7 +1,5 @@
 ---
-name: shipping-and-launch
-description: "Preparing a production deploy or launch: what must be in place before shipping, a pre-launch checklist, monitoring, a staged rollout, or a rollback plan."
-user-invocable: false
+when: "Preparing a production deploy or launch: what must be in place before shipping, a pre-launch checklist, or a rollback plan."
 ---
 
 # Shipping and Launch
@@ -338,7 +336,7 @@ End with one decision. Any Critical finding makes it NO-GO unless the user expli
 - For security pre-launch checks, see `~/.pi/agent/references/security-checklist.md`
 - For performance pre-launch checklist, see `~/.pi/agent/references/performance-checklist.md`
 - For accessibility verification before launch, see `~/.pi/agent/references/accessibility-checklist.md`
-- For the alerting rules and SLO-tied thresholds, see `observability-and-instrumentation`
+- For the alerting rules and SLO-tied thresholds, see `playbooks/observability-and-instrumentation.md`
 
 ## Common Rationalizations
 

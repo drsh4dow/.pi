@@ -1,6 +1,6 @@
 # Hardening Patterns
 
-Code patterns and decision aids for the `security-and-hardening` skill. The skill states each rule; this file shows one concrete implementation of it. Open the section you need when you reach that code — it is not meant to be read top to bottom.
+Code patterns and decision aids for `playbooks/security-and-hardening.md`. The skill states each rule; this file shows one concrete implementation of it. Open the section you need when you reach that code — it is not meant to be read top to bottom.
 
 Shared checklists (threat modeling, pre-commit checks, security headers, CORS, the package-manager matrix, install-script gate, and the OWASP quick-reference tables) live in `~/.pi/agent/references/security-checklist.md`.
 

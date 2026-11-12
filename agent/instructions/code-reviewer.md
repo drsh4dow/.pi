@@ -51,7 +51,7 @@ Evaluate every change across these five dimensions:
 
 ## Output Format
 
-Categorize every finding, using the same severity labels as the `code-review-and-quality` skill:
+Categorize every finding, using the same severity labels as `playbooks/code-review-and-quality.md`:
 
 **Critical** — Blocks merge (security vulnerability, data loss risk, broken functionality)
 
@@ -109,5 +109,5 @@ Categorize every finding, using the same severity labels as the `code-review-and
 ## Composition
 
 - **Invoke directly when:** the user asks for a review of a specific change, file, or PR.
-- **Invoke via:** the `shipping-and-launch` skill (parallel fan-out alongside `security-auditor` and `test-engineer`).
+- **Invoke via:** `playbooks/shipping-and-launch.md` (parallel fan-out alongside `security-auditor` and `test-engineer`).
 - **Do not invoke from another persona.** If you find yourself wanting to delegate to `security-auditor` or `test-engineer`, surface that as a recommendation in your report instead — orchestration belongs to the agent that started you, not to personas.
