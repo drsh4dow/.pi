@@ -20,6 +20,9 @@ Terms from the prompt feature (`features/prompt/`), which builds every agent's s
 - **Principle.** A hard rule that steers how an agent thinks, in `agent/principles/<name>.md`. Its frontmatter has a one-line `when` and an optional `for` naming the roles it fits, every role when absent. The prompt names the principles folder once in `<principles dir="…">`, then lists each fitting principle as `name: when`, and the agent reads `<name>.md` when the `when` might match. A skill, a role file, or an answer points at one as `principle-<name>`. A principle stands alone: it names no other principle, and the agent reaches it only through its own `when`.
 - **Skills section.** The `<skills>` section the prompt feature writes in pi's place: the skills rule, then each skill the role may invoke as `name: description`, in one list per folder that names the folder once. A skill's `for` names its roles, as a principle's does; without it, every role. A hidden skill also leaves pi's own list.
 - **Tool context.** The `<rules>` list (each tool's and extension's guidelines) that pi writes into its default prompt. A custom preamble makes pi drop it, so the prompt feature adds it back. It does not add back pi's `<tools>` list, whose lines restate each tool's schema description, or `<docs>`, which `AGENTS.md` carries for work on this harness. It leaves out pi's generic rules (the bash file-ops rule, "Be concise", "Show file paths clearly"), the guidelines of `edit` and `codemode`, which restate their schema and `<codemode>`, and the "Additional tools may be available" line, since `SYSTEM.md` sets its own style.
+- **Playbook.** The workflow for one kind of work, such as a bug fix or opening a PR, in `agent/playbooks/<name>.md`. Its frontmatter is a principle's: a one-line `when` and an optional `for`. The prompt lists each fitting playbook as `name: when` in `<playbooks dir="…">`, and the agent reads every one whose `when` matches, so several can shape one session. A skill or another playbook points at one as `playbooks/<name>.md`. See ADR 0005.
+- **Reference file.** A file in a subfolder of `agent/playbooks/`, such as a script or a checklist that a playbook points at. It is not a playbook, and the prompt never lists it.
+- **Trigger.** The line the model matches a task against: a skill's `description`, or a principle's or a playbook's `when`.
 
 ## Owned work
 
@@ -95,6 +98,21 @@ Terms from the cost feature (`features/cost/`) and herdr-app's status bar (`herd
 
 Terms from the loaded feature (`features/loaded/`) and herdr-app's Skills panel (`herdr/mods/ow-skills/`).
 
-- **Guide.** A skill's `SKILL.md` or a principle's `<name>.md`: a file of instructions an agent reads into its context when its trigger matches.
+- **Guide.** A skill's `SKILL.md`, a principle's `<name>.md`, or a playbook's `<name>.md`: a file of instructions an agent reads into its context when its trigger matches.
 - **In context.** A guide is in context when the lines of its body that no other guide shares appear in text the model sees now: a tool result, a user message, a summary. pi's session projection decides what the model sees, after the branch, the latest compaction and context edits. A guide is **partial** when fewer than 90% of those lines appear, and at least three do, or all of them when it has fewer.
 - **Context label.** The `pi.context` hc label on an agent's own terminal: JSON with the guides in its context and how many skills and principles it could load. Each pi writes its own, so the panel finds a delegate's guides on the delegate's terminal. See ADR 0003.
+
+## Work
+
+Terms from the root role (`agent/roles/root.md`) for the work the human hands the agent.
+
+- **Destination.** What the end product should be, settled with the human. Only the human changes it. Its document is the **PRD**, in the human's words "the shared understanding we settle in a discussion about the end product ... it settles the destination".
+- **Approach.** How the work reaches the destination. Its document is the **TRD**, which "defines the selected approach but is more malleable", because "things has to be adapted given the discoveries of unknowns". The agent adapts it and records each change in the decision trail.
+- **Spec.** The document that joins the destination and the approach. In the human's words, "the spec armonizes both".
+- **Grant.** The human's words, such as "run until done", that let the agent work without stopping for the rest of the session. It covers pushes to work branches, PRs against shared branches, merges of PRs between work branches, and updates to the agent's own tickets.
+- **Shared branch.** In the human's words, "a branch that is used by multiple people, for example staging or prod", or main. The agent's work reaches one only through PRs.
+- **Trunk.** The shared branch a PR targets. Not to be confused with main: a PR against staging has staging as its trunk.
+- **Work branch.** A branch that is not shared. It is the agent's own to create, rebase, stack, and merge PRs between.
+- **State folder.** `~/.local/state/pi-agent/<project>/<work>/`, where work that outlives a turn keeps `STATE.md`, its decision trail, and its action items.
+- **Decision trail.** `decisions.tsv` in the state folder: one row per decision the agent made, with its why, evidence, and result.
+- **Action item.** An entry in the state folder's `USER_ACTION_ITEMS.md`: something the work needs from the human that the agent cannot do on its own, such as a product choice or access it lacks.
