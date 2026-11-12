@@ -1,6 +1,6 @@
 // What the panels show: the files in the state folder of the focused pi agent's root. Each pi writes the folder it last
 // wrote to as the `pi.state` label on its own terminal (~/.pi/features/state-folder), so this file reads labels, walks
-// parents and parses the files. ow-tabs counts action items with a copy of `stateFolder` and `isItemStart`.
+// parents and parses the files. ow-tabs counts action items with a copy of `stateFolder` and `actionLines`.
 import { focused, panes, terminals } from "herdr";
 
 const LABEL = "pi.state";
@@ -58,24 +58,30 @@ export function parseTrail(text) {
   return rows.reverse();
 }
 
-// An action item starts at an unindented list item or a `##` heading; the lines under it are its body.
-export const isItemStart = (line) => /^(\d+[.)]|[-*+])\s+\S|^##+\s+\S/.test(line);
+function actionLines(text) {
+  let fence = null;
+  return text.split("\n").map((line) => {
+    const match = line.match(/^\s*(`{3,}|~{3,})\s*(.*)$/);
+    const fenced = fence !== null || match !== null;
+    if (fence === null && match) fence = match[1];
+    else if (fence !== null && match && match[2] === "" && match[1].startsWith(fence)) fence = null;
+    return { line, fenced, startsItem: !fenced && line.startsWith("## ") };
+  });
+}
 
-// USER_ACTION_ITEMS.md: each item's bold lead (else its first line) is its title. What comes before the first item,
-// other than the `#` title, is the note, such as "Nothing yet."
 export function parseActions(text) {
   const items = [];
   const note = [];
-  for (const line of text.split("\n")) {
-    if (isItemStart(line)) {
-      const first = line.replace(/^(\d+[.)]|[-*+]|##+)\s+(\d+[.)]\s+)?/, "");
-      const lead = first.match(/^\*\*(.+?)\*\*\s*(.*)$/);
-      items.push({ title: (lead ? lead[1] : first).replace(/\.$/, ""), body: lead ? [lead[2]] : [] });
+  for (const { line, fenced, startsItem } of actionLines(text)) {
+    if (startsItem) {
+      items.push({ title: plain(line.slice(3).trim()), body: [] });
     } else if (items.length > 0) {
-      items[items.length - 1].body.push(line.replace(/^ {2,4}/, ""));
-    } else if (line.trim() && !/^# /.test(line)) {
+      const body = items[items.length - 1].body;
+      if (!fenced && line.startsWith("**")) body.push("");
+      body.push(line);
+    } else if (line.trim() && !line.startsWith("# ")) {
       note.push(line.trim());
     }
   }
-  return { items: items.map((i) => ({ title: plain(i.title), body: i.body.join("\n").trim() })), note: note.join(" ") };
+  return { items: items.map((i) => ({ title: i.title, body: i.body.join("\n").trim() })), note: note.join(" ") };
 }
