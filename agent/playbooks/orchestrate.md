@@ -1,5 +1,5 @@
 ---
-when: A standing project handed to one coordinator chat. Multi-day, many stacked PRs, dozens to hundreds of delegates, minimal human turns ("run this whole project", "own this migration until it lands"). Distinct from Autonomous run, which drives one task to a predicate. Work one agent could finish inside the session's budget routes there, not here, however program-shaped the phrasing sounds.
+when: A standing project handed to one coordinator chat. Multi-day, many stacked PRs, dozens to hundreds of delegates, minimal human turns ("run this whole project", "drive this project to completion", "own this migration until it lands"). Distinct from Autonomous run, which drives one task to a predicate. Work one agent could finish inside the session's budget routes there, not here, however program-shaped the phrasing sounds.
 for: [root]
 ---
 

@@ -1,5 +1,5 @@
 ---
-when: A long task to drive to completion without stopping ("run until done", "/loop until X").
+when: A long task to drive to completion without stopping ("run until done", "don't stop until X", "keep going until X").
 ---
 
 ### Autonomous run

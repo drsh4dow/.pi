@@ -1,5 +1,5 @@
 ---
-when: Read-only question, such as how does X work, why was Y built this way, are we sure about Z, should we do X or Y.
+when: Read-only question, such as how does X work, why was Y built this way, are we sure about Z, should we do X or Y, what is the difference. Explain, compare, or audit it from the code, docs, or web, and answer with evidence instead of a change.
 ---
 
 ### Investigation

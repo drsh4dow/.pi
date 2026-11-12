@@ -1,5 +1,5 @@
 ---
-when: Opening a PR, invoked at the end of every other playbook.
+when: Opening a PR, a pull request that puts a branch up for review, invoked at the end of every other playbook.
 ---
 
 ### Opening a PR
