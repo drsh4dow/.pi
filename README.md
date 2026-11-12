@@ -26,7 +26,7 @@ Herdr then shows the agent's work beside it:
 - Each delegate, serve, and watch appears in herdr-app's agents list, under the agent that started it. A delegate shows the name its parent gave it. A serve or a watch shows its command, such as `bun-test`. Work in a group sits under the group's name.
 - `/fork` and `/clone` open the copy in a new tab in the same space. The original session keeps running, and so does its work.
 - The Skills panel, behind the Skills button at the top right, lists the skills, playbooks, and principles in the focused agent's context and in each of its delegates', in the order they were read. It follows `/tree` and compaction: a guide whose text left the context leaves the panel. A hollow dot and `partial` mark a guide the model saw only part of, such as a ranged read, and `you` marks one you loaded with `/skill:`.
-- The Trace panel, beside Skills, shows the focused agent's work from its state folder: the `TODO.md` checklist, with the current step marked, then `decisions.tsv`, newest first. A delegate shows its root's work. The Actions panel shows each item of `USER_ACTION_ITEMS.md` as a card, and the Actions button counts the items that wait. Both follow the files every two seconds while open. The agent's terminal carries the folder it last wrote to, found from its own tool calls, so a read of another work's folder does not move it.
+- The Trace panel, beside Skills, shows the focused agent's work from its state folder: the `TODO.md` checklist, with the current step marked, then `decisions.tsv`, newest first. A delegate shows its root's work. The Actions panel shows each `## ` item of `USER_ACTION_ITEMS.md` as a card, and the Actions button counts the items that wait. Both follow the files every two seconds while open. The agent's terminal carries the folder it last wrote to, found from its own tool calls, so a read of another work's folder does not move it.
 - The status bar at the bottom shows what the shown tab's pi session has spent at API list prices, with every delegate at any level, compactions included, whatever your plan bills. Hover it for each delegate's share. It trails a reply by up to two seconds, and the coin pulses while an agent in the tab is working. A fork counts only what it spent after the fork.
 
 Outside herdr-app, `/fork` and `/clone` replace the current session instead of opening a tab. The `delegate`, `serve`, and `watch` tools still need herdr-core, because they start every terminal through its socket.
@@ -84,7 +84,20 @@ Work that outlives a turn keeps its state on disk, so a new session or a compact
 > - `STATE.md` holds the destination and the human's standing instructions in their words, then the decisions, the status, and the next step. Read it after a compaction and at the start of a session that continues the work.
 > - `TODO.md` is the checklist of the playbooks you run, kept as `<playbooks-workflow>` says. You are its one writer.
 > - `decisions.tsv` is the decision trail, per the **show-me-your-work** skill.
-> - `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own: a product choice, an approval, an irreversible action, access you lack. Each item gives the call, your pick, what it changes, the evidence, and the risk. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does.
+> - `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own: a product choice, an approval, an irreversible action, access you lack. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does. Each item starts at a `## <title>` line, and its body has a line starting with each label below, `**Instead.**` optional. A body may hold lists and fenced code, and outside a fence none of its lines starts with `#`. Above the first item go only the `# ` title and a plain note, such as "Nothing waits on you." A write that breaks this format comes back with its problems.
+>
+>    ```markdown
+>    # What this work needs from you
+>
+>    ## Turn on required owner review for main
+>
+>    **The call.** PR 146 names the owners, but nothing enforces a review.
+>    **My pick.** Ask an admin to add the ruleset after PR 146 merges.
+>    **What it changes.** A PR to the owned paths waits for an owner.
+>    **Evidence.** `main` has no branch protection and no ruleset.
+>    **Risk.** Your own PRs to those paths wait for the other owner.
+>    **Instead.** Tell me to drop it, and PRs merge as today.
+>    ```
 
 When you come back, read `USER_ACTION_ITEMS.md` first, or open the Actions panel. It holds every call the agent left for you, with the default it applied and what you could tell it to do instead.
 
