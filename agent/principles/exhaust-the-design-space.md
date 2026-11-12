@@ -4,6 +4,6 @@ when: Facing a novel UI interaction, product design choice, or architectural dec
 
 # Exhaust the Design Space
 
-When a decision has no precedent in the codebase, build 2 or 3 competing prototypes and compare them side by side before you commit to one.
+Apply when facing a novel UI interaction or architectural decision with no precedent in the codebase. Build 2-3 competing prototypes and compare side by side before committing.
 
-This applies to novel UI interactions and architectural decisions. It also applies to product design decisions where the user experience depends on feel, not logic.
+It also applies to product design decisions where user experience depends on feel, not logic.
