@@ -1,5 +1,5 @@
 ---
-when: Adding logging, metrics, tracing, or alerting; shipping a production feature that needs evidence it works; or a production issue the available data can't explain.
+when: Adding logging, metrics, tracing, or alerting and what to page on; shipping a production feature that needs evidence it works; or a production issue the available data can't explain.
 ---
 
 # Observability and Instrumentation
