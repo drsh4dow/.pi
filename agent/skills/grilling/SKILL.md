@@ -1,6 +1,6 @@
 ---
 name: grilling
-description: The user says 'grill', or wants a plan, decision, or idea of theirs questioned relentlessly.
+description: The user says 'grill' or 'interview me', or wants a plan, decision, or idea of theirs questioned relentlessly until you both agree on it.
 user-invocable: false
 for: [root]
 ---

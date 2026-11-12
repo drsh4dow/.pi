@@ -1,6 +1,6 @@
 ---
 name: recall
-description: "Before starting or resuming work on a topic from earlier sessions, or asked what the user worked on or where they left off: a current-state brief rebuilt from session history, live state, and the shared record."
+description: "Before starting or resuming work on a topic from earlier sessions, or asked what the user was working on last week or where they left off: a current-state brief rebuilt from session history, live state, and the shared record."
 for: [root]
 ---
 
