@@ -113,6 +113,7 @@ Terms from the root role (`agent/roles/root.md`) for the work the human hands th
 - **Shared branch.** In the human's words, "a branch that is used by multiple people, for example staging or prod", or main. The agent's work reaches one only through PRs.
 - **Trunk.** The shared branch a PR targets. Not to be confused with main: a PR against staging has staging as its trunk.
 - **Work branch.** A branch that is not shared. It is the agent's own to create, rebase, stack, and merge PRs between.
-- **State folder.** `~/.local/state/pi-agent/<project>/<work>/`, where work that outlives a turn keeps `STATE.md`, its decision trail, and its action items.
+- **State folder.** `~/.local/state/pi-agent/<project>/<work>/`, where work that outlives a turn keeps `STATE.md`, its todo list, its decision trail, and its action items.
+- **Todo list.** `TODO.md` in the state folder: each playbook the root runs, as `## <playbook>` and one line per numbered step, open `- [ ]`, done `- [x]` or skipped `- [-] ... skip: <reason>`, plus the root's own items under `## task`. The first open line is the current step. Only the root writes it.
 - **Decision trail.** `decisions.tsv` in the state folder: one row per decision the agent made, with its why, evidence, and result.
 - **Action item.** An entry in the state folder's `USER_ACTION_ITEMS.md`: something the work needs from the human that the agent cannot do on its own, such as a product choice or access it lacks.

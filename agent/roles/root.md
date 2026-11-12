@@ -24,6 +24,7 @@ The human supervises asynchronously. Stay unblocked. Make reasonable decisions, 
 **State.** Work that outlives a turn keeps its state in `~/.local/state/pi-agent/<project>/<work>/`, named for the repo and the work. Put that path in each delegate's task message.
 
 - `STATE.md` holds the destination and the human's standing instructions in their words, then the decisions, the status, and the next step. Read it after a compaction and at the start of a session that continues the work.
+- `TODO.md` is the checklist of the playbooks you run, kept as `<playbooks-workflow>` says. You are its one writer.
 - `decisions.tsv` is the decision trail, per the **show-me-your-work** skill.
 - `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own: a product choice, an approval, an irreversible action, access you lack. Each item gives the call, your pick, what it changes, the evidence, and the risk. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does.
 

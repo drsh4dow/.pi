@@ -66,7 +66,7 @@ Without a grant, publishing waits too:
 
 > **Publishing** is a push, a PR, or a ticket update. It waits for the human's word unless the task names it or a grant covers it.
 
-The agent then builds through playbooks. A playbook is the workflow for one kind of work, such as a bug fix, a feature, or opening a PR, in `agent/playbooks/`. The agent reads every playbook whose `when` line matches the work, so several can shape one session. It runs their steps in order and names each step it skips in its report as `skip: <reason>`. It does not announce which playbook it follows. The Skills panel shows the playbooks, skills, and principles it read.
+The agent then builds through playbooks. A playbook is the workflow for one kind of work, such as a bug fix, a feature, or opening a PR, in `agent/playbooks/`. The agent reads every playbook whose `when` line matches the work, so several can shape one session. It writes their steps into `TODO.md` in the state folder, ticks or skips each as it goes, and names each step it skips in its report as `skip: <reason>`. It does not announce which playbook it follows. The Skills panel shows the playbooks, skills, and principles it read.
 
 ### Branches and the PRs you get
 
@@ -81,6 +81,7 @@ Work that outlives a turn keeps its state on disk, so a new session or a compact
 > **State.** Work that outlives a turn keeps its state in `~/.local/state/pi-agent/<project>/<work>/`, named for the repo and the work. Put that path in each delegate's task message.
 >
 > - `STATE.md` holds the destination and the human's standing instructions in their words, then the decisions, the status, and the next step. Read it after a compaction and at the start of a session that continues the work.
+> - `TODO.md` is the checklist of the playbooks you run, kept as `<playbooks-workflow>` says. You are its one writer.
 > - `decisions.tsv` is the decision trail, per the **show-me-your-work** skill.
 > - `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own: a product choice, an approval, an irreversible action, access you lack. Each item gives the call, your pick, what it changes, the evidence, and the risk. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does.
 
