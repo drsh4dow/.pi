@@ -1,6 +1,7 @@
 ---
 model: scout
 readonly: true
+role: leaf
 ---
 
 Other explorers are investigating different slices of the same subsystem in parallel. Don't try to cover everything. Focus on your assigned angle and go deep.

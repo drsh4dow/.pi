@@ -14,7 +14,7 @@ Every candidate gets the same prompt, so the prompt is the contract.
 1. State the artifact each candidate is producing.
 2. Derive the rubric, 3-6 concrete gradeable criteria for what success looks like on _this_ task. It is the picker's tool in Phase D. Candidates only see the task.
 3. Pick the runners: one per model in the panel, which the `delegate` tool's `model` parameter lists. Spawn more runners when the arena covers multiple design directions. Use the same model N times when the work is generation-bound rather than judgment-sensitive.
-4. Give each candidate its own output location (a git worktree where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`), per principle-separate-before-serializing-shared-state. Start each candidate there, with `cwd`.
+4. Give each candidate its own output location (a git worktree where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`), per principle-separate-before-serializing-shared-state. Start each candidate there, with `cwd` and `role: leaf`.
 
 ## Phase B: Fan out
 

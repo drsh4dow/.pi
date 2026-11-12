@@ -23,7 +23,7 @@ List the phases in your reply before launching anything.
 
 ## Phase B: Fan out
 
-Spawn all N workers in one message as delegates on the step 3 model, each in its own git worktree, with `cwd`. Use the current checkout only when the worker needs access to something on the user's computer.
+Spawn all N workers in one message as delegates on the step 3 model, each in its own git worktree, with `cwd` and `role: leaf`. Use the current checkout only when the worker needs access to something on the user's computer.
 
 When a worker must start from a non-default pushed branch, create its worktree from that branch.
 

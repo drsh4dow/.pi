@@ -24,7 +24,7 @@ A workspace's sessions sit in its own folder (`<workspace>/<timestamp>_<id>.json
 
 Three delegates, started with one `group` name. Reviewers need MCP access to look up the tickets, chat threads, and observability traces the transcript references.
 
-Each reviewer and the synthesizer name a model alias. Set the delegate's `model` to it.
+Each reviewer and the synthesizer name a model alias. Set the delegate's `model` to it, and its `role` to `leaf`.
 
 | Lens      | `model`        | Prompt template                    |
 | --------- | -------------- | ---------------------------------- |
