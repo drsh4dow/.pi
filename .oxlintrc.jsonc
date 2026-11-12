@@ -43,6 +43,7 @@
 		"agent/skills/statechart/scripts/**",
 		"agent/playbooks/constraint-driven-development/scripts/**",
 		"agent/playbooks/idea-refine/scripts/**",
+		"agent/playbooks/scripts/**",
 	],
 	"jsPlugins": [
 		{
