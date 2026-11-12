@@ -1,5 +1,5 @@
 ---
-when: Writing stateful logic, or code that branches a lot or repeats a shape assumption across files.
+when: Writing any code, to name its data shape first, and above all stateful logic or code that branches a lot or repeats a shape assumption across files.
 ---
 
 # Model the Domain
