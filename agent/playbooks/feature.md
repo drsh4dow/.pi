@@ -1,5 +1,5 @@
 ---
-when: "New or changed behavior, built from a named data shape: add, build, or implement a feature, an option, or a ticket."
+when: "New or changed behavior, built from a named data shape: add or change a feature, an option, a command, or a setting, implement a ticket, or make any other change to what code does."
 ---
 
 ### Feature
