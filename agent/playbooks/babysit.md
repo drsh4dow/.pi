@@ -1,5 +1,5 @@
 ---
-when: Driving a PR or a stack to merge-ready (conflicts, review threads, CI), or any PR-status request ("babysit this", "get it green", "address the bugbot comments", "check on PR X", "anything outstanding on X"). Never triggered by merely opening a PR.
+when: Driving a PR or a stack to merge-ready (conflicts, review threads, CI), or any PR-status request ("babysit this", "take ownership of this PR", "get it green", "address the bugbot comments", "check on PR X", "anything outstanding on X"). Never triggered by merely opening a PR.
 ---
 
 ### Babysit

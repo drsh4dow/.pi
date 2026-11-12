@@ -1,5 +1,5 @@
 ---
-when: A reported defect to reproduce, root-cause, and fix with runtime evidence.
+when: "A reported defect to reproduce, root-cause, and fix with runtime evidence: an error, a crash, a regression, or something that fails or doesn't work."
 ---
 
 ### Bug fix

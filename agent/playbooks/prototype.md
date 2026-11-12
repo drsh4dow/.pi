@@ -1,5 +1,5 @@
 ---
-when: A throwaway sketch to make a design or behavioral decision cheaply, or to settle an empirical fork by observing it instead of asking the human ("prototype", "mock it up", "try this layout", "sketch it to decide").
+when: A throwaway sketch to make a design or behavioral decision cheaply, such as whether a state model or a layout feels right, or to settle an empirical fork by observing it instead of asking the human ("prototype", "mock it up", "try this layout", "sketch it to decide").
 ---
 
 ### Prototype

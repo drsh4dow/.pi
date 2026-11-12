@@ -1,5 +1,5 @@
 ---
-when: "Code works but is hard to read or maintain: asked to simplify it, clean it up, refactor for clarity, or reduce nesting or complexity without changing behavior, even when the code is pasted inline."
+when: "Before a commit, or code works but is hard to read or maintain: asked to simplify it, clean it up, deslop it, or reduce nesting or complexity without changing behavior, even when the code is pasted inline."
 ---
 
 # Code Simplification

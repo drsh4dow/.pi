@@ -1,5 +1,5 @@
 ---
-when: Building or debugging anything that runs in a browser, or needing its DOM, console errors, network requests, performance profile, or rendered output as runtime evidence.
+when: Building or debugging anything that runs in a browser, verifying it in a real browser, or needing its DOM, console errors, network requests, performance profile, or rendered output as runtime evidence.
 ---
 
 # Browser Testing with DevTools

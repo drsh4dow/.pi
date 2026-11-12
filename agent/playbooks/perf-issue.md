@@ -1,5 +1,5 @@
 ---
-when: A measured slowness to trace and improve against a baseline.
+when: 'A measured slowness to trace and improve against a baseline: a slow query, database index, endpoint, test suite, build, or CI run ("why is this so slow", "taking so long", "optimize this").'
 ---
 
 ### Perf issue

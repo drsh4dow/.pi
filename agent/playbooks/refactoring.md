@@ -1,5 +1,5 @@
 ---
-when: A behavior-preserving change to structure or shape (rename, extract, inline, dedupe, move).
+when: A behavior-preserving change to structure or shape (rename, extract, inline, dedupe, move code, files, or folders), or asked to "refactor" it.
 ---
 
 ### Refactoring

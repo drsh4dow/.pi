@@ -1,5 +1,5 @@
 ---
-when: Work that spans phases or stacked PRs.
+when: Work that spans phases or stacked PRs, or asked to plan it before building ("plan first", "break this into PRs").
 for: [root]
 ---
 

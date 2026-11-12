@@ -1,5 +1,5 @@
 ---
-when: Resuming or taking over a prior agent's in-flight work from a transcript, a delegate's worktree, or a pushed branch.
+when: Resuming or taking over a prior agent's in-flight work from a handoff, a transcript, a delegate's worktree, or a pushed branch ("continue the work described in", "pick up where it left off").
 ---
 
 ### Session pickup

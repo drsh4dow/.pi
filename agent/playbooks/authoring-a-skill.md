@@ -1,5 +1,5 @@
 ---
-when: Writing or editing a SKILL.md.
+when: Writing, porting, or editing a SKILL.md or another file agents follow (a playbook, a principle, a role file, SYSTEM.md, AGENTS.md), or a skill broke mid-task.
 ---
 
 ### Authoring or modifying a skill
