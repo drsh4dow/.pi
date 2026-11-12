@@ -32,7 +32,7 @@ const Count = Schema.Finite;
 /** What an agent's label holds: the guides in its context now, and how many of each kind it could load. */
 export const ContextLabel = Schema.Struct({
 	loaded: Schema.Array(Loaded),
-	available: Schema.Struct({ skill: Count, principle: Count }),
+	available: Schema.Struct({ skill: Count, principle: Count, playbook: Count }),
 });
 
 export type ContextLabel = typeof ContextLabel.Type;
@@ -56,13 +56,13 @@ export const loadGuides = Effect.fn("loadGuides")(function* (files: ReadonlyArra
 	return indexOf(guidesOf(Arr.flatten(read)));
 });
 
-/** Every `<name>.md` principle in `dir`. */
-export const principleFiles = Effect.fn("principleFiles")(function* (dir: string) {
+/** Every `<name>.md` principle or playbook directly in `dir`, none when it is missing. A subfolder's files are not guides. */
+export const guideFilesIn = Effect.fn("guideFilesIn")(function* (kind: Exclude<GuideKind, "skill">, dir: string) {
 	const fs = yield* FileSystem.FileSystem;
-	const names = yield* fs.readDirectory(dir);
+	const names = (yield* fs.exists(dir)) ? yield* fs.readDirectory(dir) : [];
 
 	return Arr.map(Arr.filter(names, Str.endsWith(".md")), (name): GuideFile => ({
-		kind: "principle",
+		kind,
 		name: Str.slice(0, -3)(name),
 		path: `${dir}/${name}`,
 	}));
@@ -84,7 +84,11 @@ const countOf = (index: Index, kind: GuideKind) => Arr.length(Arr.filter(index.g
 
 const labelOf = (index: Index, ctx: ExtensionContext): ContextLabel => ({
 	loaded: inContext({ index, entries: ctx.sessionManager.buildSessionProjection().entries }),
-	available: { skill: countOf(index, "skill"), principle: countOf(index, "principle") },
+	available: {
+		skill: countOf(index, "skill"),
+		principle: countOf(index, "principle"),
+		playbook: countOf(index, "playbook"),
+	},
 });
 
 /** The guides this agent can load, and the label text it last set, so an unchanged context sends nothing. */
@@ -95,10 +99,11 @@ interface Publisher {
 
 const ownTerminal = Effect.map(Effect.option(Config.String("HC_TERMINAL_ID")), Option.map(TerminalAddress));
 
-/** Reads the guides pi can load now: its skill commands' files and the harness principles. */
+/** Reads the guides pi can load now: its skill commands' files and the harness principles and playbooks. */
 const load = Effect.fn("load")(function* (publisher: Publisher, commands: ReadonlyArray<SlashCommandInfo>) {
-	const principles = yield* principleFiles(`${getAgentDir()}/principles`);
-	const index = yield* loadGuides([...skillFiles(commands), ...principles]);
+	const principles = yield* guideFilesIn("principle", `${getAgentDir()}/principles`);
+	const playbooks = yield* guideFilesIn("playbook", `${getAgentDir()}/playbooks`);
+	const index = yield* loadGuides([...skillFiles(commands), ...principles, ...playbooks]);
 
 	publisher.index = Option.some(index);
 });
@@ -131,7 +136,7 @@ const run = <Failure>(effect: Effect.Effect<void, Failure, FileSystem.FileSystem
 	Effect.runPromise(effect.pipe(Effect.ignore({ log: "Warn" }), Effect.provide(NodeServices.layer)));
 
 /**
- * Keeps the `pi.context` label on this agent's hc terminal equal to the skills and principles its model sees now. It
+ * Keeps the `pi.context` label on this agent's hc terminal equal to the skills, principles and playbooks its model sees now. It
  * recomputes after each turn, a `/tree` move and a compaction, and clears the label when the session ends. Outside
  * herdr-core it does nothing.
  */

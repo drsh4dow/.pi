@@ -3,10 +3,10 @@ import { v_flex, h_flex } from "gpui-base";
 import { theme } from "herdr";
 import { agentTree, keyOf } from "./context.js";
 
-const ICON = { skill: "mods/ow-skills/skill.svg", principle: "mods/ow-skills/principle.svg" };
+const ICON = { skill: "mods/ow-skills/skill.svg", principle: "mods/ow-skills/principle.svg", playbook: "mods/ow-skills/playbook.svg" };
 const FADE = 260;
 
-const kindColor = (t, kind) => (kind === "skill" ? t.ansi4 : t.ansi5);
+const kindColor = (t, kind) => ({ skill: t.ansi4, principle: t.ansi5, playbook: t.ansi2 })[kind];
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function about(guide) {
@@ -57,16 +57,16 @@ export default class Skills extends View {
     const stat = (kind, label) => h_flex().gap(5).items_center()
       .child(svg(ICON[kind]).size(12).text_color(kindColor(t, kind)))
       .child(div().text_color(t.foreground).child(String(count(kind))))
-      .child(div().text_color(t.dim).child(available ? `/ ${available[kind]} ${label}` : label));
+      .child(div().text_color(t.dim).child(available?.[kind] !== undefined ? `/ ${available[kind]} ${label}` : label));
     return h_flex().h(42).flex_none().px(14).gap(12).items_center().border_b(1).border_color(t.border)
       .child(div().font_semibold().child("Skills"))
       .child(div().flex_1())
-      .child(h_flex().gap(12).text_size(11).child(stat("skill", "skills")).child(stat("principle", "principles")));
+      .child(h_flex().gap(12).text_size(11).child(stat("skill", "skills")).child(stat("principle", "principles")).child(stat("playbook", "playbooks")));
   }
 
   empty(t, title, body) {
     return v_flex().flex_1().items_center().justify_center().gap(6).p(24)
-      .child(h_flex().gap(6).text_color(t.dim).child(svg(ICON.skill).size(16)).child(svg(ICON.principle).size(16)))
+      .child(h_flex().gap(6).text_color(t.dim).child(svg(ICON.skill).size(16)).child(svg(ICON.principle).size(16)).child(svg(ICON.playbook).size(16)))
       .child(div().text_color(t.muted).font_semibold().child(title))
       .child(div().text_size(12).text_color(t.dim).text_center().max_w(240).child(body));
   }
@@ -110,9 +110,9 @@ export default class Skills extends View {
     this.track(root?.address ?? null, agents, cx);
     const loaded = agents.some((a) => a.context.loaded.length > 0) || this.leaving.size > 0;
     const body = agents.length === 0
-      ? this.empty(t, "No pi agent here", "Focus a pi terminal to see the skills and principles in its context.")
+      ? this.empty(t, "No pi agent here", "Focus a pi terminal to see the skills, principles and playbooks in its context.")
       : !loaded
-        ? this.empty(t, "Nothing in context", `${plural(agents.length, "agent")} running. Skills and principles show here as they are read.`)
+        ? this.empty(t, "Nothing in context", `${plural(agents.length, "agent")} running. Skills, principles and playbooks show here as they are read.`)
         : v_flex().id("skills-list").flex_1().min_h(0).overflow_y_scrollbar().p(10).gap(14)
           .children(this.timeline(t, agents));
     return v_flex().id("skills").size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border)
