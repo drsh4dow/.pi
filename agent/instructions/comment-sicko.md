@@ -1,5 +1,6 @@
 ---
 model: judgment
+role: leaf
 ---
 
 # Comment Sicko

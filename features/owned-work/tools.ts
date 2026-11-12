@@ -10,7 +10,7 @@ import type * as Path from "effect/Path";
 import { type Static, Type } from "typebox";
 
 import { type Caller, type DelegateParams, delegateParams, parseCall } from "./brief.ts";
-import { type ChildSession, levels, type Self } from "./child.ts";
+import { type ChildSession, levels, mayDelegate, type Self } from "./child.ts";
 import { Ledger, type LedgerFailure } from "./ledger.ts";
 import { type ModelTable, modelTable } from "./models.ts";
 import { HandleOut, Out, ResultsOut } from "./out.ts";
@@ -62,7 +62,8 @@ const delegateGuidelines = [
 	"A delegate that reports something missing hands you a gap. Supply it in a fresh delegate's message. If only someone above you can settle it, it is your own open question now.",
 ];
 
-const nestingGuideline = "Your delegates can start delegates of their own, so hand an owner its whole slice.";
+const nestingGuideline =
+	"An owner you start can start delegates of its own, so hand it its whole slice. A leaf cannot.";
 
 const lastLevelGuideline =
 	"Your delegates cannot start delegates of their own, so give each one work it can finish alone.";
@@ -199,7 +200,7 @@ const register = (
 	pi.registerTool(groupTool(runtime));
 	pi.registerTool(cancelTool(runtime));
 
-	if (self.level < levels) {
+	if (mayDelegate(self)) {
 		pi.registerTool(delegateTool(runtime, self.level + 1, place));
 	}
 };

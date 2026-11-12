@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
+import type { Static } from "typebox";
 
 import {
 	body,
@@ -19,6 +20,7 @@ import {
 	table,
 	unlisted,
 } from "./brief.fixture.ts";
+import { type DelegateParams, roleUses } from "./brief.ts";
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${fixtures}`.quiet())));
 
@@ -41,59 +43,64 @@ const plainFile = { file: `${fixtures}/plain.md`, text: body };
 
 const profiledFile = { file: `${fixtures}/profiled.md`, text: body };
 
-const briefRows = [
+const briefRows: ReadonlyArray<{
+	name: string;
+	call: Static<DelegateParams>;
+	caller?: Partial<ReturnType<typeof callerOf>>;
+	expect: ReturnType<typeof handed> | ReturnType<typeof refused>;
+}> = [
 	{
-		name: "a message alone runs on the caller's model and thinking level, under the name the caller gives",
-		call: { name: "retry cap", message: "Review the retry cap." },
+		name: "a leaf with a message alone runs on the caller's model and thinking level, under the name the caller gives",
+		call: { name: "retry cap", message: "Review the retry cap.", role: "leaf" },
 		expect: handed({ name: "retry cap" }),
 	},
 	{
 		name: "a caller on a model id the registry lacks, as pi allows, starts its delegate on that model",
-		call: { name: "m", message: "m" },
+		call: { name: "m", message: "m", role: "leaf" },
 		caller: { model: unlisted },
 		expect: handed({ model: "openai/gpt-9-luna" }),
 	},
 	{
 		name: "a caller on no model that names none is a tool error that says so",
-		call: { name: "m", message: "m" },
+		call: { name: "m", message: "m", role: "leaf" },
 		caller: { model: undefined },
 		expect: refused("name a model, since you run on none"),
 	},
 	{
 		name: "a model the caller names runs at pi's default thinking level for it",
-		call: { name: "m", message: "m", model: "anthropic/claude-opus-5-5" },
+		call: { name: "m", message: "m", role: "leaf", model: "anthropic/claude-opus-5-5" },
 		expect: handed({ model: "anthropic/claude-opus-5-5", thinking: undefined }),
 	},
 	{
 		name: "a model whose provider id holds a slash is found whole",
-		call: { name: "m", message: "m", model: "proxy/openai/gpt-6-luna" },
+		call: { name: "m", message: "m", role: "leaf", model: "proxy/openai/gpt-6-luna" },
 		expect: handed({ model: "proxy/openai/gpt-6-luna", thinking: undefined }),
 	},
 	{
 		name: "an alias runs the model the table gives it",
-		call: { name: "m", message: "m", model: "deep" },
+		call: { name: "m", message: "m", role: "leaf", model: "deep" },
 		expect: handed({ model: "anthropic/claude-opus-5-5", thinking: undefined }),
 	},
 	{
 		name: "an alias runs on the caller's provider when that provider has the alias's model",
-		call: { name: "m", message: "m", model: "quick" },
+		call: { name: "m", message: "m", role: "leaf", model: "quick" },
 		caller: { model: proxied },
 		expect: handed({ model: "proxy/openai/gpt-6-luna", thinking: undefined }),
 	},
 	{
 		name: "an alias runs on its own provider when the caller's provider lacks the alias's model",
-		call: { name: "m", message: "m", model: "deep" },
+		call: { name: "m", message: "m", role: "leaf", model: "deep" },
 		caller: { model: proxied },
 		expect: handed({ model: "anthropic/claude-opus-5-5", thinking: undefined }),
 	},
 	{
 		name: "an instructions file is read at the call, relative to the working directory",
-		call: { name: "m", message: "m", instructionsFile: "../plain.md" },
+		call: { name: "m", message: "m", role: "leaf", instructionsFile: "../plain.md" },
 		expect: handed({ instructions: plainFile }),
 	},
 	{
 		name: "an instructions file under ~/ is read from the home folder",
-		call: { name: "m", message: "m", instructionsFile: "~/plain.md" },
+		call: { name: "m", message: "m", role: "leaf", instructionsFile: "~/plain.md" },
 		expect: handed({ instructions: plainFile }),
 	},
 	{
@@ -118,42 +125,73 @@ const briefRows = [
 	},
 	{
 		name: "an instructions file that names only a thinking level runs the caller's model at that level",
-		call: { name: "m", message: "m", instructionsFile: "../slow.md" },
+		call: { name: "m", message: "m", role: "leaf", instructionsFile: "../slow.md" },
 		expect: handed({ thinking: "low", instructions: { file: `${fixtures}/slow.md`, text: body } }),
 	},
 	{
+		name: "the call's role starts an owner",
+		call: { name: "m", message: "m", role: "owner" },
+		expect: handed({ role: "owner" }),
+	},
+	{
+		name: "an instructions file's role holds when the call names none",
+		call: { name: "m", message: "m", instructionsFile: "../owned.md" },
+		expect: handed({ role: "owner", instructions: { file: `${fixtures}/owned.md`, text: body } }),
+	},
+	{
+		name: "the call's role wins over the instructions file's",
+		call: { name: "m", message: "m", role: "owner", instructionsFile: "../profiled.md" },
+		expect: handed({
+			role: "owner",
+			model: "anthropic/claude-opus-5-5",
+			thinking: "low",
+			readOnly: true,
+			instructions: profiledFile,
+		}),
+	},
+	{
+		name: "a call that names no role, with no instructions file, is a tool error that says what each role is for",
+		call: { name: "m", message: "m" },
+		expect: refused(`name a role, since neither the call nor an instructions file does: ${roleUses}`),
+	},
+	{
+		name: "a call that names no role, with an instructions file that names none, is a tool error",
+		call: { name: "m", message: "m", instructionsFile: "../slow.md" },
+		expect: refused(`name a role, since neither the call nor an instructions file does: ${roleUses}`),
+	},
+	{
 		name: "a delegate with a cwd starts in that folder, relative to the caller's",
-		call: { name: "m", message: "m", cwd: ".." },
+		call: { name: "m", message: "m", role: "leaf", cwd: ".." },
 		expect: handed({ cwd: fixtures }),
 	},
 	{
 		name: "a cwd through a symlink starts in the real folder, where the child's session says it ran",
-		call: { name: "m", message: "m", cwd: "../link" },
+		call: { name: "m", message: "m", role: "leaf", cwd: "../link" },
 		expect: handed({ cwd: `${fixtures}/work` }),
 	},
 	{
 		name: "a model the registry lacks is a tool error",
-		call: { name: "m", message: "m", model: "anthropic/nope" },
+		call: { name: "m", message: "m", role: "leaf", model: "anthropic/nope" },
 		expect: refused("model anthropic/nope is not in the model registry"),
 	},
 	{
 		name: "an alias whose model the registry lacks is a tool error that names both",
-		call: { name: "m", message: "m", model: "gone" },
+		call: { name: "m", message: "m", role: "leaf", model: "gone" },
 		expect: refused("model anthropic/nope, which the alias gone names, is not in the model registry"),
 	},
 	{
 		name: "an instructions file that cannot be read is a tool error",
-		call: { name: "m", message: "m", instructionsFile: "missing.md" },
+		call: { name: "m", message: "m", role: "leaf", instructionsFile: "missing.md" },
 		expect: refused("cannot read instructionsFile missing.md: NotFound"),
 	},
 	{
 		name: "a cwd that does not exist is a tool error",
-		call: { name: "m", message: "m", cwd: "nowhere" },
+		call: { name: "m", message: "m", role: "leaf", cwd: "nowhere" },
 		expect: refused("cannot start in cwd nowhere: NotFound"),
 	},
 	{
 		name: "a cwd that is a file is a tool error",
-		call: { name: "m", message: "m", cwd: "../plain.md" },
+		call: { name: "m", message: "m", role: "leaf", cwd: "../plain.md" },
 		expect: refused("cannot start in cwd ../plain.md: not a folder"),
 	},
 ];
@@ -170,6 +208,7 @@ for (const row of briefRows) {
 
 				const shown = Arr.map(started.splice(0), ({ brief, cwd }) => ({
 					name: brief.name,
+					role: brief.role,
 					model: brief.model,
 					thinking: Option.getOrUndefined(brief.thinking),
 					readOnly: brief.readOnly,
@@ -188,6 +227,7 @@ const Refusal = Schema.Struct({ message: Schema.String });
 const badFrontmatterRows = [
 	{ name: "a misspelt key", file: "../misspelt.md", names: "read-only" },
 	{ name: "a thinking level pi does not have", file: "../loud.md", names: "thinking" },
+	{ name: "a role a delegate cannot take", file: "../ruler.md", names: "role" },
 	{ name: "a frontmatter block that never closes", file: "../unclosed.md", names: "frontmatter block" },
 	{ name: "a frontmatter block below the first line", file: "../late.md", names: "frontmatter block" },
 ];

@@ -1,5 +1,6 @@
 ---
 model: investigator
+role: leaf
 ---
 
 # Test Engineer

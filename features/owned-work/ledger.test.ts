@@ -76,7 +76,7 @@ const rows: ReadonlyArray<Row> = [
 	},
 	{
 		name: "a watcher keeps a delegate idle and alive until it fires, then the delegate finishes",
-		role: "delegate",
+		role: "owner",
 		acts: [
 			runs,
 			Start({ kind: "watch" }),
@@ -90,12 +90,12 @@ const rows: ReadonlyArray<Row> = [
 	},
 	{
 		name: "a delegate whose only work is a serve finishes at its turn end",
-		role: "delegate",
+		role: "owner",
 		acts: [runs, Start({ kind: "serve" }), TurnEnds({ expect: "finish: serve-1" })],
 	},
 	{
 		name: "after the parent dies nothing wakes it: no late answer, no deadline",
-		role: "delegate",
+		role: "owner",
 		acts: [
 			runs,
 			delegate,

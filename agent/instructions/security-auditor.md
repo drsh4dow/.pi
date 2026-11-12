@@ -1,6 +1,7 @@
 ---
 model: investigator
 readonly: true
+role: leaf
 ---
 
 # Security Auditor

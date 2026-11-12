@@ -4,12 +4,14 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { ChildRole } from "./child.ts";
 import { type ModelName, modelNameOf } from "./models.ts";
 
 const Frontmatter = Schema.Struct({
 	model: Schema.optionalKey(Schema.NonEmptyString),
 	thinking: Schema.optionalKey(Schema.Literals(["off", "minimal", "low", "medium", "high", "xhigh", "max"])),
 	readonly: Schema.optionalKey(Schema.Boolean),
+	role: Schema.optionalKey(ChildRole),
 });
 
 const decodeFrontmatter = Schema.decodeUnknownEffect(Frontmatter, { onExcessProperty: "error" });
@@ -18,6 +20,7 @@ export interface Profile {
 	readonly model: Option.Option<ModelName>;
 	readonly thinking: Option.Option<string>;
 	readonly readOnly: boolean;
+	readonly role: Option.Option<ChildRole>;
 	readonly text: string;
 }
 
@@ -35,6 +38,7 @@ export const parseProfile = Effect.fn("parseProfile")(function* (text: string) {
 		model: Option.map(Option.fromUndefinedOr(fields.model), modelNameOf),
 		thinking: Option.fromUndefinedOr(fields.thinking),
 		readOnly: fields.readonly ?? false,
+		role: Option.fromUndefinedOr(fields.role),
 		text: body,
 	};
 

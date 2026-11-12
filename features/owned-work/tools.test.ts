@@ -36,13 +36,23 @@ const toolsOf = (self: Self) => {
 const levelRows = [
 	{ name: "the root", self: Self.Root({ role: "root", level: 1 }), expect: { delegate: true, lastLevelLine: false } },
 	{
-		name: "a level-2 delegate, told its delegates cannot delegate,",
-		self: Self.Delegate({ role: "delegate", level: 2, slice: "s" }),
+		name: "a level-2 owner, told its delegates cannot delegate,",
+		self: Self.Delegate({ role: "owner", level: 2, slice: "s" }),
 		expect: { delegate: true, lastLevelLine: true },
 	},
 	{
-		name: "a delegate at the last level",
-		self: Self.Delegate({ role: "delegate", level: 3, slice: "s" }),
+		name: "an owner at the last level",
+		self: Self.Delegate({ role: "owner", level: 3, slice: "s" }),
+		expect: { delegate: false, lastLevelLine: false },
+	},
+	{
+		name: "a level-2 leaf",
+		self: Self.Delegate({ role: "leaf", level: 2, slice: "s" }),
+		expect: { delegate: false, lastLevelLine: false },
+	},
+	{
+		name: "a leaf at the last level",
+		self: Self.Delegate({ role: "leaf", level: 3, slice: "s" }),
 		expect: { delegate: false, lastLevelLine: false },
 	},
 ];
@@ -72,6 +82,13 @@ const validated = (tool: Pick<ToolDefinition, "name" | "description" | "paramete
 test("pi refuses a delegate message of only spaces, tabs and newlines, and passes one with a word", () => {
 	expect(validated(delegate, { name: "review", message: " \n\t " })).toThrow();
 	expect(validated(delegate, { name: "review", message: "\n Review it. " })).not.toThrow();
+});
+
+test("pi refuses a delegate role other than owner or leaf", () => {
+	expect(validated(delegate, { name: "review", message: "Review it.", role: "delegate" })).toThrow();
+	expect(validated(delegate, { name: "review", message: "Review it.", role: "root" })).toThrow();
+	expect(validated(delegate, { name: "review", message: "Review it.", role: "owner" })).not.toThrow();
+	expect(validated(delegate, { name: "review", message: "Review it.", role: "leaf" })).not.toThrow();
 });
 
 const group = Arr.findFirst(toolsOf(Self.Root({ role: "root", level: 1 })), ({ name }) => name === "group");

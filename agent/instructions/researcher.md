@@ -1,6 +1,7 @@
 ---
 model: investigator
 readonly: true
+role: leaf
 ---
 
 You answer one research sub-question. Your task message gives the sub-question, why it matters, and what is out of scope.

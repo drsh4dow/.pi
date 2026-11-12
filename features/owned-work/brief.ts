@@ -9,7 +9,7 @@ import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 import { type Static, Type } from "typebox";
 
-import type { Brief } from "./child.ts";
+import { type Brief, ChildRole } from "./child.ts";
 import { type Alias, ModelName, modelNameOf, type ModelTable } from "./models.ts";
 import { parseProfile } from "./profile.ts";
 import { BadDelegate } from "./work.ts";
@@ -27,6 +27,11 @@ const modelDescription = ({ aliases, panel }: ModelTable) => {
 	return Arr.join(sentences, " ");
 };
 
+export const roleUses =
+	"`owner` for a slice to build, verify and commit, which may need a playbook or delegates of its own; `leaf` for one bounded task, such as a search, a review, a verification lane or a scoped edit";
+
+const roleDescription = `${roleUses}. A leaf gets no playbooks and starts no delegates. It overrides the role an instructions file names, and is required when the file names none.`;
+
 export const delegateParams = (table: ModelTable) => {
 	const model = Type.String({ description: modelDescription(table) });
 
@@ -40,6 +45,10 @@ export const delegateParams = (table: ModelTable) => {
 			pattern: String.raw`\S`,
 			description: "Everything the delegate needs. You cannot send it anything later, and it cannot ask you.",
 		}),
+		/** A plain string enum, as pi's `StringEnum` builds, since some providers refuse `anyOf` of constants. */
+		role: Type.Optional(
+			Type.Unsafe<ChildRole>({ type: "string", enum: [...ChildRole.literals], description: roleDescription }),
+		),
 		instructionsFile: Type.Optional(
 			Type.String({
 				description:
@@ -163,6 +172,11 @@ export const parseCall = Effect.fn("parseCall")(function* (
 		Option.map(Option.fromUndefinedOr(call.instructionsFile), (file) => instructionsOf(ctx.cwd, file)),
 	);
 
+	const role = yield* Effect.fromOption(
+		Option.orElse(Option.fromUndefinedOr(call.role), () => Option.flatMap(profile, (own) => own.role)),
+		() => BadDelegate.make({ why: `name a role, since neither the call nor an instructions file does: ${roleUses}` }),
+	);
+
 	const wanted = Option.orElse(Option.map(Option.fromUndefinedOr(call.model), modelNameOf), () =>
 		Option.flatMap(profile, (own) => own.model),
 	);
@@ -172,6 +186,7 @@ export const parseCall = Effect.fn("parseCall")(function* (
 	const brief: Brief = {
 		name: call.name,
 		message: call.message,
+		role,
 		model,
 		thinking: Option.orElse(
 			Option.flatMap(profile, (own) => own.thinking),

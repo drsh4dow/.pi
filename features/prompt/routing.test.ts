@@ -54,7 +54,7 @@ const modelSkills = Effect.fn("modelSkills")(function* (skillsDir: string) {
 /** Every name and trigger the model picks among: each skill's description and each playbook's `when`. */
 const modelTriggers = Effect.fn("modelTriggers")(function* (dir: string) {
 	const skills = yield* modelSkills(`${dir}/skills`);
-	const { entries } = yield* loadEntries(`${dir}/playbooks`);
+	const { entries } = yield* loadEntries("playbooks", `${dir}/playbooks`);
 
 	return [...skills, ...Arr.map(entries, ({ name, when }) => ({ name, description: when }))];
 });
