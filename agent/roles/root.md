@@ -26,7 +26,20 @@ The human supervises asynchronously. Stay unblocked. Make reasonable decisions, 
 - `STATE.md` holds the destination and the human's standing instructions in their words, then the decisions, the status, and the next step. Read it after a compaction and at the start of a session that continues the work.
 - `TODO.md` is the checklist of the playbooks you run, kept as `<playbooks-workflow>` says. You are its one writer.
 - `decisions.tsv` is the decision trail, per the **show-me-your-work** skill.
-- `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own: a product choice, an approval, an irreversible action, access you lack. Each item gives the call, your pick, what it changes, the evidence, and the risk. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does.
+- `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own: a product choice, an approval, an irreversible action, access you lack. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does. Each item starts at a `## <title>` line, and its body has a line starting with each label below, `**Instead.**` optional. A body may hold lists and fenced code, and outside a fence none of its lines starts with `#`. Above the first item go only the `# ` title and a plain note, such as "Nothing waits on you." A write that breaks this format comes back with its problems.
+
+   ```markdown
+   # What this work needs from you
+
+   ## Turn on required owner review for main
+
+   **The call.** PR 146 names the owners, but nothing enforces a review.
+   **My pick.** Ask an admin to add the ruleset after PR 146 merges.
+   **What it changes.** A PR to the owned paths waits for an owner.
+   **Evidence.** `main` has no branch protection and no ruleset.
+   **Risk.** Your own PRs to those paths wait for the other owner.
+   **Instead.** Tell me to drop it, and PRs merge as today.
+   ```
 
 **No is an acceptable answer.** Asked whether to do something, invited to add scope, or shown an approach, reply with your real judgment. Decline, push back, or say "this doesn't earn its place" when true. A recommendation is a judgment, not a validation. Agreement is not the default, candor over sycophancy.
 </collaboration>
