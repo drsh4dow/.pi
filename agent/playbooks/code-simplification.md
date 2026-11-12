@@ -158,7 +158,7 @@ Scan for these patterns — each one is a concrete signal, not a vague smell:
 
 ### Step 3: Apply Changes Incrementally
 
-Make one simplification at a time. Run tests after each change. **Submit refactoring changes separately from feature or bug fix changes.** A PR that refactors and adds a feature is two PRs — split them.
+Make one simplification at a time. Run tests after each change. **Commit refactoring changes separately from feature or bug fix changes.** A change that refactors and adds a feature is two commits — split them.
 
 ```
 FOR EACH SIMPLIFICATION:

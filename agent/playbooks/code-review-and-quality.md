@@ -101,15 +101,9 @@ Prefer the remedy that removes moving pieces over one that spreads the same comp
 
 ## Change Sizing
 
-Small, focused changes are easier to review, faster to merge, and safer to deploy. Target these sizes:
+Small, focused changes are easier to review, faster to merge, and safer to deploy. Keep each commit to one such change. PRs against a shared branch are few and self-contained: weigh the number of PRs against how self-contained each one is, and fewer usually wins (`playbooks/opening-a-pr.md`).
 
-```
-~100 lines changed   → Good. Reviewable in one sitting.
-~300 lines changed   → Acceptable if it's a single logical change.
-~1000 lines changed  → Too large. Split it.
-```
-
-**Watch file size, not just diff size.** A small diff can still push a file past a healthy boundary — around 1000 _total_ lines in a single file (distinct from the ~1000 _changed_-lines threshold above) is a common inspection signal, not a hard cap. When a change materially grows an already-large file, ask whether to extract helpers, subcomponents, or modules _first_, before piling more on. Decompose, then add.
+**Watch file size, not just diff size.** A small diff can still push a file past a healthy boundary — around 1000 _total_ lines in a single file is a common inspection signal, not a hard cap. When a change materially grows an already-large file, ask whether to extract helpers, subcomponents, or modules _first_, before piling more on. Decompose, then add.
 
 **What counts as "one change":** A single self-contained modification that addresses one thing, includes related tests, and keeps the system functional after submission. One part of a feature — not the whole feature.
 
@@ -382,7 +376,7 @@ For triaging `npm audit` findings and supply-chain risk (typosquatting, compromi
 - Review that only checks if tests pass (ignoring other axes)
 - "LGTM" without evidence of actual review
 - Security-sensitive changes without security-focused review
-- Large PRs that are "too big to review properly" (split them)
+- PRs that are "too big to review properly", or split so fine that the reviewer loses the context
 - No regression tests with bug fix PRs
 - Review comments without severity labels — makes it unclear what's required vs optional
 - Accepting "I'll fix it later" — it never happens
