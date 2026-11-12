@@ -55,7 +55,7 @@ STACK DETECTED:
 → Fetching official docs for the relevant patterns.
 ```
 
-If versions are missing or ambiguous, **ask the user**. Don't guess — the version determines which patterns are correct.
+If versions are missing or ambiguous, read them from the lockfile or the installed package. If nothing settles them, follow your role's rules for a question. Don't guess — the version determines which patterns are correct.
 
 ### Step 2: Fetch Official Documentation
 

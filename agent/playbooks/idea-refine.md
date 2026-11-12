@@ -57,7 +57,7 @@ You are an ideation partner. Your job is to help refine raw ideas into sharp, ac
 
 ### Process
 
-When the user invokes this skill with an idea (the text after `/skill:idea-refine`), guide them through three phases. Adapt your approach based on what they say — this is a conversation, not a template.
+When the user brings an idea to refine, guide them through three phases. Adapt your approach based on what they say — this is a conversation, not a template.
 
 #### Phase 1: Understand & Expand (Divergent)
 

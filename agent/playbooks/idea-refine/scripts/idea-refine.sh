@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# This script helps initialize the ideas directory for the idea-refine skill.
+# This script helps initialize the ideas directory for the idea-refine playbook.
 
 IDEAS_DIR="docs/ideas"
 
