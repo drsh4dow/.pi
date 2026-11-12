@@ -8,7 +8,7 @@ const PANELS = [
   { id: "actions", label: "Actions", icon: "mods/ow-work/actions.svg" },
 ];
 
-// Copies of stateFolder and isItemStart in mods/ow-work/work.js, which a mod cannot import: the Actions button counts
+// Copies of stateFolder and actionLines in mods/ow-work/work.js, which a mod cannot import: the Actions button counts
 // the items the Actions panel shows.
 function stateFolder() {
   const f = focused();
@@ -18,7 +18,16 @@ function stateFolder() {
   for (let t = byAddress.get(pane?.terminal ?? f?.terminal ?? f?.agent); t; t = byAddress.get(t.parent)) folder = t.labels?.["pi.state"] || folder;
   return folder;
 }
-const isItemStart = (line) => /^(\d+[.)]|[-*+])\s+\S|^##+\s+\S/.test(line);
+function actionLines(text) {
+  let fence = null;
+  return text.split("\n").map((line) => {
+    const match = line.match(/^\s*(`{3,}|~{3,})\s*(.*)$/);
+    const fenced = fence !== null || match !== null;
+    if (fence === null && match) fence = match[1];
+    else if (fence !== null && match && match[2] === "" && match[1].startsWith(fence)) fence = null;
+    return { line, fenced, startsItem: !fenced && line.startsWith("## ") };
+  });
+}
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -76,7 +85,7 @@ export default class Tabs extends View {
       } catch {
         return;
       }
-      const count = text ? text.split("\n").filter(isItemStart).length : 0;
+      const count = text ? actionLines(text).filter((l) => l.startsItem).length : 0;
       if (folder !== this.folder || count === this.actions) return;
       this.actions = count;
       cx.notify();
