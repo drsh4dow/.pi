@@ -52,7 +52,7 @@ const rule = `Skills are workflows, not suggestions.
 
 Load: before you start, read in full every skill below with even a small chance of applying, and the files it points to, once per context. When a trigger matches later, load its skill then and rework what it covers.
 
-Run: a loaded skill is binding when its trigger matches and no exclusion does. Run every step in order, each to its completion criterion, and apply every reference rule. It is done when its verification checklist passes with evidence. An excuse its rationalizations table names means run the step. Several skills run in lifecycle order: define, plan, build, verify, review, ship.
+Run: a loaded skill is binding when its trigger matches and no exclusion does. Run every step in order, each to its completion criterion, and apply every reference rule. It is done when its verification checklist passes with evidence. An excuse its rationalizations table names means run the step. A playbook's steps name the skills they need.
 
 Rank: the rest of this prompt outranks a skill. A step that asks the user follows your role, so a delegate returns the gap as its answer. A step that publishes, messages, or rewrites shared history waits for the authorization your role requires. A step your role rules out, such as a delegate's unrequested commit, is done once your answer names it.
 
