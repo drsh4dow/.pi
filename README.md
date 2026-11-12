@@ -1,6 +1,6 @@
 # pi harness
 
-My coding harness, powered by [pi](https://github.com/earendil-works/pi) and [Herdr](https://herdr.dev/). pi is the agent. Herdr runs the terminals. This repo is pi's config folder, `~/.pi`, and adds the skills, principles, and extensions that shape how the agent works.
+My coding harness, powered by [pi](https://github.com/earendil-works/pi) and [Herdr](https://herdr.dev/). pi is the agent. Herdr runs the terminals. This repo is pi's config folder, `~/.pi`, and adds the skills, playbooks, principles, and extensions that shape how the agent works.
 
 The harness is built to run inside herdr-app. When the agent starts a delegate, a dev server, or a test run, that work gets its own herdr-core terminal, and herdr-app lists it under the agent that started it. You can open any of them and watch it run.
 
@@ -25,55 +25,109 @@ Herdr then shows the agent's work beside it:
 
 - Each delegate, serve, and watch appears in herdr-app's agents list, under the agent that started it. A delegate shows the name its parent gave it. A serve or a watch shows its command, such as `bun-test`. Work in a group sits under the group's name.
 - `/fork` and `/clone` open the copy in a new tab in the same space. The original session keeps running, and so does its work.
-- The Skills panel, behind the Skills button at the top right, lists the skills and principles in the focused agent's context and in each of its delegates', in the order they were read. It follows `/tree` and compaction: a guide whose text left the context leaves the panel. A hollow dot and `partial` mark a guide the model saw only part of, such as a ranged read, and `you` marks one you loaded with `/skill:`.
+- The Skills panel, behind the Skills button at the top right, lists the skills, playbooks, and principles in the focused agent's context and in each of its delegates', in the order they were read. It follows `/tree` and compaction: a guide whose text left the context leaves the panel. A hollow dot and `partial` mark a guide the model saw only part of, such as a ranged read, and `you` marks one you loaded with `/skill:`.
 - The status bar at the bottom shows what the shown tab's pi session has spent at API list prices, with every delegate at any level, compactions included, whatever your plan bills. Hover it for each delegate's share. It trails a reply by up to two seconds, and the coin pulses while an agent in the tab is working. A fork counts only what it spent after the fork.
 
 Outside herdr-app, `/fork` and `/clone` replace the current session instead of opening a tab. The `delegate`, `serve`, and `watch` tools still need herdr-core, because they start every terminal through its socket.
 
-## Say what you want in plain words
+## Work in two phases
 
-Brief the agent the way you would brief an engineer. No kind of work has its own command to learn. Every request goes through the same four steps:
+You settle where the work goes and how. Then you grant autonomy, and the agent builds it while you are away.
 
-1. **You describe the work.** A bug report, a PR number, a ticket, a rough idea, or the path to a requirements doc is enough.
-2. **The agent loads its guides.** It loads each skill in `agent/skills/` that your request matches, and each principle in `agent/principles/` whose `when` line matches. A bug report loads `test-driven-development`, and "grill me" loads `grilling`. The Skills panel shows what it loaded.
-3. **The agent does the work and proves it.** It writes the code, runs the tests and the app, and commits each slice it verified. It hands bulk reading, reviews, and second opinions to delegates, some of them on another model family, and you can watch each one in herdr-app.
-4. **The agent reports.** The report says what changed, how the agent checked it, and which principle changed a decision.
+### 1. Settle the destination and the approach
 
-The agent stops and waits for you in three cases:
+The root role, `agent/roles/root.md`, defines both:
 
-- **It is confused.** The request, the spec, and the code disagree, and running something cannot settle it.
-- **The next step is public or cannot be undone.** A push, a PR, a comment, a deploy, or deleted data needs your yes, unless your request named that step.
-- **A decision is yours.** Product behavior, a contract other code builds on, or scope you did not name. The agent lists its assumptions and waits.
+> **Destination and approach.** The destination is what the human settled the end product should be: a PRD, a ticket, or the shared understanding from a discussion. It is theirs, and a change to it is a call only the human can make. The approach is how to get there: a TRD, a plan, a spec's implementation decisions. Adapt it when the work uncovers an unknown, and record the change in the decision trail.
 
-Everything else the agent decides, does, and explains in its report, so you can correct it afterwards.
+Settle them in a conversation with the agent. Five of Matt Pocock's skills do this phase:
 
-When the agent misses a skill, force it with `/skill:<name>`. Skills with `user-invocable: false` stay out of the `/` menu, and typing the name in full still runs them.
+- `/skill:grill-with-docs` interviews you about a plan or design in rounds of numbered questions, each with a recommended answer. It writes each term and decision to `GLOSSARY.md` and `docs/adr/` as it settles, through the `grilling` and `domain-modeling` skills.
+- `domain-modeling` loads on its own when you discuss the project's terms. It challenges a word that conflicts with the glossary and records the one you settle on.
+- `/skill:to-spec` turns the conversation into a spec and publishes it to the issue tracker. It asks you nothing new.
+- `/skill:to-tickets` breaks a plan, a spec, or the conversation into tracer-bullet tickets, each naming the tickets that block it, and publishes them to the tracker.
+- `/skill:wayfinder` is for work too big for one session. It charts a map of decision tickets on the tracker and resolves them one at a time until the way to the destination is clear.
+
+Run `/skill:setup-matt-pocock-skills` once in each repo first. It records the repo's issue tracker (GitHub, GitLab, or local Markdown files), its triage labels, and where its glossary and ADRs live. The agent reaches GitHub through `gh`. For Linear, Jira, or another tracker, add its MCP server with `pi mcp add`.
+
+This repo's `GLOSSARY.md` defines the destination (the PRD), the approach (the TRD), and the spec in your own words.
+
+### 2. Grant autonomy and let the agent build
+
+Once the destination is settled, say the words that grant autonomy, such as "run until done". The root role defines the grant:
+
+> **Grant.** "Don't stop" / "going to bed" / "run until done" / "be fully autonomous" → keep going. The grant holds for this session. It covers pushes to your work branches, PRs against shared branches, merges of PRs between your work branches, and updates to your own tickets. Under the grant, decide a call the grant covers, act on it, and report it, with no reply word and no offer. For a call only the human can make, apply a default, write it to `USER_ACTION_ITEMS.md` with a full explanation and what the human could tell you to do instead, and keep going on what it does not block. Gates the human named and the Always-pause list still need the human.
+
+These always wait for you, grant or not:
+
+> **Always pause** for irreversible writes: force-push to shared branches, deploys, data deletion, messages to people.
+
+Without a grant, publishing waits too:
+
+> **Publishing** is a push, a PR, or a ticket update. It waits for the human's word unless the task names it or a grant covers it.
+
+The agent then builds through playbooks. A playbook is the workflow for one kind of work, such as a bug fix, a feature, or opening a PR, in `agent/playbooks/`. The agent reads every playbook whose `when` line matches the work, so several can shape one session. It runs their steps in order and names each step it skips in its report as `skip: <reason>`. It does not announce which playbook it follows. The Skills panel shows the playbooks, skills, and principles it read.
+
+### Branches and the PRs you get
+
+The root role splits branches into the agent's and everyone's:
+
+> **Branches.** A shared branch is one several people use, such as staging, prod, or main. Trunk is the shared branch a PR targets. Every other branch you work on is a work branch, and it is yours: create, rebase, stack, and merge between work branches as the work needs. Stacks go through `gh stack`. Your work ends in PRs against shared branches that are shaped for review: as few as keep each one self-contained, so the reviewer keeps the context and is not overwhelmed by the number of PRs. Babysit your PRs. When one is approved and nothing is outstanding, that approval is the human's word for the merge: merge it, then dogfood the live deployment, in staging and in prod.
+
+### The state folder
+
+Work that outlives a turn keeps its state on disk, so a new session or a compaction loses nothing:
+
+> **State.** Work that outlives a turn keeps its state in `~/.local/state/pi-agent/<project>/<work>/`, named for the repo and the work. Put that path in each delegate's task message.
+>
+> - `STATE.md` holds the destination and the human's standing instructions in their words, then the decisions, the status, and the next step. Read it after a compaction and at the start of a session that continues the work.
+> - `decisions.tsv` is the decision trail, per the **show-me-your-work** skill.
+> - `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own: a product choice, an approval, an irreversible action, access you lack. Each item gives the call, your pick, what it changes, the evidence, and the risk. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does.
+
+When you come back, read `USER_ACTION_ITEMS.md` first. It holds every call the agent left for you, with the default it applied and what you could tell it to do instead.
+
+### Three roles
+
+The agent you talk to is the root, and it hands each slice of the work to an owner: a delegate that builds, verifies, commits, and reports on that slice, and that can start delegates of its own. A leaf is a delegate on one bounded task, such as a search, a review, or a scoped edit, and it never runs a playbook or starts a delegate.
+
+### Force a guide
+
+When the agent misses a skill, run it with `/skill:<name>`. Skills with `user-invocable: false` stay out of the `/` menu, and typing the name in full still runs them. A playbook has no command. Name its file instead, as in "follow `playbooks/bug-fix.md`".
 
 ## What to say
 
-Type any of these requests as written. The skill each one is meant to load is in parentheses.
+Type any of these requests as written. The skill or playbook each one is meant to load is in the last column.
 
-| Say                                                                                           | What the agent does                                                                                                                                         |
-| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Interview me about what I actually want before you build anything"                           | Asks one question at a time, each with its own guess, until the intent is clear (`interview-me`)                                                            |
-| "I have a rough idea for a habit tracker, help me refine it"                                  | Explores variations with you, then writes a one-page concept with a Not doing list (`idea-refine`)                                                          |
-| "Grill me on this plan"                                                                       | Asks every open question in rounds, each with a recommended answer (`grilling`)                                                                             |
-| "Write a spec for the new billing feature before we write any code"                           | Asks about what the request leaves open, then writes `SPEC.md` (`spec-driven-development`)                                                                  |
-| "Break this spec into small verifiable tasks with acceptance criteria"                        | Reads only, then writes `tasks/plan.md` and `tasks/todo.md` for you to review (`planning-and-task-breakdown`)                                               |
-| "Fix this bug: splitCents(100, 3) returns [33, 33, 33] and a cent goes missing"               | Writes a failing test that reproduces the bug, then the fix (`test-driven-development`)                                                                     |
-| "This test passed yesterday and fails today, figure out what broke"                           | Finds the root cause before it changes anything (`debugging-and-error-recovery`)                                                                            |
-| "Review this pull request before I merge it"                                                  | Reviews correctness, readability, architecture, security, and performance. Each finding is Critical, Required, Optional, or Nit (`code-review-and-quality`) |
-| "What could PR #123 break?"                                                                   | Maps what the change could break beyond its diff (`blast-radius`)                                                                                           |
-| "Interrogate PR #123"                                                                         | Has adversaries on several models try to break the change, and keeps only the findings a run proves (`interrogate`)                                         |
-| "Simplify this function, it works but it is hard to read"                                     | Simplifies the code and keeps its behavior (`code-simplification`)                                                                                          |
-| "We have no written standards. Ask me what I care about and write it down with sane defaults" | Interviews you and writes `CONSTRAINTS.md` (`constraint-driven-development`)                                                                                |
-| "What needs to be in place before shipping this to production?"                               | Starts the code-reviewer, security-auditor, and test-engineer delegates in parallel, then returns go or no-go with a rollback plan (`shipping-and-launch`)  |
-| "The invoices page at https://staging.example.com/invoices is slow"                           | Starts the web-performance-auditor delegate. A URL gets measured numbers, and source files alone get likely issues (`performance-optimization`)             |
-| "How does the retry queue work?"                                                              | Walks through the code's runtime behavior (`how`)                                                                                                           |
-| "Why does checkout retry three times?"                                                        | Gives a cited answer from git history and the other evidence it can reach (`why`)                                                                           |
-| "Run an arena on the cache design"                                                            | Runs parallel candidates, picks a base, and grafts in the best parts of the rest (`arena`)                                                                  |
-| "Swarm the flaky tests, one worker per test file"                                             | Fans out parallel workers and returns one report (`swarm`)                                                                                                  |
-| "Sharpen this task"                                                                           | Makes the task deeper, not bigger, and rewrites its prompt (`sharpen`)                                                                                      |
+| Say                                                                             | What the agent does                                                                                                                | Guide                           |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| "/skill:grill-with-docs I want to add team billing"                             | Asks the open questions in rounds, each with a recommended answer, and records each term and decision as it settles                | `grill-with-docs`               |
+| "Grill me on this plan"                                                         | Asks every open question in rounds, each with a recommended answer                                                                 | `grilling`                      |
+| "I have a rough idea for a habit tracker, help me refine it"                    | Explores variations with you, then writes a one-page concept with a Not doing list                                                 | `idea-refine`                   |
+| "/skill:to-spec"                                                                | Turns the conversation so far into a spec on the issue tracker                                                                     | `to-spec`                       |
+| "/skill:to-tickets"                                                             | Breaks the spec into tickets with their blocking edges on the issue tracker                                                        | `to-tickets`                    |
+| "/skill:wayfinder Move billing to Stripe"                                       | Charts the decisions between here and the destination as a map of tickets, then resolves them one at a time                        | `wayfinder`                     |
+| "Build tickets #43 to #47. I'm going to bed, run until done."                   | Grants autonomy for the session, states the exit condition, and drives the work to it                                              | `autonomous-run`, `feature`     |
+| "Own this migration until it lands"                                             | Coordinates the whole project across many stacked PRs and delegates                                                                | `orchestrate`                   |
+| "Fix this bug: splitCents(100, 3) returns [33, 33, 33] and a cent goes missing" | Reproduces the bug, binary-searches the cause, and writes a test that fails before the fix and passes after                        | `bug-fix`, `tdd`                |
+| "Add CSV export to the invoices page"                                           | Maps the subsystem, designs the change, hands the build to owners, and verifies it                                                 | `feature`                       |
+| "Try both layouts and pick one"                                                 | Builds a throwaway sketch of each and lets the result decide                                                                       | `prototype`                     |
+| "How does the retry queue work?"                                                | Answers from the code with citations, and changes nothing                                                                          | `investigation`, `how`          |
+| "Why does checkout retry three times?"                                          | Gives a cited answer from git history and the other evidence it can reach                                                          | `why`                           |
+| "Review PR #123"                                                                | Reviews correctness, readability, architecture, security, and performance. Each finding is Critical, Required, Optional, or Nit    | `code-review-and-quality`       |
+| "What could PR #123 break?"                                                     | Maps what the change could break beyond its diff                                                                                   | `blast-radius`                  |
+| "Interrogate PR #123"                                                           | Has adversaries on several models try to break the change, and keeps only the findings a run proves                                | `interrogate`                   |
+| "Simplify src/billing/, it works but it is hard to read"                        | Simplifies the code and keeps its behavior                                                                                         | `code-simplification`           |
+| "Babysit PR #12"                                                                | Clears conflicts, review threads, and CI until the PR is merge-ready                                                               | `babysit`                       |
+| "Ship the stack"                                                                | Verifies each PR independently, then lands the verified run bottom-up through `gh stack`                                           | `shipping`                      |
+| "What needs to be in place before shipping this to production?"                 | Starts the code-reviewer, security-auditor, and test-engineer delegates in parallel, then returns go or no-go with a rollback plan | `shipping-and-launch`           |
+| "The invoices page at https://staging.example.com/invoices is slow"             | Starts the web-performance-auditor delegate. A URL gets measured numbers, and source files alone get likely issues                 | `performance-optimization`      |
+| "Set up quality constraints for this project"                                   | Interviews you and writes `CONSTRAINTS.md`                                                                                         | `constraint-driven-development` |
+| "Catch me up"                                                                   | Says what changed since your last message and every call that waits on you                                                         | `ketchup`                       |
+| "Pause, I'm going offline"                                                      | Stops at a safe boundary, commits a `wip:` checkpoint, and writes a resume note                                                    | `pause-safely`                  |
+| "Where did we leave off on billing?"                                            | Rebuilds a current-state brief from session history and the live state of the work                                                 | `recall`                        |
+| "Run an arena on the cache design"                                              | Runs parallel candidates, picks a base, and grafts in the best parts of the rest                                                   | `arena`                         |
+| "Swarm the flaky tests, one worker per test file"                               | Fans out parallel workers and returns one report                                                                                   | `swarm`                         |
+| "Sharpen this task"                                                             | Makes the task deeper, not bigger, and rewrites its prompt                                                                         | `sharpen`                       |
 
 For a small change, say it: "rename `fetchUser` to `loadUser`" or "commit this".
 
@@ -81,50 +135,10 @@ For a small change, say it: "rename `fetchUser` to `loadUser`" or "commit this".
 
 The harness has no prompt templates. The extensions add two commands. `/account <name>` moves the session to another Claude account and keeps the model. `/usage` shows what every account has used.
 
-## Start from where the work arrives
-
-Most work arrives mid-process, as a PR to review, a ticket on the board, or requirement docs someone else wrote. Join the lifecycle at the phase the work is in, and skip the phases it already passed.
-
-### Review someone else's PR
-
-1. Say "review PR #123 in a worktree". The agent reads the PR and runs its tests in a separate worktree, so your branch stays as it is. It lists findings as Critical, Required, Optional, or Nit.
-2. If the PR touches auth, data, payments, or a migration, ask "what could PR #123 break" or say "interrogate PR #123".
-3. Pick the verdict. Approve when the change improves the code, even if it is not perfect. Request changes when a Critical or Required finding is open.
-4. Say "post it as request changes" or "approve it". The agent shows you the review text and asks before it runs `gh pr review`, because posting sends a message to other people.
-
-### Plan a ticket from the board
-
-First, decide how big the ticket is.
-
-- **One PR with a clear scope.** Skip the spec and the plan. Say "implement #42". A bug gets a failing test first.
-- **A vague ticket.** Say "interview me about #42" until you know what you want. Then treat it as a project.
-- **A project.**
-   1. Say "write a spec for #42", then approve `SPEC.md`.
-   2. Say "plan the spec and file the tasks as sub-issues of #42". The tasks go to the tracker instead of `tasks/todo.md`, and `tasks/plan.md` keeps the design and the risks.
-   3. For each sub-issue, say "implement #43", then "review it", and merge. One sub-issue is one PR.
-
-The agent reaches GitHub through `gh`. For Linear, Jira, or another tracker, add its MCP server with `pi mcp add`, and the agent and its delegates read the tickets themselves. Without a server, paste the ticket text into your request.
-
-### Implement a PRD and a TRD
-
-A PRD says what to build and why. A TRD says how. Neither one is a spec, because both leave out the commands, the test strategy, the boundaries, and the places where the two docs disagree.
-
-1. Say "write a spec that implements docs/prd.md following docs/trd.md". The agent reads both docs and the code, asks only about what they leave out, and writes `SPEC.md` with the two docs as its sources. A conflict between the docs becomes a blocking open question.
-2. Settle the open questions, then approve `SPEC.md`. If the PRD covers several features that can ship separately, the agent proposes a capability map first, and you get one spec per feature.
-3. Say "plan it", or "plan it and file the tasks as sub-issues of #42" if the work has an epic.
-4. Say "build the next task", or "build the plan" to hand each task to an owner delegate. Each task gets a failing test first and its own commit.
-5. Say "review the branch", then "prepare the deploy". The second loads `shipping-and-launch`, which starts the three reviewer delegates and returns go or no-go with a rollback plan.
-
-### Smaller entry points
-
-- **A bug report.** Paste it: "splitCents(100, 7) returns cents that sum to 98".
-- **Code that works but is hard to read.** Say "simplify src/billing/", then "review it".
-- **A repo with no written quality bar.** Say "set up quality constraints for this project". Before a merge, say "check this diff for a lowered quality bar", which catches skipped tests and new lint suppressions.
-- **A slow page.** Say "the invoices page at https://staging.example.com/invoices is slow". `performance-optimization` starts the web-performance-auditor delegate, which measures the URL.
-
 ## What's in the repo
 
 - `agent/skills/` holds the skills.
+- `agent/playbooks/` holds the playbooks. The files in its subfolders are their reference files and scripts.
 - `agent/principles/` holds the hard rules an agent reads when a principle's `when` line matches its task.
 - `agent/SYSTEM.md` and `agent/roles/` make up the system prompt. `agent/instructions/` holds the delegate briefs, such as `code-reviewer.md`.
 - `agent/extensions/`, `features/`, and `clients/` hold the TypeScript extensions. `docs/adr/0001-harness-layout.md` explains how the code splits across them.
