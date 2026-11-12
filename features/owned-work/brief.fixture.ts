@@ -80,11 +80,17 @@ export const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, le
 
 export const delegate = Tools.delegate(runtime, 2, { cwd: "/", dir: "/d" }, table);
 
-export const callerOf = (): Parameters<typeof delegate.execute>[4] => ({
-	cwd: `${fixtures}/work`,
-	model: luna,
-	modelRegistry: { getAll: () => [luna, opus, proxied] },
-});
+/** A real caller carries its own thinking level, which a delegate must never take. */
+export const callerOf = (): Parameters<typeof delegate.execute>[4] => {
+	const caller = {
+		cwd: `${fixtures}/work`,
+		model: luna,
+		thinkingLevel: "high",
+		modelRegistry: { getAll: () => [luna, opus, proxied] },
+	};
+
+	return caller;
+};
 
 interface Shown {
 	readonly name: string;
