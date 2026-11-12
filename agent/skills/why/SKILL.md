@@ -15,19 +15,19 @@ Operate as a **careful, cautious, and precise investigator**. Be honest about wh
 
 The **target** is usually a chunk of code, a pattern, a feature, or a named design decision. The **question** is usually a design rationale, a tradeoff, a motivating edge case, an external constraint, dead code, or a broad history sweep.
 
-If the target is vague ("why do we do it this way?" with no clear referent), make your best guess from conversation context (recent edits, what was just discussed). State your interpretation briefly so the user can redirect if you're off, then proceed.
+If the target is vague ("why do we do it this way?" with no clear referent), make your best guess from conversation context (open files, recent edits, cursor location, what was just discussed). State your interpretation briefly so the user can redirect if you're off, then proceed.
 
 ## Step 2. Establish the Code Anchor
 
-Before starting investigators, build the seed context inline: file paths and line ranges, key symbols (functions, classes, constants), the last few commits touching the target, PR numbers from merge commits (pattern `(#1234)` in the subject line), and any linked ticket IDs. Run `git blame -L <start>,<end> <file>` for last-touch commits, `git log --oneline -20 -- <file>` for recent commits with PR numbers visible, and `git log -1 --format=%B <commit>` to extract PR numbers. Then pull the title, body, and linked issues of each substantive commit's PR: `gh pr view <number> --json title,body,author,createdAt,mergedAt,labels,closingIssuesReferences`. The full patch history and the PR discussion are the source control investigator's reading. This anchor goes to every investigator and to the synthesizer.
+Before spawning investigators, build the seed context inline: file paths and line ranges, key symbols (functions, classes, constants), the last few commits touching the target, PR numbers from merge commits (pattern `(#1234)` in the subject line), and any linked ticket IDs. Run `git blame -L <start>,<end> <file>` for last-touch commits, `git log --follow -p -- <file>` for full history with patches through renames, `git log --oneline -20 -- <file>` for recent commits with PR numbers visible, and `git log -1 --format=%B <commit>` to extract PR numbers. Then pull the PR bodies and discussion for any substantive commit: `gh pr view <number> --json title,body,author,createdAt,mergedAt,labels,closingIssuesReferences,comments,reviews`. This anchor goes to every investigator and to the synthesizer.
 
-## Step 3. Start Parallel Investigators
+## Step 3. Spawn Parallel Investigators
 
 **Default to the full parallel investigation.** The goal is a complete coverage map, not a minimal one. Document the null, don't skip the search.
 
 ### Discovery
 
-Before starting investigators, list the available MCP servers. The `mcp_servers` section of your system prompt names them, and `pi mcp list` prints each one's tools.
+Before spawning investigators, list the available MCPs from the pi environment. Use the available-tools map when present. Otherwise run `pi mcp list` for enabled MCP servers.
 
 Map each available MCP to one evidence category:
 
@@ -41,12 +41,12 @@ Map each available MCP to one evidence category:
 
 Source control is always available through git and `gh`. For the other six, classify using the MCP name, server instructions, tool names, and resource descriptors. If an MCP could fit more than one category, choose the one matching its primary evidence. Record ambiguous cases in the coverage map.
 
-Start one investigator delegate for source control and one per other category that has a matching MCP, each owning exactly one tool or MCP, all with one `group` name. Don't ask one agent to cover multiple MCPs.
+Spawn one investigator per category that has a matching MCP, all in a single message so they run concurrently, each owning exactly one tool or MCP. Don't ask one agent to cover multiple MCPs.
 
 Each investigator gets `instructionsFile: ~/.pi/agent/skills/why/references/investigator-prompt.md`. Its task message carries:
 
-- the path of the category playbook `~/.pi/agent/skills/why/references/sources/<source>.md` for the selected MCP, and the MCP to adapt it to when the playbook documents another one (index: `references/source-playbook.md`)
-- the path of `~/.pi/agent/skills/why/references/sources/incident-postmortem.md` **if the target code looks defensive** (null checks, retry logic, timeout handling, rate limiting, feature flags, egress guards, OOM handlers)
+- the category playbook `~/.pi/agent/skills/why/references/sources/<source>.md` for the selected MCP, adapted from the examples in `references/source-playbook.md`
+- `~/.pi/agent/skills/why/references/sources/incident-postmortem.md` **if the target code looks defensive** (null checks, retry logic, timeout handling, rate limiting, feature flags, egress guards, OOM handlers)
 - its assigned source, the code anchor, and the user's original question
 
 ### Investigator roster, one per available evidence category
@@ -72,11 +72,12 @@ If your scope assessment suggests a single-commit trivial target where the PR de
 
 ## Step 4. Synthesize
 
-Start one synthesizer delegate with `instructionsFile: ~/.pi/agent/skills/why/references/synthesizer-prompt.md`. Its task message carries:
+Spawn one synthesizer with `instructionsFile: ~/.pi/agent/skills/why/references/synthesizer-prompt.md`. It gets:
 
 1. The investigator findings, including any null results and any categories skipped with justification
 2. The code anchor
 3. The user's original question
+4. The epistemics framework from `~/.pi/agent/skills/why/references/epistemics.md`
 
 ## Step 5. Present
 

@@ -25,7 +25,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 ## Phase B: Sketch
 
-Run the **arena** skill ([`../arena/SKILL.md`](../arena/SKILL.md)) with the design-sketch task and the Phase A grounding artifacts. Give each runner `instructionsFile: ~/.pi/agent/skills/architect/references/runner-prompt.md`.
+Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. When arena's candidates converge, rerun one runner with that shape ruled out. This is principle-exhaust-the-design-space made concrete. Whole-shape alternatives, not point fixes inside one shape.
 
@@ -35,11 +35,13 @@ Compare viable candidates on interface depth. Prefer the design that hides more 
 
 Arena returns one synthesized design package. Its synthesis decision fills the rationale's "Synthesis decision" section.
 
-## Phase C: Agree
+## Phase C: Agree (opt-in)
 
-Proceed to implementation with the synthesized design. Surface it and stop for sign-off first when it settles an open decision under your role's collaboration rules, or when the invoker asks ("/skill:architect with checkpoint," "show me before implementing").
+Default: proceed directly to implementation with the synthesized design. No human checkpoint.
 
-The synthesis can ship as its own commit either way, as the "scaffold first" mode of principle-foundational-thinking. Planned and scoped breakage during fill-in is fine, per principle-outcome-oriented-execution. For adversarial pressure on the design before implementing, run the **interrogate** skill ([`../interrogate/SKILL.md`](../interrogate/SKILL.md)) on the synthesized sketch.
+Opt in to a checkpoint when the invoker explicitly asks: "/skill:architect with checkpoint," "stop and show me before implementing," or similar. Then surface the synthesized design and pause for sign-off.
+
+The synthesis can ship as its own commit either way, as the "scaffold first" mode of principle-foundational-thinking. Planned and scoped breakage during fill-in is fine, per principle-outcome-oriented-execution. For adversarial pressure on the design before implementing, run the **interrogate** skill on the synthesized sketch.
 
 If the human pushes back on the shape (in a checkpoint or after the fact), treat that as Phase A evidence. Re-ground and re-run Phase B before writing more code.
 
