@@ -2,6 +2,7 @@
  * `bun run prompts [project-dir]` writes `system-prompts.md` at the harness root: the exact first-turn request pi builds
  * for stock pi, for our root agent, and for owners and leaves at each level. No request is sent.
  */
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
@@ -101,17 +102,19 @@ const capture = Effect.fn("capture")(function* (run: Run, cwd: string, workDir: 
 	return { title: run.title, about: run.about, payload } satisfies Capture;
 });
 
-/** Links to every entry of `<harnessRoot>/agent` the harness does not ship. Links, not copies, so an auth refresh lands in the real file. */
+/** The user's own agent folder, which holds what the harness does not ship: credentials, settings, sessions. */
+const userAgentDir = getAgentDir();
+
+/** Links to every entry of the user's agent folder the harness does not ship. Links, not copies, so an auth refresh lands in the real file. */
 const stockAgentDir = Effect.fn("stockAgentDir")(function* (harnessRoot: string, into: string) {
 	const fs = yield* FileSystem.FileSystem;
-	const agentDir = `${harnessRoot}/agent`;
-	const listed = yield* fs.readDirectory(agentDir);
+	const listed = yield* fs.readDirectory(userAgentDir);
 	const gitignore = yield* fs.readFileString(`${harnessRoot}/.gitignore`);
 	const shipped = harnessEntries(gitignore);
 
 	yield* fs.makeDirectory(into);
 	yield* Effect.forEach(Arr.difference(listed, shipped), (entry) =>
-		fs.symlink(`${agentDir}/${entry}`, `${into}/${entry}`),
+		fs.symlink(`${userAgentDir}/${entry}`, `${into}/${entry}`),
 	);
 
 	return into;
@@ -127,12 +130,28 @@ const aboutOf = ({ role, level }: StagedLaunch) => {
 		: "A child pi started as an owner at the last level, so it has no `delegate` tool.";
 };
 
-const delegateRun = (launch: StagedLaunch): Run => ({
+/**
+ * Links each entry of the user's agent folder that `agentDir` lacks into it until the scope closes, so a git worktree's
+ * agents run on the user's credentials and settings. In `~/.pi` itself it links nothing.
+ */
+const borrowUserState = Effect.fn("borrowUserState")(function* (agentDir: string) {
+	const fs = yield* FileSystem.FileSystem;
+	const own = yield* fs.readDirectory(agentDir);
+	const user = yield* fs.readDirectory(userAgentDir);
+
+	yield* Effect.forEach(Arr.difference(user, own), (entry) =>
+		Effect.acquireRelease(fs.symlink(`${userAgentDir}/${entry}`, `${agentDir}/${entry}`), () =>
+			Effect.orDie(fs.remove(`${agentDir}/${entry}`)),
+		),
+	);
+});
+
+const delegateRun = (launch: StagedLaunch, harnessEnv: Env): Run => ({
 	key: `delegate-${launch.name}`,
 	title: `Delegate \`${launch.name}\` (${launch.role}, level ${String(launch.level)})`,
 	about: aboutOf(launch),
 	argv: launch.argv,
-	env: withoutPackageBins(launch.env),
+	env: { ...withoutPackageBins(launch.env), ...harnessEnv },
 });
 
 const piRun = (key: string, title: string, about: string, env: Env): Run => ({
@@ -144,6 +163,11 @@ const piRun = (key: string, title: string, about: string, env: Env): Run => ({
 });
 
 const captureAll = Effect.fn("captureAll")(function* (harnessRoot: string, project: string, workDir: string) {
+	const agentDir = `${harnessRoot}/agent`;
+	const harnessEnv = { PI_CODING_AGENT_DIR: agentDir };
+
+	yield* borrowUserState(agentDir);
+
 	const stockDir = yield* stockAgentDir(harnessRoot, `${workDir}/stock-agent`);
 	const staged = yield* stagedLaunches(project, `${workDir}/delegates`, message);
 
@@ -157,8 +181,12 @@ const captureAll = Effect.fn("captureAll")(function* (harnessRoot: string, proje
 					PI_CODING_AGENT_DIR: stockDir,
 				}),
 			),
-			root: run(piRun("root", "Root agent", "The pi you start and talk to.", userEnv)),
-			delegates: Effect.forEach(Arr.map(staged, delegateRun), run, { concurrency: "unbounded" }),
+			root: run(piRun("root", "Root agent", "The pi you start and talk to.", { ...userEnv, ...harnessEnv })),
+			delegates: Effect.forEach(
+				Arr.map(staged, (launch) => delegateRun(launch, harnessEnv)),
+				run,
+				{ concurrency: "unbounded" },
+			),
 		},
 		{ concurrency: "unbounded" },
 	);
