@@ -1,5 +1,5 @@
 ---
-when: Before a step that brings many files, a long file, or large output into your context, or when planning work across many delegates.
+when: Before a step that brings many files, a long file, repeated reads, or large output into your context, when your context is filling up, or when planning work across many delegates.
 ---
 
 # Guard the Context Window

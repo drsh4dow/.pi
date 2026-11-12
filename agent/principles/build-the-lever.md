@@ -1,5 +1,5 @@
 ---
-when: Any non-trivial work, such as edits, migrations, or analyses, where a codemod, script, or generator could do the work or prove it.
+when: Any non-trivial work, such as edits, migrations, analyses, or checks, where a codemod, script, or generator could do the work or prove it.
 ---
 
 # Build the Lever
