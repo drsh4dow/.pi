@@ -13,8 +13,7 @@
 		],
 		"negative": [
 			{
-				"prompt": "My unit test is failing with a null pointer exception",
-				"owner": "debugging-and-error-recovery"
+				"prompt": "My unit test is failing with a null pointer exception"
 			},
 			{
 				"prompt": "Make this landing page responsive on mobile",
@@ -36,12 +35,10 @@
 		],
 		"negative": [
 			{
-				"prompt": "Write a spec for the new billing feature before we start",
-				"owner": "spec-driven-development"
+				"prompt": "Write a spec for the new billing feature before we start"
 			},
 			{
-				"prompt": "Break this PRD into ordered implementation tasks",
-				"owner": "planning-and-task-breakdown"
+				"prompt": "Break this PRD into ordered implementation tasks"
 			}
 		]
 	},
@@ -89,8 +86,7 @@
 				"owner": "shipping-and-launch"
 			},
 			{
-				"prompt": "Write a failing test for the bug before fixing it",
-				"owner": "test-driven-development"
+				"prompt": "Write a failing test for the bug before fixing it"
 			}
 		]
 	},
@@ -114,12 +110,10 @@
 		],
 		"negative": [
 			{
-				"prompt": "Add a feature flag system to the app",
-				"owner": "incremental-implementation"
+				"prompt": "Add a feature flag system to the app"
 			},
 			{
-				"prompt": "Diagnose why the build broke overnight",
-				"owner": "debugging-and-error-recovery"
+				"prompt": "Diagnose why the build broke overnight"
 			}
 		]
 	},
@@ -151,31 +145,7 @@
 				"owner": "ci-cd-and-automation"
 			},
 			{
-				"prompt": "Write a failing test for this bug before we fix it",
-				"owner": "test-driven-development"
-			}
-		]
-	},
-	"debugging-and-error-recovery": {
-		"positive": [
-			{
-				"prompt": "The app crashes with a TypeError when I click save, help me find the root cause"
-			},
-			{
-				"prompt": "The API is throwing intermittent 500 errors in production, help me find the root cause"
-			},
-			{
-				"prompt": "This test passed yesterday and fails today, figure out what broke"
-			}
-		],
-		"negative": [
-			{
-				"prompt": "Write the API documentation for the orders service",
-				"owner": "documentation-and-adrs"
-			},
-			{
-				"prompt": "Simplify this working function for readability",
-				"owner": "code-simplification"
+				"prompt": "Write a failing test for this bug before we fix it"
 			}
 		]
 	},
@@ -225,34 +195,11 @@
 		],
 		"negative": [
 			{
-				"prompt": "Find the root cause of the memory leak in the worker",
-				"owner": "debugging-and-error-recovery"
+				"prompt": "Find the root cause of the memory leak in the worker"
 			},
 			{
 				"prompt": "Harden the login endpoint against brute force attacks",
 				"owner": "security-and-hardening"
-			}
-		]
-	},
-	"doubt-driven-development": {
-		"positive": [
-			{
-				"prompt": "This change touches production auth, cross-examine every assumption before we proceed"
-			},
-			{
-				"prompt": "I am not confident in this approach, adversarially review my reasoning in a fresh context"
-			},
-			{
-				"prompt": "High-stakes migration tomorrow, stress the plan for hidden failure modes"
-			}
-		],
-		"negative": [
-			{
-				"prompt": "Format this file with prettier"
-			},
-			{
-				"prompt": "Write the changelog entry for the release",
-				"owner": "git-workflow-and-versioning"
 			}
 		]
 	},
@@ -282,44 +229,17 @@
 				"owner": "performance-optimization"
 			},
 			{
-				"prompt": "Tag and publish the release",
-				"owner": "git-workflow-and-versioning"
+				"prompt": "Tag and publish the release"
 			}
 		]
 	},
-	"git-workflow-and-versioning": {
+	"grilling": {
 		"positive": [
 			{
-				"prompt": "Split this messy working tree into clean atomic commits"
-			},
-			{
-				"prompt": "Resolve the merge conflict on this feature branch"
-			},
-			{
-				"prompt": "How should we tag and version this release?"
-			},
-			{
-				"prompt": "Write the changelog entry for this diff.",
-				"topK": 1
+				"prompt": "Grill me on the requirements, the ask is fuzzy"
 			}
 		],
-		"negative": [
-			{
-				"prompt": "Add a loading spinner to the submit button"
-			},
-			{
-				"prompt": "Write integration tests for the payments API",
-				"owner": "test-driven-development"
-			},
-			{
-				"prompt": "This test started failing right after this change, here is the diff, what broke?",
-				"owner": "debugging-and-error-recovery"
-			},
-			{
-				"prompt": "Write me a commit message for this diff.",
-				"owner": "writing-good-commits"
-			}
-		]
+		"negative": []
 	},
 	"idea-refine": {
 		"positive": [
@@ -341,53 +261,6 @@
 			{
 				"prompt": "Audit the upload endpoint for vulnerabilities",
 				"owner": "security-and-hardening"
-			}
-		]
-	},
-	"incremental-implementation": {
-		"positive": [
-			{
-				"prompt": "Implement the next task from the plan as a small verifiable slice"
-			},
-			{
-				"prompt": "Build this feature step by step, committing after each working increment"
-			},
-			{
-				"prompt": "Ship this change behind a feature flag in thin slices"
-			}
-		],
-		"negative": [
-			{
-				"prompt": "What alerts should we page on for the new service?",
-				"owner": "observability-and-instrumentation"
-			},
-			{
-				"prompt": "Interview me to figure out the real requirements",
-				"owner": "interview-me"
-			}
-		]
-	},
-	"interview-me": {
-		"positive": [
-			{
-				"prompt": "Interview me about what I actually want before you build anything"
-			},
-			{
-				"prompt": "Ask me one question at a time until you understand the feature"
-			}
-		],
-		"negative": [
-			{
-				"prompt": "Run the full test suite and report failures",
-				"owner": "test-driven-development"
-			},
-			{
-				"prompt": "Deploy the current build to staging",
-				"owner": "shipping-and-launch"
-			},
-			{
-				"prompt": "Grill me on the requirements, the ask is fuzzy",
-				"owner": "grilling"
 			}
 		]
 	},
@@ -444,29 +317,6 @@
 			}
 		]
 	},
-	"planning-and-task-breakdown": {
-		"positive": [
-			{
-				"prompt": "Break this spec into small verifiable tasks with acceptance criteria"
-			},
-			{
-				"prompt": "Turn the PRD into an ordered task list we can execute"
-			},
-			{
-				"prompt": "Plan the work into implementable chunks before we start coding"
-			}
-		],
-		"negative": [
-			{
-				"prompt": "Debug the crash on startup",
-				"owner": "debugging-and-error-recovery"
-			},
-			{
-				"prompt": "Encode the output so it is safe against XSS",
-				"owner": "security-and-hardening"
-			}
-		]
-	},
 	"security-and-hardening": {
 		"positive": [
 			{
@@ -494,8 +344,7 @@
 				"owner": "code-simplification"
 			},
 			{
-				"prompt": "Set up the release tagging workflow",
-				"owner": "git-workflow-and-versioning"
+				"prompt": "Set up the release tagging workflow"
 			}
 		]
 	},
@@ -539,69 +388,7 @@
 				"owner": "ci-cd-and-automation"
 			},
 			{
-				"prompt": "Break the spec into ordered tasks",
-				"owner": "planning-and-task-breakdown"
-			}
-		]
-	},
-	"spec-driven-development": {
-		"positive": [
-			{
-				"prompt": "Write a spec for the new billing feature before we write any code"
-			},
-			{
-				"prompt": "Draft a PRD with objectives and boundaries for this project"
-			},
-			{
-				"prompt": "We are starting a new service, define the requirements first"
-			},
-			{
-				"prompt": "This one requirement covers identity, billing, notifications, and reporting — decompose it into independently specifiable modules first"
-			},
-			{
-				"prompt": "Before we spec this platform, map the capabilities and their dependency order"
-			}
-		],
-		"negative": [
-			{
-				"prompt": "Trace this request across our services",
-				"owner": "observability-and-instrumentation"
-			},
-			{
-				"prompt": "Simplify this clever one-liner into readable code",
-				"owner": "code-simplification"
-			},
-			{
-				"prompt": "Break the approved spec into ordered implementation tasks",
-				"owner": "planning-and-task-breakdown"
-			}
-		]
-	},
-	"test-driven-development": {
-		"positive": [
-			{
-				"prompt": "Write a failing test for this bug before fixing it"
-			},
-			{
-				"prompt": "Implement the streak calculator using red-green-refactor"
-			},
-			{
-				"prompt": "What tests should cover this new parsing logic before I write it?"
-			},
-			{
-				"prompt": "Add unit tests for this function. There are none yet."
-			},
-			{
-				"prompt": "Fix this bug: splitCents(100, 3) returns [33, 33, 33] and a cent goes missing. Here is the function."
-			}
-		],
-		"negative": [
-			{
-				"prompt": "Update the architecture diagram in the docs",
-				"owner": "documentation-and-adrs"
-			},
-			{
-				"prompt": "Which skill should handle this request?"
+				"prompt": "Break the spec into ordered tasks"
 			}
 		]
 	},
@@ -609,6 +396,9 @@
 		"positive": [
 			{
 				"prompt": "Commit this work and open a pull request"
+			},
+			{
+				"prompt": "Write me a commit message for this diff."
 			}
 		],
 		"negative": []
