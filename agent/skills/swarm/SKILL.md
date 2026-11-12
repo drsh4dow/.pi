@@ -23,7 +23,9 @@ List the phases in your reply before launching anything.
 
 ## Phase B: Fan out
 
-Start all N workers as delegates on the step 3 model, with one `group` name. A worker that writes starts in its own git worktree, with `cwd`. When a worker must start from another branch, create its worktree from that branch.
+Spawn all N workers in one message as delegates on the step 3 model, each in its own git worktree, with `cwd`. Use the current checkout only when the worker needs access to something on the user's computer.
+
+When a worker must start from a non-default pushed branch, create its worktree from that branch.
 
 Every brief stands alone. Include the goal, scope, exact slice or race arm, how to verify, and what to report. Reports use `PASS`, `ISSUES`, or `BLOCKED` with evidence. A worker that can prove a defect reports `ISSUES` and lists every issue it can prove, not only the first.
 
@@ -31,7 +33,7 @@ If a worker drops out, proceed with N-1 and note it.
 
 ## Phase C: Aggregate
 
-Read the terminal results. Drop a result that does not record the SHAs and method its brief names, and start that worker again once. After a second miss, record a gap. A gap does not count as a pass. For coverage, every required slice needs a result. For a race, apply the selection rule declared up front. Use first pass, rank all, or best-of. Do not paste raw worker dumps.
+Read the terminal results. Drop a result that does not record the SHAs and method its brief names, and respawn that worker once. After a second miss, record a gap. A gap does not count as a pass. For coverage, every required slice needs a result. For a race, apply the selection rule declared up front. Use first pass, rank all, or best-of. Do not paste raw worker dumps.
 
 ## Phase D: Report
 

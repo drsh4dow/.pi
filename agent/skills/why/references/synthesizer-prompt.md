@@ -13,7 +13,7 @@ You MUST follow `~/.pi/agent/skills/why/references/epistemics.md`. Read it in fu
 
 1. Every claim must sit in one tier: **Direct**, **Supported**, **Inferred**, **Speculative**, **Unknown**. The tier sets its section and its phrasing.
 2. Every Direct/Supported claim must have a citation (PR #, ticket ID, doc URL, chat permalink, commit hash, or file:line).
-3. Inferred and Speculative claims carry their tier label and state the claim plainly; the label carries the uncertainty.
+3. Inferred and Speculative claims must use hedged language ("appears to", "likely", "suggests", "one possibility is").
 4. Never cite code as evidence for its own intent.
 5. Document gaps. Don't fill them with plausible-sounding guesses.
 6. Treat a hypothesis embedded in the user's question as a candidate, not a conclusion. Check it independently.
@@ -23,7 +23,7 @@ You MUST follow `~/.pi/agent/skills/why/references/epistemics.md`. Read it in fu
 1. **Read all investigator findings** and weigh the evidence yourself. Investigators gathered raw evidence, not conclusions.
 2. **Merge overlaps.** When several investigators cite the same PR, ticket, or doc, give it one authoritative reference.
 3. **Surface contradictions.** When two items disagree, show both. Don't pick one.
-4. **Calibrate each claim.** Find its evidence and tier. Direct: cite it and state it plainly. Inferred: label it and show the inference. Speculative: mark it. No evidence: put it in the gaps.
+4. **Calibrate each claim.** Find its evidence and tier. Direct: cite it and state it plainly. Inferred: hedge it and show the inference. Speculative: mark it. No evidence: put it in the gaps.
 5. **Verify citations by spot-checking.** If you're uncertain a cited item exists or says what the investigator claims, check it by reading the codebase or calling MCP tools. Don't propagate errors. Do not write files, commit, or modify external state.
 6. **Don't overreach.** The user will act on this. Leave an open question open rather than fill it with a confident guess.
 
@@ -52,9 +52,9 @@ Claims with textual evidence, each quoted or paraphrased and cited precisely:
 
 ### What We Can Reasonably Infer
 
-Claims stated nowhere but well-supported by indirect evidence. Each bullet must make the inference chain visible ("Given A and B, C follows from D"):
+Claims stated nowhere but well-supported by indirect evidence. Each bullet must make the inference chain visible ("Given A and B, it's likely that C") and must use hedged language ("appears to", "likely", "suggests", "is consistent with"):
 
-- **[Inferred]** {Claim}. Reasoning: {the specific evidence and the inference step}.
+- **[Inferred]** {Hedged claim}. Reasoning: {the specific evidence and the inference step}.
 
 Skip this section if there's nothing to infer.
 
