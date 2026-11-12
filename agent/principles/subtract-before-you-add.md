@@ -1,5 +1,5 @@
 ---
-when: Sequencing or sizing an addition, refactor, or rewrite, about to build on code that carries dead code, redundant checks, or stub references, or tempted to add an abstraction or a signal threaded through several functions.
+when: Sequencing an addition, refactor, or rewrite, or about to build on code that carries dead code, redundant checks, or stub references.
 ---
 
 # Subtract Before You Add

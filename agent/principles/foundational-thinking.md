@@ -1,5 +1,5 @@
 ---
-when: Before writing logic, when choosing core types and data structures, or ordering scaffold work against feature work.
+when: Before writing logic, when choosing core types and data structures, ordering scaffold work against feature work, or deciding what concurrent actors share.
 ---
 
 # Foundational Thinking
