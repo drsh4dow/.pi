@@ -1,6 +1,24 @@
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, ScrollHandle } from "gpui-base";
-import { spaces, panes, run, openOverlay, theme, window, layout, settings } from "herdr";
+import { spaces, panes, terminals, focused, run, openOverlay, theme, window, layout, settings, readTextFile } from "herdr";
+
+const PANELS = [
+  { id: "skills", label: "Skills", icon: "mods/ow-skills/skill.svg" },
+  { id: "trace", label: "Trace", icon: "mods/ow-work/trace.svg" },
+  { id: "actions", label: "Actions", icon: "mods/ow-work/actions.svg" },
+];
+
+// Copies of stateFolder and isItemStart in mods/ow-work/work.js, which a mod cannot import: the Actions button counts
+// the items the Actions panel shows.
+function stateFolder() {
+  const f = focused();
+  const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
+  const byAddress = new Map(terminals().map((t) => [t.address, t]));
+  let folder = null;
+  for (let t = byAddress.get(pane?.terminal ?? f?.terminal ?? f?.agent); t; t = byAddress.get(t.parent)) folder = t.labels?.["pi.state"] || folder;
+  return folder;
+}
+const isItemStart = (line) => /^(\d+[.)]|[-*+])\s+\S|^##+\s+\S/.test(line);
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -12,8 +30,10 @@ function find(node, id) {
 }
 
 export default class Tabs extends View {
-  init() {
+  init(_props, cx) {
     this.pressed = null;
+    this.actions = 0;
+    cx.timer.every(3000, (cx) => this.countActions(cx));
     this.scroll = ScrollHandle.new();
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
   }
@@ -46,8 +66,30 @@ export default class Tabs extends View {
     localStorage.setItem("panels", JSON.stringify(this.panels));
   }
 
-  render() {
+  countActions(cx) {
+    const folder = this.folder;
+    cx.spawn(async (cx) => {
+      // A failed read keeps the last count: the badge never drops to nothing because the file could not be read.
+      let text = null;
+      try {
+        text = folder ? await readTextFile(`${folder}/USER_ACTION_ITEMS.md`) : null;
+      } catch {
+        return;
+      }
+      const count = text ? text.split("\n").filter(isItemStart).length : 0;
+      if (folder !== this.folder || count === this.actions) return;
+      this.actions = count;
+      cx.notify();
+    });
+  }
+
+  render(cx) {
     const t = theme();
+    const folder = stateFolder();
+    if (folder !== this.folder) {
+      this.folder = folder;
+      this.countActions(cx);
+    }
     const space = spaces().find(p => p.active);
     const shown = space?.tabs ?? [];
     const active = shown.findIndex(tab => tab.active);
@@ -87,17 +129,20 @@ export default class Tabs extends View {
       ? Math.max(10, (root.traffic_lights[0] + 64) / settings().zoom - (sidebar?.hidden ? 0 : sidebar?.size?.px ?? 0))
       : 10;
     const panel = find(root, "panel"), body = find(root, "panel-body");
-    const enabled = ["skills"];
+    const enabled = (body?.children ?? []).map((child) => child.id);
     this.syncPanel(space, panel, body, enabled);
-    const panelButton = (id, label, icon) => {
+    const panelButton = ({ id, label, icon }) => {
       const on = panel && !panel.hidden && body?.active === id;
+      const count = id === "actions" ? this.actions : 0;
       return h_flex().id(`panel-${id}`).h(26).px(8).gap(5).flex_none().items_center().rounded(6)
         .text_size(12).bg(on ? t.selected : t.chrome).text_color(on ? t.foreground : t.muted)
         .hover(s => s.bg(t.hover)).on_mouse_down("left", stop)
         .on_click(() => {
           if (on) run("layout.hide", { id: "panel" });
           else { run("layout.select", { stack: "panel-body", child: id }); run("layout.show", { id: "panel" }); }
-        }).child(svg(icon).size(14)).child(label);
+        }).child(svg(icon).size(14)).child(label)
+        .when(count > 0, el => el.child(div().h(16).min_w(16).px(5).rounded(8).bg(t.blocked).text_color(t.background)
+          .text_size(10.5).font_semibold().flex().items_center().justify_center().child(String(count))));
     };
     return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.border)
       .on_mouse_up("left", () => { this.pressed = null; })
@@ -106,7 +151,7 @@ export default class Tabs extends View {
         .on_size_change((_size, cx) => { if (active >= 0) { this.scroll.scroll_to_item(active); cx.notify(); } })
         .children(shown.map(item)))
       .child(button("tab-new", "+", () => openOverlay({ mod: "new-menu", kind: "popup", width: 250, height: 512 })))
-      .child(panelButton("skills", "Skills", "mods/ow-skills/skill.svg"))
+      .children(PANELS.filter(p => enabled.includes(p.id)).map(panelButton))
       .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/ow-tabs/win-min.svg").size(16) : "−", () => run("window.minimize")))
         .child(button("maximize", w.platform === "windows" ? svg(`mods/ow-tabs/${w.maximized ? "win-restore" : "win-max"}.svg`).size(16) : "□", () => run("window.maximize")))
         .child(button("close-window", w.platform === "windows" ? svg("mods/ow-tabs/win-close.svg").size(16) : svg("mods/pane/close.svg").size(13), () => run("window.close"))));
