@@ -4,7 +4,7 @@ when: A reported defect to reproduce, root-cause, and fix with runtime evidence.
 
 ### Bug fix
 
-**You own this task. Plan, review, verify.** Delegate investigation and the fix to delegates, stay in the lead. Pick each delegate's model alias for the job.
+**You own this task. Plan, review, verify.** Delegate investigation and the fix to delegates, stay in the lead. Pick each delegate's model alias and role for the job.
 
 Be scientific. Every shipped line traces to runtime evidence. Belt-and-suspenders that "might help" is a hypothesis, not a fix. It does not ship. When evidence refutes a hypothesis, revert what it motivated. The smallest change the evidence justifies ships, nothing more.
 

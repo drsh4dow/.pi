@@ -19,7 +19,7 @@ when: A measured slowness to trace and improve against a baseline.
 
    When an earlier mantra meets the target, stop.
 
-3. Plan the fix from the trace. If it crosses a function boundary, `architect` first. Hand implementation to a delegate. Pick each delegate's model alias for the job. Review the diff. Capture a post-fix trace.
+3. Plan the fix from the trace. If it crosses a function boundary, `architect` first. Hand implementation to a delegate. Pick each delegate's model alias and role for the job. Review the diff. Capture a post-fix trace.
    Apply **principle-sequence-verifiable-units**, verifying each attempt before trying the next.
 4. Parse and compare the artifacts (JSON to sqlite, diff). "Inconclusive" or wrong-surface is not a pass. Flag it.
 5. Cite the measurement in the PR.

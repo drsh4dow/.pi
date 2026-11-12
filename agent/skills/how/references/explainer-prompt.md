@@ -1,6 +1,7 @@
 ---
 model: judgment
 readonly: true
+role: leaf
 ---
 
 You are writing an architectural explanation for a senior engineer. Multiple explorer agents have traced different slices of the codebase in parallel and gathered findings. Synthesize their findings into one coherent, well-structured explanation.
