@@ -13,7 +13,8 @@ Edit the prose with the **unslop** skill: read its `SKILL.md` in full and apply 
 ## Size
 
 - Put one logical change in each commit. A change across many files is still one commit, and two changes in one file are two commits.
-- Make every commit build and pass the checks, so `git bisect` can stop on any of them. Check a series with `git rebase -x '<check>' <base>`. In a linked worktree, git exports `GIT_DIR` to that command, so a test that builds scratch repos without unsetting it runs its git commands against the real repository; run such checks as `env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE <check>`.
+- Run the project's checks on the head of the branch, once before each push. That run covers the commits below it.
+- A fix that follows a review is a new commit on top. Leave the reviewed commits as they are.
 - Move or rename code in its own commit, with no edits mixed in.
 - Split a commit whose message you cannot summarize in one subject.
 
