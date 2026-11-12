@@ -1,6 +1,6 @@
 ---
 name: no-comments
-description: Asked to remove or audit code comments.
+description: Before review, or asked to remove or audit code comments.
 ---
 
 # No comments

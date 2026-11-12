@@ -1,6 +1,6 @@
 ---
 name: how
-description: Asked how something works, for a code walkthrough before a change, or where code should live. `why` covers motivation.
+description: "Asked how something works, before a nontrivial change or an architecture decision, on 'are we sure?', or where code should live. `why` covers motivation."
 ---
 
 # How

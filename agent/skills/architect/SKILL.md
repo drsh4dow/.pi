@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Sketch types, signatures and module structure before code. Use when asked to architect a change, or when coding first would lock in the wrong shape.
+description: Sketch types, signatures and module structure before code. Use when code crosses a function boundary, when asked to architect a change, or when coding first would lock in the wrong shape.
 ---
 
 # Architect

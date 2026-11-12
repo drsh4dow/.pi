@@ -1,6 +1,6 @@
 ---
 name: arena
-description: Run parallel candidates at one task, pick a base, and graft in the best parts of the rest. Use when asked for an arena, or when a single attempt at a non-trivial artifact would lock in the wrong shape.
+description: Run parallel candidates at one task, pick a base, and graft in the best parts of the rest. Use for a design or code bakeoff, when asked for an arena, or when a single attempt at a non-trivial artifact would lock in the wrong shape.
 ---
 
 # Arena

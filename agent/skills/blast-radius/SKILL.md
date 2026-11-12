@@ -1,6 +1,6 @@
 ---
 name: blast-radius
-description: Asked for a change's blast radius, or what it could break beyond the diff.
+description: Asked for a change's blast radius or what it could break beyond the diff, or reviewing a small diff you don't trust.
 ---
 
 # Blast radius
