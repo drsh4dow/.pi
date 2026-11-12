@@ -1,6 +1,6 @@
 ---
-name: prototype
-description: Build a throwaway prototype to answer a design question. Use when the user wants to sanity-check whether a state model or logic feels right, or explore what a UI should look like.
+name: prototyping
+description: The shape of a throwaway prototype, once `playbooks/prototype.md` calls for one. A logic or state-model demo to check it feels right, or UI variations to explore what a page should look like.
 user-invocable: false
 ---
 
