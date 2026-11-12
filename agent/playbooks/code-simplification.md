@@ -1,7 +1,5 @@
 ---
-name: code-simplification
-description: "Code works but is hard to read or maintain: asked to simplify it, clean it up, refactor for clarity, or reduce nesting or complexity without changing behavior, even when the code is pasted inline."
-user-invocable: false
+when: "Code works but is hard to read or maintain: asked to simplify it, clean it up, refactor for clarity, or reduce nesting or complexity without changing behavior, even when the code is pasted inline."
 ---
 
 # Code Simplification

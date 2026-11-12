@@ -1,7 +1,5 @@
 ---
-name: browser-testing-with-devtools
-description: Building or debugging anything that runs in a browser, or needing its DOM, console errors, network requests, performance profile, or rendered output as runtime evidence.
-user-invocable: false
+when: Building or debugging anything that runs in a browser, or needing its DOM, console errors, network requests, performance profile, or rendered output as runtime evidence.
 ---
 
 # Browser Testing with DevTools

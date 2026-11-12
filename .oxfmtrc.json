@@ -25,7 +25,7 @@
 		"agent/skills/writing-good-prs/scripts/**",
 		"agent/skills/dumpfile/cli/**",
 		"agent/skills/statechart/scripts/**",
-		"agent/skills/constraint-driven-development/scripts/**",
-		"agent/skills/idea-refine/scripts/**"
+		"agent/playbooks/constraint-driven-development/scripts/**",
+		"agent/playbooks/idea-refine/scripts/**"
 	]
 }

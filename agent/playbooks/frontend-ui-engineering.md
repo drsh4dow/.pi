@@ -1,7 +1,5 @@
 ---
-name: frontend-ui-engineering
-description: "Building or changing a user-facing interface: pages, components, layouts, responsive and accessible (WCAG) design, state management."
-user-invocable: false
+when: "Building or changing a user-facing interface: pages, components, layouts, responsive and accessible (WCAG) design, state management."
 ---
 
 # Frontend UI Engineering

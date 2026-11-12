@@ -1,14 +1,12 @@
 ---
-name: constraint-driven-development
-description: A written quality bar that agents cannot quietly lower. No quality bar is written down; asked to set up constraints or define standards; a dimension the user cares about (accessibility, web performance, coverage) needs enforcing; a threshold needs a number; or an agent keeps silencing checks (@ts-ignore, eslint-disable) or skipping tests to get green.
-user-invocable: false
+when: A written quality bar that agents cannot quietly lower. No quality bar is written down; asked to set up constraints or define standards; a dimension the user cares about (accessibility, web performance, coverage) needs enforcing; a threshold needs a number; or an agent keeps silencing checks (@ts-ignore, eslint-disable) or skipping tests to get green.
 ---
 
 # Constraint-Driven Development
 
 ## Overview
 
-Other skills in this pack describe what good looks like. `code-review-and-quality` gives you five axes. `tdd` gives you a cycle. `security-and-hardening` gives you a threat list. All of that lives in prose the agent reads and may or may not follow, and none of it survives the end of the session.
+Other skills in this pack describe what good looks like. `playbooks/code-review-and-quality.md` gives you five axes. `tdd` gives you a cycle. `playbooks/security-and-hardening.md` gives you a threat list. All of that lives in prose the agent reads and may or may not follow, and none of it survives the end of the session.
 
 This skill produces something different: a written record of **this project's** bar, with numbers, that outlives the conversation and can be checked mechanically.
 
@@ -31,7 +29,7 @@ Apply this skill when:
 
 - The project already has a `CONSTRAINTS.md` and the user isn't changing it — read it and follow it instead
 - One-off scripts, spikes, throwaway prototypes
-- The user wants a code review right now (`code-review-and-quality`) or a CI pipeline built (`ci-cd-and-automation`)
+- The user wants a code review right now (`playbooks/code-review-and-quality.md`) or a CI pipeline built (`playbooks/ci-cd-and-automation.md`)
 - Pre-product-market-fit code with a two-week expected lifetime — the floor below is still worth it, the rest isn't
 
 ## Loading Constraints
@@ -168,7 +166,7 @@ Five things that will bite you if you skip them:
 4. **Coverage needs no second test run.** Read the lcov your suite already writes and intersect it with `git diff`. Running the suite twice to get a number is the fastest way to make people hate this.
 5. **Semgrep's registry rules are free to run; check the licence before redistributing them.** `opengrep` is a drop-in fork with the same rule format and JSON output if that matters to your legal team.
 
-`semgrep scan` and `axe` can exit 0 on findings; copy [scripts/quality-gate.mjs](scripts/quality-gate.mjs) into the project's `scripts/` directory to enforce these thresholds.
+`semgrep scan` and `axe` can exit 0 on findings; copy [constraint-driven-development/scripts/quality-gate.mjs](constraint-driven-development/scripts/quality-gate.mjs) into the project's `scripts/` directory to enforce these thresholds.
 Keep the scanner before `&&` so a failed scan stops the command.
 
 Add each one to the project's own script so it's reproducible without an agent:
@@ -221,7 +219,7 @@ Agents don't craft clever loopholes. They hit a red check and take the cheapest 
 
 None of this needs tooling beyond `git diff`. Tightening the bar should be silent; loosening it should be loud.
 
-Unlike the numbered dimensions, the floor has no de facto tool of its own, so an agent asked to enforce it tends to write a checker from scratch, and two agents write two different ones. A reference implementation of these five checks ships with this skill in [references/floor-guard.md](references/floor-guard.md) (diff-scoped, exit `0`/`1`/`2`, patterns adaptable per ecosystem). Adapt that rather than reinventing it, for the same reason every dimension names a de facto tool: so the mechanism is the same across runs and stacks.
+Unlike the numbered dimensions, the floor has no de facto tool of its own, so an agent asked to enforce it tends to write a checker from scratch, and two agents write two different ones. A reference implementation of these five checks ships with this skill in [constraint-driven-development/references/floor-guard.md](constraint-driven-development/references/floor-guard.md) (diff-scoped, exit `0`/`1`/`2`, patterns adaptable per ecosystem). Adapt that rather than reinventing it, for the same reason every dimension names a de facto tool: so the mechanism is the same across runs and stacks.
 
 **Not all checks are equally circular.** Rank them by one question: can the agent make this pass by writing code that doesn't work?
 
@@ -263,7 +261,7 @@ Constraints work at three levels of teeth. Start at the first.
 
 1. **Written only.** `CONSTRAINTS.md` exists and agents read it. Costs nothing, catches the honest mistakes, relies on the agent complying.
 2. **Scripted.** An `npm run check` (or `make check`) that runs the fast checks, wired into your agent's post-edit hook and your CI. Deterministic, no new dependency.
-3. **Tool-backed.** A dedicated runner that handles diff scoping, budgets, ratchets, and the guard checks. Use when the config outgrows a shell script. The floor-guard reference in [references/floor-guard.md](references/floor-guard.md) is the starting point for the guard-checks half of this.
+3. **Tool-backed.** A dedicated runner that handles diff scoping, budgets, ratchets, and the guard checks. Use when the config outgrows a shell script. The floor-guard reference in [constraint-driven-development/references/floor-guard.md](constraint-driven-development/references/floor-guard.md) is the starting point for the guard-checks half of this.
 
 Most projects should stop at 2. Move to 3 when you're maintaining more than about thirty lines of check-running shell.
 
@@ -312,8 +310,8 @@ The skill was applied correctly when:
 
 ## See Also
 
-- `code-review-and-quality` — how to review; this skill decides what the review enforces
-- `ci-cd-and-automation` — building the pipeline these constraints run in
+- `playbooks/code-review-and-quality.md` — how to review; this skill decides what the review enforces
+- `playbooks/ci-cd-and-automation.md` — building the pipeline these constraints run in
 - `tdd` — the suite that coverage and mutation constraints measure
-- `security-and-hardening` — what the security dimension should contain
-- `performance-optimization` — where the performance numbers come from
+- `playbooks/security-and-hardening.md` — what the security dimension should contain
+- `playbooks/performance-optimization.md` — where the performance numbers come from

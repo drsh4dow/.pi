@@ -119,5 +119,5 @@ Map findings to the OWASP Top 10 for LLM Applications where relevant.
 ## Composition
 
 - **Invoke directly when:** the user wants a security-focused pass on a specific change, file, or system component.
-- **Invoke via:** the `shipping-and-launch` skill (parallel fan-out alongside `code-reviewer` and `test-engineer`).
+- **Invoke via:** `playbooks/shipping-and-launch.md` (parallel fan-out alongside `code-reviewer` and `test-engineer`).
 - **Do not invoke from another persona.** If `code-reviewer` flags something that warrants a deeper security pass, the user or the agent that started you initiates that pass — not the reviewer.

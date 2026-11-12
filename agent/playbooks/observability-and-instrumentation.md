@@ -1,7 +1,5 @@
 ---
-name: observability-and-instrumentation
-description: Adding logging, metrics, tracing, or alerting; shipping a production feature that needs evidence it works; or a production issue the available data can't explain.
-user-invocable: false
+when: Adding logging, metrics, tracing, or alerting; shipping a production feature that needs evidence it works; or a production issue the available data can't explain.
 ---
 
 # Observability and Instrumentation
@@ -21,8 +19,8 @@ Code you can't observe is code you can't operate. Observability is the ability t
 **NOT for:**
 
 - Diagnosing a failure happening right now — use `playbooks/bug-fix.md` (observability is what makes that playbook fast next time)
-- Profiling and optimizing measured slowness — use the `performance-optimization` skill
-- Launch-day monitoring checklists and rollback triggers — see the `shipping-and-launch` skill; this skill covers the instrumentation that feeds them
+- Profiling and optimizing measured slowness — use `playbooks/performance-optimization.md`
+- Launch-day monitoring checklists and rollback triggers — see `playbooks/shipping-and-launch.md`; this skill covers the instrumentation that feeds them
 
 ## Process
 
@@ -108,7 +106,7 @@ export const runLog = (entryPoint: "scheduler" | "replay_endpoint" | "cli", runI
 
 Both fields have to cross the same boundaries as the correlation ID — queue metadata, HTTP headers — or a worker re-derives the entry point and guesses. A field that merely correlates with an entry point is a hint, not an attribution: anything that can invoke the job can reproduce it.
 
-**Never log secrets, tokens, passwords, or full PII.** This is a hard rule from the `security-and-hardening` skill — telemetry pipelines are a classic data-leak path. Allowlist fields; don't log whole request bodies.
+**Never log secrets, tokens, passwords, or full PII.** This is a hard rule from `playbooks/security-and-hardening.md` — telemetry pipelines are a classic data-leak path. Allowlist fields; don't log whole request bodies.
 
 ### 4. Metrics
 

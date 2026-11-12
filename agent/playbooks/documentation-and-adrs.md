@@ -1,7 +1,5 @@
 ---
-name: documentation-and-adrs
-description: Recording an architecture decision (ADR) or the reasoning behind a design, or updating documentation after changing a public API or shipping a feature.
-user-invocable: false
+when: Recording an architecture decision (ADR) or the reasoning behind a design, or updating documentation after changing a public API or shipping a feature.
 ---
 
 # Documentation and ADRs
@@ -46,7 +44,7 @@ If the available evidence conflicts, surface the conflict rather than silently i
 
 ### Default format
 
-Write the ADR in the format of `../domain-modeling/ADR-FORMAT.md`.
+Write the ADR in the format of `~/.pi/agent/skills/domain-modeling/ADR-FORMAT.md`.
 
 ### ADR Lifecycle
 

@@ -27,13 +27,13 @@ Populate the scorecard only with values backed by these sources. Mark unmeasured
 
 ## Tooling
 
-| Capability                                                             | Tool / Source                                                                                               | Requires                                                                  |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Lab metrics, opportunities, diagnostics                                | Lighthouse JSON                                                                                             | None (parse a provided file)                                              |
-| Field metrics (real users, p75)                                        | CrUX API                                                                                                    | `CRUX_API_KEY` or `GOOGLE_API_KEY` env var                                |
-| Combined lab + field                                                   | PageSpeed Insights JSON                                                                                     | None for parsing; the user provides the JSON                              |
-| Live trace, LCP attribution, INP attribution, layout shift attribution | `agent-browser vitals --json`, `agent-browser profiler start` / `stop`                                      | The `agent-browser` skill (see the `browser-testing-with-devtools` skill) |
-| Manual terminal capture (Lighthouse, trace, screenshot)                | Lighthouse CLI (`npx lighthouse <url> --output json`), `agent-browser profiler`, `agent-browser screenshot` | `npx lighthouse` (no install) and the `agent-browser` CLI                 |
+| Capability                                                             | Tool / Source                                                                                               | Requires                                                                     |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Lab metrics, opportunities, diagnostics                                | Lighthouse JSON                                                                                             | None (parse a provided file)                                                 |
+| Field metrics (real users, p75)                                        | CrUX API                                                                                                    | `CRUX_API_KEY` or `GOOGLE_API_KEY` env var                                   |
+| Combined lab + field                                                   | PageSpeed Insights JSON                                                                                     | None for parsing; the user provides the JSON                                 |
+| Live trace, LCP attribution, INP attribution, layout shift attribution | `agent-browser vitals --json`, `agent-browser profiler start` / `stop`                                      | The `agent-browser` skill (see `playbooks/browser-testing-with-devtools.md`) |
+| Manual terminal capture (Lighthouse, trace, screenshot)                | Lighthouse CLI (`npx lighthouse <url> --output json`), `agent-browser profiler`, `agent-browser screenshot` | `npx lighthouse` (no install) and the `agent-browser` CLI                    |
 
 If a source is unavailable, do not fabricate. Skip the related section of the scorecard and continue with what you have.
 
@@ -177,12 +177,12 @@ Identify the framework and rendering model (React, Vue, Svelte, Angular, Next.js
 6. Do not recommend micro-optimizations without evidence they affect a Core Web Vital or another measurable metric.
 7. Acknowledge good performance practices — positive reinforcement matters.
 8. Use `~/.pi/agent/references/performance-checklist.md` as the minimum baseline for each area.
-9. Delegate granular optimization guidance and remediation steps to the `performance-optimization` skill — keep this report at the audit level.
+9. Delegate granular optimization guidance and remediation steps to `playbooks/performance-optimization.md` — keep this report at the audit level.
 10.   Fold AI-generated anti-patterns into their relevant area (Network or Rendering/JS); do not create a separate "AI" category.
 11.   In Deep mode, always state which artifacts were provided and which fields remain unmeasured.
 
 ## Composition
 
 - **Invoke directly when:** the user wants a performance-focused pass on a web application, a specific component, a route, or a live URL.
-- **Invoke via:** the `performance-optimization` skill, for a web app. The `shipping-and-launch` fan-out leaves it out: a performance audit applies only to web applications, so a pre-launch fan-out for every project would add noise in libraries and CLIs.
+- **Invoke via:** `playbooks/performance-optimization.md`, for a web app. The `playbooks/shipping-and-launch.md` fan-out leaves it out: a performance audit applies only to web applications, so a pre-launch fan-out for every project would add noise in libraries and CLIs.
 - **Do not invoke from another persona.** If `code-reviewer` flags a performance concern that warrants a deeper pass, surface that recommendation in the report; the user or the agent that started you initiates the deeper pass.

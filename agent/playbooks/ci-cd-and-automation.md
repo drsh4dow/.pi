@@ -1,7 +1,5 @@
 ---
-name: ci-cd-and-automation
-description: "Setting up or changing a build or deploy pipeline: automated quality gates, tests that run on every pull request, a deployment strategy."
-user-invocable: false
+when: "Setting up or changing a build or deploy pipeline: automated quality gates, tests that run on every pull request, a deployment strategy."
 ---
 
 # CI/CD and Automation
