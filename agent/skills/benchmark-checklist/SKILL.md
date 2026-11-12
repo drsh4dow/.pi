@@ -1,6 +1,6 @@
 ---
 name: benchmark-checklist
-description: Running a benchmark, or about to report or act on a speedup or regression you measured.
+description: Running a benchmark, measuring perf yourself, or about to report or act on a speedup or regression you measured.
 ---
 
 # Benchmark checklist

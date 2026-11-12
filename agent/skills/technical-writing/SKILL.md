@@ -1,6 +1,6 @@
 ---
 name: technical-writing
-description: Writing or reviewing docs, RFCs, or readmes.
+description: Writing or reviewing docs, RFCs, readmes, PR descriptions, or commit messages.
 ---
 
 # Technical writing
