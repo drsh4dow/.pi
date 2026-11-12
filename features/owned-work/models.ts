@@ -40,12 +40,12 @@ export const aliases = {
 	investigator: {
 		provider: "openai",
 		id: "gpt-6.1-sol",
-		use: "research, web search, code review, audits, investigation, and a second opinion from another model family",
+		use: "research, web search, code review, audits, investigation, mechanical scouting, fan-out aggregation, and a second opinion from another model family",
 	},
-	scout: {
-		provider: "openai",
-		id: "gpt-6-luna",
-		use: "mechanical scouting and fan-out aggregation",
+	divergent: {
+		provider: "opencode-go",
+		id: "glm-5.3-flash",
+		use: "the arena skill's third candidate, and nothing else",
 	},
 } as const satisfies Aliases;
 

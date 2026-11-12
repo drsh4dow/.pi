@@ -1,5 +1,5 @@
 ---
-model: scout
+model: investigator
 readonly: true
 role: leaf
 ---

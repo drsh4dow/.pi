@@ -7,7 +7,7 @@ description: "Asked how something works, before a nontrivial change or an archit
 
 Explore the codebase to answer "how does X work?" questions. Produce architectural explanations at the level of a senior engineer onboarding onto a subsystem, enough to build a working mental model, not so much that it reads like annotated source code.
 
-Every spawn is a read-only delegate whose prompt file is its `instructionsFile`. Explorers run on `scout`, and every explainer on `judgment`, as each file's profile sets.
+Every spawn is a read-only delegate whose prompt file is its `instructionsFile`. Explorers run on `investigator`, and every explainer on `judgment`, as each file's profile sets.
 
 ## 1. Assess complexity
 
