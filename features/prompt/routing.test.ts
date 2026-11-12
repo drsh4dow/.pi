@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { afterAll, expect, test } from "bun:test";
 
 import { parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -9,6 +9,7 @@ import * as Record from "effect/Record";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { loadEntries } from "./kinds.ts";
 import { collisions, corpusOf, rank, routingFailures } from "./routing.ts";
 
 const SkillFrontmatter = Schema.Struct({
@@ -28,10 +29,10 @@ const Triggers = Schema.fromJsonString(Schema.Record(Schema.String, Cases));
 /** The trigger prompts from addyosmani/agent-skills' `evals/cases/`, keyed by the skill each must route to. */
 const triggerFile = `${import.meta.dirname}/triggers.json`;
 
-const skillsDir = `${import.meta.dirname}/../../agent/skills`;
+const agentDir = `${import.meta.dirname}/../../agent`;
 
 /** The skills whose description pi shows the model, which are the ones that compete for a prompt. */
-const modelSkills = Effect.gen(function* () {
+const modelSkills = Effect.fn("modelSkills")(function* (skillsDir: string) {
 	const fs = yield* FileSystem.FileSystem;
 	const dirs = yield* fs.readDirectory(skillsDir);
 
@@ -50,6 +51,14 @@ const modelSkills = Effect.gen(function* () {
 	return Arr.flatten(found);
 });
 
+/** Every name and trigger the model picks among: each skill's description and each playbook's `when`. */
+const modelTriggers = Effect.fn("modelTriggers")(function* (dir: string) {
+	const skills = yield* modelSkills(`${dir}/skills`);
+	const { entries } = yield* loadEntries(`${dir}/playbooks`);
+
+	return [...skills, ...Arr.map(entries, ({ name, when }) => ({ name, description: when }))];
+});
+
 test("a prompt ranks the skill whose name and description share its words first", () => {
 	const corpus = corpusOf([
 		{ name: "release-notes", description: "Write release notes. Use when shipping a version." },
@@ -65,7 +74,7 @@ test("every trigger prompt routes to its own skill over every other skill the mo
 	Effect.runPromise(
 		Effect.gen(function* () {
 			const fs = yield* FileSystem.FileSystem;
-			const skills = yield* modelSkills;
+			const skills = yield* modelSkills(`${agentDir}/skills`);
 			const triggers = yield* Effect.flatMap(fs.readFileString(triggerFile), Schema.decodeEffect(Triggers));
 			const names = Arr.map(skills, ({ name }) => name);
 
@@ -80,11 +89,45 @@ test("every trigger prompt routes to its own skill over every other skill the mo
 		}).pipe(Effect.provide(NodeServices.layer)),
 	));
 
-test("no two descriptions the model sees read alike", () =>
+const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/routing-test-${String(process.pid)}`;
+
+test("a playbook whose trigger reads like a skill's description, or that shares a skill's name, collides with it", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const skills = yield* modelSkills;
+			const fs = yield* FileSystem.FileSystem;
+			const flaky = "Find flaky tests. Use when a test fails only sometimes.";
 
-			expect(collisions(corpusOf(skills))).toEqual([]);
+			const files = [
+				["skills/flaky-tests/SKILL.md", `---\nname: flaky-tests\ndescription: ${flaky}\n---\nBody.`],
+				[
+					"skills/release-notes/SKILL.md",
+					"---\nname: release-notes\ndescription: Write release notes.\n---\nBody.",
+				],
+				["playbooks/flaky-hunt.md", `---\nwhen: ${flaky}\n---\nBody.`],
+				["playbooks/release-notes.md", "---\nwhen: Cut a version and tag it.\n---\nBody."],
+			] as const;
+
+			yield* Effect.forEach(files, ([file, text]) =>
+				Effect.andThen(
+					fs.makeDirectory(Str.replace(/\/[^/]*$/u, "")(`${scratch}/${file}`), { recursive: true }),
+					fs.writeFileString(`${scratch}/${file}`, text),
+				),
+			);
+
+			const triggers = yield* modelTriggers(scratch);
+			const found = Arr.map(collisions(triggers), Str.replace(/ are \S+ alike$/u, " are alike"));
+
+			expect(found).toEqual(["two entries are named release-notes", "flaky-tests and flaky-hunt are alike"]);
 		}).pipe(Effect.provide(NodeServices.layer)),
 	));
+
+test("no two skill descriptions or playbook triggers the model sees read alike", () =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const triggers = yield* modelTriggers(agentDir);
+
+			expect(collisions(triggers)).toEqual([]);
+		}).pipe(Effect.provide(NodeServices.layer)),
+	));
+
+afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${scratch}`.quiet())));

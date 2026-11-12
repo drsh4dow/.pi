@@ -7,7 +7,8 @@ import * as Str from "effect/String";
 /**
  * A lexical stand-in for how pi routes a prompt to a skill, ported from the Tier-2 eval in addyosmani/agent-skills:
  * stemmed TF-IDF over each skill's name and description. It cannot judge meaning, but it catches a description that
- * lacks the words users say, one that outranks the skill a prompt belongs to, and two descriptions that read alike.
+ * lacks the words users say, one that outranks the skill a prompt belongs to, and two descriptions that read alike. A
+ * playbook's name and `when` count as a skill's name and description, since the model picks among both lists.
  */
 export interface Skill {
 	readonly name: string;
@@ -195,11 +196,17 @@ export const routingFailures = ({
 
 const collisionLimit = 0.75;
 
-/** Each pair of skills whose name and description vectors are at least `collisionLimit` alike. */
-export const collisions = (corpus: Corpus) => {
+/**
+ * Each name two skills share, which one corpus document cannot tell apart, then each pair of skills whose name and
+ * description vectors are at least `collisionLimit` alike.
+ */
+export const collisions = (skills: ReadonlyArray<Skill>) => {
+	const names = Arr.map(skills, ({ name }) => name);
+	const shared = Arr.dedupe(Arr.filter(names, (name, index) => names.indexOf(name) !== index));
+	const corpus = corpusOf(skills);
 	const vectors = Arr.map([...corpus.docs], ([name, doc]) => ({ name, vector: weigh(doc, corpus.idf) }));
 
-	return Arr.flatMap(vectors, (left, index) =>
+	const alike = Arr.flatMap(vectors, (left, index) =>
 		Arr.flatMap(Arr.drop(vectors, index + 1), (right) => {
 			const similarity = cosine(left.vector, right.vector);
 
@@ -210,4 +217,6 @@ export const collisions = (corpus: Corpus) => {
 			return [`${left.name} and ${right.name} are ${similarity.toFixed(2)} alike`];
 		}),
 	);
+
+	return [...Arr.map(shared, (name) => `two entries are named ${name}`), ...alike];
 };
