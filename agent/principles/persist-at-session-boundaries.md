@@ -7,5 +7,5 @@ for: [root]
 
 A fresh session is safe at a completed task boundary, not at an arbitrary token count.
 
-- Before leaving the current session, persist: the accepted scope and decisions in the spec or plan; the current task status and the next pending task; the files changed and the working-tree state; the exact verification commands and outcomes; unresolved questions, risks, and required approvals.
-- In the fresh session, read the rules, spec, plan, task status, and actual `git status` before acting.
+- Before leaving the current session, persist in the state folder, `~/.local/state/pi-agent/<project>/<work>/`. `STATE.md` holds the destination and the human's standing instructions in their words, the accepted scope, the current task status and the next pending task, the files changed and the working-tree state, the exact verification commands and outcomes, and unresolved questions and risks. `decisions.tsv` holds the decisions. `USER_ACTION_ITEMS.md` holds the approvals and calls that wait on the human.
+- In the fresh session, read the rules, the state folder's three files, and actual `git status` before acting.
