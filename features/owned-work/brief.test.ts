@@ -185,6 +185,13 @@ const briefRows: ReadonlyArray<{
 		expect: refused("model anthropic/nope, which the alias gone names, is not in the model registry"),
 	},
 	{
+		name: "a name that is no alias and no provider/id is a tool error that lists the aliases",
+		call: { name: "m", message: "m", role: "leaf", model: "scout" },
+		expect: refused(
+			"scout is not an alias: name an alias (`deep`, `quick`, `gone`) or a `provider/id`, your own included",
+		),
+	},
+	{
 		name: "an instructions file that cannot be read is a tool error",
 		call: { name: "m", message: "m", role: "leaf", instructionsFile: "missing.md" },
 		expect: refused("cannot read instructionsFile missing.md: NotFound"),

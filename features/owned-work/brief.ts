@@ -90,33 +90,35 @@ const aliasedModel = (ctx: Caller, { provider: home, id }: Alias) => {
 	return `${provider}/${id}`;
 };
 
-const modelOf = (ctx: Caller, { aliases }: ModelTable, name: ModelName) => {
-	const { model, source } = ModelName.$match(name, {
-		Spelled: ({ key }) => ({ model: key, source: "" }),
-		Alias: ({ alias }) =>
-			Option.match(Rec.get(aliases, alias), {
-				onNone: () => ({ model: alias, source: "" }),
-				onSome: (entry) => ({
-					model: aliasedModel(ctx, entry),
-					source: `, which the alias ${alias} names,`,
-				}),
-			}),
-	});
-
-	return Effect.fromOption(
-		Arr.findFirst(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === model),
-		() => BadDelegate.make({ why: `model ${model}${source} is not in the model registry` }),
-	).pipe(Effect.as(model));
-};
-
-/** The thinking level a delegate starts at unless its instructions file names one. pi clamps it to what the model supports. */
-const delegateThinking = "high";
-
 const modelChoices = ({ aliases }: ModelTable) => {
 	const named = Arr.map(Rec.keys(aliases), (alias) => `\`${alias}\``);
 
 	return `an alias (${Arr.join(named, ", ")}) or a \`provider/id\`, your own included`;
 };
+
+const modelOf = (ctx: Caller, table: ModelTable, name: ModelName) =>
+	Effect.flatMap(
+		ModelName.$match(name, {
+			Spelled: ({ key }) => Effect.succeed({ model: key, source: "" }),
+			Alias: ({ alias }) =>
+				Effect.fromOption(Rec.get(table.aliases, alias), () =>
+					BadDelegate.make({ why: `${alias} is not an alias: name ${modelChoices(table)}` }),
+				).pipe(
+					Effect.map((entry) => ({
+						model: aliasedModel(ctx, entry),
+						source: `, which the alias ${alias} names,`,
+					})),
+				),
+		}),
+		({ model, source }) =>
+			Effect.fromOption(
+				Arr.findFirst(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === model),
+				() => BadDelegate.make({ why: `model ${model}${source} is not in the model registry` }),
+			).pipe(Effect.as(model)),
+	);
+
+/** The thinking level a delegate starts at unless its instructions file names one. pi clamps it to what the model supports. */
+const delegateThinking = "high";
 
 const absoluteOf = Effect.fn("absoluteOf")(function* (cwd: string, file: string) {
 	const path = yield* Path.Path;
