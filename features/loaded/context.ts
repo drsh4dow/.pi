@@ -5,11 +5,11 @@ import * as Arr from "effect/Array";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-const Kind = Schema.Literals(["skill", "principle"]);
+const Kind = Schema.Literals(["skill", "principle", "playbook"]);
 
 export type GuideKind = typeof Kind.Type;
 
-/** A skill or principle file: the instructions an agent reads into its context when its trigger matches. */
+/** A skill, principle or playbook file: the instructions an agent reads into its context when its trigger matches. */
 export interface Guide {
 	readonly kind: GuideKind;
 	readonly name: string;

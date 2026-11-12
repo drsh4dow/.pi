@@ -1,4 +1,4 @@
-// What the panel shows: the skills and principles each pi agent's model sees now. Each pi writes its own set to the
+// What the panel shows: the skills, principles and playbooks each pi agent's model sees now. Each pi writes its own set to the
 // `pi.context` label on its terminal (~/.pi/features/loaded), so this file only reads labels and walks parents.
 import { focused, panes, terminals } from "herdr";
 
