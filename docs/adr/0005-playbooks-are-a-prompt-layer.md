@@ -2,7 +2,7 @@
 
 Skills and principles each fire on their own trigger, so nothing gave a kind of work its ordered steps. pstack, Lauren Tan's playbooks, skills and principles (cursor/plugins at `a5539b1`), does that with playbooks: one workflow per kind of work, such as a bug fix, a feature or opening a PR. We made the playbook a third prompt layer beside the skill and the principle.
 
-A playbook is `agent/playbooks/<name>.md`, with the frontmatter a principle has: a one-line `when` and an optional `for`. Files in the subfolders of `agent/playbooks/` are reference files, not playbooks. The prompt lists each playbook that fits the agent's role as `name: when` in `<playbooks dir="…">`, and `<playbooks-workflow>` in `agent/SYSTEM.md` has the agent read every playbook whose `when` matches before it acts. Playbooks load the way principles do. Several can apply, and a step can send the agent to another playbook. The agent announces none of them. It runs their steps in order and names a step it skips in its report as `skip: <reason>`.
+A playbook is `agent/playbooks/<name>.md`, with the frontmatter a principle has: a one-line `when` and an optional `for`. Files in the subfolders of `agent/playbooks/` are reference files, not playbooks. The prompt lists each playbook that fits the agent's role as `name: when` in `<playbooks dir="…">`, and `<playbooks-workflow>`, which the prompt feature writes just before that list, has the agent read every playbook whose `when` matches before it acts. Playbooks load the way principles do. Several can apply, and a step can send the agent to another playbook. The agent announces none of them. It runs their steps in order and names a step it skips in its report as `skip: <reason>`.
 
 ## Considered options
 

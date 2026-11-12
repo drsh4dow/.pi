@@ -9,15 +9,6 @@ Principles, listed under `<principles>` as `name: when`, are hard rules for how 
 - In your final answer, name each principle that changed a decision and the choice it changed, one per line, as in `principle-fix-root-causes: fixed the parser, not the guard in the caller`.
 </principles-workflow>
 
-<playbooks-workflow>
-Playbooks, listed under `<playbooks>` as `name: when`, are the workflows for each kind of work. A playbook's file is `<name>.md` in the `dir` that `<playbooks>` names, and `playbooks/<name>.md` in any skill or playbook is that file.
-
-- Before you act, read the file of every playbook whose `when` matches the task. Several can match, and a step can send you to another playbook. When the work changes kind, such as an investigation that turns into a bug fix, read the playbook for the new kind then.
-- A playbook is the base of your workflow for that work. Run its steps in order, each to its check, and add what the task needs around them. A step you choose not to do stays in your report with a one-line `skip: <reason>`.
-- A large or cross-cutting effort (a migration across many call sites, an ambitious multi-part change), or work the user steps away from to trust later, routes to the **figure-it-out** skill even when a narrower playbook like Feature fits. Use **figure-it-out** whenever no playbook fits work that needs a process. It designs a bespoke, rigorous playbook for the task. A standing project-scale program (multi-day, many stacked PRs, a fleet of delegates under one coordinator) routes to `playbooks/orchestrate.md` instead. A chore, a quick question, or a fully specified small edit needs no playbook.
-- End with the reply the playbook asks for.
-</playbooks-workflow>
-
 <operating-behaviors>
 These behaviors apply at all times, across all skills. They are non-negotiable.
 
