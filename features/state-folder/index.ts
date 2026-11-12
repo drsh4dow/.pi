@@ -1,4 +1,11 @@
-import type { ExtensionAPI, ExtensionContext, SessionEntry, ToolCallEvent } from "@earendil-works/pi-coding-agent";
+import type {
+	ExtensionAPI,
+	ExtensionContext,
+	SessionEntry,
+	ToolCallEvent,
+	ToolResultEvent,
+	ToolResultEventResult,
+} from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Config from "effect/Config";
@@ -10,6 +17,7 @@ import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { labelTerminal, TerminalAddress } from "../../clients/hc/index.ts";
+import { actionItemProblems, type FormatProblem, requiredLabels } from "./action-items.ts";
 
 /** The hc label on an agent's own terminal that names the state folder it last wrote to, which herdr-app's Trace and Actions panels read. */
 export const labelKey = "pi.state";
@@ -30,10 +38,22 @@ const statePath = "/.local/state/pi-agent/";
 const segment = "[^/\\s\"'`$\\\\;|&<>()*?{}]+";
 const escaped = Str.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
 
-/** Every state folder, `~/.local/state/pi-agent/<project>/<work>`, that a tool call's input names, as an absolute path. */
-const foldersIn = ({ home, input }: { readonly home: string; readonly input: string }): ReadonlyArray<string> => {
+/**
+ * Every state folder, `~/.local/state/pi-agent/<project>/<work>`, that a tool call's input names, as an absolute path.
+ * With a `file`, only the folders the input names that file in.
+ */
+const foldersIn = ({
+	home,
+	input,
+	file = "",
+}: {
+	readonly home: string;
+	readonly input: string;
+	readonly file?: string;
+}): ReadonlyArray<string> => {
 	const homes = Arr.join([escaped(home), "~", String.raw`\$HOME`, String.raw`\$\{HOME\}`], "|");
-	const pattern = new RegExp(`(?:${homes})${escaped(statePath)}(${segment}/${segment})`, "gu");
+	const tail = file === "" ? "" : escaped(`/${file}`);
+	const pattern = new RegExp(`(?:${homes})${escaped(statePath)}(${segment}/${segment})${tail}`, "gu");
 	const named = Arr.getSomes(Arr.map([...Str.matchAll(pattern)(input)], (match) => Option.fromNullishOr(match[1])));
 
 	return Arr.dedupe(Arr.map(named, (folder) => `${home}${statePath}${folder}`));
@@ -87,6 +107,54 @@ export const wroteTo = Effect.fn("wroteTo")(function* (watched: Watched, toolCal
 	return Option.map(Arr.last(changed), ([folder]) => folder);
 });
 
+const actionItems = "USER_ACTION_ITEMS.md";
+
+const formatPointer = `The format is in the ${actionItems} bullet of ~/.pi/agent/roles/root.md: each item is a "## <title>" line, then a line starting with each of ${Arr.join(requiredLabels, ", ")}.`;
+
+const problemReport = (path: string, problems: ReadonlyArray<FormatProblem>) =>
+	Arr.match(problems, {
+		onEmpty: () => Option.none<string>(),
+		onNonEmpty: (found) =>
+			Option.some(
+				Arr.join(
+					[
+						`${path} breaks the action item format:`,
+						...Arr.map(found, ({ line, message }) => `line ${String(line)}: ${message}`),
+					],
+					"\n",
+				),
+			),
+	});
+
+export const checkedResult = Effect.fn("checkedResult")(function* ({
+	home,
+	result,
+}: {
+	readonly home: string;
+	readonly result: Pick<ToolResultEvent, "input" | "content">;
+}) {
+	const fs = yield* FileSystem.FileSystem;
+	const input = yield* encodeInput(result.input);
+	const paths = Arr.map(foldersIn({ home, input, file: actionItems }), (folder) => `${folder}/${actionItems}`);
+
+	const reports = yield* Effect.forEach(paths, (path) =>
+		Effect.map(
+			Effect.option(fs.readFileString(path)),
+			Option.flatMap((file) => problemReport(path, actionItemProblems(file))),
+		),
+	);
+
+	return Arr.match(Arr.getSomes(reports), {
+		onEmpty: () => Option.none<ToolResultEventResult>(),
+		// With no structuredContent here pi drops the tool's own, so a codemode script that made the call gets the error.
+		onNonEmpty: (found) =>
+			Option.some<ToolResultEventResult>({
+				content: [...result.content, { type: "text", text: Arr.join([...found, formatPointer], "\n\n") }],
+				isError: true,
+			}),
+	});
+});
+
 /** The state folder this branch of the session last wrote to, from the entries `stateFolder` appends. */
 export const lastFolder = (branch: ReadonlyArray<SessionEntry>): Option.Option<string> => {
 	const recorded = Arr.getSomes(Arr.map(branch, (entry) => decodeEntry(entry)));
@@ -120,6 +188,14 @@ const watch = Effect.fn("watch")(function* (tracker: Tracker, { toolCallId, inpu
 	yield* watchCall(tracker.watched, { home, toolCallId, input: text });
 });
 
+const check = Effect.fn("check")(function* (result: ToolResultEvent) {
+	const home = yield* Config.String("HOME");
+
+	const checked = yield* checkedResult({ home, result });
+
+	return Option.getOrUndefined(checked);
+});
+
 const settle = Effect.fn("settle")(function* (
 	tracker: Tracker,
 	{ pi, toolCallId }: { readonly pi: Pick<ExtensionAPI, "appendEntry">; readonly toolCallId: string },
@@ -135,13 +211,19 @@ const settle = Effect.fn("settle")(function* (
 	yield* publish(tracker);
 });
 
-const run = <Failure>(effect: Effect.Effect<void, Failure, FileSystem.FileSystem>) =>
-	Effect.runPromise(effect.pipe(Effect.ignore({ log: "Warn" }), Effect.provide(NodeServices.layer)));
+const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem>) =>
+	Effect.runPromise(
+		effect.pipe(
+			Effect.catchCause((cause) => Effect.logWarning(cause)),
+			Effect.provide(NodeServices.layer),
+		),
+	);
 
 /**
  * Keeps the `pi.state` label on this agent's hc terminal equal to the state folder its session last wrote to, found by
  * watching its own tool calls, and records each new folder in the session so `/resume`, `/reload` and `/tree` restore
- * it. No folder, no label. Outside herdr-core it only records.
+ * it. No folder, no label. Outside herdr-core it only records. A tool call that names a state folder's
+ * `USER_ACTION_ITEMS.md` gets the file's format problems in its result.
  */
 export const stateFolder = (pi: Pick<ExtensionAPI, "on" | "appendEntry">) => {
 	const tracker: Tracker = { watched: new Map(), folder: Option.none(), published: "" };
@@ -155,6 +237,7 @@ export const stateFolder = (pi: Pick<ExtensionAPI, "on" | "appendEntry">) => {
 	pi.on("session_start", (_event, ctx) => restore(ctx));
 	pi.on("session_tree", (_event, ctx) => restore(ctx));
 	pi.on("tool_call", (event) => run(watch(tracker, event)));
+	pi.on("tool_result", (event) => run(check(event)));
 	pi.on("tool_execution_end", ({ toolCallId }) => run(settle(tracker, { pi, toolCallId })));
 	pi.on("session_shutdown", () => {
 		tracker.folder = Option.none();
