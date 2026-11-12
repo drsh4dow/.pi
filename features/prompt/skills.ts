@@ -10,7 +10,7 @@ import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { Role, Roles } from "../owned-work/index.ts";
-import type { Problem } from "./principles.ts";
+import type { Problem } from "./kinds.ts";
 
 /** The one key of a skill's frontmatter the prompt reads. pi reads the rest. */
 const Audience = Schema.Struct({ for: Schema.optionalKey(Roles) });
