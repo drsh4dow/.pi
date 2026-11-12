@@ -109,6 +109,9 @@ const modelOf = (ctx: Caller, { aliases }: ModelTable, name: ModelName) => {
 	).pipe(Effect.as(model));
 };
 
+/** The thinking level a delegate starts at unless its instructions file names one. pi clamps it to what the model supports. */
+const delegateThinking = "high";
+
 const modelChoices = ({ aliases }: ModelTable) => {
 	const named = Arr.map(Rec.keys(aliases), (alias) => `\`${alias}\``);
 
@@ -188,7 +191,10 @@ export const parseCall = Effect.fn("parseCall")(function* (
 		message: call.message,
 		role,
 		model,
-		thinking: Option.flatMap(profile, (own) => own.thinking),
+		thinking: Option.orElseSome(
+			Option.flatMap(profile, (own) => own.thinking),
+			() => delegateThinking,
+		),
 		readOnly: Option.exists(profile, (own) => own.readOnly),
 		instructions: Option.map(profile, ({ file, text }) => ({ file, text })),
 	};

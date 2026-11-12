@@ -67,12 +67,12 @@ const briefRows: ReadonlyArray<{
 		expect: refused(noModel),
 	},
 	{
-		name: "a caller that spells its own model starts its delegate on it, at pi's default thinking level",
+		name: "a caller that spells its own model starts its delegate on it at high, whatever its own thinking level",
 		call: { name: "m", message: "m", role: "leaf", model: "openai/gpt-6-luna" },
 		expect: handed({ model: "openai/gpt-6-luna" }),
 	},
 	{
-		name: "a model the caller names runs at pi's default thinking level for it",
+		name: "a model the caller names runs at the high thinking level",
 		call: { name: "m", message: "m", role: "leaf", model: "anthropic/claude-opus-5-5" },
 		expect: handed({ model: "anthropic/claude-opus-5-5" }),
 	},

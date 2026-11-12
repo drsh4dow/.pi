@@ -85,7 +85,7 @@ export const callerOf = (): Parameters<typeof delegate.execute>[4] => {
 	const caller = {
 		cwd: `${fixtures}/work`,
 		model: luna,
-		thinkingLevel: "high",
+		thinkingLevel: "low",
 		modelRegistry: { getAll: () => [luna, opus, proxied] },
 	};
 
@@ -107,7 +107,7 @@ const plainStart: Shown = {
 	name: "m",
 	role: "leaf",
 	model: "openai/gpt-6-luna",
-	thinking: undefined,
+	thinking: "high",
 	readOnly: false,
 	instructions: undefined,
 	cwd: "/",
