@@ -49,6 +49,22 @@
 			}
 		]
 	},
+	"automate-me": {
+		"positive": [
+			{
+				"prompt": "Capture how I work into a mode skill"
+			},
+			{
+				"prompt": "Refresh my sh4dow-mode skill from my recent sessions"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Reflect on this session and turn the lessons into skill edits",
+				"owner": "reflect"
+			}
+		]
+	},
 	"autonomous-run": {
 		"positive": [
 			{
@@ -120,6 +136,22 @@
 			{
 				"prompt": "The stack is green, land it",
 				"owner": "shipping"
+			}
+		]
+	},
+	"blast-radius": {
+		"positive": [
+			{
+				"prompt": "What's the blast radius of this change?"
+			},
+			{
+				"prompt": "What could this break beyond the diff?"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Review this pull request before I merge it",
+				"owner": "code-review-and-quality"
 			}
 		]
 	},
@@ -297,6 +329,22 @@
 			}
 		]
 	},
+	"correct": {
+		"positive": [
+			{
+				"prompt": "That's wrong, and stop agents from repeating this mistake in this repo"
+			},
+			{
+				"prompt": "Make it impossible for agents to make this class of mistake again"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Reflect on this session and turn the lessons into skill edits",
+				"owner": "reflect"
+			}
+		]
+	},
 	"deprecation-and-migration": {
 		"positive": [
 			{
@@ -386,6 +434,23 @@
 			}
 		]
 	},
+	"figure-it-out": {
+		"positive": [
+			{
+				"prompt": "I'm going to sleep, figure it out yourself and implement the fixes"
+			},
+			{
+				"prompt": "Migrate every call site of the old logger across the monorepo",
+				"topK": 3
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Run this whole project over the coming weeks with many stacked PRs",
+				"owner": "orchestrate"
+			}
+		]
+	},
 	"frontend-ui-engineering": {
 		"positive": [
 			{
@@ -420,9 +485,20 @@
 		"positive": [
 			{
 				"prompt": "Grill me on the requirements, the ask is fuzzy"
+			},
+			{
+				"prompt": "Interview me about this plan until we agree"
+			},
+			{
+				"prompt": "grill me"
 			}
 		],
-		"negative": []
+		"negative": [
+			{
+				"prompt": "Refine my rough idea into something concrete",
+				"owner": "idea-refine"
+			}
+		]
 	},
 	"hillclimb": {
 		"positive": [
@@ -467,6 +543,35 @@
 			}
 		]
 	},
+	"in-your-own-words": {
+		"positive": [
+			{
+				"prompt": "Restate in your own words what you think my goals are"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "I want a deeper version of this task, not a bigger one",
+				"owner": "sharpen"
+			}
+		]
+	},
+	"interrogate": {
+		"positive": [
+			{
+				"prompt": "Interrogate this change"
+			},
+			{
+				"prompt": "Adversarial review of this design: try to break it"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Review this pull request before I merge it",
+				"owner": "code-review-and-quality"
+			}
+		]
+	},
 	"investigation": {
 		"positive": [
 			{
@@ -489,6 +594,38 @@
 			{
 				"prompt": "Research the Stripe API and save the findings as a cited markdown file in docs/",
 				"owner": "research"
+			}
+		]
+	},
+	"ketchup": {
+		"positive": [
+			{
+				"prompt": "ketchup"
+			},
+			{
+				"prompt": "Catch me up on what changed since my last message"
+			},
+			{
+				"prompt": "What waits on me? Catch me up"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "What was I working on last week?",
+				"owner": "recall"
+			}
+		]
+	},
+	"ketchup-video": {
+		"positive": [
+			{
+				"prompt": "Catch me up as a video"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Catch me up on what changed",
+				"owner": "ketchup"
 			}
 		]
 	},
@@ -662,6 +799,40 @@
 			}
 		]
 	},
+	"prototyping": {
+		"positive": [
+			{
+				"prompt": "Build a throwaway logic demo to check the state model feels right",
+				"topK": 3
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Prototype the new settings layout so we can decide",
+				"owner": "prototype"
+			}
+		]
+	},
+	"recall": {
+		"positive": [
+			{
+				"prompt": "What was I working on last week?"
+			},
+			{
+				"prompt": "Where did I leave off on the dealflow project?"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Catch me up on what changed since my last message",
+				"owner": "ketchup"
+			},
+			{
+				"prompt": "Continue the work described in /tmp/handoff.md",
+				"owner": "session-pickup"
+			}
+		]
+	},
 	"refactoring": {
 		"positive": [
 			{
@@ -678,6 +849,35 @@
 			{
 				"prompt": "Simplify this function, it is hard to read",
 				"owner": "code-simplification"
+			}
+		]
+	},
+	"reflect": {
+		"positive": [
+			{
+				"prompt": "Reflect on this session and turn the lessons into skill edits"
+			},
+			{
+				"prompt": "reflect"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "You made a mistake, make it impossible from now on",
+				"owner": "correct"
+			}
+		]
+	},
+	"research": {
+		"positive": [
+			{
+				"prompt": "Research the Stripe webhooks docs and save the findings as a cited markdown file"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "How does the extractor model work?",
+				"owner": "investigation"
 			}
 		]
 	},
@@ -751,6 +951,19 @@
 			}
 		]
 	},
+	"sharpen": {
+		"positive": [
+			{
+				"prompt": "I want a deeper version of this task, not a bigger one. Don't start it yet."
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Restate in your own words what you think my goals are",
+				"owner": "in-your-own-words"
+			}
+		]
+	},
 	"shipping": {
 		"positive": [
 			{
@@ -797,6 +1010,22 @@
 			}
 		]
 	},
+	"show-me-your-work": {
+		"positive": [
+			{
+				"prompt": "Keep a decision trail while you work, I'm stepping away"
+			},
+			{
+				"prompt": "Log every decision with its evidence so I can review it later"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Run this whole project, it will take weeks",
+				"owner": "orchestrate"
+			}
+		]
+	},
 	"source-driven-development": {
 		"positive": [
 			{
@@ -816,6 +1045,25 @@
 			},
 			{
 				"prompt": "Break the spec into ordered tasks"
+			}
+		]
+	},
+	"tdd": {
+		"positive": [
+			{
+				"prompt": "Write a failing test for the bug before fixing it"
+			},
+			{
+				"prompt": "Use TDD for this fix"
+			},
+			{
+				"prompt": "Add a regression test that fails before the fix"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Checkout throws a 500, reproduce and fix it",
+				"owner": "bug-fix"
 			}
 		]
 	},
@@ -879,6 +1127,11 @@
 				"prompt": "Write me a commit message for this diff."
 			}
 		],
-		"negative": []
+		"negative": [
+			{
+				"prompt": "Open a PR for this branch",
+				"owner": "opening-a-pr"
+			}
+		]
 	}
 }

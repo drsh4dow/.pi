@@ -1,6 +1,6 @@
 ---
 name: show-me-your-work
-description: "Long, autonomous, or multi-phase work, or any task the user steps away from to review later: a decision trail with one row per decision, its why, evidence and result."
+description: 'Long, autonomous, or multi-phase work, or any task the user steps away from to review later ("going to bed", "trust it when I''m back"): a decision trail with one row per decision, its why, evidence and result.'
 ---
 
 # Show me your work
