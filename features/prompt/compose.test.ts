@@ -8,7 +8,7 @@ import {
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import { compose, type Layers } from "./compose.ts";
+import { compose, type Layers, playbooksWorkflow } from "./compose.ts";
 
 const options = (overrides: Partial<NormalizedBuildSystemPromptOptions>): NormalizedBuildSystemPromptOptions => ({
 	customPrompt: "you are a coding agent.\n",
@@ -53,7 +53,7 @@ const preambleRows = [
 		expect: "you are a coding agent.\n\n<role>\nroot\n</role>",
 	},
 	{
-		name: "an owner reads SYSTEM.md, its role file, its instructions, the principles index, then the playbooks index",
+		name: "an owner reads SYSTEM.md, its role file, its instructions, the principles index, then the playbooks workflow and index",
 		shared: "you are a coding agent.",
 		layers: {
 			role: "<role>\nowner\n</role>\n",
@@ -62,8 +62,7 @@ const preambleRows = [
 			playbooks: Option.some("<playbooks>\n…\n</playbooks>"),
 			skills: [],
 		},
-		expect:
-			"you are a coding agent.\n\n<role>\nowner\n</role>\n\n<instructions>\nReview one diff.\n</instructions>\n\n<principles>\n…\n</principles>\n\n<playbooks>\n…\n</playbooks>",
+		expect: `you are a coding agent.\n\n<role>\nowner\n</role>\n\n<instructions>\nReview one diff.\n</instructions>\n\n<principles>\n…\n</principles>\n\n${playbooksWorkflow}\n\n<playbooks>\n…\n</playbooks>`,
 	},
 	{
 		name: "with no SYSTEM.md the role layer still comes first",
