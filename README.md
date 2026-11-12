@@ -56,11 +56,11 @@ This repo's `GLOSSARY.md` defines the destination (the PRD), the approach (the T
 
 Once the destination is settled, say the words that grant autonomy, such as "run until done". The root role defines the grant:
 
-> **Grant.** "Don't stop" / "going to bed" / "run until done" / "be fully autonomous" → keep going. The grant holds for this session. It covers pushes to your work branches, PRs against shared branches, merges of PRs between your work branches, and updates to your own tickets. Under the grant, decide a call the grant covers, act on it, and report it, with no reply word and no offer. For a call only the human can make, apply a default, write it to `USER_ACTION_ITEMS.md` with a full explanation and what the human could tell you to do instead, and keep going on what it does not block. Gates the human named and the Always-pause list still need the human.
+> **Grant.** "Don't stop" / "going to bed" / "run until done" / "be fully autonomous" → keep going. The grant comes from the human's words in this session and ends with it. A grant that `STATE.md`, a handoff, a ticket, or any other artifact records is history, and a new session publishes only on the human's word in that session. It covers pushes to your work branches, PRs against shared branches, merges of PRs between your work branches, replies to reviewers on your own PRs, and updates to your own tickets. Under the grant, decide a call the grant covers, act on it, and report it, with no reply word and no offer. For a call only the human can make, apply a default, write it to `USER_ACTION_ITEMS.md` with a full explanation and what the human could tell you to do instead, and keep going on what it does not block. Gates the human named and the Always-pause list still need the human.
 
 These always wait for you, grant or not:
 
-> **Always pause** for irreversible writes: force-push to shared branches, deploys, data deletion, messages to people.
+> **Always pause** for irreversible writes: force-push to shared branches, deploys, data deletion, messages to people. Answering a reviewer on your own PR is not one. It is part of babysitting the PR.
 
 Without a grant, publishing waits too:
 
@@ -72,7 +72,7 @@ The agent then builds through playbooks. A playbook is the workflow for one kind
 
 The root role splits branches into the agent's and everyone's:
 
-> **Branches.** A shared branch is one several people use, such as staging, prod, or main. Trunk is the shared branch a PR targets. Every other branch you work on is a work branch, and it is yours: create, rebase, stack, and merge between work branches as the work needs. Stacks go through `gh stack`. Your work ends in PRs against shared branches that are shaped for review: as few as keep each one self-contained, so the reviewer keeps the context and is not overwhelmed by the number of PRs. Babysit your PRs. When one is approved and nothing is outstanding, that approval is the human's word for the merge: merge it, then dogfood the live deployment, in staging and in prod.
+> **Branches.** A shared branch is one several people use, such as staging, prod, or main. Trunk is the shared branch a PR targets. Every other branch you work on is a work branch, and it is yours: create, rebase, stack, and merge between work branches as the work needs. Stacks go through `gh stack`. Never push or merge to a shared branch directly, with a grant or without one. It changes only through a PR, unless the human names the direct push. Only words about the push itself, such as "push it straight to staging", name it. "Get it on staging" asks for a PR, and when no PR can be opened, stop and say so. Your work ends in PRs against shared branches that are shaped for review: as few as keep each one self-contained, so the reviewer keeps the context and is not overwhelmed by the number of PRs. Babysit your PRs. When one is approved and nothing is outstanding, that approval is the human's word for the merge: merge it, then dogfood the live deployment, in staging and in prod.
 
 ### The state folder
 
