@@ -6,7 +6,7 @@ import * as Option from "effect/Option";
 
 import type { RunSpec } from "../../clients/hc/index.ts";
 import { PiCli } from "../../clients/pi-cli/index.ts";
-import { atLevel, childExtensions, inheritedEnv, launch, selfFromEnv } from "./child.ts";
+import { atLevel, type ChildRole, childExtensions, inheritedEnv, launch, selfFromEnv } from "./child.ts";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { commandSpec } from "./ledger.ts";
 import { WorkRef } from "./work.ts";
@@ -135,15 +135,16 @@ const parentEnv = inheritedEnv({
 	PATH: "/bin",
 	HC_TERMINAL_ID: "t9",
 	PI_OWNED_WORK_LEVEL: "2",
+	PI_OWNED_WORK_ROLE: "owner",
 	PI_OWNED_WORK_SLICE: "pi-ow-test-delegate1",
 });
 
 const brief = { name: "Review the retry cap, again!", message: "Do it.", model: "a/b", instructions: Option.none() };
 
-const delegateLaunch = (level: number, thinking: Option.Option<string>, readOnly = false) =>
+const delegateLaunch = (role: ChildRole, level: number, thinking: Option.Option<string>, readOnly = false) =>
 	Effect.flatMap(PiCli, (pi) =>
 		launch(pi)({
-			brief: { ...brief, thinking, readOnly },
+			brief: { ...brief, role, thinking, readOnly },
 			level,
 			childSession: { id: "launched", cwd: sessionRoot, dir: `${sessionRoot}/delegates` },
 			passEnv: parentEnv,
@@ -172,43 +173,43 @@ const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) =
 
 const launchRows = [
 	{
-		name: "a level-2 delegate starts at OOM score adjustment 500 with codemode and its thinking level",
-		spec: delegateLaunch(2, Option.some("high")),
+		name: "a level-2 owner starts at OOM score adjustment 500 with codemode, its thinking level and its role",
+		spec: delegateLaunch("owner", 2, Option.some("high")),
 		expect: {
 			name: "review-the-retry-cap-again",
 			argv: ["choom", "-n", "500", "--"],
 			tools: ["+codemode"],
 			excluded: [],
 			thinking: ["high"],
-			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "2" },
+			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "2", PI_OWNED_WORK_ROLE: "owner" },
 		},
 	},
 	{
-		name: "a read-only delegate starts without the edit and write tools, and keeps codemode",
-		spec: delegateLaunch(2, Option.none(), true),
+		name: "a read-only leaf starts without the edit and write tools, and keeps codemode",
+		spec: delegateLaunch("leaf", 2, Option.none(), true),
 		expect: {
 			name: "review-the-retry-cap-again",
 			argv: ["choom", "-n", "500", "--"],
 			tools: ["+codemode"],
 			excluded: ["edit,write"],
 			thinking: [],
-			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "2" },
+			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "2", PI_OWNED_WORK_ROLE: "leaf" },
 		},
 	},
 	{
 		name: "a delegate at the last level starts at OOM score adjustment 1000, and with no thinking level passes none",
-		spec: delegateLaunch(3, Option.none()),
+		spec: delegateLaunch("owner", 3, Option.none()),
 		expect: {
 			name: "review-the-retry-cap-again",
 			argv: ["choom", "-n", "1000", "--"],
 			tools: ["+codemode"],
 			excluded: [],
 			thinking: [],
-			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "3" },
+			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "3", PI_OWNED_WORK_ROLE: "owner" },
 		},
 	},
 	{
-		name: "a serve or watch runs at the last level, so a pi it starts has no delegate tool, and is named by its command",
+		name: "a serve or watch runs as a leaf at the last level, so a pi it starts has no delegate tool, and is named by its command",
 		spec: Effect.succeed(commandSpec({ cwd: "/", passEnv: parentEnv })(WorkRef("watch-1"), "pi --print hi")),
 		expect: {
 			name: "pi-print-hi",
@@ -216,7 +217,7 @@ const launchRows = [
 			tools: [],
 			excluded: [],
 			thinking: [],
-			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "3" },
+			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "3", PI_OWNED_WORK_ROLE: "leaf" },
 		},
 	},
 ];
@@ -231,27 +232,46 @@ for (const row of launchRows) {
 	);
 }
 
-const envRows = [
-	{ level: 2, reads: 2 },
-	{ level: 3, reads: 3 },
-	{ level: 1, reads: undefined },
-	{ level: 4, reads: undefined },
+const envRows: ReadonlyArray<{
+	name: string;
+	env: Readonly<Record<string, string>>;
+	reads: { role: ChildRole; level: number } | undefined;
+}> = [
+	{
+		name: "an owner's env runs at its level as an owner",
+		env: atLevel({ level: 2, role: "owner" }).env,
+		reads: { role: "owner", level: 2 },
+	},
+	{
+		name: "a leaf's env runs at its level as a leaf",
+		env: atLevel({ level: 3, role: "leaf" }).env,
+		reads: { role: "leaf", level: 3 },
+	},
+	{ name: "an env at level 1 is refused", env: atLevel({ level: 1, role: "owner" }).env, reads: undefined },
+	{ name: "an env past the last level is refused", env: atLevel({ level: 4, role: "leaf" }).env, reads: undefined },
+	{ name: "an env with a level and no role is refused", env: { PI_OWNED_WORK_LEVEL: "2" }, reads: undefined },
+	{
+		name: "an env with the root's role is refused",
+		env: { PI_OWNED_WORK_LEVEL: "2", PI_OWNED_WORK_ROLE: "root" },
+		reads: undefined,
+	},
 ];
 
 for (const row of envRows) {
-	test(`a child started with level ${String(row.level)}'s env ${row.reads === undefined ? "is refused" : "runs at that level"}`, () =>
+	test(row.name, () =>
 		Effect.runPromise(
 			Effect.gen(function* () {
-				const self = yield* Effect.option(selfFromEnv({ ...atLevel(row.level).env, PI_OWNED_WORK_SLICE: "s" }));
+				const self = yield* Effect.option(selfFromEnv({ ...row.env, PI_OWNED_WORK_SLICE: "s" }));
 
 				expect(
 					self.pipe(
-						Option.map(({ level }) => level),
+						Option.map(({ role, level }) => ({ role, level })),
 						Option.getOrUndefined,
 					),
-				).toBe(row.reads);
+				).toEqual(row.reads);
 			}),
-		));
+		),
+	);
 }
 
 test("every child extension is an entrypoint pi can load", () => {

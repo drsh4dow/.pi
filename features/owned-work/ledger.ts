@@ -87,7 +87,8 @@ const readyTimeout = Duration.seconds(60);
 
 const tailLines = 40;
 
-const lastLevel = atLevel(levels);
+/** A pi that a serve or watch starts is a leaf at the last level, so it cannot delegate. */
+const commandChild = atLevel({ level: levels, role: "leaf" });
 
 /** Herdr's agents mod reads these to pick each row's icon and the group it sits under. */
 const labelOf = {
@@ -104,9 +105,9 @@ const shellSpec =
 	(ref: WorkRef, command: string, shell: ReadonlyArray<string>): Omit<RunSpec, "labels"> => ({
 		ref,
 		name: terminalNameOf(command),
-		argv: ["choom", "-n", lastLevel.oomScoreAdj, "--", "sh", ...shell],
+		argv: ["choom", "-n", commandChild.oomScoreAdj, "--", "sh", ...shell],
 		cwd: options.cwd,
-		env: { ...options.passEnv, ...lastLevel.env },
+		env: { ...options.passEnv, ...commandChild.env },
 	});
 
 export const commandSpec = (options: Pick<LedgerOptions, "cwd" | "passEnv">) => (ref: WorkRef, command: string) =>

@@ -12,20 +12,29 @@ import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
 /** How deep a chain of agents goes, counting the root as level 1. An agent at the last level has no `delegate` tool. */
 export const levels = 3;
 
-export const Role = Schema.Literals(["root", "delegate"]);
+export const Role = Schema.Literals(["root", "owner", "leaf"]);
 
 export type Role = typeof Role.Type;
+
+/** The roles a parent can give a delegate: an owner carries one slice and may delegate, a leaf does one bounded task and never does. */
+export const ChildRole = Schema.Literals(["owner", "leaf"]);
+
+export type ChildRole = typeof ChildRole.Type;
 
 /** The roles a prompt file fits, from its frontmatter's `for`. */
 export const Roles = Role.pipe(Schema.NonEmptyArray);
 
 const Level = Schema.FiniteFromString.pipe(Schema.check(Schema.isBetween({ minimum: 2, maximum: levels })));
 
-const ChildEnv = Schema.Struct({ PI_OWNED_WORK_LEVEL: Level, PI_OWNED_WORK_SLICE: Schema.String });
+const ChildEnv = Schema.Struct({
+	PI_OWNED_WORK_LEVEL: Level,
+	PI_OWNED_WORK_ROLE: ChildRole,
+	PI_OWNED_WORK_SLICE: Schema.String,
+});
 
 export type Self = Data.TaggedEnum<{
 	Root: { readonly role: "root"; readonly level: 1 };
-	Delegate: { readonly role: "delegate"; readonly level: number; readonly slice: string };
+	Delegate: { readonly role: ChildRole; readonly level: number; readonly slice: string };
 }>;
 
 export const Self = Data.taggedEnum<Self>();
@@ -37,13 +46,20 @@ export const selfFromEnv = Effect.fn("selfFromEnv")(function* (env: Readonly<Rec
 
 	const child = yield* Schema.decodeUnknownEffect(ChildEnv)(env);
 
-	return Self.Delegate({ role: "delegate", level: child.PI_OWNED_WORK_LEVEL, slice: child.PI_OWNED_WORK_SLICE });
+	return Self.Delegate({
+		role: child.PI_OWNED_WORK_ROLE,
+		level: child.PI_OWNED_WORK_LEVEL,
+		slice: child.PI_OWNED_WORK_SLICE,
+	});
 });
 
+/** A leaf never delegates, and the level caps how deep an owner's chain goes. */
+export const mayDelegate = (self: Self) => self.role !== "leaf" && self.level < levels;
+
 /** `choom -n` sets the OOM score adjustment, so deeper levels die first when memory runs out. */
-export const atLevel = (level: number) => ({
+export const atLevel = ({ level, role }: { readonly level: number; readonly role: ChildRole }) => ({
 	oomScoreAdj: String(500 * (level - 1)),
-	env: { PI_OWNED_WORK_LEVEL: String(level) },
+	env: { PI_OWNED_WORK_LEVEL: String(level), PI_OWNED_WORK_ROLE: role },
 });
 
 export const inheritedEnv = (env: Readonly<Record<string, string | undefined>>): Readonly<Record<string, string>> =>
@@ -68,6 +84,7 @@ export const childExtensions: ReadonlyArray<string> = [
 ];
 
 export interface Brief extends Omit<ChildPi, "session"> {
+	readonly role: ChildRole;
 	/** The file the caller named and its text, read at the call. Only the text is staged, so a later edit never reaches the child. */
 	readonly instructions: Option.Option<{ readonly file: string; readonly text: string }>;
 }
@@ -80,7 +97,7 @@ export interface LaunchRequest {
 }
 
 export const launch = (cli: (typeof PiCli)["Service"]) => (request: LaunchRequest) => {
-	const { oomScoreAdj, env } = atLevel(request.level);
+	const { oomScoreAdj, env } = atLevel({ level: request.level, role: request.brief.role });
 
 	return Effect.map(
 		cli.launch({ ...request.brief, session: request.childSession }),

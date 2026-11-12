@@ -1,6 +1,7 @@
 ---
 model: investigator
 readonly: true
+role: leaf
 ---
 
 # Web Performance Auditor

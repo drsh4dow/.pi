@@ -14,22 +14,31 @@ const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/kinds-test-${String(process.pid)
 
 const agentDir = `${import.meta.dirname}/../../agent`;
 
-const every: ReadonlyArray<Role> = ["root", "delegate"];
+const every: ReadonlyArray<Role> = ["root", "owner", "leaf"];
 
 const kinds: ReadonlyArray<Kind> = ["principles", "playbooks"];
 
-const rows: ReadonlyArray<{ name: string; file: string; text: string; roles?: ReadonlyArray<Role> }> = [
+/** A leaf does one bounded task, so a playbook without `for` skips it, and a principle fits every role. */
+const withoutFor: Record<Kind, ReadonlyArray<Role>> = { principles: every, playbooks: ["root", "owner"] };
+
+const rows: ReadonlyArray<{ name: string; file: string; text: string; roles?: ReadonlyArray<Role> | "default" }> = [
 	{
-		name: "a file fits every role",
+		name: "a file with no `for` fits its kind's roles",
 		file: "fix-root-causes.md",
 		text: "---\nwhen: Debugging.\n---\n# Fix\n\nBody.",
-		roles: every,
+		roles: "default",
 	},
 	{
 		name: "`for` narrows the roles",
 		file: "ask-less.md",
 		text: "---\nwhen: Asking.\nfor: [root]\n---\nBody.",
 		roles: ["root"],
+	},
+	{
+		name: "`for` can name a leaf",
+		file: "read-cold.md",
+		text: "---\nwhen: Reviewing.\nfor: [leaf]\n---\nBody.",
+		roles: ["leaf"],
 	},
 	{ name: "an unknown key is refused", file: "a.md", text: "---\nwhen: x\ndescription: y\n---\nBody." },
 	{ name: "a missing `when` is refused", file: "a.md", text: "---\nfor: [root]\n---\nBody." },
@@ -60,14 +69,17 @@ for (const kind of kinds) {
 
 					yield* write(dir, row.file, row.text);
 
-					const { entries, problems } = yield* loadEntries(dir);
+					const { entries, problems } = yield* loadEntries(kind, dir);
 					const loaded = Arr.map(entries, ({ name, roles }) => ({ name, roles }));
 					const name = Str.replace(/\.md$/u, "")(row.file);
 
 					expect({ loaded, problems: problems.length }).toEqual(
 						row.roles === undefined
 							? { loaded: [], problems: 1 }
-							: { loaded: [{ name, roles: row.roles }], problems: 0 },
+							: {
+									loaded: [{ name, roles: row.roles === "default" ? withoutFor[kind] : row.roles }],
+									problems: 0,
+								},
 					);
 				}),
 			));
@@ -82,7 +94,7 @@ test("a file in a playbook's subfolder is a reference file: neither listed nor r
 			yield* write(dir, "bug-fix.md", "---\nwhen: Fixing a bug.\n---\nBody.");
 			yield* write(dir, "bug-fix/notes.md", "No frontmatter at all.");
 
-			const { entries, problems } = yield* loadEntries(dir);
+			const { entries, problems } = yield* loadEntries("playbooks", dir);
 
 			expect({ names: Arr.map(entries, ({ name }) => name), problems }).toEqual({
 				names: ["bug-fix"],
@@ -94,7 +106,7 @@ test("a file in a playbook's subfolder is a reference file: neither listed nor r
 test("a missing folder holds no entries and no problems", () =>
 	run(
 		Effect.gen(function* () {
-			const { entries, problems } = yield* loadEntries(`${scratch}/missing/playbooks`);
+			const { entries, problems } = yield* loadEntries("playbooks", `${scratch}/missing/playbooks`);
 
 			expect({ entries, problems }).toEqual({ entries: [], problems: [] });
 		}),
@@ -105,7 +117,7 @@ for (const kind of kinds) {
 		const everywhere: Entry = { name: "bug-fix", when: "Debugging.", roles: every };
 		const rootOnly: Entry = { name: "ask-less", when: "Asking.", roles: ["root"] };
 
-		expect(entryIndex({ kind, role: "delegate", dir: "/p", entries: [everywhere, rootOnly] })).toEqual(
+		expect(entryIndex({ kind, role: "leaf", dir: "/p", entries: [everywhere, rootOnly] })).toEqual(
 			Option.some(`<${kind} dir="/p">\n- bug-fix: Debugging.\n</${kind}>`),
 		);
 
@@ -113,7 +125,7 @@ for (const kind of kinds) {
 			Option.some(`<${kind} dir="/p">\n- bug-fix: Debugging.\n- ask-less: Asking.\n</${kind}>`),
 		);
 
-		expect(entryIndex({ kind, role: "delegate", dir: "/p", entries: [rootOnly] })).toEqual(Option.none());
+		expect(entryIndex({ kind, role: "leaf", dir: "/p", entries: [rootOnly] })).toEqual(Option.none());
 		expect(entryIndex({ kind, role: "root", dir: "/p", entries: [] })).toEqual(Option.none());
 	});
 }
@@ -160,7 +172,7 @@ const promptTexts = (folders: ReadonlyArray<string>) =>
 
 const namesIn = (kind: Kind) =>
 	Effect.gen(function* () {
-		const { entries, problems } = yield* loadEntries(`${agentDir}/${kind}`);
+		const { entries, problems } = yield* loadEntries(kind, `${agentDir}/${kind}`);
 
 		expect(problems).toEqual([]);
 

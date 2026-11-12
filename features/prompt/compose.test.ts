@@ -53,17 +53,17 @@ const preambleRows = [
 		expect: "you are a coding agent.\n\n<role>\nroot\n</role>",
 	},
 	{
-		name: "a delegate reads SYSTEM.md, its role file, its instructions, the principles index, then the playbooks index",
+		name: "an owner reads SYSTEM.md, its role file, its instructions, the principles index, then the playbooks index",
 		shared: "you are a coding agent.",
 		layers: {
-			role: "<role>\ndelegate\n</role>\n",
+			role: "<role>\nowner\n</role>\n",
 			instructions: Option.some("Review one diff.\n"),
 			principles: Option.some("<principles>\n…\n</principles>"),
 			playbooks: Option.some("<playbooks>\n…\n</playbooks>"),
 			skills: [],
 		},
 		expect:
-			"you are a coding agent.\n\n<role>\ndelegate\n</role>\n\n<instructions>\nReview one diff.\n</instructions>\n\n<principles>\n…\n</principles>\n\n<playbooks>\n…\n</playbooks>",
+			"you are a coding agent.\n\n<role>\nowner\n</role>\n\n<instructions>\nReview one diff.\n</instructions>\n\n<principles>\n…\n</principles>\n\n<playbooks>\n…\n</playbooks>",
 	},
 	{
 		name: "with no SYSTEM.md the role layer still comes first",

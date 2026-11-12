@@ -1,6 +1,6 @@
 /**
  * `bun run prompts [project-dir]` writes `system-prompts.md` at the harness root: the exact first-turn request pi builds
- * for stock pi, for our root agent, and for delegates at each level. No request is sent.
+ * for stock pi, for our root agent, and for owners and leaves at each level. No request is sent.
  */
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -117,13 +117,20 @@ const stockAgentDir = Effect.fn("stockAgentDir")(function* (harnessRoot: string,
 	return into;
 });
 
+const aboutOf = ({ role, level }: StagedLaunch) => {
+	if (role === "leaf") {
+		return "A child pi the `delegate` tool started as a leaf, on one bounded task. It has no `delegate` tool and no playbooks.";
+	}
+
+	return level < levels
+		? "A child pi the `delegate` tool started as an owner, on one slice. It can start delegates of its own."
+		: "A child pi started as an owner at the last level, so it has no `delegate` tool.";
+};
+
 const delegateRun = (launch: StagedLaunch): Run => ({
 	key: `delegate-${launch.name}`,
-	title: `Delegate \`${launch.name}\` at level ${String(launch.level)}`,
-	about:
-		launch.level < levels
-			? "A child pi started with the `delegate` tool. It can start delegates of its own."
-			: "A child pi at the last level, so it has no `delegate` tool.",
+	title: `Delegate \`${launch.name}\` (${launch.role}, level ${String(launch.level)})`,
+	about: aboutOf(launch),
 	argv: launch.argv,
 	env: withoutPackageBins(launch.env),
 });

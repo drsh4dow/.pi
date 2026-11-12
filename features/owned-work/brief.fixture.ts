@@ -8,7 +8,7 @@ import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
 import * as Struct from "effect/Struct";
 
-import type { Brief } from "./child.ts";
+import type { Brief, ChildRole } from "./child.ts";
 import { Ledger } from "./ledger.ts";
 import { Tools } from "./tools.ts";
 import { StartRequest, WorkRef } from "./work.ts";
@@ -27,7 +27,9 @@ export const body = "Read it cold.";
 
 const instructionFiles = {
 	plain: body,
-	profiled: `---\nmodel: deep\nthinking: low\nreadonly: true\n---\n${body}`,
+	profiled: `---\nmodel: deep\nthinking: low\nreadonly: true\nrole: leaf\n---\n${body}`,
+	owned: `---\nrole: owner\n---\n${body}`,
+	ruler: `---\nrole: root\n---\n${body}`,
 	slow: `---\nthinking: low\n---\n${body}`,
 	misspelt: `---\nread-only: true\n---\n${body}`,
 	loud: `---\nthinking: loud\n---\n${body}`,
@@ -89,6 +91,7 @@ export const callerOf = (): Parameters<typeof delegate.execute>[4] => ({
 
 interface Shown {
 	readonly name: string;
+	readonly role: ChildRole;
 	readonly model: string;
 	readonly thinking: string | undefined;
 	readonly readOnly: boolean;
@@ -96,9 +99,10 @@ interface Shown {
 	readonly cwd: string;
 }
 
-/** What a call with a name and a message alone starts. */
+/** What a call with a name, a message and the leaf role alone starts. */
 const plainStart: Shown = {
 	name: "m",
+	role: "leaf",
 	model: "openai/gpt-6-luna",
 	thinking: "high",
 	readOnly: false,

@@ -16,33 +16,31 @@ const harness = `${import.meta.dirname}/../..`;
 const run = <Out, Err>(effect: Effect.Effect<Out, Err, FileSystem.FileSystem>) =>
 	Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
 
-const rows: ReadonlyArray<{ name: string; text: string; root: boolean; delegate: boolean; problems: number }> = [
+const every: ReadonlyArray<Role> = ["root", "owner", "leaf"];
+
+const rows: ReadonlyArray<{ name: string; text: string; fits: ReadonlyArray<Role>; problems: number }> = [
 	{
 		name: "a skill with no `for` fits every role",
 		text: "---\nname: a\ndescription: A.\n---\nBody.",
-		root: true,
-		delegate: true,
+		fits: every,
 		problems: 0,
 	},
 	{
-		name: "`for: [root]` hides a skill from a delegate",
+		name: "`for: [root]` hides a skill from owners and leaves",
 		text: "---\nname: a\ndescription: A.\nfor: [root]\n---\nBody.",
-		root: true,
-		delegate: false,
+		fits: ["root"],
 		problems: 0,
 	},
 	{
-		name: "`for: [delegate]` hides a skill from the root",
-		text: "---\nname: a\ndescription: A.\nfor: [delegate]\n---\nBody.",
-		root: false,
-		delegate: true,
+		name: "`for: [owner, leaf]` hides a skill from the root",
+		text: "---\nname: a\ndescription: A.\nfor: [owner, leaf]\n---\nBody.",
+		fits: ["owner", "leaf"],
 		problems: 0,
 	},
 	{
 		name: "an unknown role leaves the skill out for every role and reports it",
-		text: "---\nname: a\ndescription: A.\nfor: [human]\n---\nBody.",
-		root: false,
-		delegate: false,
+		text: "---\nname: a\ndescription: A.\nfor: [delegate]\n---\nBody.",
+		fits: [],
 		problems: 1,
 	},
 ];
@@ -57,19 +55,17 @@ for (const [index, row] of rows.entries()) {
 				yield* fs.makeDirectory(`${scratch}/${String(index)}`, { recursive: true });
 				yield* fs.writeFileString(filePath, row.text);
 
-				const seen = (role: Role) =>
+				const seen = yield* Effect.forEach(every, (role) =>
 					Effect.map(skillsFor({ role, skills: [{ filePath }] }), ({ skills, problems }) => ({
+						role,
 						fits: Arr.isReadonlyArrayNonEmpty(skills),
 						problems: problems.length,
-					}));
+					})),
+				);
 
-				const root = yield* seen("root");
-				const delegate = yield* seen("delegate");
-
-				expect({ root, delegate }).toEqual({
-					root: { fits: row.root, problems: row.problems },
-					delegate: { fits: row.delegate, problems: row.problems },
-				});
+				expect(seen).toEqual(
+					Arr.map(every, (role) => ({ role, fits: row.fits.includes(role), problems: row.problems })),
+				);
 			}),
 		),
 	);
@@ -135,35 +131,45 @@ const docsOf = (filePath: string) =>
 const pointsAt = (text: string, names: ReadonlyArray<string>) =>
 	Arr.filter(names, (name) => Str.includes(`\`${name}\``)(text) || Str.includes(`**${name}**`)(text));
 
-test("no skill a delegate loads points it at a skill hidden from delegates", () =>
+const childRoles: ReadonlyArray<Role> = ["owner", "leaf"];
+
+test("no skill an owner or a leaf loads points it at a skill hidden from its role", () =>
 	run(
 		Effect.gen(function* () {
 			const fs = yield* FileSystem.FileSystem;
 			const skills = yield* shippedSkills;
 			const forRoot = yield* skillsFor({ role: "root", skills });
-			const forDelegates = yield* skillsFor({ role: "delegate", skills });
 
-			const hidden = Arr.difference(
-				Arr.map(forRoot.skills, ({ filePath }) => nameOf(filePath)),
-				Arr.map(forDelegates.skills, ({ filePath }) => nameOf(filePath)),
-			);
-
-			const pointers = yield* Effect.forEach(forDelegates.skills, ({ filePath }) =>
+			const pointers = yield* Effect.forEach(childRoles, (role) =>
 				Effect.gen(function* () {
-					const skillText = yield* fs.readFileString(filePath);
+					const forRole = yield* skillsFor({ role, skills });
 
-					if (hiddenFromModel.test(skillText)) {
-						return [];
-					}
+					const hidden = Arr.difference(
+						Arr.map(forRoot.skills, ({ filePath }) => nameOf(filePath)),
+						Arr.map(forRole.skills, ({ filePath }) => nameOf(filePath)),
+					);
 
-					const docs = yield* docsOf(filePath);
-					const texts = Arr.map(docs, ({ text }) => text);
+					return yield* Effect.forEach(forRole.skills, ({ filePath }) =>
+						Effect.gen(function* () {
+							const skillText = yield* fs.readFileString(filePath);
 
-					return Arr.map(pointsAt(Arr.join(texts, "\n"), hidden), (name) => `${nameOf(filePath)} → ${name}`);
+							if (hiddenFromModel.test(skillText)) {
+								return [];
+							}
+
+							const docs = yield* docsOf(filePath);
+							const texts = Arr.map(docs, ({ text }) => text);
+
+							return Arr.map(
+								pointsAt(Arr.join(texts, "\n"), hidden),
+								(name) => `${role}: ${nameOf(filePath)} → ${name}`,
+							);
+						}),
+					);
 				}),
 			);
 
-			expect(Arr.flatten(pointers)).toEqual([]);
+			expect(Arr.flatten(Arr.flatten(pointers))).toEqual([]);
 		}),
 	));
 
@@ -171,7 +177,11 @@ test("no skill a delegate loads points it at a skill hidden from delegates", () 
 const contradictions = [
 	{ phrase: /reset --hard/u, rule: "<git> preserves unrelated changes", delegates: false },
 	{ phrase: /ask before delet/iu, rule: "Subtract first deletes once it knows why the code exists", delegates: false },
-	{ phrase: /when you run as a delegate/iu, rule: "delegate.md owns what a delegate does", delegates: false },
+	{
+		phrase: /when you run as a delegate/iu,
+		rule: "the owner and leaf role files own what a delegate does",
+		delegates: false,
+	},
 	{
 		phrase: /multiple agents or sessions/iu,
 		rule: "the delegate rules say when parts run in parallel",
@@ -193,8 +203,11 @@ test("no skill contradicts a rule the always-on prompt owns", () =>
 	run(
 		Effect.gen(function* () {
 			const skills = yield* shippedSkills;
-			const forDelegates = yield* skillsFor({ role: "delegate", skills });
-			const delegateSees = new Set(Arr.map(forDelegates.skills, ({ filePath }) => filePath));
+			const forDelegates = yield* Effect.forEach(childRoles, (role) => skillsFor({ role, skills }));
+
+			const delegateSees = new Set(
+				Arr.flatMap(forDelegates, (each) => Arr.map(each.skills, ({ filePath }) => filePath)),
+			);
 
 			const found = yield* Effect.forEach(skills, ({ filePath }) =>
 				Effect.map(docsOf(filePath), (docs) =>

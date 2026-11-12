@@ -12,12 +12,18 @@ import { Role, Roles } from "../owned-work/index.ts";
 /** A kind of prompt file the prompt lists by name and trigger: its folder under the agent dir, and the tag of its index. */
 export type Kind = "principles" | "playbooks";
 
+/** The roles a file fits when its frontmatter has no `for`: a leaf does one bounded task, so it runs no playbook. */
+const defaultRoles: Record<Kind, ReadonlyArray<Role>> = {
+	principles: Role.literals,
+	playbooks: ["root", "owner"],
+};
+
 /** One line the agent matches against its task. No angle brackets, since it renders inside the index tag. */
 const When = Schema.NonEmptyString.pipe(Schema.check(Schema.isPattern(/^[^\n<>]+$/u)));
 
 const Frontmatter = Schema.Struct({
 	when: When,
-	/** The roles the file fits. Every role when absent. */
+	/** The roles the file fits, its kind's `defaultRoles` when absent. */
 	for: Schema.optionalKey(Roles),
 });
 
@@ -37,7 +43,7 @@ export interface Problem {
 	readonly why: string;
 }
 
-const parseEntry = Effect.fn("parseEntry")(function* (file: string, text: string) {
+const parseEntry = Effect.fn("parseEntry")(function* (kind: Kind, file: string, text: string) {
 	const name = yield* Schema.decodeEffect(EntryName)(Str.replaceAll(/^.*\/|\.md$/gu, "")(file));
 	const { frontmatter, body } = yield* Effect.try({ try: () => parseFrontmatter(text), catch: String });
 	const fields = yield* decodeFrontmatter(frontmatter);
@@ -46,23 +52,23 @@ const parseEntry = Effect.fn("parseEntry")(function* (file: string, text: string
 		return yield* Effect.fail("the body is empty");
 	}
 
-	const entry: Entry = { name, when: fields.when, roles: fields.for ?? Role.literals };
+	const entry: Entry = { name, when: fields.when, roles: fields.for ?? defaultRoles[kind] };
 
 	return entry;
 });
 
 /**
- * Every entry in `dir`, by name: none when the folder is missing. Files in its subfolders are reference files, not
+ * Every entry of `kind` in `dir`, by name: none when the folder is missing. Files in its subfolders are reference files, not
  * entries. A broken file is left out and reported, so one typo never drops the rest.
  */
-export const loadEntries = Effect.fn("loadEntries")(function* (dir: string) {
+export const loadEntries = Effect.fn("loadEntries")(function* (kind: Kind, dir: string) {
 	const fs = yield* FileSystem.FileSystem;
 	const listed = (yield* fs.exists(dir)) ? yield* fs.readDirectory(dir) : [];
 	const files = Arr.sort(Arr.filter(listed, Str.endsWith(".md")), Order.String);
 
 	const [entries, problems] = yield* Effect.partition(files, (name) =>
 		fs.readFileString(`${dir}/${name}`).pipe(
-			Effect.flatMap((text) => parseEntry(`${dir}/${name}`, text)),
+			Effect.flatMap((text) => parseEntry(kind, `${dir}/${name}`, text)),
 			Effect.mapError((error): Problem => ({ file: `${dir}/${name}`, why: String(error) })),
 		),
 	);

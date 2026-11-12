@@ -96,8 +96,8 @@ const requestOf = (act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
 	const deadline = Option.map(Option.fromUndefinedOr(act.deadlineMs), Duration.millis);
 	const message = act.messageKiB === undefined ? "Review it." : Str.repeat(act.messageKiB * 1024)("x");
 	const text = act.instructionsKiB === undefined ? "Review." : Str.repeat(act.instructionsKiB * 1024)("p");
-	const instructions = Option.some({ file: "/r.md", text });
-	const brief = { name: "Review it", message, model: "a/b", thinking: Option.none(), readOnly: false, instructions };
+	const fixed = { name: "Review it", role: "leaf", model: "a/b", thinking: Option.none(), readOnly: false } as const;
+	const brief = { ...fixed, message, instructions: Option.some({ file: "/r.md", text }) };
 
 	return Match.value(act.kind).pipe(
 		Match.when("delegate", () =>
