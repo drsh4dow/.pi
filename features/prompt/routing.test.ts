@@ -26,10 +26,16 @@ const Cases = Schema.Struct({ positive: Schema.Array(Positive), negative: Schema
 
 const Triggers = Schema.fromJsonString(Schema.Record(Schema.String, Cases));
 
-/** The trigger prompts from addyosmani/agent-skills' `evals/cases/`, keyed by the skill each must route to. */
+/**
+ * Prompts keyed by the skill or playbook each must route to: addyosmani/agent-skills' `evals/cases/`, pstack's quoted
+ * trigger phrases, and paraphrases of the owner's own first prompts.
+ */
 const triggerFile = `${import.meta.dirname}/triggers.json`;
 
 const agentDir = `${import.meta.dirname}/../../agent`;
+
+/** The web feature's skills, which pi lists beside the agent dir's. */
+const webSkillsDir = `${import.meta.dirname}/../web`;
 
 /** The skills whose description pi shows the model, which are the ones that compete for a prompt. */
 const modelSkills = Effect.fn("modelSkills")(function* (skillsDir: string) {
@@ -52,11 +58,11 @@ const modelSkills = Effect.fn("modelSkills")(function* (skillsDir: string) {
 });
 
 /** Every name and trigger the model picks among: each skill's description and each playbook's `when`. */
-const modelTriggers = Effect.fn("modelTriggers")(function* (dir: string) {
-	const skills = yield* modelSkills(`${dir}/skills`);
+const modelTriggers = Effect.fn("modelTriggers")(function* (dir: string, ...skillDirs: ReadonlyArray<string>) {
+	const skills = yield* Effect.forEach([`${dir}/skills`, ...skillDirs], modelSkills);
 	const { entries } = yield* loadEntries("playbooks", `${dir}/playbooks`);
 
-	return [...skills, ...Arr.map(entries, ({ name, when }) => ({ name, description: when }))];
+	return [...Arr.flatten(skills), ...Arr.map(entries, ({ name, when }) => ({ name, description: when }))];
 });
 
 test("a prompt ranks the skill whose name and description share its words first", () => {
@@ -70,11 +76,11 @@ test("a prompt ranks the skill whose name and description share its words first"
 	expect(order).toEqual(["flaky-tests", "release-notes"]);
 });
 
-test("every trigger prompt routes to its own skill over every other skill the model sees", () =>
+test("every trigger prompt routes to its own skill or playbook over every other one the model sees", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
 			const fs = yield* FileSystem.FileSystem;
-			const skills = yield* modelSkills(`${agentDir}/skills`);
+			const skills = yield* modelTriggers(agentDir, webSkillsDir);
 			const triggers = yield* Effect.flatMap(fs.readFileString(triggerFile), Schema.decodeEffect(Triggers));
 			const names = Arr.map(skills, ({ name }) => name);
 
@@ -124,7 +130,7 @@ test("a playbook whose trigger reads like a skill's description, or that shares 
 test("no two skill descriptions or playbook triggers the model sees read alike", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const triggers = yield* modelTriggers(agentDir);
+			const triggers = yield* modelTriggers(agentDir, webSkillsDir);
 
 			expect(collisions(triggers)).toEqual([]);
 		}).pipe(Effect.provide(NodeServices.layer)),
