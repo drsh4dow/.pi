@@ -54,14 +54,19 @@ export default class Skills extends View {
     const loaded = agents.flatMap((a) => a.context.loaded);
     const count = (kind) => new Set(loaded.filter((g) => g.kind === kind).map((g) => g.path)).size;
     const available = agents[0]?.context.available;
-    const stat = (kind, label) => h_flex().gap(5).items_center()
-      .child(svg(ICON[kind]).size(12).text_color(kindColor(t, kind)))
-      .child(div().text_color(t.foreground).child(String(count(kind))))
-      .child(div().text_color(t.dim).child(available?.[kind] !== undefined ? `/ ${available[kind]} ${label}` : label));
+    // Icon and numbers only, so the header fits a narrow panel; the icons match the kinds on the rows, and the tooltip names them.
+    const stat = (kind, label) => {
+      const total = available?.[kind];
+      return h_flex().id(`stat-${kind}`).flex_none().gap(4).items_center()
+        .tooltip(total !== undefined ? `${count(kind)} of ${total} ${label} in context` : `${count(kind)} ${label} in context`)
+        .child(svg(ICON[kind]).size(12).text_color(kindColor(t, kind)))
+        .child(div().text_color(t.foreground).child(String(count(kind))))
+        .when(total !== undefined, (el) => el.child(div().text_color(t.dim).child(`/ ${total}`)));
+    };
     return h_flex().h(42).flex_none().px(14).gap(12).items_center().border_b(1).border_color(t.border)
       .child(div().font_semibold().child("Skills"))
       .child(div().flex_1())
-      .child(h_flex().gap(12).text_size(11).child(stat("skill", "skills")).child(stat("principle", "principles")).child(stat("playbook", "playbooks")));
+      .child(h_flex().gap(10).text_size(11).child(stat("skill", "skills")).child(stat("principle", "principles")).child(stat("playbook", "playbooks")));
   }
 
   empty(t, title, body) {
