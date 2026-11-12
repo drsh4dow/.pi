@@ -17,8 +17,6 @@ const luna = getBuiltinModel("openai", "gpt-6-luna");
 
 const opus = getBuiltinModel("anthropic", "claude-opus-5-5");
 
-export const unlisted = { ...luna, id: "gpt-9-luna" };
-
 export const proxied = { ...luna, provider: "proxy/openai" };
 
 export const fixtures = `${Bun.env["TMPDIR"] ?? "/tmp"}/owned-work-tools-test-${String(process.pid)}`;
@@ -85,7 +83,6 @@ export const delegate = Tools.delegate(runtime, 2, { cwd: "/", dir: "/d" }, tabl
 export const callerOf = (): Parameters<typeof delegate.execute>[4] => ({
 	cwd: `${fixtures}/work`,
 	model: luna,
-	thinkingLevel: "high",
 	modelRegistry: { getAll: () => [luna, opus, proxied] },
 });
 
@@ -99,12 +96,12 @@ interface Shown {
 	readonly cwd: string;
 }
 
-/** What a call with a name, a message and the leaf role alone starts. */
+/** What a call with a name, a message, the leaf role and the `quick` alias alone starts. */
 const plainStart: Shown = {
 	name: "m",
 	role: "leaf",
 	model: "openai/gpt-6-luna",
-	thinking: "high",
+	thinking: undefined,
 	readOnly: false,
 	instructions: undefined,
 	cwd: "/",

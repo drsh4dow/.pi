@@ -25,16 +25,11 @@ const instructionsFolder = `${import.meta.dirname}/../../agent/instructions`;
 
 const keyOf = ({ provider, id }: Alias) => `${provider}/${id}`;
 
-/** The model a profile names, with an alias on its own provider since no caller stands behind a staged delegate, or the root's Opus when it names none. */
-const stagedModel = (named: Option.Option<ModelName>) =>
-	Option.match(named, {
-		onNone: () => keyOf(aliases.judgment),
-		onSome: (name) =>
-			ModelName.$match(name, {
-				Spelled: ({ key }) => key,
-				Alias: ({ alias }) =>
-					Option.match(Rec.get(modelTable.aliases, alias), { onNone: () => alias, onSome: keyOf }),
-			}),
+/** An alias runs on its own provider, since no caller stands behind a staged delegate. */
+const stagedModel = (name: ModelName) =>
+	ModelName.$match(name, {
+		Spelled: ({ key }) => key,
+		Alias: ({ alias }) => Option.match(Rec.get(modelTable.aliases, alias), { onNone: () => alias, onSome: keyOf }),
 	});
 
 /** A staged delegate's brief before the message it runs on, and its level. */
@@ -46,7 +41,7 @@ const bare = (name: string, role: ChildRole, level: number): Staged => ({
 	name,
 	role,
 	level,
-	model: stagedModel(Option.none()),
+	model: keyOf(aliases.judgment),
 	thinking: Option.none(),
 	readOnly: false,
 	instructions: Option.none(),
@@ -71,12 +66,13 @@ export const stagedLaunches = Effect.fn("stagedLaunches")(function* (cwd: string
 		Effect.gen(function* () {
 			const profile = yield* Effect.flatMap(fs.readFileString(`${instructionsFolder}/${file}`), parseProfile);
 			const role = yield* Effect.fromOption(profile.role, () => `instructions file ${file} names no role`);
+			const model = yield* Effect.fromOption(profile.model, () => `instructions file ${file} names no model`);
 
 			const staged: Staged = {
 				name: Str.replace(/\.md$/u, "")(file),
 				role,
 				level: 2,
-				model: stagedModel(profile.model),
+				model: stagedModel(model),
 				thinking: profile.thinking,
 				readOnly: profile.readOnly,
 				instructions: Option.some({ file, text: profile.text }),

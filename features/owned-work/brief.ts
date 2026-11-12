@@ -20,7 +20,7 @@ const modelDescription = ({ aliases, panel }: ModelTable) => {
 
 	const sentences = [
 		`\`provider/id\`, or an alias: ${Arr.join(named, "; ")}.`,
-		"It overrides the model an instructions file names. Your own model and thinking level when left out.",
+		"It overrides the model an instructions file names, and is required when the file names none.",
 		`The panel, for work a skill runs once on each: ${Arr.join(panel, ", ")}.`,
 	];
 
@@ -73,7 +73,7 @@ export const delegateParams = (table: ModelTable) => {
 
 export type DelegateParams = ReturnType<typeof delegateParams>;
 
-export type Caller = Pick<ExtensionContext, "cwd" | "model" | "thinkingLevel"> & {
+export type Caller = Pick<ExtensionContext, "cwd" | "model"> & {
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll">;
 };
 
@@ -90,36 +90,30 @@ const aliasedModel = (ctx: Caller, { provider: home, id }: Alias) => {
 	return `${provider}/${id}`;
 };
 
-const modelOf = (ctx: Caller, { aliases }: ModelTable, wanted: Option.Option<ModelName>) =>
-	Option.match(wanted, {
-		onNone: () =>
-			Effect.fromOption(Option.fromUndefinedOr(ctx.model), () =>
-				BadDelegate.make({ why: "name a model, since you run on none" }),
-			).pipe(
-				Effect.map(({ provider, id }) => ({
-					model: `${provider}/${id}`,
-					thinking: Option.fromUndefinedOr(ctx.thinkingLevel),
-				})),
-			),
-		onSome: (name) => {
-			const { model, source } = ModelName.$match(name, {
-				Spelled: ({ key }) => ({ model: key, source: "" }),
-				Alias: ({ alias }) =>
-					Option.match(Rec.get(aliases, alias), {
-						onNone: () => ({ model: alias, source: "" }),
-						onSome: (entry) => ({
-							model: aliasedModel(ctx, entry),
-							source: `, which the alias ${alias} names,`,
-						}),
-					}),
-			});
-
-			return Effect.fromOption(
-				Arr.findFirst(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === model),
-				() => BadDelegate.make({ why: `model ${model}${source} is not in the model registry` }),
-			).pipe(Effect.as({ model, thinking: Option.none<string>() }));
-		},
+const modelOf = (ctx: Caller, { aliases }: ModelTable, name: ModelName) => {
+	const { model, source } = ModelName.$match(name, {
+		Spelled: ({ key }) => ({ model: key, source: "" }),
+		Alias: ({ alias }) =>
+			Option.match(Rec.get(aliases, alias), {
+				onNone: () => ({ model: alias, source: "" }),
+				onSome: (entry) => ({
+					model: aliasedModel(ctx, entry),
+					source: `, which the alias ${alias} names,`,
+				}),
+			}),
 	});
+
+	return Effect.fromOption(
+		Arr.findFirst(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === model),
+		() => BadDelegate.make({ why: `model ${model}${source} is not in the model registry` }),
+	).pipe(Effect.as(model));
+};
+
+const modelChoices = ({ aliases }: ModelTable) => {
+	const named = Arr.map(Rec.keys(aliases), (alias) => `\`${alias}\``);
+
+	return `an alias (${Arr.join(named, ", ")}) or a \`provider/id\`, your own included`;
+};
 
 const absoluteOf = Effect.fn("absoluteOf")(function* (cwd: string, file: string) {
 	const path = yield* Path.Path;
@@ -177,21 +171,24 @@ export const parseCall = Effect.fn("parseCall")(function* (
 		() => BadDelegate.make({ why: `name a role, since neither the call nor an instructions file does: ${roleUses}` }),
 	);
 
-	const wanted = Option.orElse(Option.map(Option.fromUndefinedOr(call.model), modelNameOf), () =>
+	const named = Option.orElse(Option.map(Option.fromUndefinedOr(call.model), modelNameOf), () =>
 		Option.flatMap(profile, (own) => own.model),
 	);
 
-	const { model, thinking } = yield* modelOf(ctx, table, wanted);
+	const wanted = yield* Effect.fromOption(named, () =>
+		BadDelegate.make({
+			why: `name a model, since neither the call nor an instructions file does: ${modelChoices(table)}`,
+		}),
+	);
+
+	const model = yield* modelOf(ctx, table, wanted);
 
 	const brief: Brief = {
 		name: call.name,
 		message: call.message,
 		role,
 		model,
-		thinking: Option.orElse(
-			Option.flatMap(profile, (own) => own.thinking),
-			() => thinking,
-		),
+		thinking: Option.flatMap(profile, (own) => own.thinking),
 		readOnly: Option.exists(profile, (own) => own.readOnly),
 		instructions: Option.map(profile, ({ file, text }) => ({ file, text })),
 	};

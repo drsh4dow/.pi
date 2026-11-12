@@ -18,7 +18,6 @@ import {
 	runtime,
 	started,
 	table,
-	unlisted,
 } from "./brief.fixture.ts";
 import { type DelegateParams, roleUses } from "./brief.ts";
 
@@ -39,6 +38,9 @@ test("the model parameter tells the caller each alias with its model and its use
 		}),
 	));
 
+const noModel =
+	"name a model, since neither the call nor an instructions file does: an alias (`deep`, `quick`, `gone`) or a `provider/id`, your own included";
+
 const plainFile = { file: `${fixtures}/plain.md`, text: body };
 
 const profiledFile = { file: `${fixtures}/profiled.md`, text: body };
@@ -50,57 +52,60 @@ const briefRows: ReadonlyArray<{
 	expect: ReturnType<typeof handed> | ReturnType<typeof refused>;
 }> = [
 	{
-		name: "a leaf with a message alone runs on the caller's model and thinking level, under the name the caller gives",
-		call: { name: "retry cap", message: "Review the retry cap.", role: "leaf" },
+		name: "a leaf with a message and a model starts under the name the caller gives",
+		call: { name: "retry cap", message: "Review the retry cap.", role: "leaf", model: "quick" },
 		expect: handed({ name: "retry cap" }),
 	},
 	{
-		name: "a caller on a model id the registry lacks, as pi allows, starts its delegate on that model",
+		name: "a call that names no model, with no instructions file, is a tool error that lists the aliases",
 		call: { name: "m", message: "m", role: "leaf" },
-		caller: { model: unlisted },
-		expect: handed({ model: "openai/gpt-9-luna" }),
+		expect: refused(noModel),
 	},
 	{
-		name: "a caller on no model that names none is a tool error that says so",
-		call: { name: "m", message: "m", role: "leaf" },
-		caller: { model: undefined },
-		expect: refused("name a model, since you run on none"),
+		name: "a call that names no model, with an instructions file that names none, is a tool error",
+		call: { name: "m", message: "m", role: "leaf", instructionsFile: "../slow.md" },
+		expect: refused(noModel),
+	},
+	{
+		name: "a caller that spells its own model starts its delegate on it, at pi's default thinking level",
+		call: { name: "m", message: "m", role: "leaf", model: "openai/gpt-6-luna" },
+		expect: handed({ model: "openai/gpt-6-luna" }),
 	},
 	{
 		name: "a model the caller names runs at pi's default thinking level for it",
 		call: { name: "m", message: "m", role: "leaf", model: "anthropic/claude-opus-5-5" },
-		expect: handed({ model: "anthropic/claude-opus-5-5", thinking: undefined }),
+		expect: handed({ model: "anthropic/claude-opus-5-5" }),
 	},
 	{
 		name: "a model whose provider id holds a slash is found whole",
 		call: { name: "m", message: "m", role: "leaf", model: "proxy/openai/gpt-6-luna" },
-		expect: handed({ model: "proxy/openai/gpt-6-luna", thinking: undefined }),
+		expect: handed({ model: "proxy/openai/gpt-6-luna" }),
 	},
 	{
 		name: "an alias runs the model the table gives it",
 		call: { name: "m", message: "m", role: "leaf", model: "deep" },
-		expect: handed({ model: "anthropic/claude-opus-5-5", thinking: undefined }),
+		expect: handed({ model: "anthropic/claude-opus-5-5" }),
 	},
 	{
 		name: "an alias runs on the caller's provider when that provider has the alias's model",
 		call: { name: "m", message: "m", role: "leaf", model: "quick" },
 		caller: { model: proxied },
-		expect: handed({ model: "proxy/openai/gpt-6-luna", thinking: undefined }),
+		expect: handed({ model: "proxy/openai/gpt-6-luna" }),
 	},
 	{
 		name: "an alias runs on its own provider when the caller's provider lacks the alias's model",
 		call: { name: "m", message: "m", role: "leaf", model: "deep" },
 		caller: { model: proxied },
-		expect: handed({ model: "anthropic/claude-opus-5-5", thinking: undefined }),
+		expect: handed({ model: "anthropic/claude-opus-5-5" }),
 	},
 	{
 		name: "an instructions file is read at the call, relative to the working directory",
-		call: { name: "m", message: "m", role: "leaf", instructionsFile: "../plain.md" },
+		call: { name: "m", message: "m", role: "leaf", model: "quick", instructionsFile: "../plain.md" },
 		expect: handed({ instructions: plainFile }),
 	},
 	{
 		name: "an instructions file under ~/ is read from the home folder",
-		call: { name: "m", message: "m", role: "leaf", instructionsFile: "~/plain.md" },
+		call: { name: "m", message: "m", role: "leaf", model: "quick", instructionsFile: "~/plain.md" },
 		expect: handed({ instructions: plainFile }),
 	},
 	{
@@ -124,18 +129,18 @@ const briefRows: ReadonlyArray<{
 		}),
 	},
 	{
-		name: "an instructions file that names only a thinking level runs the caller's model at that level",
-		call: { name: "m", message: "m", role: "leaf", instructionsFile: "../slow.md" },
+		name: "an instructions file that names only a thinking level runs the call's model at that level",
+		call: { name: "m", message: "m", role: "leaf", instructionsFile: "../slow.md", model: "quick" },
 		expect: handed({ thinking: "low", instructions: { file: `${fixtures}/slow.md`, text: body } }),
 	},
 	{
 		name: "the call's role starts an owner",
-		call: { name: "m", message: "m", role: "owner" },
+		call: { name: "m", message: "m", role: "owner", model: "quick" },
 		expect: handed({ role: "owner" }),
 	},
 	{
 		name: "an instructions file's role holds when the call names none",
-		call: { name: "m", message: "m", instructionsFile: "../owned.md" },
+		call: { name: "m", message: "m", model: "quick", instructionsFile: "../owned.md" },
 		expect: handed({ role: "owner", instructions: { file: `${fixtures}/owned.md`, text: body } }),
 	},
 	{
@@ -161,12 +166,12 @@ const briefRows: ReadonlyArray<{
 	},
 	{
 		name: "a delegate with a cwd starts in that folder, relative to the caller's",
-		call: { name: "m", message: "m", role: "leaf", cwd: ".." },
+		call: { name: "m", message: "m", role: "leaf", model: "quick", cwd: ".." },
 		expect: handed({ cwd: fixtures }),
 	},
 	{
 		name: "a cwd through a symlink starts in the real folder, where the child's session says it ran",
-		call: { name: "m", message: "m", role: "leaf", cwd: "../link" },
+		call: { name: "m", message: "m", role: "leaf", model: "quick", cwd: "../link" },
 		expect: handed({ cwd: `${fixtures}/work` }),
 	},
 	{
