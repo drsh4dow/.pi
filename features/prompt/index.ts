@@ -14,8 +14,15 @@ import * as Schema from "effect/Schema";
 import { instructionsFlag } from "../../clients/pi-cli/index.ts";
 import { type Role, selfFromEnv } from "../owned-work/index.ts";
 import { compose } from "./compose.ts";
-import { loadPrinciples, principleIndex } from "./principles.ts";
+import { entryIndex, type Kind, loadEntries } from "./kinds.ts";
 import { skillsFor } from "./skills.ts";
+
+const indexOf = Effect.fn("indexOf")(function* (kind: Kind, agentDir: string, role: Role) {
+	const dir = `${agentDir}/${kind}`;
+	const { entries, problems } = yield* loadEntries(dir);
+
+	return { index: entryIndex({ kind, role, dir, entries }), problems };
+});
 
 /** Reads the prompt files on every run, so an edit lands on the next turn. Unchanged files give the same text, so pi sends no patch. */
 const layersOf = Effect.fn("layersOf")(function* (
@@ -32,18 +39,19 @@ const layersOf = Effect.fn("layersOf")(function* (
 		onSome: (file) => Effect.asSome(fs.readFileString(file)),
 	});
 
-	const principlesDir = `${agentDir}/principles`;
-	const { principles, problems } = yield* loadPrinciples(principlesDir);
+	const principles = yield* indexOf("principles", agentDir, role);
+	const playbooks = yield* indexOf("playbooks", agentDir, role);
 	const skills = yield* skillsFor({ role, skills: loaded });
 
 	return {
 		layers: {
 			role: roleText,
 			instructions,
-			principles: principleIndex({ role, dir: principlesDir, principles }),
+			principles: principles.index,
+			playbooks: playbooks.index,
 			skills: skills.skills,
 		},
-		problems: [...problems, ...skills.problems],
+		problems: [...principles.problems, ...playbooks.problems, ...skills.problems],
 	};
 });
 
