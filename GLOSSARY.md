@@ -115,5 +115,7 @@ Terms from the root role (`agent/roles/root.md`) for the work the human hands th
 - **Work branch.** A branch that is not shared. It is the agent's own to create, rebase, stack, and merge PRs between.
 - **State folder.** `~/.local/state/pi-agent/<project>/<work>/`, where work that outlives a turn keeps `STATE.md`, its todo list, its decision trail, and its action items.
 - **Todo list.** `TODO.md` in the state folder: each playbook the root runs, as `## <playbook>` and one line per numbered step, open `- [ ]`, done `- [x]` or skipped `- [-] ... skip: <reason>`, plus the root's own items under `## task`. The first open line is the current step. Only the root writes it.
+- **State label.** The `pi.state` hc label on a root agent's own terminal: the state folder its session last wrote to, found by checking which folder a tool call's arguments name changed while it ran. Delegates do not load the extension. See ADR 0007.
+- **Trace and Actions panels.** herdr-app panels (`herdr/mods/ow-work/`), one mod shown with `view` `trace` or `actions`. They read the state label of the focused agent's root and draw its todo list and decision trail, or its action items.
 - **Decision trail.** `decisions.tsv` in the state folder: one row per decision the agent made, with its why, evidence, and result.
 - **Action item.** An entry in the state folder's `USER_ACTION_ITEMS.md`: something the work needs from the human that the agent cannot do on its own, such as a product choice or access it lacks.

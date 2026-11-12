@@ -18,7 +18,7 @@ To set it up:
 
 1. Clone the repo as pi's config folder: `git clone git@github.com:drsh4dow/.pi.git ~/.pi`.
 2. Install the dependencies: `cd ~/.pi && bun install`.
-3. Link the harness's mods into herdr-app: `ln -s ~/.pi/herdr/mods/ow-skills ~/.pi/herdr/mods/ow-tabs ~/.pi/herdr/mods/ow-status ~/.config/herdr-app/mods/`. In your layout (a clone of `main`), point the `tabs` block at `ow-tabs` and the `status` block at `ow-status`, and make `panel-body` a stack holding one block, `{ "id": "skills", "type": "block", "content": { "mod": "ow-skills" } }`.
+3. Link the harness's mods into herdr-app: `ln -s ~/.pi/herdr/mods/ow-skills ~/.pi/herdr/mods/ow-work ~/.pi/herdr/mods/ow-tabs ~/.pi/herdr/mods/ow-status ~/.config/herdr-app/mods/`. In your layout (a clone of `main`), point the `tabs` block at `ow-tabs` and the `status` block at `ow-status`, and make `panel-body` a stack holding three blocks: `{ "id": "skills", "type": "block", "content": { "mod": "ow-skills" } }`, `{ "id": "trace", "type": "block", "content": { "mod": "ow-work", "props": { "view": "trace" } } }` and `{ "id": "actions", "type": "block", "content": { "mod": "ow-work", "props": { "view": "actions" } } }`. The top bar shows a button for each block the stack holds.
 4. Open a tab in herdr-app and run `pi`.
 
 Herdr then shows the agent's work beside it:
@@ -26,6 +26,7 @@ Herdr then shows the agent's work beside it:
 - Each delegate, serve, and watch appears in herdr-app's agents list, under the agent that started it. A delegate shows the name its parent gave it. A serve or a watch shows its command, such as `bun-test`. Work in a group sits under the group's name.
 - `/fork` and `/clone` open the copy in a new tab in the same space. The original session keeps running, and so does its work.
 - The Skills panel, behind the Skills button at the top right, lists the skills, playbooks, and principles in the focused agent's context and in each of its delegates', in the order they were read. It follows `/tree` and compaction: a guide whose text left the context leaves the panel. A hollow dot and `partial` mark a guide the model saw only part of, such as a ranged read, and `you` marks one you loaded with `/skill:`.
+- The Trace panel, beside Skills, shows the focused agent's work from its state folder: the `TODO.md` checklist, with the current step marked, then `decisions.tsv`, newest first. A delegate shows its root's work. The Actions panel shows each item of `USER_ACTION_ITEMS.md` as a card, and the Actions button counts the items that wait. Both follow the files every two seconds while open. The agent's terminal carries the folder it last wrote to, found from its own tool calls, so a read of another work's folder does not move it.
 - The status bar at the bottom shows what the shown tab's pi session has spent at API list prices, with every delegate at any level, compactions included, whatever your plan bills. Hover it for each delegate's share. It trails a reply by up to two seconds, and the coin pulses while an agent in the tab is working. A fork counts only what it spent after the fork.
 
 Outside herdr-app, `/fork` and `/clone` replace the current session instead of opening a tab. The `delegate`, `serve`, and `watch` tools still need herdr-core, because they start every terminal through its socket.
@@ -85,7 +86,7 @@ Work that outlives a turn keeps its state on disk, so a new session or a compact
 > - `decisions.tsv` is the decision trail, per the **show-me-your-work** skill.
 > - `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own: a product choice, an approval, an irreversible action, access you lack. Each item gives the call, your pick, what it changes, the evidence, and the risk. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does.
 
-When you come back, read `USER_ACTION_ITEMS.md` first. It holds every call the agent left for you, with the default it applied and what you could tell it to do instead.
+When you come back, read `USER_ACTION_ITEMS.md` first, or open the Actions panel. It holds every call the agent left for you, with the default it applied and what you could tell it to do instead.
 
 ### Three roles
 
