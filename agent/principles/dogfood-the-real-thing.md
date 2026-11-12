@@ -4,7 +4,7 @@ when: A change alters what a running app, CLI, or service does, once its tests a
 
 # Dogfood the Real Thing
 
-A green suite proves the code against its tests and fakes. Most bugs live where the code meets something real, such as an adapter's translation, an error shape, a timeout, or two events in an order nobody wrote a test for. Find those bugs by using the real thing, after the `test-driven-development` skill's loop goes green, or in place of it when the change has no cheap test target.
+A green suite proves the code against its tests and fakes. Most bugs live where the code meets something real, such as an adapter's translation, an error shape, a timeout, or two events in an order nobody wrote a test for. Find those bugs by using the real thing, after the `tdd` skill's loop goes green, or in place of it when the change has no cheap test target.
 
 1. **Drive it like a chaotic user.** Run the real app, CLI, or service with its real boundaries through the project's verification skill, a project-local skill such as `.pi/skills/verify-<app>/` that launches the app and drives its features. Cover every feature in its feature map that the change touches, then leave the happy path the way real users do. Try steps in the wrong order, a double submit, an interrupt or kill mid-operation, a restart, empty, huge, or malformed input, two sessions at once, and a slow or failing external service.
 2. **Triage each bug against the base.** Run the same drive steps on the commit the change started from.
