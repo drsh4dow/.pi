@@ -151,6 +151,57 @@ const rows: ReadonlyArray<Row> = [
 			TurnEnds({ expect: "idle: " }),
 		],
 	},
+	{
+		name: "cancelling a group's last running member hands over the group's result",
+		role: "root",
+		acts: [
+			runs,
+			delegate,
+			delegate,
+			Group({ refs: ["delegate-1", "delegate-2"], expect: "group-3" }),
+			Answer({ terminal: "t2", text: "b", end: exit(0) }),
+			Cancel({
+				refs: ["delegate-1"],
+				expect: "group-3 [delegate-1 failed: cancelled by your cancel call, delegate-2 done: b]",
+			}),
+			TurnEnds({ expect: "idle: " }),
+		],
+	},
+	{
+		name: "cancelling the last running member of a nested group hands over the outermost group's result",
+		role: "root",
+		acts: [
+			runs,
+			delegate,
+			delegate,
+			Group({ refs: ["delegate-1", "delegate-2"], expect: "group-3" }),
+			delegate,
+			Group({ refs: ["group-3", "delegate-4"], expect: "group-5" }),
+			Answer({ terminal: "t2", text: "b", end: exit(0) }),
+			Answer({ terminal: "t3", text: "c", end: exit(0) }),
+			Cancel({
+				refs: ["delegate-1"],
+				expect:
+					"group-5 [group-3 [delegate-1 failed: cancelled by your cancel call, delegate-2 done: b], delegate-4 done: c]",
+			}),
+			TurnEnds({ expect: "idle: " }),
+		],
+	},
+	{
+		name: "cancelling a member while another still runs hands over nothing, and the group still wakes with both",
+		role: "root",
+		acts: [
+			runs,
+			delegate,
+			delegate,
+			Group({ refs: ["delegate-1", "delegate-2"], expect: "group-3" }),
+			Cancel({ refs: ["delegate-1"], expect: "" }),
+			Answer({ terminal: "t2", text: "b", end: exit(0) }),
+			TurnEnds({
+				expect: "continue: group-3 [delegate-1 failed: cancelled by your cancel call, delegate-2 done: b]",
+			}),
+		],
+	},
 ];
 
 for (const row of rows) {

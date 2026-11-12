@@ -136,6 +136,16 @@ const closure = (draft: Draft, refs: ReadonlyArray<WorkRef>): Set<WorkRef> => {
 	return found;
 };
 
+/** `ref` and each group above it: a cancelled member can be the last job its holders waited on. */
+const withHolders = (draft: Draft, ref: WorkRef): Array<WorkRef> => {
+	const holder = Option.flatMap(Draft.find(draft, ref), (work) => work.heldBy);
+
+	return Option.match(holder, {
+		onNone: () => [ref],
+		onSome: (above) => [ref, ...withHolders(draft, above)],
+	});
+};
+
 const cancel = (state: LedgerState, refs: ReadonlyArray<WorkRef>): Result.Result<Woke, UnknownRef> => {
 	const draft = Draft.of(state);
 	const unknown = Arr.findFirst(refs, (ref) => !draft.work.has(ref));
@@ -146,15 +156,15 @@ const cancel = (state: LedgerState, refs: ReadonlyArray<WorkRef>): Result.Result
 
 	const cancelling = closure(draft, refs);
 
-	for (const ref of cancelling) {
-		if (!Draft.isGroup(Option.getOrThrow(Draft.find(draft, ref)))) {
-			Draft.halt(draft, ref, FailReason.Cancelled({ group: Option.none() }));
-		}
+	for (const work of Arr.filter(Draft.findAll(draft, [...cancelling]), (found) => !Draft.isGroup(found))) {
+		Draft.halt(draft, work.ref, FailReason.Cancelled({ group: Option.none() }));
 	}
+
+	const reached = new Set(Arr.flatMap([...cancelling], (ref) => withHolders(draft, ref)));
 
 	const handed = Draft.hand(
 		draft,
-		Draft.deliverable(draft, (ref) => cancelling.has(ref)),
+		Draft.deliverable(draft, (ref) => reached.has(ref)),
 	);
 
 	return Result.succeed(Draft.finish(draft, handed));
