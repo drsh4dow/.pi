@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Schema from "effect/Schema";
 
-import { Gh } from "../../clients/gh/index.ts";
+import { Gh, GhError } from "../../clients/gh/index.ts";
 
 export const VerdictResult = Schema.Literals(["pass", "pass+notes", "fail", "incomplete"]);
 
@@ -36,9 +36,21 @@ export const recordVerdict = (root: string) => (record: VerdictRecord) =>
 		yield* fs.writeFileString(`${folder}/${record.head}.${record.verifier.session}.json`, json);
 	});
 
+/** Reads the head again after the diff, so a push in between cannot pin one head with another's patch-id. */
 export const pin = (pr: string) =>
-	Effect.flatMap(Gh, (gh) =>
-		Effect.all({ view: gh.view(pr), patchId: gh.patchId(pr) }, { concurrency: 2 }).pipe(
-			Effect.map(({ view: { repo, number, head }, patchId }): ReviewTarget => ({ repo, number, head, patchId })),
-		),
-	);
+	Effect.gen(function* () {
+		const gh = yield* Gh;
+		const { repo, number, head } = yield* gh.view(pr);
+		const patchId = yield* gh.patchId(pr);
+		const after = yield* gh.view(pr);
+
+		if (after.head !== head) {
+			const why = `its head moved from ${head} to ${after.head} while it was pinned, so start the verifier again`;
+
+			return yield* GhError.make({ args: ["gh", "pr", "view", pr], why });
+		}
+
+		const target: ReviewTarget = { repo, number, head, patchId };
+
+		return target;
+	});

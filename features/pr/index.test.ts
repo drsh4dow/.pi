@@ -10,7 +10,7 @@ import * as Result from "effect/Result";
 import * as TestClock from "effect/testing/TestClock";
 
 import { Gh, GhError, type PrView } from "../../clients/gh/index.ts";
-import { changes, prWait } from "./index.ts";
+import { changes, pin, prWait } from "./index.ts";
 
 const open: PrView = {
 	repo: "o/r",
@@ -91,7 +91,7 @@ const scripted = (scripts: Readonly<Record<string, ReadonlyArray<Reading>>>) => 
 			return script[Math.min(read, script.length - 1)] ?? failed(`no script for ${pr}`);
 		});
 
-	return Layer.succeed(Gh, Gh.of({ view, patchId: () => failed("no diff") }));
+	return Layer.succeed(Gh, Gh.of({ view, patchId: () => Effect.succeed("6499691") }));
 };
 
 const outcome = (prs: Arr.NonEmptyReadonlyArray<string>) =>
@@ -180,3 +180,18 @@ for (const row of loopRows) {
 		return Effect.runPromise(Effect.provide(check, layer));
 	});
 }
+
+test("a pin whose head moves while it reads the diff refuses, naming both heads", () => {
+	const moved = { ...open, head: "4b7d113bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" };
+	const layer = scripted({ "1": [Effect.succeed(open), Effect.succeed(moved)] });
+
+	const check = Effect.gen(function* () {
+		const { why } = yield* Effect.flip(pin("1"));
+
+		expect(why).toBe(
+			`its head moved from ${open.head} to ${moved.head} while it was pinned, so start the verifier again`,
+		);
+	});
+
+	return Effect.runPromise(Effect.provide(check, layer));
+});
