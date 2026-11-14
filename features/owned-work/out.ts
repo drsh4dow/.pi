@@ -9,7 +9,17 @@ import { Type } from "typebox";
 
 import type { TerminalEnd } from "../../clients/hc/index.ts";
 import type { LedgerFailure } from "./ledger.ts";
-import type { BadDelegate, FailReason, Handle, Outcome, Settled, WorkEntry, WorkKind, WorkRef } from "./work.ts";
+import type {
+	BadDelegate,
+	FailReason,
+	Handle,
+	Identity,
+	Outcome,
+	Settled,
+	WorkEntry,
+	WorkKind,
+	WorkRef,
+} from "./work.ts";
 
 export const HandleOut = Type.Object({
 	ref: Type.String(),
@@ -20,7 +30,12 @@ export const HandleOut = Type.Object({
 	next: Type.Optional(Type.String()),
 });
 
-const DoneOut = Type.Object({ status: Type.Literal("done"), text: Type.String() });
+const DoneOut = Type.Object({
+	status: Type.Literal("done"),
+	text: Type.String(),
+	cut: Type.Boolean(),
+	answer: Type.String(),
+});
 
 const LogOut = Type.Optional(Type.String());
 
@@ -40,23 +55,30 @@ const FailedOut = Type.Object({
 	log: LogOut,
 });
 
-const MemberOut = Type.Object({ ref: Type.String(), outcome: Type.Ref("Outcome") });
+const SettledOut = Type.Object({ status: Type.Literal("settled"), members: Type.Array(Type.Ref("Result")) });
 
-const SettledOut = Type.Object({ status: Type.Literal("settled"), members: Type.Array(MemberOut) });
+const Result = Type.Object({
+	ref: Type.String(),
+	kind: Type.String(),
+	name: Type.Optional(Type.String()),
+	session: Type.Optional(Type.String()),
+	command: Type.Optional(Type.String()),
+	outcome: Type.Union([DoneOut, FiredOut, FailedOut, SettledOut]),
+});
 
-const OutcomeOut = Type.Cyclic({ Outcome: Type.Union([DoneOut, FiredOut, FailedOut, SettledOut]) }, "Outcome");
-
-const ResultOut = Type.Object({ ref: Type.String(), kind: Type.String(), outcome: OutcomeOut });
+const ResultOut = Type.Cyclic({ Result }, "Result");
 
 export const ResultsOut = Type.Object({ results: Type.Array(ResultOut) });
 
+type ResultJson = Identity & { readonly ref: string; readonly outcome: OutcomeJson };
+
 type OutcomeJson =
-	| { readonly status: "done"; readonly text: string }
+	| { readonly status: "done"; readonly text: string; readonly cut: boolean; readonly answer: string }
 	| { readonly status: "fired"; readonly exit_code: number; readonly log?: string; readonly tail: string }
 	| { readonly status: "failed"; readonly reason: string; readonly detail: string; readonly log?: string }
 	| {
 			readonly status: "settled";
-			readonly members: ReadonlyArray<{ readonly ref: string; readonly outcome: OutcomeJson }>;
+			readonly members: ReadonlyArray<ResultJson>;
 	  };
 
 const exitDetail = (code: Option.Option<number>, signal: Option.Option<number>): string =>
@@ -87,17 +109,17 @@ const logOut = (log: Option.Option<string>) =>
 
 const outcomeOut = (outcome: Outcome, log: Option.Option<string>): OutcomeJson =>
 	Match.valueTags(outcome, {
-		Done: ({ text }): OutcomeJson => ({ status: "done", text }),
+		Done: ({ answer: { text, cut, file } }): OutcomeJson => ({ status: "done", text, cut, answer: file }),
 		Fired: ({ exitCode, tail }): OutcomeJson => ({ status: "fired", exit_code: exitCode, ...logOut(log), tail }),
-		Members: ({ results }): OutcomeJson => ({
-			status: "settled",
-			members: Arr.map(results, ({ ref, outcome: member, log: memberLog }) => ({
-				ref,
-				outcome: outcomeOut(member, memberLog),
-			})),
-		}),
+		Members: ({ results }): OutcomeJson => ({ status: "settled", members: Arr.map(results, resultOut) }),
 		Failed: ({ reason }): OutcomeJson => ({ status: "failed", ...reasonOut(reason), ...logOut(log) }),
 	});
+
+const resultOut = ({ ref, who, outcome, log }: Settled): ResultJson => ({
+	ref,
+	...who,
+	outcome: outcomeOut(outcome, log),
+});
 
 /** How to wait for the work. A serve's end never wakes the agent, so its handle has none. */
 const nextOf = (kind: WorkKind, waker: WorkRef) =>
@@ -114,8 +136,6 @@ const handleOut = ({ ref, kind, terminal, group, ready }: Handle) => ({
 		Option.getOrElse(group, () => ref),
 	),
 });
-
-const resultOut = ({ ref, kind, outcome, log }: Settled) => ({ ref, kind, outcome: outcomeOut(outcome, log) });
 
 const endOut = (end: Option.Option<TerminalEnd>) =>
 	Option.match(end, {
@@ -152,6 +172,8 @@ const errorText = (error: LedgerFailure | BadDelegate): string =>
 	Match.valueTags(error, {
 		BadDelegate: ({ why }) => why,
 		UnknownRef: ({ ref }) => `no work is called ${ref}`,
+		NameTaken: ({ wanted, by }) =>
+			`${by} runs under the name "${wanted}"; pick another name, or wait for ${by} to settle`,
 		NotYours: ({ ref, why }) => `${ref}: ${why}`,
 		NoJobs: ({ refs }) => `a group needs a delegate or a watch, and ${Arr.join(refs, ", ")} are only serves`,
 		HcError: ({ method, kind, message }) => `hc ${method} failed (${kind}): ${message}`,

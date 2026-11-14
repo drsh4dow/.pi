@@ -4,7 +4,7 @@ import * as Option from "effect/Option";
 
 import type { ChildSession } from "./child.ts";
 import { Command, Draft, type LedgerState, type Woke } from "./step.ts";
-import { type MonotonicNanos, Work, type WorkRef } from "./work.ts";
+import { type MonotonicNanos, NameTaken, StartRequest, Work, type WorkRef } from "./work.ts";
 
 export const deadlineOf = (work: Work): Option.Option<Duration.Duration> =>
 	Work.$is("Watch")(work) ? work.deadline : Option.none();
@@ -37,11 +37,26 @@ const rearmed =
  * A reload hands this ledger the state of the one before it, whose timers stopped with it. Each live watch's deadline
  * starts again for the time it has left, and any result that had not reached the agent wakes it.
  */
+const delegatesLive = (state: LedgerState) =>
+	Arr.filter(Arr.filter([...state.work.values()], Work.$is("Delegate")), Draft.isLive);
+
 /** The sessions of the delegates still running, whose staged files the next load takes over. */
 export const liveDelegates = (state: LedgerState): ReadonlyArray<ChildSession> =>
-	Arr.flatMap([...state.work.values()], (work) =>
-		Work.$is("Delegate")(work) && Draft.isLive(work) ? [work.childSession] : [],
-	);
+	Arr.map(delegatesLive(state), ({ childSession }) => childSession);
+
+/** A new delegate's name may not be one a live delegate of this agent runs under. */
+export const nameTaken =
+	(state: LedgerState) =>
+	(request: StartRequest): Option.Option<NameTaken> => {
+		if (!StartRequest.$is("Delegate")(request)) {
+			return Option.none();
+		}
+
+		const wanted = request.brief.name;
+		const holder = Arr.findFirst(delegatesLive(state), ({ brief }) => brief.name === wanted);
+
+		return Option.map(holder, ({ ref }) => NameTaken.make({ wanted, by: ref }));
+	};
 
 export const carried = (state: LedgerState): Woke => {
 	const draft = Draft.of(state);

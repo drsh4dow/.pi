@@ -31,11 +31,11 @@ const rows: ReadonlyArray<Row> = [
 			reviewing("delegate-4", "t3", "group-2"),
 			Shown({
 				expect: [
-					"review-it (ow.kind=delegate)",
+					"review-1 (ow.kind=delegate)",
 					"t1 (ow.group=group-2, ow.group.name=review)",
-					"review-it (ow.kind=delegate)",
+					"review-2 (ow.kind=delegate)",
 					"t2 (ow.group=group-2, ow.group.name=review)",
-					"review-it (ow.kind=delegate)",
+					"review-3 (ow.kind=delegate)",
 					"t3 (ow.group=group-2, ow.group.name=review)",
 				],
 			}),
@@ -70,7 +70,7 @@ const rows: ReadonlyArray<Row> = [
 			delegate,
 			Start({ kind: "watch" }),
 			Start({ kind: "serve" }),
-			Shown({ expect: ["review-it (ow.kind=delegate)", "watch (ow.kind=watch)", "serve (ow.kind=serve)"] }),
+			Shown({ expect: ["review-1 (ow.kind=delegate)", "watch (ow.kind=watch)", "serve (ow.kind=serve)"] }),
 			Cancel({
 				refs: ["delegate-1", "watch-2", "serve-3"],
 				expect:
@@ -87,11 +87,11 @@ const rows: ReadonlyArray<Row> = [
 			delegate,
 			Start({ kind: "delegate", heldThen: "succeeds" }),
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
-			Shown({ expect: ["review-it (ow.kind=delegate)", "review-it (ow.kind=delegate)"] }),
+			Shown({ expect: ["review-1 (ow.kind=delegate)", "review-2 (ow.kind=delegate)"] }),
 			Group({ refs: ["delegate-1", "delegate-2", "delegate-3"], expect: "group-4" }),
 			Shown({ expect: ["t2 (ow.group=group-4, ow.group.name=principles eval)"] }),
 			Spawned({ expect: "delegate-3" }),
-			Shown({ expect: ["review-it (ow.kind=delegate)", "t3 (ow.group=group-4, ow.group.name=principles eval)"] }),
+			Shown({ expect: ["review-3 (ow.kind=delegate)", "t3 (ow.group=group-4, ow.group.name=principles eval)"] }),
 			Cancel({
 				refs: ["group-4"],
 				expect:

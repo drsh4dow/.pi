@@ -19,8 +19,8 @@ import { HcNotice, TerminalAddress, type TerminalEnd } from "../../clients/hc/in
 import type { Act, Row } from "./act.fixture.ts";
 import type { LedgerFailure } from "./ledger.ts";
 import { Out } from "./out.ts";
-import { type LedgerError, Verdict } from "./step.ts";
-import { type Handle, MonotonicNanos, monotonicNow, type Settled, StartRequest, WorkRef } from "./work.ts";
+import { Verdict } from "./step.ts";
+import { type Handle, MonotonicNanos, monotonicNow, Outcome, type Settled, StartRequest, WorkRef } from "./work.ts";
 import {
 	deliveredRefs,
 	leftovers,
@@ -43,20 +43,27 @@ const checked = <Value>(got: () => Value, expected: Value) =>
 		expect(got()).toEqual(expected);
 	});
 
-const requestOf = (act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
+const briefOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
+	world.delegates += 1;
+
+	const name = act.name ?? `Review ${String(world.delegates)}`;
+	const message = act.messageKiB === undefined ? "Review it." : Str.repeat(act.messageKiB * 1024)("x");
+	const text = act.instructionsKiB === undefined ? "Review." : Str.repeat(act.instructionsKiB * 1024)("p");
+	const fixed = { name, role: "leaf", model: "a/b", goal: "Cap the retries.", readOnly: false } as const;
+	const unset = { thinking: Option.none(), state: Option.none(), facts: Option.none() };
+
+	return { ...fixed, ...unset, message, instructions: Option.some({ file: "/r.md", text }) };
+};
+
+const requestOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
 	counter.sessions += 1;
 
 	const childSession = { id: `child-${String(counter.sessions)}`, cwd: sessionRoot, dir: `${sessionRoot}/delegates` };
 	const deadline = Option.map(Option.fromUndefinedOr(act.deadlineMs), Duration.millis);
 	const group = Option.fromUndefinedOr(act.group);
-	const message = act.messageKiB === undefined ? "Review it." : Str.repeat(act.messageKiB * 1024)("x");
-	const text = act.instructionsKiB === undefined ? "Review." : Str.repeat(act.instructionsKiB * 1024)("p");
-	const fixed = { name: "Review it", role: "leaf", model: "a/b", goal: "Cap the retries.", readOnly: false } as const;
-	const unset = { thinking: Option.none(), state: Option.none(), facts: Option.none() };
-	const brief = { ...fixed, ...unset, message, instructions: Option.some({ file: "/r.md", text }) };
 
 	return Match.value(act.kind).pipe(
-		Match.when("delegate", () => StartRequest.Delegate({ brief, childSession, group })),
+		Match.when("delegate", () => StartRequest.Delegate({ brief: briefOf(world, act), childSession, group })),
 		Match.when("serve", () => StartRequest.Serve({ command: "serve", ready: Option.some("ready") })),
 		Match.when("watch", () => StartRequest.Watch({ command: "watch", deadline, log: "watch.log" })),
 		Match.exhaustive,
@@ -72,7 +79,7 @@ const handleChecked = (expected: Readonly<Record<string, string | boolean>> | un
 };
 
 const start = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
-	const request = requestOf(act);
+	const request = requestOf(world, act);
 
 	const started = (handle: Handle) => {
 		const { ref, terminal, group } = handle;
@@ -93,6 +100,10 @@ const start = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
 
 		return ref;
 	};
+
+	if (act.refused !== undefined) {
+		return replied(world.ledger.start(request), ({ ref }) => `started ${ref}`, act.refused);
+	}
 
 	if (act.heldThen === undefined) {
 		return Effect.map(Effect.orDie(world.ledger.start(request)), started);
@@ -138,7 +149,11 @@ const answer = (world: World, { terminal, text, closing, stopReason, end }: Data
 		ended(world, terminal, end),
 	);
 
-const replied = <Reply>(reply: Effect.Effect<Reply, LedgerError>, render: (value: Reply) => string, expected: string) =>
+const replied = <Reply>(
+	reply: Effect.Effect<Reply, LedgerFailure>,
+	render: (value: Reply) => string,
+	expected: string,
+) =>
 	Effect.flatMap(Effect.match(reply, { onFailure: refusal, onSuccess: render }), (got) =>
 		checked(() => got, expected),
 	);
@@ -193,6 +208,15 @@ const hook = (world: World, event: Data.TaggedEnum.Value<Act, "Hook">["event"]):
 		Match.exhaustive,
 	);
 
+const sessionOf = (world: World) => (terminal: string) =>
+	world.sessions.get(terminal)?.id ?? `no session in ${terminal}`;
+
+const answerFiles = (world: World) =>
+	Effect.forEach(
+		Arr.flatMap(world.delivered, ({ outcome }) => (Outcome.$is("Done")(outcome) ? [outcome.answer.file] : [])),
+		(file) => world.fs.readFileString(file),
+	);
+
 const refsAre = (refs: Effect.Effect<ReadonlyArray<string>>, expected: ReadonlyArray<string>) =>
 	Effect.flatMap(refs, (got) => checked(() => got, expected));
 
@@ -212,6 +236,10 @@ const perform = (world: World, act: Act): Effect.Effect<void> =>
 		Waking: ({ expect: expected }) => refsAre(world.ledger.waking, expected),
 		TurnEnds: ({ expect: expected }) => turnEnds(world, expected),
 		Wakes: ({ expect: expected }) => checked(() => world.wakes.splice(0), [...expected]),
+		Delivered: ({ expect: expected }) =>
+			checked(() => Arr.map(world.delivered, Out.result), [...expected(sessionOf(world))]),
+		AnswerFiles: ({ expect: expected }) =>
+			Effect.flatMap(Effect.orDie(answerFiles(world)), (texts) => checked(() => texts, [...expected])),
 		Killed: ({ expect: expected }) => checked(() => world.kills.splice(0), [...expected]),
 		Settles: ({ expect: expected }) => checked(() => world.settles.splice(0), [...expected]),
 		Leftovers: ({ expect: expected }) =>

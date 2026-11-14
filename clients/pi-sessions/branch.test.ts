@@ -5,9 +5,12 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
 import { PiSessions, piSessionsLayer } from "./index.ts";
+
+const piSessions = Layer.provide(piSessionsLayer, NodeServices.layer);
 
 const scratch = await Effect.runPromise(
 	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.makeTempDirectory()).pipe(Effect.provide(NodeServices.layer)),
@@ -62,7 +65,7 @@ test("a branch copies the path to its leaf, then the note, into a new file that 
 				answered,
 				"delegate-3 kept running in the source.",
 			]);
-		}).pipe(Effect.provide(piSessionsLayer)),
+		}).pipe(Effect.provide(piSessions)),
 	));
 
 test("a branch leaves its source as it was", () =>
@@ -76,5 +79,5 @@ test("a branch leaves its source as it was", () =>
 			const after = yield* Effect.promise(() => Bun.file(file).text());
 
 			expect(after).toBe(before);
-		}).pipe(Effect.provide(piSessionsLayer)),
+		}).pipe(Effect.provide(piSessions)),
 	));

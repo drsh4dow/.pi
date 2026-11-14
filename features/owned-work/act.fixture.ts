@@ -10,6 +10,10 @@ export type Act = Data.TaggedEnum<{
 	Hook: { readonly event: "run starts" | "goes idle" | "parent dies" | "pi reloads" };
 	Start: {
 		readonly kind: "delegate" | "serve" | "watch";
+		/** A delegate's name, `Review <n>` for the nth delegate of the row by default. */
+		readonly name?: string;
+		/** The refusal the start fails with, before anything spawns. */
+		readonly refused?: string;
 		readonly deadlineMs?: number;
 		readonly messageKiB?: number;
 		readonly instructionsKiB?: number;
@@ -33,6 +37,10 @@ export type Act = Data.TaggedEnum<{
 	Waking: { readonly expect: ReadonlyArray<string> };
 	TurnEnds: { readonly expect: string };
 	Wakes: { readonly expect: ReadonlyArray<string> };
+	/** Every result handed to the agent so far, as the JSON it reads. `session` turns a terminal into its child's session id. */
+	Delivered: { readonly expect: (session: (terminal: string) => string) => ReadonlyArray<object> };
+	/** What each answer file the delivered results name holds. */
+	AnswerFiles: { readonly expect: ReadonlyArray<string> };
 	Killed: { readonly expect: ReadonlyArray<string> };
 	Settles: { readonly expect: ReadonlyArray<string> };
 	Leftovers: { readonly expect: ReadonlyArray<string> };
