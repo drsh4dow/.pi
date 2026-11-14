@@ -1,9 +1,8 @@
 import { expect } from "bun:test";
 
-import type { StopReason } from "@earendil-works/pi-ai";
 import * as Arr from "effect/Array";
 import * as Clock from "effect/Clock";
-import * as Data from "effect/Data";
+import type * as Data from "effect/Data";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -17,7 +16,7 @@ import * as Semaphore from "effect/Semaphore";
 import * as Str from "effect/String";
 
 import { HcNotice, TerminalAddress, type TerminalEnd } from "../../clients/hc/index.ts";
-import type { Role } from "./child.ts";
+import type { Act, Row } from "./act.fixture.ts";
 import type { LedgerFailure } from "./ledger.ts";
 import { Out } from "./out.ts";
 import { type LedgerError, Verdict } from "./step.ts";
@@ -29,58 +28,13 @@ import {
 	showAll,
 	showVerdict,
 	steppable,
-	type HeldSpawn,
 	undelivered,
 	type World,
 	worldOf,
 	writeAnswer,
 } from "./world.fixture.ts";
 
-export type Act = Data.TaggedEnum<{
-	Hook: { readonly event: "run starts" | "goes idle" | "parent dies" | "pi reloads" };
-	Start: {
-		readonly kind: "delegate" | "serve" | "watch";
-		readonly deadlineMs?: number;
-		readonly messageKiB?: number;
-		readonly instructionsKiB?: number;
-		readonly heldThen?: HeldSpawn;
-		readonly group?: string;
-		readonly handle?: Readonly<Record<string, string | boolean>>;
-	};
-	Spawned: { readonly expect: string };
-	Resync: { readonly askedMsAgo: number };
-	Answer: {
-		readonly terminal: string;
-		readonly text: string;
-		readonly closing?: string;
-		readonly stopReason?: StopReason;
-		readonly end: TerminalEnd;
-	};
-	End: { readonly terminal: string; readonly end: TerminalEnd };
-	Group: { readonly refs: ReadonlyArray<string>; readonly expect: string };
-	Cancel: { readonly refs: ReadonlyArray<string>; readonly expect: string };
-	Running: { readonly expect: ReadonlyArray<string> };
-	Waking: { readonly expect: ReadonlyArray<string> };
-	TurnEnds: { readonly expect: string };
-	Wakes: { readonly expect: ReadonlyArray<string> };
-	Killed: { readonly expect: ReadonlyArray<string> };
-	Settles: { readonly expect: ReadonlyArray<string> };
-	Leftovers: { readonly expect: ReadonlyArray<string> };
-	Slices: { readonly expect: ReadonlyArray<string> };
-	SpawnLevels: { readonly expect: ReadonlyArray<string> };
-	Shown: { readonly expect: ReadonlyArray<string> };
-	Timers: { readonly expect: number };
-	WallClockSteps: { readonly backMs: number };
-	Pause: { readonly ms: number };
-}>;
-
-export const Act = Data.taggedEnum<Act>();
-
-export interface Row {
-	readonly name: string;
-	readonly role: Role;
-	readonly acts: ReadonlyArray<Act>;
-}
+export { Act, type Row } from "./act.fixture.ts";
 
 const counter = { sessions: 0 };
 
