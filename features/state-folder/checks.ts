@@ -133,20 +133,25 @@ const actionItemsProblems = Effect.fn("actionItemsProblems")(function* (file: Ui
 	const text = textOf(file);
 	const { problems, denials } = onlyYouReasons(text);
 
-	const missing = yield* Effect.forEach(denials, ({ line, path }) => {
-		const resolved = resolvePath(path, place);
-
-		return Effect.map(
-			fs.stat(resolved).pipe(
-				Effect.map(({ type }) => type === "File"),
-				Effect.orElseSucceed(() => false),
-			),
-			(isFile): ReadonlyArray<FormatProblem> =>
-				isFile ? [] : [{ line, message: `the cited file ${resolved} does not exist or is not a file` }],
+	const isFile = (path: string) =>
+		fs.stat(resolvePath(path, place)).pipe(
+			Effect.map(({ type }) => type === "File"),
+			Effect.orElseSucceed(() => false),
 		);
-	});
 
-	return [...actionItemProblems(text), ...problems, ...Arr.flatten(missing)];
+	const missing = yield* Effect.filter(denials, ({ paths }) =>
+		Effect.map(Effect.forEach(paths, isFile), (found) => !Arr.contains(found, true)),
+	);
+
+	const uncited = Arr.map(missing, ({ line, paths }) => ({
+		line,
+		message: `no code span on the line names an existing file: ${Arr.join(
+			Arr.map(paths, (path) => resolvePath(path, place)),
+			", ",
+		)}`,
+	}));
+
+	return [...actionItemProblems(text), ...problems, ...uncited];
 });
 
 /** One check per state file, keyed by file name. Adding a file adds a row. */

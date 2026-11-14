@@ -20,10 +20,10 @@ export const onlyYouLabel = "**Only you.**";
 
 export const onlyYouKinds = ["decision", "approval", "irreversible action", "access"] as const;
 
-/** A file an access item cites as the record of the denied attempt, and its line. */
+/** The code spans of an access item's line, one of which must name the file that records the denied attempt. */
 export interface Denial {
 	readonly line: number;
-	readonly path: string;
+	readonly paths: Arr.NonEmptyReadonlyArray<string>;
 }
 
 interface Line {
@@ -47,7 +47,7 @@ const fenceLine = /^\s*(?<marker>`{3,}|~{3,})\s*(?<info>.*)$/u;
 const itemContent = /^\s*(?:[-*+]|\d+[.)])\s|^\s*\*\*|^#|^\s*(?:`{3}|~{3})/u;
 const listMarker = /^\s*(?:(?:[-*+]|\d+[.)])\s+)?/u;
 const onlyYouKind = new RegExp(`^(?:an? )?(${Arr.join(onlyYouKinds, "|")})\\b`, "iu");
-const citedFile = /`(?<path>[^`]+)`/u;
+const codeSpan = /`(?<path>[^`]+)`/gu;
 
 const byLine = Order.mapInput(Order.Number, ({ line }: FormatProblem) => line);
 
@@ -183,16 +183,16 @@ const reasonOf = ({ number, text }: Line): OnlyYou => {
 		return { problems: [], denials: [] };
 	}
 
-	const path = citedFile.exec(text)?.groups?.["path"];
+	const paths = Arr.getSomes(Arr.map([...Str.matchAll(codeSpan)(text)], (match) => Option.fromNullishOr(match[1])));
 
-	if (path === undefined) {
+	if (!Arr.isReadonlyArrayNonEmpty(paths)) {
 		return noDenials(
 			number,
 			`${quote(text)} is an access item that cites no file. Cite the file that records the denied attempt in backticks`,
 		);
 	}
 
-	return { problems: [], denials: [{ line: number, path }] };
+	return { problems: [], denials: [{ line: number, paths }] };
 };
 
 const onlyYouOf = (item: Item): OnlyYou => {
