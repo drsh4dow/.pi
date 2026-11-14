@@ -47,7 +47,9 @@ const fenceLine = /^\s*(?<marker>`{3,}|~{3,})\s*(?<info>.*)$/u;
 const itemContent = /^\s*(?:[-*+]|\d+[.)])\s|^\s*\*\*|^#|^\s*(?:`{3}|~{3})/u;
 const listMarker = /^\s*(?:(?:[-*+]|\d+[.)])\s+)?/u;
 const onlyYouKind = new RegExp(`^(?:an? )?(${Arr.join(onlyYouKinds, "|")})\\b`, "iu");
-const codeSpan = /`(?<path>[^`]+)`/gu;
+
+/** CommonMark's code span: a run of backticks closed by the next run of the same length. */
+const codeSpan = /(?<!`)(?<ticks>`+)(?!`)(?<path>.+?)(?<!`)\k<ticks>(?!`)/gu;
 
 const byLine = Order.mapInput(Order.Number, ({ line }: FormatProblem) => line);
 
@@ -183,7 +185,11 @@ const reasonOf = ({ number, text }: Line): OnlyYou => {
 		return { problems: [], denials: [] };
 	}
 
-	const paths = Arr.getSomes(Arr.map([...Str.matchAll(codeSpan)(text)], (match) => Option.fromNullishOr(match[1])));
+	const paths = Arr.getSomes(
+		Arr.map([...Str.matchAll(codeSpan)(text)], (match) =>
+			Option.map(Option.fromNullishOr(match.groups?.["path"]), Str.trim),
+		),
+	);
 
 	if (!Arr.isReadonlyArrayNonEmpty(paths)) {
 		return noDenials(
