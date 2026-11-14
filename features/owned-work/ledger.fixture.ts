@@ -78,8 +78,17 @@ const handleChecked = (expected: Readonly<Record<string, string | boolean>> | un
 	}
 };
 
+const replyOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) =>
+	act.continues === undefined
+		? world.ledger.start(requestOf(world, act))
+		: world.ledger.continue({
+				ref: WorkRef(act.continues),
+				message: Option.fromUndefinedOr(act.message),
+				group: Option.none(),
+			});
+
 const start = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
-	const request = requestOf(world, act);
+	const request = replyOf(world, act);
 
 	const started = (handle: Handle) => {
 		const { ref, terminal, group } = handle;
@@ -87,11 +96,6 @@ const start = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
 
 		handleChecked(act.handle, handle);
 		world.terminals.set(ref, address);
-
-		if (StartRequest.$is("Delegate")(request)) {
-			world.sessions.set(address, request.childSession);
-		}
-
 		world.owed.push(...Option.toArray(group));
 
 		if (act.kind !== "serve") {
@@ -102,16 +106,16 @@ const start = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
 	};
 
 	if (act.refused !== undefined) {
-		return replied(world.ledger.start(request), ({ ref }) => `started ${ref}`, act.refused);
+		return replied(request, ({ ref }) => `started ${ref}`, act.refused);
 	}
 
 	if (act.heldThen === undefined) {
-		return Effect.map(Effect.orDie(world.ledger.start(request)), started);
+		return Effect.map(Effect.orDie(request), started);
 	}
 
 	world.spawns.push(act.heldThen);
 
-	const reply = Effect.match(world.ledger.start(request), { onFailure: refusal, onSuccess: started });
+	const reply = Effect.match(request, { onFailure: refusal, onSuccess: started });
 
 	return Effect.map(Effect.forkIn(reply, world.scope), (fiber) => world.pending.push(fiber));
 };
@@ -217,6 +221,17 @@ const answerFiles = (world: World) =>
 		(file) => world.fs.readFileString(file),
 	);
 
+const staged = (world: World, terminal: string) => {
+	const { id, dir } = world.sessions.get(terminal) ?? { id: "none", dir: "none" };
+	const read = (suffix: string) => world.fs.readFileString(`${dir}/${id}.${suffix}`);
+
+	return Effect.map(Effect.all([read("brief.json"), read("message")]), ([brief, message]) => ({
+		session: id,
+		brief,
+		message,
+	}));
+};
+
 const refsAre = (refs: Effect.Effect<ReadonlyArray<string>>, expected: ReadonlyArray<string>) =>
 	Effect.flatMap(refs, (got) => checked(() => got, expected));
 
@@ -226,6 +241,8 @@ const perform = (world: World, act: Act): Effect.Effect<void> =>
 	Match.valueTags(act, {
 		Hook: ({ event }) => hook(world, event),
 		Start: (starting) => start(world, starting),
+		Launched: ({ terminal, expect: expected }) =>
+			Effect.flatMap(Effect.orDie(staged(world, terminal)), (got) => checked(() => got, expected(sessionOf(world)))),
 		Spawned: ({ expect: expected }) => spawnedNow(world, expected),
 		Resync: ({ askedMsAgo }) => resync(world, askedMsAgo),
 		Answer: (answering) => answer(world, answering),

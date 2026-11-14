@@ -123,6 +123,12 @@ export type StartRequest = Data.TaggedEnum<{
 
 export const StartRequest = Data.taggedEnum<StartRequest>();
 
+export interface ContinueRequest {
+	readonly ref: WorkRef;
+	readonly message: Option.Option<string>;
+	readonly group: Option.Option<string>;
+}
+
 export interface GroupRequest {
 	readonly name: string;
 	readonly members: ReadonlyArray<WorkRef>;
@@ -136,6 +142,11 @@ export class NameTaken extends Schema.TaggedError<NameTaken, { readonly brand: u
 	wanted: Schema.String,
 	by: Schema.String,
 }) {}
+
+export class NotContinuable extends Schema.TaggedError<NotContinuable, { readonly brand: unique symbol }>()(
+	"NotContinuable",
+	{ ref: Schema.String, why: Schema.String },
+) {}
 
 export interface Handle {
 	readonly ref: WorkRef;

@@ -28,10 +28,24 @@ const shownAs = (what: string, labels: Readonly<Record<string, string>>) => {
 	return `${what} (${Arr.join(pairs, ", ")})`;
 };
 
-const recordSpawn = (world: Omit<World, "ledger" | "fs" | "reload">, spec: RunSpec): void => {
+const argOf = (argv: ReadonlyArray<string>, flag: string) =>
+	Option.flatMap(
+		Arr.findFirstIndex(argv, (word) => word === flag),
+		(at) => Arr.get(argv, at + 1),
+	);
+
+const recordSpawn = (world: Omit<World, "ledger" | "fs" | "reload">, spec: RunSpec, terminal: TerminalAddress) => {
+	const session = Option.all({ id: argOf(spec.argv, "--session-id"), dir: argOf(spec.argv, "--session-dir") });
+
 	world.slices.add(spec.ref);
 	world.spawnLevels.push(`${spec.ref} at level ${spec.env["PI_OWNED_WORK_LEVEL"] ?? "none"}`);
 	world.shown.push(shownAs(spec.name, spec.labels));
+
+	for (const { id, dir } of Option.toArray(session)) {
+		world.sessions.set(terminal, { id, dir, cwd: spec.cwd });
+	}
+
+	return terminal;
 };
 
 export const hcOf = (world: Omit<World, "ledger" | "fs" | "reload">) => {
@@ -62,9 +76,7 @@ export const hcOf = (world: Omit<World, "ledger" | "fs" | "reload">) => {
 			return yield* failed("no such program");
 		}
 
-		recordSpawn(world, spec);
-
-		return TerminalAddress(`t${String((spawned.count += 1))}`);
+		return recordSpawn(world, spec, TerminalAddress(`t${String((spawned.count += 1))}`));
 	});
 
 	const queued = Stream.fromQueue(world.notices);

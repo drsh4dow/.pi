@@ -18,14 +18,17 @@ import { PiCli } from "../../clients/pi-cli/index.ts";
 import { PiSessions } from "../../clients/pi-sessions/index.ts";
 import { Slices } from "../../clients/systemd/index.ts";
 import { atLevel, launch, levels, type Self } from "./child.ts";
+import { continuationOf } from "./continuation.ts";
 import { liveDelegates } from "./lifetime.ts";
 import { Command, Draft, type LedgerError, type LedgerState, type Step, type Verdict } from "./step.ts";
 import { Transitions } from "./transitions.ts";
 import {
+	type ContinueRequest,
 	type GroupRequest,
 	type Handle,
 	MonotonicNanos,
 	type NameTaken,
+	type NotContinuable,
 	monotonicNow,
 	type Settled,
 	StartRequest,
@@ -37,7 +40,7 @@ export type SpawnError = HcError | PlatformError.PlatformError;
 
 export type StartError = SpawnError | NameTaken;
 
-export type LedgerFailure = LedgerError | StartError;
+export type LedgerFailure = LedgerError | StartError | NotContinuable;
 
 export class Host extends Context.Service<
 	Host,
@@ -51,6 +54,7 @@ export class Ledger extends Context.Service<
 	Ledger,
 	{
 		readonly start: (request: StartRequest) => Effect.Effect<Handle, StartError>;
+		readonly continue: (request: ContinueRequest) => Effect.Effect<Handle, LedgerFailure>;
 		readonly group: (request: GroupRequest) => Effect.Effect<Handle, LedgerError>;
 		readonly cancel: (refs: ReadonlyArray<WorkRef>) => Effect.Effect<ReadonlyArray<Settled>, LedgerError>;
 		readonly runStarted: Effect.Effect<void>;
@@ -225,6 +229,11 @@ const start = (kit: Kit, request: StartRequest): Effect.Effect<Handle, StartErro
 		return yield* Fiber.join(detachedSpawn);
 	});
 
+const continued = (kit: Kit, request: ContinueRequest): Effect.Effect<Handle, LedgerFailure> =>
+	Effect.flatMap(Ref.get(kit.state), (state) =>
+		Effect.flatMap(Effect.fromResult(continuationOf(state)(request)), (delegate) => start(kit, delegate)),
+	);
+
 const follow = (kit: Kit): Effect.Effect<void> =>
 	Stream.runForEach(kit.hc.notices, (notice) =>
 		Match.valueTags(notice, {
@@ -264,6 +273,7 @@ export const ledgerLayer = (
 
 			return {
 				start: (request) => start(kit, request),
+				continue: (request) => continued(kit, request),
 				group: (request) => attempt(kit, (current) => Transitions.group(current, request)),
 				cancel: (refs) => attempt(kit, (current) => Transitions.cancel(current, refs)),
 				runStarted: Effect.asVoid(apply(kit, Transitions.runStarted)),

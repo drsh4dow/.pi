@@ -20,16 +20,7 @@ export const roleUses =
 
 const roleDescription = `${roleUses}. A leaf gets no playbooks and starts no delegates. It overrides the role an instructions file names, and is required when the file names none.`;
 
-const goalParam = Type.String({
-	pattern: String.raw`\S`,
-	description: "The user's goal in one sentence. It defaults to your own goal and is required when you have none.",
-});
-
-const stateParam = Type.String({
-	pattern: String.raw`\S`,
-	description:
-		"The work's state folder. It defaults to yours. Its `facts.md` reaches every delegate, its `owner.md` only owners.",
-});
+const words = (description: string) => Type.Optional(Type.String({ pattern: String.raw`\S`, description }));
 
 const sketchHeading = "## Synthesis decision";
 
@@ -50,17 +41,19 @@ export const delegateParams = ({
 	const model = Type.String({ description: modelDescription(table) });
 
 	return Type.Object({
-		name: Type.String({
-			pattern: String.raw`\S`,
-			description:
-				"A few words that tell this delegate apart from the others you run, such as `review auth` or `classify opus 2`. The human sees it in their list of running agents.",
-		}),
-		message: Type.String({
-			pattern: String.raw`\S`,
-			description: "Everything the delegate needs. You cannot send it anything later, and it cannot ask you.",
-		}),
-		goal: Type.Optional(goalParam),
-		state: Type.Optional(stateParam),
+		name: words(
+			"A few words that tell this delegate apart from the others you run, such as `review auth` or `classify opus 2`. The human sees it in their list of running agents. Required unless you name `continues`.",
+		),
+		message: words(
+			"Everything the delegate needs. You cannot send it anything while it runs, and it cannot ask you. Required unless you name `continues`.",
+		),
+		continues: words(
+			"The ref of a settled delegate you started, to run again in its own session with its name and brief. Only `message` and `group` go with it. Without a message, it checks what its last tool call did before it reruns it.",
+		),
+		goal: words("The user's goal in one sentence. It defaults to your own goal and is required when you have none."),
+		state: words(
+			"The work's state folder. It defaults to yours. Its `facts.md` reaches every delegate, its `owner.md` only owners.",
+		),
 		/** A plain string enum, as pi's `StringEnum` builds, since some providers refuse `anyOf` of constants. */
 		role: Type.Optional(Type.Unsafe<ChildRole>({ type: "string", enum: [...roles], description: roleDescription })),
 		design: Type.Optional(designParam),
@@ -76,12 +69,8 @@ export const delegateParams = ({
 				description: "The folder the delegate starts in, such as its own git worktree. Yours when left out.",
 			}),
 		),
-		group: Type.Optional(
-			Type.String({
-				pattern: String.raw`\S`,
-				description:
-					"A few words for what the group's work has in common, such as `principles eval`. Delegates you start with the same `group` while that group runs join it, and it wakes you once with all their answers.",
-			}),
+		group: words(
+			"A few words for what the group's work has in common, such as `principles eval`. Delegates you start with the same `group` while that group runs join it, and it wakes you once with all their answers.",
 		),
 	});
 };
@@ -237,7 +226,7 @@ export const parseCall = Effect.fn("parseCall")(function* (
 	table: ModelTable,
 	roles: ReadonlyArray<ChildRole>,
 	inherited: Inherited,
-	call: Static<DelegateParams>,
+	call: Static<DelegateParams> & { readonly name: string; readonly message: string },
 ) {
 	const cwd = yield* Effect.transposeOption(
 		Option.map(Option.fromUndefinedOr(call.cwd), (folder) => folderOf(ctx.cwd, folder, "cannot start in cwd")),

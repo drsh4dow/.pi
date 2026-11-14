@@ -16,7 +16,7 @@ import type { DelegateParams } from "./brief.ts";
 import type { Brief, ChildRole } from "./child.ts";
 import { Ledger } from "./ledger.ts";
 import { Tools } from "./tools.ts";
-import { StartRequest, WorkRef } from "./work.ts";
+import { type ContinueRequest, type Handle, StartRequest, WorkRef } from "./work.ts";
 
 const luna = getBuiltinModel("openai", "gpt-6-luna");
 
@@ -62,6 +62,16 @@ interface Started {
 
 export const started: Array<Started> = [];
 
+export const continued: Array<ContinueRequest> = [];
+
+const handle: Handle = {
+	ref: WorkRef("delegate-1"),
+	kind: "delegate",
+	terminal: Option.none(),
+	group: Option.none(),
+	ready: Option.none(),
+};
+
 const ledger = Layer.mock(Ledger)({
 	start: (request) =>
 		Effect.sync(() => {
@@ -69,13 +79,13 @@ const ledger = Layer.mock(Ledger)({
 				started.push({ brief: request.brief, cwd: request.childSession.cwd });
 			}
 
-			return {
-				ref: WorkRef("delegate-1"),
-				kind: "delegate" as const,
-				terminal: Option.none(),
-				group: Option.none(),
-				ready: Option.none(),
-			};
+			return handle;
+		}),
+	continue: (request) =>
+		Effect.sync(() => {
+			continued.push(request);
+
+			return handle;
 		}),
 });
 

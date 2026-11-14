@@ -10,6 +10,8 @@ export type Act = Data.TaggedEnum<{
 	Start: {
 		readonly kind: "delegate" | "serve" | "watch";
 		readonly name?: string;
+		readonly continues?: string;
+		readonly message?: string;
 		readonly refused?: string;
 		readonly deadlineMs?: number;
 		readonly messageKiB?: number;
@@ -17,6 +19,10 @@ export type Act = Data.TaggedEnum<{
 		readonly heldThen?: HeldSpawn;
 		readonly group?: string;
 		readonly handle?: Readonly<Record<string, string | boolean>>;
+	};
+	Launched: {
+		readonly terminal: string;
+		readonly expect: (sessionIdOf: (terminal: string) => string) => Record<"session" | "brief" | "message", string>;
 	};
 	Spawned: { readonly expect: string };
 	Resync: { readonly askedMsAgo: number };
