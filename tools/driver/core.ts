@@ -69,15 +69,18 @@ export const execIn = Effect.fn("execIn")(function* (place: { readonly env: Env;
 
 /**
  * Stops the core once its stdin ends, whether the scope closed it or the kernel did because the driver died outright.
- * When `hc` cannot stop it, the guardian signals its own process group, never a pid: the shell may already have reaped
- * the core, freeing its pid for any process. The guardian leads that group, so its id stays the guardian's while it
- * lives, and by then only the core is left in it. It unlinks the human's credentials first, and removes the core's folder only
- * after the core exited. Every path it removes comes from its own environment, set when the driver started it.
+ * Unless `hc` reports it stopped the core, which it does not for a core not yet listening, the guardian signals its own
+ * process group, never a pid: the shell may already have reaped the core, freeing its pid for any process. The
+ * guardian leads that group, so its id stays the guardian's while it lives, and by then only the core is left in it.
+ * It unlinks the human's credentials first, and removes the core's folder only after the core exited. Every path it
+ * removes comes from its own environment, set when the driver started it.
  */
 const guardian = `herdr-core serve >>"$1" 2>&1 &
 cat >/dev/null
 rm -f "$HOME/.pi/agent/auth.json"
-hc server stop >>"$1" 2>&1 || { trap '' TERM; kill 0; }
+stop=$(hc server stop 2>&1)
+echo "$stop" >>"$1"
+case $stop in *'"stopped":true'*) ;; *) trap '' TERM; kill 0 ;; esac
 wait
 rm -rf "$XDG_RUNTIME_DIR"`;
 
