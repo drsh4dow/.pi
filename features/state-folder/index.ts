@@ -18,7 +18,7 @@ import * as Str from "effect/String";
 
 import { labelTerminal, TerminalAddress } from "../../clients/hc/index.ts";
 import type { FormatProblem } from "./action-items.ts";
-import { checks } from "./checks.ts";
+import { checks, type Place } from "./checks.ts";
 
 /** The hc label on an agent's own terminal that names the state folder it last wrote to, which herdr-app's Trace and Actions panels read. */
 export const labelKey = "pi.state";
@@ -92,9 +92,9 @@ const changedNames = (before: Fingerprint, after: Fingerprint) =>
 const byLine = Order.mapInput(Order.Number, ({ line }: FormatProblem) => line);
 
 /** The problems a changed state file's check finds, as a report, none when the file has no check or is gone. */
-const reportOn = Effect.fn("reportOn")(function* (folder: string, name: string) {
+const reportOn = Effect.fn("reportOn")(function* (place: Place, name: string) {
 	const fs = yield* FileSystem.FileSystem;
-	const path = `${folder}/${name}`;
+	const path = `${place.folder}/${name}`;
 	const check = checks.get(name);
 
 	if (check === undefined) {
@@ -107,7 +107,7 @@ const reportOn = Effect.fn("reportOn")(function* (folder: string, name: string) 
 		return Option.none<string>();
 	}
 
-	const problems = yield* check.problems(text.value);
+	const problems = yield* check.problems(text.value, place);
 
 	return Arr.match(Arr.sort(problems, byLine), {
 		onEmpty: () => Option.none<string>(),
@@ -133,7 +133,7 @@ const reportOn = Effect.fn("reportOn")(function* (folder: string, name: string) 
  */
 export const finishCall = Effect.fn("finishCall")(function* (
 	watched: Watched,
-	{ result }: { readonly result: Pick<ToolResultEvent, "toolCallId" | "content"> },
+	{ home, result }: { readonly home: string; readonly result: Pick<ToolResultEvent, "toolCallId" | "content"> },
 ) {
 	const seen = watched.get(result.toolCallId) ?? [];
 
@@ -146,7 +146,7 @@ export const finishCall = Effect.fn("finishCall")(function* (
 	const changed = Arr.filter(changes, ({ names }) => names.length > 0);
 
 	const reports = yield* Effect.forEach(changed, ({ folder, names }) =>
-		Effect.forEach(names, (name) => reportOn(folder, name)),
+		Effect.forEach(names, (name) => reportOn({ home, folder }, name)),
 	);
 
 	const checked = Arr.match(Arr.getSomes(Arr.flatten(reports)), {
@@ -200,7 +200,8 @@ const finish = Effect.fn("finish")(function* (
 	tracker: Tracker,
 	{ pi, result }: { readonly pi: Pick<ExtensionAPI, "appendEntry">; readonly result: ToolResultEvent },
 ) {
-	const { wrote, checked } = yield* finishCall(tracker.watched, { result });
+	const home = yield* Config.String("HOME");
+	const { wrote, checked } = yield* finishCall(tracker.watched, { home, result });
 
 	if (Option.isSome(wrote) && !Option.contains(tracker.folder, wrote.value)) {
 		tracker.folder = wrote;
