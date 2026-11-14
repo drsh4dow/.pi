@@ -18,11 +18,17 @@ const briefFields = {
 	instructions: Schema.OptionFromOptionalKey(Schema.String),
 };
 
+/** Who settled an owner's design: a sketch the parent made, which the owner builds to, or the owner itself. */
+export const Design = Schema.TaggedUnion({ Sketch: { path: Schema.String }, Yours: {} });
+
+export type Design = typeof Design.Type;
+
 export const StagedBrief = Schema.Union([
 	Schema.Struct({
 		role: Schema.Literal("owner"),
 		...briefFields,
 		ownerRules: Schema.OptionFromOptionalKey(Schema.String),
+		design: Design,
 	}),
 	Schema.Struct({ role: Schema.Literal("leaf"), ...briefFields }),
 ]);

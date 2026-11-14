@@ -1,3 +1,5 @@
+import { expect } from "bun:test";
+
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
@@ -7,7 +9,10 @@ import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
 import * as Struct from "effect/Struct";
+import type { Static } from "typebox";
 
+import type { Design } from "../../clients/pi-cli/index.ts";
+import type { DelegateParams } from "./brief.ts";
 import type { Brief, ChildRole } from "./child.ts";
 import { Ledger } from "./ledger.ts";
 import { Tools } from "./tools.ts";
@@ -103,6 +108,7 @@ interface Shown {
 	readonly thinking: string | undefined;
 	readonly readOnly: boolean;
 	readonly instructions: { readonly file: string; readonly text: string } | undefined;
+	readonly design: Design | undefined;
 	readonly cwd: string;
 }
 
@@ -114,6 +120,7 @@ const plainStart: Shown = {
 	thinking: "high",
 	readOnly: false,
 	instructions: undefined,
+	design: undefined,
 	cwd: "/",
 };
 
@@ -128,3 +135,38 @@ export const refused = (message: string) => ({
 	details: { error: "BadDelegate", message },
 	started: [],
 });
+
+export const goal = "Cap the retries.";
+
+export interface BriefRow {
+	readonly name: string;
+	readonly call: Static<DelegateParams>;
+	readonly caller?: Partial<ReturnType<typeof callerOf>>;
+	readonly roles?: ReadonlyArray<ChildRole>;
+	readonly expect: ReturnType<typeof handed> | ReturnType<typeof refused>;
+}
+
+export const runBriefRow = (row: BriefRow) =>
+	runtime.runPromise(
+		Effect.gen(function* () {
+			const caller = { ...callerOf(), ...row.caller };
+			const tool = delegateStarting(row.roles ?? ["owner", "leaf"]);
+
+			const { isError, details } = yield* Effect.promise(() =>
+				tool.execute("call", { goal, ...row.call }, undefined, undefined, caller),
+			);
+
+			const shown = Arr.map(started.splice(0), ({ brief, cwd }) => ({
+				name: brief.name,
+				role: brief.role,
+				model: brief.model,
+				thinking: Option.getOrUndefined(brief.thinking),
+				readOnly: brief.readOnly,
+				instructions: Option.getOrUndefined(brief.instructions),
+				design: brief.role === "owner" ? brief.design : undefined,
+				cwd,
+			}));
+
+			expect({ isError, details, started: shown }).toEqual(row.expect);
+		}),
+	);

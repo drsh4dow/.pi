@@ -12,7 +12,7 @@ import * as Scope from "effect/Scope";
 import * as Str from "effect/String";
 
 import type { SessionAddress } from "../pi-sessions/index.ts";
-import { PiCli, piCliLayer, readStagedBrief, type StagedBrief } from "./index.ts";
+import { Design, PiCli, piCliLayer, readStagedBrief, type StagedBrief } from "./index.ts";
 
 const cli = Layer.provideMerge(piCliLayer(["/entrypoint.ts"]), NodeServices.layer);
 
@@ -25,6 +25,7 @@ const ownerBrief: StagedBrief = {
 	facts: Option.some("Build with make."),
 	instructions: Option.some("Review."),
 	ownerRules: Option.some("Push only to work branches."),
+	design: Design.cases.Sketch.make({ path: "/state/work/sketch.md" }),
 };
 
 const childOf = (session: SessionAddress) => ({

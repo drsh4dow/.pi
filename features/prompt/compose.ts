@@ -7,7 +7,7 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import type { StagedBrief } from "../../clients/pi-cli/index.ts";
+import { Design, type StagedBrief } from "../../clients/pi-cli/index.ts";
 import { skillsSection } from "./skills.ts";
 
 export interface Layers {
@@ -60,10 +60,17 @@ Playbooks, listed under \`<playbooks>\` as \`name: when\`, are the workflows for
 
 const block = (tag: string, body: string) => `<${tag}>\n${Str.trim(body)}\n</${tag}>`;
 
+const designLine = Design.match({
+	Sketch: ({ path }) =>
+		`Your design is settled: build to the sketch ${path}. Where the code needs what it did not foresee, say in your answer whether the sketch was wrong, a requirement was missed, or the code overreaches.`,
+	Yours: () => "Your design is yours to settle: run the `architect` skill before you write code.",
+});
+
 export const briefBlocks = (brief: StagedBrief): string => {
 	const workLines = [
 		`The user's goal: ${Str.trim(brief.goal)}`,
 		...Option.toArray(Option.map(brief.state, (state) => `The work's state folder: ${Str.trim(state)}`)),
+		...(brief.role === "owner" ? [designLine(brief.design)] : []),
 	];
 
 	const ownerRules = brief.role === "owner" ? brief.ownerRules : Option.none();
