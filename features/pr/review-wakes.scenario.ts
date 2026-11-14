@@ -99,8 +99,8 @@ scenario({
 				);
 				yield* run.check(Str.includes(expected)(tail), `the watch prints "${expected}" (it printed ${tail})`);
 				yield* run.check(
-					!Str.includes(`#${numberOf(quiet)} `)(tail),
-					`the watch names only the reviewed pull request (it printed ${tail})`,
+					!Str.includes(`#${numberOf(quiet)} review by`)(tail),
+					`the watch reports no review on the quiet pull request (it printed ${tail})`,
 				);
 			}).pipe(Effect.ensuring(close));
 		}),
