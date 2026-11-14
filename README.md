@@ -100,7 +100,7 @@ Work that outlives a turn keeps its state on disk, so a new session or a compact
 >    **Instead.** Tell me to drop it, and PRs merge as today.
 >    ```
 
-A call that grows `STATE.md` past 16 KB or adds a dated section comes back as an error that sends the history to `decisions.tsv`. Only the state files a call changed are checked, so a read never fails.
+A call that grows `STATE.md` past 16 KB or adds a dated section comes back as an error that sends the history to `decisions.tsv`. Only the state files a call changed are checked, so a read fails only when a parallel call writes the same file.
 
 When you come back, read `USER_ACTION_ITEMS.md` first, or open the Actions panel. It holds every call the agent left for you, with the default it applied and what you could tell it to do instead.
 
