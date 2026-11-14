@@ -2,8 +2,8 @@
  * Every process of a run lives in one transient systemd user service. `bun <file>` starts the driver again as that
  * service's main process, its stdin a pipe from the process the human started. However that process ends, the pipe
  * closes and the driver in the service ends the run as if interrupted. Once the driver in the service exits, however
- * it exits, systemd kills every process left in the service's cgroup. The driver signals only its own children that are
- * still running, through Effect's spawner, whose pids no other process can hold yet.
+ * it exits, systemd kills every process left in the service's cgroup. The driver signals only its own children that it
+ * has not yet waited for, through Effect's spawner, so no other process can hold their pids.
  *
  * A pid namespace would tie the run to the driver more tightly, but `systemd-run --user`, which owned-work starts
  * every delegate with, refuses the user manager from inside one.
