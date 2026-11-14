@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 
 import * as Option from "effect/Option";
 
-import { modelsOf, settingsOf } from "./setup.ts";
+import { modelsOf, settingsOf, setupOf } from "./setup.ts";
 import { layoutOf, runEnv } from "./world.ts";
 
 const layout = layoutOf({ tmp: "/t", name: "smoke", stamp: "20260514-101010", pid: 42, tag: "0abc12" });
@@ -121,3 +121,16 @@ for (const { name, human, providers, expected } of modelsRows) {
 		expect(modelsOf({ human, providers })).toEqual(expected);
 	});
 }
+
+test("modelsOf: contextWindow's override merges into the human's custom provider, keeping its models", () => {
+	const local = { baseUrl: "http://l", models: [{ id: "big" }], modelOverrides: { big: { maxTokens: 1 } } };
+	const setup = setupOf({ model: "local/big", contextWindow: 40_000 });
+
+	expect(
+		modelsOf({
+			human: Option.some({ providers: { local } }),
+			providers: setup.models ?? {},
+			windowed: setup.windowed,
+		}),
+	).toEqual({ providers: { local: { ...local, modelOverrides: { big: { maxTokens: 1, contextWindow: 40_000 } } } } });
+});

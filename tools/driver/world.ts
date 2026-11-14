@@ -17,7 +17,7 @@ import * as Str from "effect/String";
 import { harnessEntries, withoutPackageBins } from "../harness.ts";
 import { type Argv, execIn, type Exited, ran, startCore } from "./core.ts";
 import { type ScenarioFailed, SetupFailed } from "./failed.ts";
-import { modelsOf, type Setup, settingsOf } from "./setup.ts";
+import { modelsOf, type RunSetup, settingsOf } from "./setup.ts";
 
 type Env = Readonly<Record<string, string>>;
 
@@ -171,7 +171,7 @@ const linkAgent = Effect.fn("linkAgent")(function* (layout: Layout, humanAgent: 
 });
 
 /** Writes the run's `settings.json`, and its `models.json` when the human or the setup has one. */
-const writeConfig = Effect.fn("writeConfig")(function* (layout: Layout, setup: Setup, humanAgent: string) {
+const writeConfig = Effect.fn("writeConfig")(function* (layout: Layout, setup: RunSetup, humanAgent: string) {
 	const fs = yield* FileSystem.FileSystem;
 
 	const readHuman = (file: string) =>
@@ -194,7 +194,9 @@ const writeConfig = Effect.fn("writeConfig")(function* (layout: Layout, setup: S
 		return;
 	}
 
-	const models = yield* encodeJson(modelsOf({ human: humanModels, providers: setup.models ?? {} }));
+	const models = yield* encodeJson(
+		modelsOf({ human: humanModels, providers: setup.models ?? {}, windowed: setup.windowed }),
+	);
 
 	yield* fs.writeFileString(`${layout.agent}/models.json`, models);
 });
@@ -253,7 +255,7 @@ const envOf = Effect.fn("envOf")(function* (layout: Layout) {
  */
 export const openWorld = (input: {
 	readonly layout: Layout;
-	readonly setup: Setup;
+	readonly setup: RunSetup;
 }): Effect.Effect<World, SetupFailed, Needs> =>
 	Effect.gen(function* () {
 		const { layout } = input;

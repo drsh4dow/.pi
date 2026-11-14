@@ -25,18 +25,27 @@ export const settingsOf = (input: {
 
 const isJsonObject = Schema.is(Schema.JsonObject);
 
-/** Pure. The run's `models.json`: the human's (or none), with each setup provider replacing the human's of that name. */
+const merged = (theirs: Schema.Json, ours: Schema.Json): Schema.Json =>
+	isJsonObject(theirs) && isJsonObject(ours) ? Rec.union(theirs, ours, merged) : ours;
+
+/**
+ * Pure. The run's `models.json`: the human's (or none), with each setup provider replacing the human's of that name,
+ * except the `windowed` one, which merges into it.
+ */
 export const modelsOf = (input: {
 	readonly human: Option.Option<Schema.JsonObject>;
 	readonly providers: Readonly<Record<string, Schema.JsonObject>>;
+	readonly windowed?: string | undefined;
 }): Schema.JsonObject => {
 	const theirs = Option.getOrElse(input.human, (): Schema.JsonObject => ({}));
-	const theirProviders = Option.filter(Option.fromUndefinedOr(theirs["providers"]), isJsonObject);
 
-	const providers = Rec.union(
-		Option.getOrElse(theirProviders, () => ({})),
-		input.providers,
-		replaced,
+	const theirProviders = Option.getOrElse(
+		Option.filter(Option.fromUndefinedOr(theirs["providers"]), isJsonObject),
+		(): Schema.JsonObject => ({}),
+	);
+
+	const providers = Rec.map(Rec.union(theirProviders, input.providers, replaced), (entry, name) =>
+		name === input.windowed ? merged(theirProviders[name] ?? {}, entry) : entry,
 	);
 
 	return Rec.union(theirs, { providers }, replaced);
@@ -53,8 +62,14 @@ export interface Setup {
 	readonly models?: Readonly<Record<string, Schema.JsonObject>>;
 }
 
+/** A scenario's setup as the run applies it. */
+export interface RunSetup extends Setup {
+	/** The provider whose `models` entry only `contextWindow` made. It merges into the human's, so a custom provider keeps its models. */
+	readonly windowed?: string | undefined;
+}
+
 /** Pure. A scenario's setup, with `contextWindow` turned into the compaction settings and the model entry it stands for. */
-export const setupOf = (spec: Setup & { readonly model: string; readonly contextWindow?: number }): Setup => {
+export const setupOf = (spec: Setup & { readonly model: string; readonly contextWindow?: number }): RunSetup => {
 	if (spec.contextWindow === undefined) {
 		return spec;
 	}
@@ -73,5 +88,6 @@ export const setupOf = (spec: Setup & { readonly model: string; readonly context
 	return {
 		settings: Rec.union({ compaction }, spec.settings ?? {}, replaced),
 		models: Rec.union({ [provider]: entry }, spec.models ?? {}, (_ours, theirs: Schema.JsonObject) => theirs),
+		windowed: spec.models?.[provider] === undefined ? provider : undefined,
 	};
 };
