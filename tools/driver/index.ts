@@ -27,6 +27,7 @@ import { ScenarioFailed, SetupFailed } from "./failed.ts";
 import { type Root, type RootProcess, startRoot } from "./root.ts";
 import { readSessions, type Sessions } from "./sessions.ts";
 import { type Setup, setupOf } from "./setup.ts";
+import { tookSetup } from "./took.ts";
 import { type Layout, layoutOf, openWorld } from "./world.ts";
 
 export type { ScenarioFailed } from "./failed.ts";
@@ -183,13 +184,20 @@ const playIn = <Failure>({
 }) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
-		const world = yield* openWorld({ layout, setup: setupOf(spec) });
+		const setup = setupOf(spec);
+		const world = yield* openWorld({ layout, setup });
 
 		yield* report.say(`pi ${world.pi.version} ${world.pi.path}`);
 		yield* report.say(`agent ${world.agentDir}`);
 
 		const root = yield* startRoot({ world, model: spec.model, progress: report.progress });
 		const sessions = readSessions({ root: root.session, sessionDir: layout.sessions, probeDir: layout.probe });
+
+		yield* tookSetup(Effect.provideService(sessions, FileSystem.FileSystem, fs), {
+			...spec,
+			setup,
+			socket: layout.socket,
+		});
 
 		const run: Run = {
 			pi: world.pi,

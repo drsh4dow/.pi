@@ -26,12 +26,12 @@ pass leaf-wake in 15 s
 evidence /tmp/pi-driver/leaf-wake-20260514-101010-4242
 ```
 
-| Exit | Meaning                                                                                                                                                                          |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Every check passed.                                                                                                                                                              |
-| 1    | The scenario failed: a `check`, a `waitFor` that timed out, a prompt that never settled, or the root pi dying. The line before `evidence` says which, as `fail <name>: <claim>`. |
-| 2    | The driver could not build the run (no `pi` on PATH, the terminal core never came up, the root pi never answered). Nothing about the harness was tested.                         |
-| 130  | You pressed Ctrl-C.                                                                                                                                                              |
+| Exit | Meaning                                                                                                                                                                                           |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Every check passed.                                                                                                                                                                               |
+| 1    | The scenario failed: a `check`, a `waitFor` that timed out, a prompt that never settled, or the root pi dying. The line before `evidence` says which, as `fail <name>: <claim>`.                  |
+| 2    | The driver could not build the run (no `pi` on PATH, the terminal core never came up, the root pi never answered or does not run on what the scenario set). Nothing about the harness was tested. |
+| 130  | You pressed Ctrl-C.                                                                                                                                                                               |
 
 Every outcome stops the root pi, its delegates and the run's terminal core, and keeps the run folder as evidence:
 `report.txt` (everything printed), `sessions/` (the root's and every delegate's session file), `probe/` (what each pi
@@ -114,9 +114,10 @@ names it.
 
 The other two fields come from a probe extension the run's `pi` wrapper loads into every pi, delegates included:
 
-- `loaded` is `Option<{ version, model, contextWindow, extensions }>`: the running pi's own version, its
-  `provider/id`, its context window after your overrides, and the extension files that registered a tool or a command,
-  links resolved. It is recorded at the session's start and again at each agent start, and the latest wins: an
+- `loaded` is `Option<{ version, model, contextWindow, extensions, settings, modelsError, socket }>`: the running pi's
+  own version, its `provider/id`, its context window after your overrides, the extension files that registered a tool
+  or a command, links resolved, the settings it runs on, why it dropped `models.json` if it did, and the terminal core
+  it starts delegates in. It is recorded at the session's start and again at each agent start, and the latest wins: an
   extension that registers its tools in its own `session_start` handler, such as owned-work, shows from the first
   prompt on.
 - `requests` holds the text of every provider payload the session built, oldest first: every string in the payload,
@@ -135,7 +136,7 @@ included, sees them.
 - `models` holds provider entries by name, as in `models.json`'s `providers` (fields in pi's
   `docs/models-configuration.md`, `modelOverrides` included). Each replaces your entry of that name in the run's copy
   of your `models.json`, or starts the file if you have none. pi in RPC mode drops a `models.json` it rejects
-  without a word and runs on without your entries, so check in `loaded` that the value you set took, as smoke does.
+  without a word and runs on without your entries.
 
 - `contextWindow` forces compaction in a few turns. It gives the root's model a window of that many tokens and
   replaces your compaction settings, which may reserve more than the whole window, with a reserve of a quarter of it,
@@ -150,6 +151,9 @@ scenario({
 ```
 
 `tools/driver/compaction.scenario.ts` proves it: three prompts of filler, then a compaction entry in the root's session.
+
+Before `play` runs, the driver reads what the root's pi runs on and exits 2, naming each miss, unless it runs the
+`model`, the `contextWindow`, every `settings` key you set, a `models.json` pi kept, and the run's own terminal core.
 
 ### Examples
 

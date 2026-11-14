@@ -10,21 +10,12 @@ import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
+import * as Struct from "effect/Struct";
 
 import { ScenarioFailed } from "./failed.ts";
-import { Probed } from "./probe.ts";
+import { type Loaded, Probed } from "./probe.ts";
 
-/** What one pi loaded when its session started, as the run's probe saw it. */
-export interface Loaded {
-	/** The running pi's own `VERSION`. */
-	readonly version: string;
-	/** `provider/id`. */
-	readonly model: string;
-	/** The model's context window, after any `modelOverrides` of the setup. */
-	readonly contextWindow: number;
-	/** Extension files that registered a tool or a command, links resolved, sorted, distinct. */
-	readonly extensions: ReadonlyArray<string>;
-}
+export type { Loaded } from "./probe.ts";
 
 /** One pi session file as it stood when read. */
 export interface Session {
@@ -72,7 +63,7 @@ const probedOf = (id: string, probed: ReadonlyArray<Probed>) => {
 	return {
 		loaded: Option.map(
 			Arr.findLast(mine, (record) => record.type === "loaded"),
-			({ version, model, contextWindow, extensions }): Loaded => ({ version, model, contextWindow, extensions }),
+			Struct.omit(["type", "session"]),
 		),
 		requests: Arr.flatMap(mine, (record) => (record.type === "request" ? [record.text] : [])),
 	};

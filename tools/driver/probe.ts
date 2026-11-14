@@ -21,15 +21,28 @@ import * as Rec from "effect/Record";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+/** What one pi runs on, as it reports it. */
+export const Loaded = Schema.Struct({
+	/** The running pi's own `VERSION`. */
+	version: Schema.String,
+	/** `provider/id`. */
+	model: Schema.String,
+	/** The model's context window, after any `modelOverrides` of the setup. */
+	contextWindow: Schema.Finite,
+	/** Extension files that registered a tool or a command, links resolved, sorted, distinct. */
+	extensions: Schema.Array(Schema.String),
+	/** The settings pi runs on, its global and project files merged. */
+	settings: Schema.JsonObject,
+	/** Why pi dropped `models.json` and runs without it, when it did. */
+	modelsError: Schema.OptionFromOptionalKey(Schema.String),
+	/** `HC_TERMINAL_SOCKET`, the terminal core this pi starts its delegates in. */
+	socket: Schema.OptionFromOptionalKey(Schema.String),
+});
+
+export type Loaded = typeof Loaded.Type;
+
 export const Probed = Schema.Union([
-	Schema.Struct({
-		type: Schema.Literal("loaded"),
-		session: Schema.String,
-		version: Schema.String,
-		model: Schema.String,
-		contextWindow: Schema.Finite,
-		extensions: Schema.Array(Schema.String),
-	}),
+	Schema.Struct({ type: Schema.Literal("loaded"), session: Schema.String, ...Loaded.fields }),
 	Schema.Struct({ type: Schema.Literal("request"), session: Schema.String, text: Schema.String }),
 ]);
 
@@ -65,6 +78,8 @@ const asJson = Schema.decodeEffect(Schema.fromJsonString(Schema.Json));
 
 const encodePayload = Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown));
 
+const asJsonObject = Schema.decodeUnknownEffect(Schema.JsonObject);
+
 const record = (line: Probed) =>
 	Effect.gen(function* () {
 		const folder = yield* target;
@@ -97,6 +112,8 @@ const loaded = (pi: ExtensionAPI, ctx: ExtensionContext) =>
 
 		const fs = yield* FileSystem.FileSystem;
 		const extensions = yield* Effect.forEach(extensionFilesOf(pi), (file) => fs.realPath(file));
+		const settings = yield* asJsonObject(pi.getSettings());
+		const socket = yield* Config.option(Config.String("HC_TERMINAL_SOCKET"));
 
 		yield* record({
 			type: "loaded",
@@ -105,6 +122,9 @@ const loaded = (pi: ExtensionAPI, ctx: ExtensionContext) =>
 			model: `${model.provider}/${model.id}`,
 			contextWindow: model.contextWindow,
 			extensions: Arr.sort(Arr.dedupe(extensions), Order.String),
+			settings,
+			modelsError: Option.fromUndefinedOr(ctx.modelRegistry.getError()),
+			socket,
 		});
 	});
 

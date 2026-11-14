@@ -1,6 +1,6 @@
 /**
- * The run uses the pi on PATH, not this checkout's dev copy, loads its extensions from this worktree's agent folder, and
- * gives the root the context window `contextWindow` sets.
+ * The run uses the pi on PATH, not this checkout's dev copy, and loads its extensions from this worktree's agent folder.
+ * `contextWindow` is set so every smoke run passes through the driver's check that the root took it.
  */
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -8,11 +8,9 @@ import * as Str from "effect/String";
 
 import { scenario } from "./index.ts";
 
-const contextWindow = 40_000;
-
 scenario({
 	model: "ultra-a/claude-fable-5-2",
-	contextWindow,
+	contextWindow: 40_000,
 	play: (run) =>
 		Effect.gen(function* () {
 			yield* run.root.prompt("Reply with the single word ok.");
@@ -26,10 +24,6 @@ scenario({
 			yield* run.check(
 				foreign.length === 0,
 				`every extension the root loaded comes from ${run.agentDir}/extensions (others: ${Arr.join(foreign, ", ")})`,
-			);
-			yield* run.check(
-				loaded.contextWindow === contextWindow,
-				`the root's context window is the one set, ${String(contextWindow)} (it is ${String(loaded.contextWindow)})`,
 			);
 		}),
 });
