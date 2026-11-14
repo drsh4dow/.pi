@@ -34,9 +34,11 @@ const confirmable = new Set(["compaction.enabled", "compaction.reserveTokens", "
 const isJsonObject = (value: Schema.Json): value is Schema.JsonObject =>
 	Predicate.isObject(value) && !isJsonArray(value);
 
-/** Pure. `key`, or `key.field` for each field when the setting is an object. */
+/** Pure. `key`, or `key.field` for each field when the setting is an object with fields. */
 const pathsOf = ([key, value]: readonly [string, Schema.Json]) =>
-	isJsonObject(value) ? Arr.map(Rec.toEntries(value), ([field]) => `${key}.${field}`) : [key];
+	isJsonObject(value) && !Rec.isEmptyReadonlyRecord(value)
+		? Arr.map(Rec.toEntries(value), ([field]) => `${key}.${field}`)
+		: [key];
 
 /** Pure. Whether a JSON value sets `contextWindow` at any depth. */
 const setsWindow = (value: Schema.Json): boolean => {

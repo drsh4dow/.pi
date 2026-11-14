@@ -60,6 +60,14 @@ const rows: ReadonlyArray<{
 		],
 	},
 	{
+		name: "an unknown setting set to an empty object is refused",
+		asked: { setup: { settings: { compaction, bogusSetting: {} } } },
+		loaded: { settings: { compaction, bogusSetting: {} } },
+		expected: [
+			"the driver cannot confirm the setting bogusSetting, only compaction.enabled, compaction.reserveTokens, compaction.keepRecentTokens",
+		],
+	},
+	{
 		name: "a context window given only through models is refused",
 		asked: {
 			contextWindow: undefined,
