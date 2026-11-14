@@ -13,7 +13,7 @@ import * as Str from "effect/String";
 import * as Struct from "effect/Struct";
 import type { Static } from "typebox";
 
-import { PiCli, piCliLayer, readStagedBrief } from "../../clients/pi-cli/index.ts";
+import { Design, PiCli, piCliLayer, readStagedBrief } from "../../clients/pi-cli/index.ts";
 import { entryKind } from "../state-folder/index.ts";
 import { callerOf, delegate, runtime, started, table } from "./brief.fixture.ts";
 import type { DelegateParams } from "./brief.ts";
@@ -47,6 +47,7 @@ await Promise.all([
 	Bun.write(`${stateFolder}/facts.md`, `${facts}\n`),
 	Bun.write(`${otherFolder}/facts.md`, "Other facts.\n"),
 	Bun.write(`${stateFolder}/owner.md`, `${ownerRules}\n`),
+	Bun.write(`${root}/sketch.md`, "## Synthesis decision\n"),
 ]);
 
 const Refusal = Schema.Struct({ message: Schema.String });
@@ -82,7 +83,14 @@ test("a leaf gets the state folder's project facts and no owner rules, and an ow
 	runtime.runPromise(
 		Effect.gen(function* () {
 			const leaf = yield* startedBy(delegate, { ...leafCall, goal, state: stateFolder });
-			const owner = yield* startedBy(delegate, { ...leafCall, role: "owner", goal, state: stateFolder });
+
+			const owner = yield* startedBy(delegate, {
+				...leafCall,
+				role: "owner",
+				design: "yours",
+				goal,
+				state: stateFolder,
+			});
 
 			expect(Arr.map([...leaf, ...owner], workOf)).toEqual([
 				{ role: "leaf", goal, state: Option.some(stateFolder), facts: Option.some(`${facts}\n`) },
@@ -155,11 +163,11 @@ const stagedAs = (id: string, level: number) => (briefs: ReadonlyArray<Brief>) =
 		return { dir: delegatesFolder, id };
 	});
 
-test("an owner's staged brief carries the root's goal, state folder and owner rules, and its leaf inherits the goal and state folder unless it names its own", () =>
+test("an owner's staged brief carries the root's goal, state folder, owner rules and design, and its leaf inherits the goal and state folder unless it names its own", () =>
 	staging.runPromise(
 		Effect.gen(function* () {
 			const owner = yield* Effect.flatMap(
-				startedBy(delegate, { ...leafCall, role: "owner", goal, state: stateFolder }),
+				startedBy(delegate, { ...leafCall, role: "owner", design: `${root}/sketch.md`, goal, state: stateFolder }),
 				stagedAs("owner", 2),
 			);
 
@@ -173,7 +181,14 @@ test("an owner's staged brief carries the root's goal, state folder and owner ru
 			const work = { state: Option.some(stateFolder), facts: Option.some(`${facts}\n`) };
 
 			expect([ownerStaged, inherited, overridden, moved]).toEqual([
-				{ ...work, role: "owner", goal, ownerRules: Option.some(`${ownerRules}\n`), instructions: Option.none() },
+				{
+					...work,
+					role: "owner",
+					goal,
+					ownerRules: Option.some(`${ownerRules}\n`),
+					design: Design.cases.Sketch.make({ path: `${root}/sketch.md` }),
+					instructions: Option.none(),
+				},
 				{ ...work, role: "leaf", goal, instructions: Option.none() },
 				{ ...work, role: "leaf", goal: "Cap the retries at three.", instructions: Option.none() },
 				{

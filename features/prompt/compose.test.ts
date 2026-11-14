@@ -8,7 +8,8 @@ import {
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import { compose, type Layers, playbooksWorkflow } from "./compose.ts";
+import { Design } from "../../clients/pi-cli/index.ts";
+import { briefBlocks, compose, type Layers, playbooksWorkflow } from "./compose.ts";
 
 const options = (overrides: Partial<NormalizedBuildSystemPromptOptions>): NormalizedBuildSystemPromptOptions => ({
 	customPrompt: "you are a coding agent.\n",
@@ -53,7 +54,7 @@ const preambleRows: ReadonlyArray<{ name: string; shared: string; layers: Layers
 		expect: "you are a coding agent.\n\n<role>\nroot\n</role>",
 	},
 	{
-		name: "an owner reads SYSTEM.md, its role file, its goal and state folder, project facts, owner rules and instructions, the principles index, then the playbooks workflow and index",
+		name: "an owner reads SYSTEM.md, its role file, its goal, state folder and the sketch to build to, project facts, owner rules and instructions, the principles index, then the playbooks workflow and index",
 		shared: "you are a coding agent.",
 		layers: {
 			role: "<role>\nowner\n</role>\n",
@@ -63,13 +64,14 @@ const preambleRows: ReadonlyArray<{ name: string; shared: string; layers: Layers
 				state: Option.some("/state/work"),
 				facts: Option.some("Build with make.\n"),
 				ownerRules: Option.some("\nPush only to work branches.\n"),
+				design: Design.cases.Sketch.make({ path: "/state/work/sketch.md" }),
 				instructions: Option.some("Review one diff.\n"),
 			}),
 			principles: Option.some("<principles>\n…\n</principles>"),
 			playbooks: Option.some("<playbooks>\n…\n</playbooks>"),
 			skills: [],
 		},
-		expect: `you are a coding agent.\n\n<role>\nowner\n</role>\n\n<work>\nThe user's goal: Cap the retries.\nThe work's state folder: /state/work\n</work>\n\n<project-facts>\nBuild with make.\n</project-facts>\n\n<owner-rules>\nPush only to work branches.\n</owner-rules>\n\n<instructions>\nReview one diff.\n</instructions>\n\n<principles>\n…\n</principles>\n\n${playbooksWorkflow}\n\n<playbooks>\n…\n</playbooks>`,
+		expect: `you are a coding agent.\n\n<role>\nowner\n</role>\n\n<work>\nThe user's goal: Cap the retries.\nThe work's state folder: /state/work\nYour design is settled: build to the sketch /state/work/sketch.md. Where the code needs what it did not foresee, say in your answer whether the sketch was wrong, a requirement was missed, or the code overreaches.\n</work>\n\n<project-facts>\nBuild with make.\n</project-facts>\n\n<owner-rules>\nPush only to work branches.\n</owner-rules>\n\n<instructions>\nReview one diff.\n</instructions>\n\n<principles>\n…\n</principles>\n\n${playbooksWorkflow}\n\n<playbooks>\n…\n</playbooks>`,
 	},
 	{
 		name: "a leaf with project facts and no state folder reads its goal and the facts, and no owner rules",
@@ -103,6 +105,22 @@ for (const row of preambleRows) {
 		expect(composed(options({ customPrompt: row.shared }), row.layers).customPrompt).toBe(row.expect);
 	});
 }
+
+test("an owner handed its own design reads that it runs architect first", () => {
+	const brief = {
+		role: "owner",
+		goal: "Cap the retries.",
+		state: Option.none(),
+		facts: Option.none(),
+		ownerRules: Option.none(),
+		design: Design.cases.Yours.make({}),
+		instructions: Option.none(),
+	} as const;
+
+	expect(briefBlocks(brief)).toBe(
+		"<work>\nThe user's goal: Cap the retries.\nYour design is yours to settle: run the `architect` skill before you write code.\n</work>",
+	);
+});
 
 const ruleRows = [
 	{

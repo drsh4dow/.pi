@@ -8,7 +8,7 @@ import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { type RunSpec, terminalNameOf } from "../../clients/hc/index.ts";
-import type { ChildPi, PiCli, StagedBrief } from "../../clients/pi-cli/index.ts";
+import type { ChildPi, Design, PiCli, StagedBrief } from "../../clients/pi-cli/index.ts";
 import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
 
 /** How deep a chain of owners goes, counting the root as level 1. An owner at the last level starts leaves only, one level below it. */
@@ -120,6 +120,7 @@ export type Brief =
 	| (BriefCommon & {
 			readonly role: "owner";
 			readonly ownerRules: Option.Option<string>;
+			readonly design: Design;
 	  })
 	| (BriefCommon & { readonly role: "leaf"; readonly ownerRules?: never });
 
@@ -132,7 +133,7 @@ export const stagedOf = (brief: Brief): StagedBrief => {
 	};
 
 	if (brief.role === "owner") {
-		return { role: "owner", ...common, ownerRules: brief.ownerRules };
+		return { role: "owner", ...common, ownerRules: brief.ownerRules, design: brief.design };
 	}
 
 	return { role: "leaf", ...common };

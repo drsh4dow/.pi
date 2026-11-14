@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 
 import type { RunSpec } from "../../clients/hc/index.ts";
-import { PiCli } from "../../clients/pi-cli/index.ts";
+import { Design, PiCli } from "../../clients/pi-cli/index.ts";
 import { atLevel, type ChildRole, childExtensions, inheritedEnv, launch, selfFromEnv } from "./child.ts";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { commandSpec } from "./ledger.ts";
@@ -154,7 +154,7 @@ const delegateLaunch = (role: ChildRole, level: number, thinking: Option.Option<
 		launch(pi)({
 			brief:
 				role === "owner"
-					? { ...brief, role, thinking, readOnly, ownerRules: Option.none() }
+					? { ...brief, role, thinking, readOnly, ownerRules: Option.none(), design: Design.cases.Yours.make({}) }
 					: { ...brief, role, thinking, readOnly },
 			level,
 			childSession: { id: "launched", cwd: sessionRoot, dir: `${sessionRoot}/delegates` },

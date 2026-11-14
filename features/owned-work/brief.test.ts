@@ -2,32 +2,32 @@ import { afterAll, expect, test } from "bun:test";
 
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as Option from "effect/Option";
+import type * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
-import type { Static } from "typebox";
 
+import { Design } from "../../clients/pi-cli/index.ts";
 import {
 	body,
+	type BriefRow,
 	callerOf,
 	delegate,
-	delegateStarting,
 	fixtures,
+	goal,
 	handed,
 	proxied,
 	refused,
+	runBriefRow,
 	runtime,
 	started,
 	table,
 } from "./brief.fixture.ts";
-import { type DelegateParams, roleUses } from "./brief.ts";
-import type { Brief, ChildRole } from "./child.ts";
+import { roleUses } from "./brief.ts";
+import type { Brief } from "./child.ts";
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${fixtures}`.quiet())));
 
 const Described = Schema.Struct({ description: Schema.String });
-
-const goal = "Cap the retries.";
 
 test("the model parameter tells the caller each alias with its model and its use, and the panel", () =>
 	runtime.runPromise(
@@ -49,13 +49,7 @@ const plainFile = { file: `${fixtures}/plain.md`, text: body };
 
 const profiledFile = { file: `${fixtures}/profiled.md`, text: body };
 
-const briefRows: ReadonlyArray<{
-	name: string;
-	call: Static<DelegateParams>;
-	caller?: Partial<ReturnType<typeof callerOf>>;
-	roles?: ReadonlyArray<ChildRole>;
-	expect: ReturnType<typeof handed> | ReturnType<typeof refused>;
-}> = [
+const briefRows: ReadonlyArray<BriefRow> = [
 	{
 		name: "a leaf with a message and a model starts under the name the caller gives",
 		call: { name: "retry cap", message: "Review the retry cap.", role: "leaf", model: "quick" },
@@ -140,13 +134,17 @@ const briefRows: ReadonlyArray<{
 	},
 	{
 		name: "the call's role starts an owner",
-		call: { name: "m", message: "m", role: "owner", model: "quick" },
-		expect: handed({ role: "owner" }),
+		call: { name: "m", message: "m", role: "owner", model: "quick", design: "yours" },
+		expect: handed({ role: "owner", design: Design.cases.Yours.make({}) }),
 	},
 	{
 		name: "an instructions file's role holds when the call names none",
-		call: { name: "m", message: "m", model: "quick", instructionsFile: "../owned.md" },
-		expect: handed({ role: "owner", instructions: { file: `${fixtures}/owned.md`, text: body } }),
+		call: { name: "m", message: "m", model: "quick", instructionsFile: "../owned.md", design: "yours" },
+		expect: handed({
+			role: "owner",
+			instructions: { file: `${fixtures}/owned.md`, text: body },
+			design: Design.cases.Yours.make({}),
+		}),
 	},
 	{
 		name: "an owner at the last level is refused the owner role an instructions file names",
@@ -162,9 +160,10 @@ const briefRows: ReadonlyArray<{
 	},
 	{
 		name: "the call's role wins over the instructions file's",
-		call: { name: "m", message: "m", role: "owner", instructionsFile: "../profiled.md" },
+		call: { name: "m", message: "m", role: "owner", instructionsFile: "../profiled.md", design: "yours" },
 		expect: handed({
 			role: "owner",
+			design: Design.cases.Yours.make({}),
 			model: "anthropic/claude-opus-5-5",
 			thinking: "low",
 			readOnly: true,
@@ -226,30 +225,7 @@ const briefRows: ReadonlyArray<{
 ];
 
 for (const row of briefRows) {
-	test(row.name, () =>
-		runtime.runPromise(
-			Effect.gen(function* () {
-				const caller = { ...callerOf(), ...row.caller };
-				const tool = delegateStarting(row.roles ?? ["owner", "leaf"]);
-
-				const { isError, details } = yield* Effect.promise(() =>
-					tool.execute("call", { goal, ...row.call }, undefined, undefined, caller),
-				);
-
-				const shown = Arr.map(started.splice(0), ({ brief, cwd }) => ({
-					name: brief.name,
-					role: brief.role,
-					model: brief.model,
-					thinking: Option.getOrUndefined(brief.thinking),
-					readOnly: brief.readOnly,
-					instructions: Option.getOrUndefined(brief.instructions),
-					cwd,
-				}));
-
-				expect({ isError, details, started: shown }).toEqual(row.expect);
-			}),
-		),
-	);
+	test(row.name, () => runBriefRow(row));
 }
 
 const Refusal = Schema.Struct({ message: Schema.String });

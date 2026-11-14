@@ -8,7 +8,7 @@ import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
 import { PiCli, piCliLayer } from "../../clients/pi-cli/index.ts";
-import { stateFilesFor } from "./brief.ts";
+import { roleFieldsFor } from "./brief.ts";
 import { type Brief, childExtensions, type ChildRole, inheritedEnv, launch, levels } from "./child.ts";
 import { type Alias, aliases, ModelName, modelTable } from "./models.ts";
 import { parseProfile } from "./profile.ts";
@@ -38,19 +38,25 @@ const goal = "Capture the system prompt each delegate gets.";
 interface Staged extends Pick<Brief, "name" | "model" | "thinking" | "readOnly" | "instructions"> {
 	readonly role: ChildRole;
 	readonly level: number;
+	readonly design: Option.Option<string>;
 }
 
-const bare = (name: string, role: ChildRole, level: number): Staged => ({
+const bare = (name: string, role: ChildRole, level: number, design: Option.Option<string>): Staged => ({
 	name,
 	role,
 	level,
+	design,
 	model: keyOf(aliases.judgment),
 	thinking: Option.none(),
 	readOnly: false,
 	instructions: Option.none(),
 });
 
-const bareDelegates = [bare("owner", "owner", 2), bare("owner-last-level", "owner", levels), bare("leaf", "leaf", 2)];
+const bareDelegates = [
+	bare("owner", "owner", 2, Option.some("sketch.md")),
+	bare("owner-last-level", "owner", levels, Option.some("yours")),
+	bare("leaf", "leaf", 2, Option.none()),
+];
 
 const onInstructionsFile = Effect.fn("onInstructionsFile")(function* (file: string) {
 	const fs = yield* FileSystem.FileSystem;
@@ -62,6 +68,7 @@ const onInstructionsFile = Effect.fn("onInstructionsFile")(function* (file: stri
 		name: Str.replace(/\.md$/u, "")(file),
 		role,
 		level: 2,
+		design: Option.none(),
 		model: stagedModel(model),
 		thinking: profile.thinking,
 		readOnly: profile.readOnly,
@@ -90,10 +97,10 @@ export const stagedLaunches = Effect.fn("stagedLaunches")(function* (
 
 	const withInstructions = yield* Effect.forEach(files, onInstructionsFile);
 
-	return yield* Effect.forEach([...withInstructions, ...bareDelegates], ({ level, role, ...staged }) =>
+	return yield* Effect.forEach([...withInstructions, ...bareDelegates], ({ level, role, design, ...staged }) =>
 		Effect.gen(function* () {
-			const stateFiles = yield* stateFilesFor(Option.some(state), role);
-			const brief: Brief = { ...staged, message, goal, state: Option.some(state), ...stateFiles };
+			const roleFields = yield* roleFieldsFor(state, Option.some(state), role, design);
+			const brief: Brief = { ...staged, message, goal, state: Option.some(state), ...roleFields };
 
 			const spec = yield* launch(cli)({
 				brief,

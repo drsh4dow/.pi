@@ -5,29 +5,15 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
-import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 import { type Static, Type } from "typebox";
 
-import type { StagedBrief } from "../../clients/pi-cli/index.ts";
+import { Design, type StagedBrief } from "../../clients/pi-cli/index.ts";
 import { lastFolder } from "../state-folder/index.ts";
 import type { Brief, ChildRole } from "./child.ts";
-import { type Alias, ModelName, modelNameOf, type ModelTable } from "./models.ts";
+import { type ModelCaller, modelChoices, modelDescription, modelNameOf, modelOf, type ModelTable } from "./models.ts";
 import { parseProfile } from "./profile.ts";
 import { BadDelegate } from "./work.ts";
-
-const modelDescription = ({ aliases, panel }: ModelTable) => {
-	const entries = Rec.toEntries(aliases);
-	const named = Arr.map(entries, ([alias, { provider, id, use }]) => `\`${alias}\` (${provider}/${id}) for ${use}`);
-
-	const sentences = [
-		`\`provider/id\`, or an alias: ${Arr.join(named, "; ")}.`,
-		"It overrides the model an instructions file names, and is required when the file names none.",
-		`The panel, for work a skill runs once on each: ${Arr.join(panel, ", ")}.`,
-	];
-
-	return Arr.join(sentences, " ");
-};
 
 export const roleUses =
 	"`owner` for a slice to build, verify and commit, which may need a playbook or delegates of its own; `leaf` for one bounded task, such as a search, a review, a verification lane or a scoped edit";
@@ -43,6 +29,15 @@ const stateParam = Type.String({
 	pattern: String.raw`\S`,
 	description:
 		"The work's state folder. It defaults to yours. Its `facts.md` reaches every delegate, its `owner.md` only owners.",
+});
+
+const sketchHeading = "## Synthesis decision";
+
+export const designChoice = `the path of a sketch file that holds \`${sketchHeading}\`, which the owner builds to, or \`yours\`, which has the owner run \`architect\` first`;
+
+const designParam = Type.String({
+	pattern: String.raw`\S`,
+	description: `Who settled an owner's design: ${designChoice}. Required for an owner, refused for a leaf.`,
 });
 
 export const delegateParams = ({
@@ -68,6 +63,7 @@ export const delegateParams = ({
 		state: Type.Optional(stateParam),
 		/** A plain string enum, as pi's `StringEnum` builds, since some providers refuse `anyOf` of constants. */
 		role: Type.Optional(Type.Unsafe<ChildRole>({ type: "string", enum: [...roles], description: roleDescription })),
+		design: Type.Optional(designParam),
 		instructionsFile: Type.Optional(
 			Type.String({
 				description:
@@ -92,50 +88,10 @@ export const delegateParams = ({
 
 export type DelegateParams = ReturnType<typeof delegateParams>;
 
-export type Caller = Pick<ExtensionContext, "cwd" | "model"> & {
-	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll">;
-	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;
-};
-
-/** `provider/id` of the alias's model on the caller's provider when that provider has it, so a delegate stays on its parent's account. */
-const aliasedModel = (ctx: Caller, { provider: home, id }: Alias) => {
-	const registry = ctx.modelRegistry.getAll();
-
-	const own = Option.filter(Option.fromUndefinedOr(ctx.model), ({ provider }) =>
-		Arr.some(registry, (model) => model.provider === provider && model.id === id),
-	);
-
-	const provider = Option.match(own, { onNone: () => home, onSome: (model) => model.provider });
-
-	return `${provider}/${id}`;
-};
-
-const modelChoices = ({ aliases }: ModelTable) => {
-	const named = Arr.map(Rec.keys(aliases), (alias) => `\`${alias}\``);
-
-	return `an alias (${Arr.join(named, ", ")}) or a \`provider/id\`, your own included`;
-};
-
-const modelOf = (ctx: Caller, table: ModelTable, name: ModelName) =>
-	Effect.flatMap(
-		ModelName.$match(name, {
-			Spelled: ({ key }) => Effect.succeed({ model: key, source: "" }),
-			Alias: ({ alias }) =>
-				Effect.fromOption(Rec.get(table.aliases, alias), () =>
-					BadDelegate.make({ why: `${alias} is not an alias: name ${modelChoices(table)}` }),
-				).pipe(
-					Effect.map((entry) => ({
-						model: aliasedModel(ctx, entry),
-						source: `, which the alias ${alias} names,`,
-					})),
-				),
-		}),
-		({ model, source }) =>
-			Effect.fromOption(
-				Arr.findFirst(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === model),
-				() => BadDelegate.make({ why: `model ${model}${source} is not in the model registry` }),
-			).pipe(Effect.as(model)),
-	);
+export type Caller = ModelCaller &
+	Pick<ExtensionContext, "cwd"> & {
+		readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;
+	};
 
 /** The thinking level a delegate starts at unless its instructions file names one. pi clamps it to what the model supports. */
 const delegateThinking = "high";
@@ -187,16 +143,45 @@ const stateFile = (state: Option.Option<string>, name: string) =>
 		},
 	});
 
-export const stateFilesFor = Effect.fn("stateFilesFor")(function* (state: Option.Option<string>, role: ChildRole) {
+const designOf = Effect.fn("designOf")(function* (cwd: string, named: string) {
+	if (named === "yours") {
+		return Design.cases.Yours.make({});
+	}
+
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* absoluteOf(cwd, named);
+
+	const text = yield* Effect.mapError(fs.readFileString(path), (error) =>
+		BadDelegate.make({ why: `cannot read design sketch ${named}: ${error.reason._tag}` }),
+	);
+
+	return /^## Synthesis decision\s*$/mu.test(text)
+		? Design.cases.Sketch.make({ path })
+		: yield* BadDelegate.make({ why: `design sketch ${named} holds no \`${sketchHeading}\`: name ${designChoice}` });
+});
+
+/** What a brief holds by role: project facts for every delegate, and the owner rules and a design for an owner only. */
+export const roleFieldsFor = Effect.fn("roleFieldsFor")(function* (
+	cwd: string,
+	state: Option.Option<string>,
+	role: ChildRole,
+	design: Option.Option<string>,
+) {
 	const facts = yield* stateFile(state, "facts.md");
 
 	if (role === "leaf") {
-		return { role, facts };
+		return Option.isSome(design)
+			? yield* BadDelegate.make({ why: "a leaf takes no `design`: leave it out, or start an owner" })
+			: { role, facts };
 	}
+
+	const named = yield* Effect.fromOption(design, () =>
+		BadDelegate.make({ why: `name a \`design\` for an owner: ${designChoice}` }),
+	);
 
 	const ownerRules = yield* stateFile(state, "owner.md");
 
-	return { role, facts, ownerRules };
+	return { role, facts, ownerRules, design: yield* designOf(cwd, named) };
 });
 
 const goalMissing = BadDelegate.make({
@@ -227,9 +212,9 @@ const workOf = Effect.fn("workOf")(function* (
 		),
 	);
 
-	const stateFiles = yield* stateFilesFor(state, role);
+	const roleFields = yield* roleFieldsFor(ctx.cwd, state, role, Option.fromUndefinedOr(call.design));
 
-	return { goal, state, ...stateFiles };
+	return { goal, state, ...roleFields };
 });
 
 const roleOf = (named: Option.Option<ChildRole>, roles: ReadonlyArray<ChildRole>) =>
