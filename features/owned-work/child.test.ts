@@ -99,7 +99,7 @@ const rows: ReadonlyArray<Row> = [
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
 			Answer({ terminal: "t2", text: "half", end: killed(9) }),
 			Cancel({ refs: ["delegate-3"], expect: "delegate-3 failed: cancelled by your cancel call" }),
-			Leftovers({ expect: [] }),
+			Leftovers({ expect: ["t1.answer.md", "t2.answer.md"] }),
 			TurnEnds({ expect: "continue: delegate-1 done: a; delegate-2 failed: oom" }),
 		],
 	},
@@ -112,7 +112,7 @@ const rows: ReadonlyArray<Row> = [
 			delegate,
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
 			Hook({ event: "parent dies" }),
-			Leftovers({ expect: [] }),
+			Leftovers({ expect: ["t1.answer.md"] }),
 		],
 	},
 	{

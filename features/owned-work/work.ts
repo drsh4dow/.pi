@@ -3,6 +3,7 @@ import * as Clock from "effect/Clock";
 import * as Data from "effect/Data";
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
@@ -34,8 +35,14 @@ export type FailReason = Data.TaggedEnum<{
 
 export const FailReason = Data.taggedEnum<FailReason>();
 
+export interface Answer {
+	readonly text: string;
+	readonly cut: boolean;
+	readonly file: string;
+}
+
 export type Outcome = Data.TaggedEnum<{
-	Done: { readonly text: string };
+	Done: { readonly answer: Answer };
 	Fired: { readonly exitCode: number; readonly tail: string };
 	Members: { readonly results: ReadonlyArray<Settled> };
 	Failed: { readonly reason: FailReason };
@@ -43,9 +50,14 @@ export type Outcome = Data.TaggedEnum<{
 
 export const Outcome = Data.taggedEnum<Outcome>();
 
+export type Identity =
+	| { readonly kind: "delegate"; readonly name: string; readonly session: string }
+	| { readonly kind: "watch" | "serve"; readonly command: string }
+	| { readonly kind: "group"; readonly name: string };
+
 export interface Settled {
 	readonly ref: WorkRef;
-	readonly kind: WorkKind;
+	readonly who: Identity;
 	readonly outcome: Outcome;
 	/** The file holding a watch's full output, once its command started. */
 	readonly log: Option.Option<string>;
@@ -86,6 +98,18 @@ export type Work = Data.TaggedEnum<{
 
 export const Work = Data.taggedEnum<Work>();
 
+export const whoOf = (work: Work): Identity =>
+	Match.valueTags(work, {
+		Delegate: ({ brief, childSession }): Identity => ({
+			kind: "delegate",
+			name: brief.name,
+			session: childSession.id,
+		}),
+		Watch: ({ command }): Identity => ({ kind: "watch", command }),
+		Serve: ({ command }): Identity => ({ kind: "serve", command }),
+		Group: ({ name }): Identity => ({ kind: "group", name }),
+	});
+
 /** A watch has a log once its command started. */
 export const logOf = (work: Work): Option.Option<string> =>
 	Work.$is("Watch")(work) ? Option.as(work.spawn, work.log) : Option.none();
@@ -106,6 +130,11 @@ export interface GroupRequest {
 
 export class BadDelegate extends Schema.TaggedError<BadDelegate, { readonly brand: unique symbol }>()("BadDelegate", {
 	why: Schema.String,
+}) {}
+
+export class NameTaken extends Schema.TaggedError<NameTaken, { readonly brand: unique symbol }>()("NameTaken", {
+	wanted: Schema.String,
+	by: Schema.String,
 }) {}
 
 export interface Handle {

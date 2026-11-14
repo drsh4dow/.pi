@@ -1,12 +1,14 @@
 import * as Arr from "effect/Array";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
+import * as Result from "effect/Result";
 
 import { TerminalEnd, type TerminalAddress, type TerminalSnapshot } from "../../clients/hc/index.ts";
 import type { ChildReply } from "../../clients/pi-sessions/index.ts";
+import { answerOf } from "./answer.ts";
 import type { Role } from "./child.ts";
 import { Groups } from "./groups.ts";
-import { carried, deadlineOf, running, waking } from "./lifetime.ts";
+import { carried, deadlineOf, nameTaken, running, waking } from "./lifetime.ts";
 import { Command, Draft, type Job, type LedgerState, type Step, type Woke, Verdict } from "./step.ts";
 import {
 	FailReason,
@@ -72,7 +74,7 @@ const arrange = (draft: Draft, ref: WorkRef, request: StartRequest): void => {
 	});
 };
 
-const start = (state: LedgerState, request: StartRequest): Step<WorkRef> => {
+const started = (state: LedgerState, request: StartRequest): Step<WorkRef> => {
 	const draft = Draft.of(state);
 	const ref = WorkRef(`${Draft.kindOf(request)}-${String(state.next)}`);
 	const [work, entry] = startedOf(request, ref, state.now);
@@ -84,6 +86,12 @@ const start = (state: LedgerState, request: StartRequest): Step<WorkRef> => {
 
 	return Draft.finish(draft, ref);
 };
+
+const start = (state: LedgerState, request: StartRequest) =>
+	Option.match(nameTaken(state)(request), {
+		onSome: Result.fail,
+		onNone: () => Result.succeed(started(state, request)),
+	});
 
 const spawned = (state: LedgerState, ref: WorkRef, terminal: TerminalAddress): Step<Handle> => {
 	const draft = Draft.of(state);
@@ -175,7 +183,8 @@ const answered = (state: LedgerState, ref: WorkRef, end: TerminalEnd, reply: Opt
 	const outcome = Option.match(reply, {
 		onNone: () => Draft.failure(end),
 		onSome: Match.valueTags({
-			Answered: ({ text }) => (Draft.isCleanExit(end) ? Outcome.Done({ text }) : Draft.failure(end)),
+			Answered: ({ text, file }) =>
+				Draft.isCleanExit(end) ? Outcome.Done({ answer: answerOf(file)(text) }) : Draft.failure(end),
 			Errored: ({ why }) =>
 				Option.isSome(Draft.exitCode(end))
 					? Outcome.Failed({ reason: FailReason.Errored({ why }) })

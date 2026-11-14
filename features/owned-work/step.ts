@@ -21,6 +21,7 @@ import {
 	WorkEntry,
 	type WorkKind,
 	type WorkRef,
+	whoOf,
 } from "./work.ts";
 
 export interface LedgerState {
@@ -138,7 +139,7 @@ const markDelivered = (draft: Draft, taken: ReadonlyArray<Work>): void => {
 };
 
 const resultOf = (work: Work): Option.Option<Settled> =>
-	Option.map(work.settled, ({ outcome }) => ({ ref: work.ref, kind: kindOf(work), outcome, log: logOf(work) }));
+	Option.map(work.settled, ({ outcome }) => ({ ref: work.ref, who: whoOf(work), outcome, log: logOf(work) }));
 
 const resultsOf = (taken: ReadonlyArray<Work>): Array<Settled> =>
 	Arr.getSomes(Arr.map([...Arr.filter(taken, isJob), ...Arr.filter(taken, isServe)], resultOf));

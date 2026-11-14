@@ -25,6 +25,7 @@ import {
 	type GroupRequest,
 	type Handle,
 	MonotonicNanos,
+	type NameTaken,
 	monotonicNow,
 	type Settled,
 	StartRequest,
@@ -34,7 +35,9 @@ import {
 
 export type SpawnError = HcError | PlatformError.PlatformError;
 
-export type LedgerFailure = LedgerError | SpawnError;
+export type StartError = SpawnError | NameTaken;
+
+export type LedgerFailure = LedgerError | StartError;
 
 export class Host extends Context.Service<
 	Host,
@@ -47,7 +50,7 @@ export class Host extends Context.Service<
 export class Ledger extends Context.Service<
 	Ledger,
 	{
-		readonly start: (request: StartRequest) => Effect.Effect<Handle, SpawnError>;
+		readonly start: (request: StartRequest) => Effect.Effect<Handle, StartError>;
 		readonly group: (request: GroupRequest) => Effect.Effect<Handle, LedgerError>;
 		readonly cancel: (refs: ReadonlyArray<WorkRef>) => Effect.Effect<ReadonlyArray<Settled>, LedgerError>;
 		readonly runStarted: Effect.Effect<void>;
@@ -214,9 +217,9 @@ const spawn = (kit: Kit, ref: WorkRef, request: StartRequest): Effect.Effect<Han
 		}),
 	);
 
-const start = (kit: Kit, request: StartRequest): Effect.Effect<Handle, SpawnError> =>
+const start = (kit: Kit, request: StartRequest): Effect.Effect<Handle, StartError> =>
 	Effect.gen(function* () {
-		const ref = yield* apply(kit, (current) => Transitions.start(current, request));
+		const ref = yield* attempt(kit, (current) => Transitions.start(current, request));
 		const detachedSpawn = yield* FiberSet.run(kit.fibers, spawn(kit, ref, request));
 
 		return yield* Fiber.join(detachedSpawn);

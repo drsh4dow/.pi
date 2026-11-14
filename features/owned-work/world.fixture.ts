@@ -59,6 +59,7 @@ export interface World {
 	readonly settledRefs: Array<string>;
 	readonly fs: FileSystem.FileSystem;
 	readonly clock: { backMs: number; sleeping: number };
+	delegatesStarted: number;
 	dead: boolean;
 }
 
@@ -85,7 +86,7 @@ const show = ({ ref, outcome, log }: Pick<Settled, "ref" | "outcome" | "log">): 
 	const logged = Option.match(log, { onNone: () => "", onSome: (path) => ` (log ${path})` });
 
 	return Match.valueTags(outcome, {
-		Done: ({ text }) => `${ref} done: ${text}`,
+		Done: ({ answer }) => `${ref} done: ${answer.text}`,
 		Fired: ({ exitCode, tail }) => `${ref} fired ${String(exitCode)}${logged}: ${tail}`,
 		Members: ({ results }) => `${ref} [${Arr.join(Arr.map(results, show), ", ")}]`,
 		Failed: ({ reason }) => `${ref} failed: ${reasonOf(reason)}${logged}`,
@@ -215,6 +216,7 @@ const blankWorld = (seed: Pick<Outside, "notices" | "listening" | "gate" | "scop
 	hostCallsAfterDeath: [],
 	settles: [],
 	settledRefs: [],
+	delegatesStarted: 0,
 	dead: false,
 });
 
