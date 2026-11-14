@@ -92,7 +92,7 @@ The run's name is the file name without `.scenario.ts`.
 ### What a run gives you
 
 - `run.root.prompt(message, within?)` sends a prompt to the root and waits until pi settles: no retries, compaction
-  or queued messages left. It returns the root's last assistant text, or none. A wake from a delegate arrives later as
+  or queued messages left. It returns the root's last assistant text, or none, as when pi aborted the run. A wake from a delegate arrives later as
   a turn of its own, so wait for it with `waitFor`. Default `within` is 10 minutes.
 - `run.root.output` is the root pi's stderr so far.
 - `run.waitFor(what, within, find)` reads the root's and every delegate's session once a second until `find` returns

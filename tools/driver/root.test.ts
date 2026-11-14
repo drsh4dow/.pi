@@ -54,8 +54,9 @@ for (const { name, carried, chunk, expected } of rows) {
 }
 
 /**
- * A pi that answers every RPC command except `FAKE_IGNORES`. It settles 200 ms after each prompt, and only then has
- * `FAKE_TEXT` as its last assistant text; with none set it leaves `text` out, as pi does.
+ * A pi that answers every RPC command except `FAKE_IGNORES`. It settles 200 ms after each prompt, aborted when
+ * `FAKE_ABORTED` is set, and only then has `FAKE_TEXT` as its last assistant text; with none set it leaves `text` out,
+ * as pi does.
  */
 const fakePi = `#!/usr/bin/env bun
 let text;
@@ -70,7 +71,7 @@ for await (const line of console) {
 	console.log(JSON.stringify({ type: "response", id: command.id, command: command.type, success: true, data }));
 	if (command.type === "prompt") setTimeout(() => {
 		text = process.env.FAKE_TEXT;
-		console.log(JSON.stringify({ type: "agent_settled" }));
+		console.log(JSON.stringify({ type: "agent_settled", aborted: process.env.FAKE_ABORTED !== undefined }));
 	}, 200);
 }
 `;
@@ -116,6 +117,15 @@ test("prompt returns the text pi has once it settles, not before", () =>
 
 test("prompt returns none when pi has no assistant text", () =>
 	withRoot({}, (root) =>
+		Effect.gen(function* () {
+			const reply = yield* root.prompt("hi");
+
+			expect(reply).toEqual(Option.none());
+		}),
+	));
+
+test("prompt returns none when pi settles aborted, even with an earlier assistant text", () =>
+	withRoot({ FAKE_TEXT: "ok", FAKE_ABORTED: "1" }, (root) =>
 		Effect.gen(function* () {
 			const reply = yield* root.prompt("hi");
 

@@ -26,8 +26,8 @@ import type { World } from "./world.ts";
 export interface Root {
 	/**
 	 * Sends `message` and waits for the `agent_settled` that follows pi's answer to it: no retry, compaction or queued
-	 * message left. Returns the root's last assistant text, or none (an extension command handled it, or the run ended on
-	 * an error). Sent as a follow-up, so a prompt while a wake turn runs queues behind it instead of failing.
+	 * message left. Returns the root's last assistant text, or none (an extension command handled it, the run was aborted,
+	 * or it ended on an error). Sent as a follow-up, so a prompt while a wake turn runs queues behind it instead of failing.
 	 * Fails when pi rejects the prompt or `within` (default 10 minutes) passes first.
 	 */
 	readonly prompt: (message: string, within?: Duration.Input) => Effect.Effect<Option.Option<string>, ScenarioFailed>;
@@ -58,7 +58,9 @@ const Response = Schema.Struct({
 });
 
 /** The stdout records the driver acts on. Every other record is only logged to `root.out.jsonl`. */
-const Inbound = Schema.Union([Response, Schema.Struct({ type: Schema.Literal("agent_settled") })]);
+const Settled = Schema.Struct({ type: Schema.Literal("agent_settled"), aborted: Schema.Boolean });
+
+const Inbound = Schema.Union([Response, Settled]);
 
 type Inbound = typeof Inbound.Type;
 
@@ -250,9 +252,9 @@ const prompted =
 				return Option.none<string>();
 			}
 
-			yield* Effect.raceFirst(PubSub.take(subscription).pipe(Effect.repeat({ until: isSettled })), wire.exited);
-
-			const { text } = yield* asked(wire, { type: "get_last_assistant_text" }, LastText);
+			const settle = PubSub.take(subscription).pipe(Effect.repeat({ until: isSettled }));
+			const { aborted } = yield* Effect.raceFirst(settle, wire.exited);
+			const { text } = aborted ? {} : yield* asked(wire, { type: "get_last_assistant_text" }, LastText);
 
 			yield* progress("prompt settled");
 
