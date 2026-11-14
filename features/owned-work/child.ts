@@ -130,15 +130,7 @@ export const launch = (cli: (typeof PiCli)["Service"]) => (request: LaunchReques
 	const { oomScoreAdj, env } = atLevel({ level: request.level, role: request.brief.role });
 
 	return Effect.map(
-		cli.launch({
-			session: request.childSession,
-			name: request.brief.name,
-			message: request.brief.message,
-			model: request.brief.model,
-			thinking: request.brief.thinking,
-			readOnly: request.brief.readOnly,
-			brief: stagedOf(request.brief),
-		}),
+		cli.launch({ ...request.brief, session: request.childSession, brief: stagedOf(request.brief) }),
 		(argv): Pick<RunSpec, "name" | "argv" | "env"> => ({
 			name: terminalNameOf(request.brief.name),
 			argv: ["choom", "-n", oomScoreAdj, "--", ...argv],
