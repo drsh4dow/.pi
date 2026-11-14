@@ -2,8 +2,10 @@ import * as Arr from "effect/Array";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as ChildProcess from "effect/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
+import type * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
@@ -11,6 +13,11 @@ import * as Str from "effect/String";
 import { fields, type PrView, viewOf } from "./view.ts";
 
 export type { PrView, Review, ReviewDecision } from "./view.ts";
+
+export interface StackMember {
+	readonly number: string;
+	readonly state: string;
+}
 
 export class GhError extends Schema.TaggedError<GhError, { readonly brand: unique symbol }>()("GhError", {
 	args: Schema.Array(Schema.String),
@@ -23,6 +30,8 @@ export class Gh extends Context.Service<
 		/** `pr` is a number, a URL or a branch, as gh resolves it in the current directory. */
 		readonly view: (pr: string) => Effect.Effect<PrView, GhError>;
 		readonly patchId: (pr: string) => Effect.Effect<string, GhError>;
+		/** The pull requests of the stack numbered `ceiling`, or else of the stack that holds pull request `ceiling`, bottom first. */
+		readonly stackOf: (ceiling: string) => Effect.Effect<ReadonlyArray<StackMember>, GhError>;
 	}
 >()("pi-harness/clients/gh/Gh") {}
 
@@ -61,11 +70,29 @@ export const patchIdOf = (diff: string) =>
 		Effect.filterOrFail(Str.isNonEmpty, () => GhError.make({ args: ["git", "patch-id"], why: "the diff is empty" })),
 	);
 
+const Stack = Schema.Struct({
+	pull_requests: Schema.Array(Schema.Struct({ number: Schema.Finite, state: Schema.String })),
+});
+
+const decodeStack = Schema.decodeUnknownResult(Schema.fromJsonString(Stack));
+
+const decodeStacks = Schema.decodeUnknownResult(Schema.fromJsonString(Schema.Array(Stack)));
+
+const membersOf = ({ pull_requests }: typeof Stack.Type): ReadonlyArray<StackMember> =>
+	Arr.map(pull_requests, ({ number, state }) => ({ number: String(number), state }));
+
 export const ghLayer: Layer.Layer<Gh, never, ChildProcessSpawner.ChildProcessSpawner> = Layer.effect(
 	Gh,
 	Effect.map(ChildProcessSpawner.ChildProcessSpawner, (spawner) => {
 		const gh = (args: ReadonlyArray<string>) =>
 			Effect.provideService(output("gh", args), ChildProcessSpawner.ChildProcessSpawner, spawner);
+
+		const json = <Value>(args: ReadonlyArray<string>, decode: (stdout: string) => Result.Result<Value, Error>) =>
+			Effect.flatMap(gh(args), (stdout) =>
+				Effect.mapError(Effect.fromResult(decode(stdout)), ({ message }) =>
+					GhError.make({ args: ["gh", ...args], why: message }),
+				),
+			);
 
 		return Gh.of({
 			view: (pr) =>
@@ -78,6 +105,17 @@ export const ghLayer: Layer.Layer<Gh, never, ChildProcessSpawner.ChildProcessSpa
 				Effect.flatMap(gh(["pr", "diff", pr]), (diff) =>
 					Effect.provideService(patchIdOf(diff), ChildProcessSpawner.ChildProcessSpawner, spawner),
 				),
+			stackOf: (ceiling) => {
+				const stacks = "repos/{owner}/{repo}/stacks";
+				const byNumber = json(["api", `${stacks}/${ceiling}`], decodeStack);
+
+				return json(["api", `${stacks}?pull_request=${ceiling}`], decodeStacks).pipe(
+					Effect.flatMap((found) =>
+						Option.match(Arr.head(found), { onNone: () => byNumber, onSome: Effect.succeed }),
+					),
+					Effect.map(membersOf),
+				);
+			},
 		});
 	}),
 );

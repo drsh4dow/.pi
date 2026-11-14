@@ -1,7 +1,6 @@
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
@@ -9,7 +8,7 @@ import * as Str from "effect/String";
 
 import { type Run, scenario } from "../../tools/driver/index.ts";
 import { entryKind } from "../owned-work/index.ts";
-import { VerdictRecord, verdictsFolder } from "./index.ts";
+import { type VerdictRecord, verdictsFolder, verdictsOf } from "./index.ts";
 
 const repository = "drsh4dow/pi-gate-scratch";
 
@@ -31,8 +30,6 @@ const Wake = Schema.Struct({
 });
 
 const decodeWake = Schema.decodeUnknownOption(Wake);
-
-const decodeRecord = Schema.decodeUnknownEffect(Schema.fromJsonString(VerdictRecord));
 
 const wakeNamed = (entries: ReadonlyArray<SessionEntry>, name: string) =>
 	Arr.findFirst(entries, (entry) => Option.filter(decodeWake(entry), ({ details }) => details.name === name));
@@ -92,16 +89,7 @@ const verify = (run: Run, pr: string, name: string) =>
 	});
 
 const recordsOf = (run: Run, number: string) =>
-	Effect.gen(function* () {
-		const fs = yield* FileSystem.FileSystem;
-		const folder = `${verdictsFolder(run.home)}/${repository}/${number}`;
-		const names = yield* Effect.orDie(fs.readDirectory(folder));
-		const files = Arr.filter(names, Str.endsWith(".json"));
-
-		return yield* Effect.forEach(files, (file) =>
-			Effect.orDie(Effect.flatMap(fs.readFileString(`${folder}/${file}`), decodeRecord)),
-		);
-	});
+	verdictsOf(verdictsFolder(run.home))({ repo: repository, number: Number(number) });
 
 const headOf = (run: Run, pr: string) =>
 	mustRun(run, ["gh", "pr", "view", pr, "--json", "headRefOid", "--jq", ".headRefOid"]);

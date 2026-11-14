@@ -22,6 +22,7 @@ export interface PrView {
 	readonly repo: string;
 	readonly number: number;
 	readonly ref: string;
+	readonly url: string;
 	readonly head: string;
 	readonly reviewDecision: Option.Option<ReviewDecision>;
 	readonly reviews: ReadonlyArray<Review>;
@@ -115,6 +116,7 @@ export const viewOf = (stdout: string): Result.Result<PrView, string> =>
 				repo,
 				number: Number(number),
 				ref: `${repo}#${number}`,
+				url: wire.url,
 				head: wire.headRefOid,
 				reviewDecision: wire.reviewDecision === "" ? Option.none() : Option.some(wire.reviewDecision),
 				reviews: Arr.flatMap(wire.reviews, ({ author, state, submittedAt }) =>

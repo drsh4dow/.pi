@@ -5,9 +5,21 @@ import * as Str from "effect/String";
 
 import { Gh, type GhError, type PrView, type Review, type ReviewDecision } from "../../clients/gh/index.ts";
 
-export { ghLayer } from "../../clients/gh/index.ts";
+export { ghLayer, patchIdOf } from "../../clients/gh/index.ts";
 
-export { pin, recordVerdict, type ReviewTarget, VerdictRecord, VerdictResult, verdictsFolder } from "./verdict.ts";
+export { Authorization, gate } from "./gate.ts";
+
+export { MergeRequest, mergeRequestOf } from "./merge-request.ts";
+
+export {
+	pin,
+	recordVerdict,
+	type ReviewTarget,
+	VerdictRecord,
+	VerdictResult,
+	verdictsFolder,
+	verdictsOf,
+} from "./verdict.ts";
 
 const changed = (label: string, from: string, to: string) => (from === to ? [] : [`${label} ${from} -> ${to}`]);
 
