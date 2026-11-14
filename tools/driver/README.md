@@ -39,18 +39,23 @@ loaded and sent), `root.in.jsonl` and `root.out.jsonl` (every RPC record sent an
 and `home/` (the scratch HOME, including any state folder an agent made). The link to your `auth.json` is removed. A
 run killed outright is cleaned up by the next run.
 
-To prove a run left your sessions and state folders alone, trace it:
+To prove a run left your sessions and state folders alone, check it:
 
 ```sh
 bun tools/driver/untouched.ts features/owned-work/leaf-wake.scenario.ts
 ```
 
-It lists every file under `~/.pi/agent/sessions/` and `~/.local/state/` before and after, runs the scenario under
-`strace`, and prints each changed file as written by `run` or by `another process`, plus the writes that broke the
-rule. A path written through a link counts where the link leads, and a link the run made into `~/.pi/` or
-`~/.local/state/` counts as a write there. It exits 0 when the run wrote nothing there beyond the `auth.json` link and
-pi's lock on it, and reached no other terminal core, 1 when it did, and 2 when it cannot vouch (a write strace could not place, or a run session file the trace never saw
-written). The report also lands in the run's `untouched.txt`.
+It lists every session file (`*.jsonl`) under `~/.pi/agent/sessions/` and every file under `~/.local/state/pi-agent/`
+before and after the run, with its size and change time, and prints each new, changed or deleted file. Your own sessions
+keep writing meanwhile, so a session file whose header names a session that no pi of the run ran, by the run's probe
+records, is cleared. Every other change counts against the run, however it was made. It exits 0 when nothing counts
+against the run, 1 when something does, and 2 when it cannot vouch (no `evidence` line, or a session of the run the
+probe never recorded). A change by one of your agents to its state folder during the run counts against the run too, so
+run it while they are quiet. The report also lands in the run's `untouched.txt`.
+
+It cannot see a file the run created and removed again before the second listing, a change to a session file of a
+session the probe did not record, the other files in the sessions folder (such as an agent's watch logs, which change
+whenever a watch prints), or anything outside those two folders.
 
 ## Write one
 
