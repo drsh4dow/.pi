@@ -17,17 +17,10 @@ import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
 
 import { inheritedEnv, levels, type StagedLaunch, stagedLaunches } from "../../features/owned-work/index.ts";
+import { harnessEntries, withoutPackageBins } from "../harness.ts";
 import { type Capture, Payload, render } from "./render.ts";
 
 const captureExtension = `${import.meta.dirname}/capture.ts`;
-
-/** The `agent/` entries `.gitignore` lets this repo ship. */
-const harnessEntries = (gitignore: string) =>
-	Arr.flatMap(Str.split(gitignore, "\n"), (line) => {
-		const shipped = /^!\/agent\/(?<entry>[^/]+)\/?$/u.exec(line)?.groups?.["entry"];
-
-		return shipped === undefined ? [] : [shipped];
-	});
 
 const message = "Capture run: reply with the single word ok.";
 
@@ -40,20 +33,6 @@ interface Run {
 	readonly argv: ReadonlyArray<string>;
 	readonly env: Env;
 }
-
-const isPackageBin = Str.endsWith("/node_modules/.bin");
-
-const withoutPackageBins = (env: Env) => {
-	const folders = Str.split(env["PATH"] ?? "", ":");
-
-	return {
-		...env,
-		PATH: Arr.join(
-			Arr.filter(folders, (folder) => !isPackageBin(folder)),
-			":",
-		),
-	};
-};
 
 /** The environment the user's own pi gets. `bun run` puts `node_modules/.bin` folders first in `PATH`, which would run this repo's dev copy of pi. */
 const userEnv = withoutPackageBins(inheritedEnv(process.env));
