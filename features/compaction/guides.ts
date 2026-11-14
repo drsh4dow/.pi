@@ -23,10 +23,10 @@ const lostGuides = ({ files, branch, firstKeptEntryId }: Before) => {
 	const index = indexOf(guidesOf(files));
 	const { entries } = buildSessionProjection([...branch]);
 	const kept = Arr.dropWhile(entries, (entry) => entry.sourceEntry.id !== firstKeptEntryId);
-	const stays = new Set(Arr.map(inContext({ index, entries: kept }), ({ path }) => path));
+	const stays = new Set(Arr.map(inContext({ index, entries: kept }), ({ path, state }) => `${state} ${path}`));
 
 	const byPath = new Map(Arr.map(files, (file) => [file.path, file]));
-	const lost = Arr.filter(inContext({ index, entries }), ({ path }) => !stays.has(path));
+	const lost = Arr.filter(inContext({ index, entries }), ({ path, state }) => !stays.has(`${state} ${path}`));
 
 	return Arr.flatMap(lost, ({ path }) => Option.toArray(Option.fromNullishOr(byPath.get(path))));
 };

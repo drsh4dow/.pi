@@ -200,6 +200,26 @@ test("a guide in the messages pi keeps is neither restored nor listed, and stays
 		}),
 	));
 
+test("a guide read whole whose kept messages hold only part of it is restored", () =>
+	run(
+		Effect.gen(function* () {
+			const skill = yield* writeSkill("kept-part", skillText("kept-part", 1000));
+			const lines = Str.split(Str.trimEnd(skill.text), "\n");
+			const tail = Arr.join(Arr.takeRight(lines, 3), "\n");
+
+			const { session, entry } = yield* compactAfterReading({
+				read: [skill.text],
+				keptReads: [tail],
+				skills: [skill],
+			});
+
+			record({ session, entry });
+
+			expect(restoredPaths(entry.summary)).toEqual([skill.path]);
+			expect(loadedPaths([skill], session)).toEqual([{ path: skill.path, state: "full" }]);
+		}),
+	));
+
 for (const reason of ["overflow", "manual"] as const) {
 	test(`a delegate's ${reason} compaction restores the guide it read`, () =>
 		run(
