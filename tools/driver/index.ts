@@ -26,7 +26,7 @@ import { type Exited, startCore } from "./core.ts";
 import { ScenarioFailed, SetupFailed } from "./failed.ts";
 import { type Root, type RootProcess, startRoot } from "./root.ts";
 import { readSessions, type Sessions } from "./sessions.ts";
-import type { Setup } from "./setup.ts";
+import { type Setup, setupOf } from "./setup.ts";
 import { type Layout, layoutOf, openWorld } from "./world.ts";
 
 export type { ScenarioFailed } from "./failed.ts";
@@ -44,14 +44,12 @@ export type { Exited } from "./core.ts";
 export interface Scenario<Failure> extends Setup {
 	/** The root's `provider/id`. Required, so every scenario states what it spends. */
 	readonly model: string;
-	/** Top-level keys that replace the same keys in the run's copy of the human's `settings.json`. */
-	readonly settings?: Schema.JsonObject;
 	/**
-	 * Provider entries by name, shaped like `models.json`'s `providers` values (`modelOverrides` included). Each replaces
-	 * the human's entry of that name in the run's copy of their `models.json`, or starts the file when they have none.
-	 * pi validates the result when the root starts, so a bad entry is exit 2, not a scenario failure.
+	 * Gives the root's model a context window of this many tokens, and replaces the human's compaction settings with a
+	 * reserve of a quarter of it and an eighth kept, so pi compacts once a session passes three quarters of it. A key of
+	 * `settings` or `models` the scenario also sets replaces what this sets.
 	 */
-	readonly models?: Readonly<Record<string, Schema.JsonObject>>;
+	readonly contextWindow?: number;
 	/** Runs once the root answers. Any failure fails the scenario with exit 1 and prints the failure's message. */
 	readonly play: (run: Run) => Effect.Effect<void, Failure, Allowed>;
 }
@@ -185,7 +183,7 @@ const playIn = <Failure>({
 }) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
-		const world = yield* openWorld({ layout, setup: spec });
+		const world = yield* openWorld({ layout, setup: setupOf(spec) });
 
 		yield* startCore({ layout, env: world.env });
 		yield* report.say(`pi ${world.pi.version} ${world.pi.path}`);

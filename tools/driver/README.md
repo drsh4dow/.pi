@@ -136,21 +136,24 @@ included, sees them.
   of your `models.json`, or starts the file if you have none. pi checks the result when the root starts, so a bad
   entry exits 2.
 
-A small context window, to reach compaction in a few turns:
+- `contextWindow` forces compaction in a few turns. It gives the root's model a window of that many tokens and
+  replaces your compaction settings, which may reserve more than the whole window, with a reserve of a quarter of it,
+  so pi compacts once a session passes three quarters:
 
 ```ts
 scenario({
 	model: "ultra-a/claude-fable-5-2",
-	models: { "ultra-a": { modelOverrides: { "claude-fable-5-2": { contextWindow: 40000 } } } },
+	contextWindow: 40_000,
 	play: (run) => ...,
 });
 ```
 
-`tools/driver/smoke.scenario.ts` uses exactly this override and checks that the root's `loaded.contextWindow` is 40000.
+`tools/driver/compaction.scenario.ts` proves it: three prompts of filler, then a compaction entry in the root's session.
 
 ### Examples
 
-- `tools/driver/smoke.scenario.ts`: the run uses pi 1.5.2, the worktree's extensions, and the model override.
+- `tools/driver/smoke.scenario.ts`: the run uses pi 1.5.2, the worktree's extensions, and the context window `contextWindow` sets.
+- `tools/driver/compaction.scenario.ts`: `contextWindow` makes pi compact.
 - `features/owned-work/leaf-wake.scenario.ts`: the root starts a leaf and wakes with its result, and the leaf runs the
   same pi on the worktree's extensions.
 - `tools/driver/false-fact.scenario.ts`: a false claim exits 1.

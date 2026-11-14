@@ -1,6 +1,6 @@
 /**
  * The run uses the pi on PATH, not this checkout's dev copy, loads its extensions from this worktree's agent folder, and
- * applies the setup's model override. It proves the README's context window example too.
+ * gives the root the context window `contextWindow` sets.
  */
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -12,7 +12,7 @@ const contextWindow = 40_000;
 
 scenario({
 	model: "ultra-a/claude-fable-5-2",
-	models: { "ultra-a": { modelOverrides: { "claude-fable-5-2": { contextWindow } } } },
+	contextWindow,
 	play: (run) =>
 		Effect.gen(function* () {
 			yield* run.root.prompt("Reply with the single word ok.");
@@ -29,7 +29,7 @@ scenario({
 			);
 			yield* run.check(
 				loaded.contextWindow === contextWindow,
-				`the root's context window is the override, ${String(contextWindow)} (it is ${String(loaded.contextWindow)})`,
+				`the root's context window is the one set, ${String(contextWindow)} (it is ${String(loaded.contextWindow)})`,
 			);
 		}),
 });
