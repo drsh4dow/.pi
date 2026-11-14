@@ -31,7 +31,7 @@ export interface Check {
 	readonly fix: string;
 }
 
-const datedHeading = /^#{2,}\s.*\d{4}-\d{2}-\d{2}/u;
+const datedHeading = /^ {0,3}#{2,}\s.*\d{4}-\d{2}-\d{2}/u;
 const newline = 10;
 
 const bytes = (count: number) => `${count.toLocaleString("en-US")} bytes`;
