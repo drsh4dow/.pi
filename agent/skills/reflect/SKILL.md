@@ -44,9 +44,7 @@ Move any Accepted item that a lint rule, script, metadata flag, or runtime check
 
 ## 5. Apply
 
-Present the synthesizer's full Accepted / Rejected / Backlog output and wait for explicit approval before applying any Accepted edit. The user picks the subset and may redirect routings. Skill changes affect every future agent in the org. Do not auto-apply.
-
-File each Backlog item to your team's devex or backlog tracker without waiting. Only the Accepted list waits for approval.
+Present the synthesizer's full Accepted / Rejected / Backlog output and wait for explicit approval before applying any Accepted edit or filing any Backlog item. The user picks the subset and may redirect routings. Skill changes affect every future agent in the org. Do not auto-apply.
 
 Before approval, show each edit's destination, `.pi/skills/<skill>/` or `~/.pi/agent/skills/<skill>/`. Never open a PR or push.
 

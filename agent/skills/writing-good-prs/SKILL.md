@@ -63,7 +63,7 @@ One to three short bullets. Name a real symbol or path only when it carries the 
 
 ### Scope
 
-One to three short items: what the PR covers, and what it deliberately leaves out, such as a follow-up or a known gap.
+One to three short items: what the PR covers, and what it deliberately leaves out, plus one line per known limit.
 
 ### Tradeoffs
 

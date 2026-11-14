@@ -24,7 +24,7 @@ Apply this to every change before declaring it done.
 - [ ] Code runs and behaves as intended, verified at runtime, not just compiled or typechecked
 - [ ] Each silent-regression risk has a test that fails without the change. No tautological tests, none for prototypes
 - [ ] Existing tests still pass; no regressions introduced
-- [ ] Edge cases and error paths are handled, not just the happy path
+- [ ] Error paths and the edge cases a user would hit in good faith are handled, and the rest are known limits
 
 ### Quality
 
