@@ -30,7 +30,7 @@ evidence /tmp/pi-driver/leaf-wake-20260514-101010-4242
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0    | Every check passed.                                                                                                                                                              |
 | 1    | The scenario failed: a `check`, a `waitFor` that timed out, a prompt that never settled, or the root pi dying. The line before `evidence` says which, as `fail <name>: <claim>`. |
-| 2    | The driver could not build the run (no `pi` on PATH, the terminal core never came up, pi rejected the settings). Nothing about the harness was tested.                           |
+| 2    | The driver could not build the run (no `pi` on PATH, the terminal core never came up, the root pi never answered). Nothing about the harness was tested.                         |
 | 130  | You pressed Ctrl-C.                                                                                                                                                              |
 
 Every outcome stops the root pi, its delegates and the run's terminal core, and keeps the run folder as evidence:
@@ -133,8 +133,8 @@ included, sees them.
   `packages`, `extensions`, `skills`, `prompts` or `themes`, so nothing of the live harness loads into a run.
 - `models` holds provider entries by name, as in `models.json`'s `providers` (fields in pi's
   `docs/models-configuration.md`, `modelOverrides` included). Each replaces your entry of that name in the run's copy
-  of your `models.json`, or starts the file if you have none. pi checks the result when the root starts, so a bad
-  entry exits 2.
+  of your `models.json`, or starts the file if you have none. pi in RPC mode drops a `models.json` it rejects
+  without a word and runs on without your entries, so check in `loaded` that the value you set took, as smoke does.
 
 - `contextWindow` forces compaction in a few turns. It gives the root's model a window of that many tokens and
   replaces your compaction settings, which may reserve more than the whole window, with a reserve of a quarter of it,
