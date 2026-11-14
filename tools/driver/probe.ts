@@ -1,6 +1,6 @@
 /**
  * A pi extension the driver's `bin/pi` wrapper loads into every pi of a run, delegates included. It records what each
- * session loaded and the text of every request it sent, one JSON line each, to `$PI_DRIVER_PROBE/<pid>.jsonl`. It only
+ * session loaded and the text of every provider payload it built, one JSON line each, to `$PI_DRIVER_PROBE/<pid>.jsonl`. It only
  * listens: no handler returns a value, and it does nothing while `PI_DRIVER_PROBE` is unset.
  */
 import {

@@ -38,7 +38,10 @@ export interface Session {
 	 * tools in their own `session_start` handler show from the first agent start on. None until it started.
 	 */
 	readonly loaded: Option.Option<Loaded>;
-	/** Every string of each request this session sent to the model, one line each, oldest first. */
+	/**
+	 * Every string of each provider payload this session built, one line each, oldest first. Recorded before any other
+	 * extension's `before_provider_request` handler, so not always the text the provider received.
+	 */
 	readonly requests: ReadonlyArray<string>;
 }
 

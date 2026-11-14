@@ -35,7 +35,7 @@ evidence /tmp/pi-driver/leaf-wake-20260514-101010-4242
 
 Every outcome stops the root pi, its delegates and the run's terminal core, and keeps the run folder as evidence:
 `report.txt` (everything printed), `sessions/` (the root's and every delegate's session file), `probe/` (what each pi
-loaded and sent), `root.in.jsonl` and `root.out.jsonl` (every RPC record sent and received), `root.stderr`, `core.log`,
+loaded and the payloads it built), `root.in.jsonl` and `root.out.jsonl` (every RPC record sent and received), `root.stderr`, `core.log`,
 and `home/` (the scratch HOME, including any state folder an agent made). The link to your `auth.json` is removed. A
 run killed outright cleans up the same way: the root pi exits when its stdin closes, and the shell that watches the
 terminal core stops it with its delegates and removes the link once the driver's pipe closes.
@@ -118,10 +118,10 @@ The other two fields come from a probe extension the run's `pi` wrapper loads in
   links resolved. It is recorded at the session's start and again at each agent start, and the latest wins: an
   extension that registers its tools in its own `session_start` handler, such as owned-work, shows from the first
   prompt on.
-- `requests` holds the text of every request the session sent to the model, oldest first: every string in the
-  provider payload, one per line. Search it with `includes`, as in a marker line of a brief or an owner rule. The probe
-  loads first, so it records the payload before any other extension's `before_provider_request` handler. A fact about
-  what such a handler changes needs its own probe.
+- `requests` holds the text of every provider payload the session built, oldest first: every string in the payload,
+  one per line. Search it with `includes`, as in a marker line of a brief or an owner rule. The probe loads first, so
+  it records each payload before any other extension's `before_provider_request` handler, which may still change or
+  drop text before it reaches the provider. A fact about what was sent after such a handler needs its own probe.
 
 ### Setup
 
