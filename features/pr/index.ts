@@ -40,14 +40,10 @@ export const changes = ({
 	...changed("state", before.state, after.state),
 ];
 
-const retriedRounds = 2;
-
 const untilChanged = <Services>(
 	round: Effect.Effect<ReadonlyArray<string>, GhError, Services>,
 ): Effect.Effect<Arr.NonEmptyReadonlyArray<string>, GhError, Services> =>
-	Effect.filterOrElse(Effect.retry(round, { times: retriedRounds }), Arr.isReadonlyArrayNonEmpty, () =>
-		untilChanged(round),
-	);
+	Effect.filterOrElse(Effect.retry(round, { times: 2 }), Arr.isReadonlyArrayNonEmpty, () => untilChanged(round));
 
 /**
  * Reads every pull request, then re-reads all of them every 60 s until one changes. Returns the change lines, each

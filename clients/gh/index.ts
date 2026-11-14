@@ -9,7 +9,7 @@ import * as Str from "effect/String";
 
 import { fields, type PrView, viewOf } from "./view.ts";
 
-export type { Checks, PrState, PrView, Review, ReviewDecision } from "./view.ts";
+export type { PrView, Review, ReviewDecision } from "./view.ts";
 
 export class GhError extends Schema.TaggedError<GhError, { readonly brand: unique symbol }>()("GhError", {
 	args: Schema.Array(Schema.String),

@@ -25,6 +25,7 @@ const octoApproved = { author: "octo", state: "APPROVED", submittedAt: "2026-11-
 
 const changeRows: ReadonlyArray<{
 	readonly name: string;
+	readonly before?: PrView;
 	readonly after: PrView;
 	readonly expect: ReadonlyArray<string>;
 }> = [
@@ -49,29 +50,27 @@ const changeRows: ReadonlyArray<{
 		after: { ...open, reviews: [...open.reviews, octoApproved] },
 		expect: ["review by octo: APPROVED"],
 	},
+	{
+		name: "a changed decision",
+		before: { ...open, reviewDecision: Option.some("APPROVED") },
+		after: { ...open, reviewDecision: Option.some("CHANGES_REQUESTED") },
+		expect: ["review decision APPROVED -> CHANGES_REQUESTED"],
+	},
+	{
+		name: "a dismissed review",
+		before: { ...open, reviews: [octoApproved] },
+		after: { ...open, reviews: [{ ...octoApproved, state: "DISMISSED" }] },
+		expect: ["review by octo: DISMISSED"],
+	},
 	{ name: "new checks", after: { ...open, checks: "pass" }, expect: ["checks pending -> pass"] },
 	{ name: "a merge", after: { ...open, state: "MERGED" }, expect: ["state OPEN -> MERGED"] },
 ];
 
 for (const row of changeRows) {
 	test(`changes after ${row.name}`, () => {
-		expect(changes({ before: open, after: row.after })).toEqual(row.expect);
+		expect(changes({ before: row.before ?? open, after: row.after })).toEqual(row.expect);
 	});
 }
-
-test("changes after a changed decision", () => {
-	const approved = { ...open, reviewDecision: Option.some("APPROVED" as const) };
-	const after = { ...open, reviewDecision: Option.some("CHANGES_REQUESTED" as const) };
-
-	expect(changes({ before: approved, after })).toEqual(["review decision APPROVED -> CHANGES_REQUESTED"]);
-});
-
-test("changes after a dismissed review", () => {
-	const before = { ...open, reviews: [octoApproved] };
-	const after = { ...open, reviews: [{ ...octoApproved, state: "DISMISSED" }] };
-
-	expect(changes({ before, after })).toEqual(["review by octo: DISMISSED"]);
-});
 
 type Reading = Effect.Effect<PrView, GhError>;
 
