@@ -22,7 +22,7 @@ import type * as Runtime from "effect/Runtime";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { type Exited, startCore, sweep } from "./core.ts";
+import { type Exited, startCore } from "./core.ts";
 import { ScenarioFailed, SetupFailed } from "./failed.ts";
 import { type Root, type RootProcess, startRoot } from "./root.ts";
 import { readSessions, type Sessions } from "./sessions.ts";
@@ -207,13 +207,20 @@ const playIn = <Failure>({
 		yield* Effect.raceFirst(spec.play(run), root.exited);
 	}).pipe(Effect.scoped);
 
-/** A fresh run's layout under `$TMPDIR`, after sweeping the runs there that died without cleaning up. */
+/** A fresh run's layout under `$TMPDIR/pi-driver`, which must be the user's own: the run copies their config into it. */
 const freshLayout = Effect.fn("freshLayout")(function* (name: string) {
+	const fs = yield* FileSystem.FileSystem;
 	const tmp = yield* Config.String("TMPDIR").pipe(Config.withDefault("/tmp"));
 	const now = yield* DateTime.now;
 	const tag = yield* Random.nextIntBetween(0, 2 ** 24);
 
-	yield* sweep(tmp);
+	yield* fs.makeDirectory(`${tmp}/pi-driver`, { recursive: true, mode: 0o700 });
+
+	const { uid } = yield* fs.stat(`${tmp}/pi-driver`);
+
+	if (!Option.contains(uid, process.getuid?.() ?? -1)) {
+		return yield* SetupFailed.make({ message: `${tmp}/pi-driver belongs to another user` });
+	}
 
 	return layoutOf({
 		tmp,

@@ -15,7 +15,7 @@ import type * as Scope from "effect/Scope";
 import * as Str from "effect/String";
 
 import { harnessEntries, withoutPackageBins } from "../harness.ts";
-import { type Argv, execIn, type Exited, ran, writeRecord } from "./core.ts";
+import { type Argv, execIn, type Exited, ran } from "./core.ts";
 import { type ScenarioFailed, SetupFailed } from "./failed.ts";
 
 type Env = Readonly<Record<string, string>>;
@@ -36,13 +36,11 @@ export interface Layout {
 	readonly project: string;
 	/** `--session-dir` of the root. owned-work puts delegates' sessions in `delegates/` under it. */
 	readonly sessions: string;
-	/** `HC_SESSION` of the run's core: unique even when a pid is reused, and the pid lets a sweep tell dead runs. */
+	/** `HC_SESSION` of the run's core, unique even when a pid is reused. */
 	readonly coreSession: string;
 	/** The core's `XDG_RUNTIME_DIR`, outside `folder` because a socket path holds at most 108 bytes. */
 	readonly runtime: string;
 	readonly socket: string;
-	/** `run.json`: what a later sweep needs when this run is killed outright. */
-	readonly record: string;
 	readonly report: string;
 	readonly rpcIn: string;
 	readonly rpcOut: string;
@@ -72,7 +70,6 @@ export const layoutOf = (run: {
 		coreSession,
 		runtime,
 		socket: `${runtime}/herdr-core/${coreSession}.sock`,
-		record: `${folder}/run.json`,
 		report: `${folder}/report.txt`,
 		rpcIn: `${folder}/root.in.jsonl`,
 		rpcOut: `${folder}/root.out.jsonl`,
@@ -279,7 +276,6 @@ export const openWorld = (input: {
 		yield* Effect.forEach([layout.agent, layout.bin, layout.probe, layout.project, layout.sessions], (folder) =>
 			fs.makeDirectory(folder, { recursive: true }),
 		);
-		yield* writeRecord(layout);
 
 		const pi = yield* resolvePi(layout, env);
 
