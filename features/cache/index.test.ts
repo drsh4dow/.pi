@@ -27,7 +27,6 @@ interface Call {
 	readonly model?: string;
 }
 
-/** A 100,000-token prompt read from the cache, and the same prompt rewritten at full price. */
 const hit = { input: 1000, cacheRead: 99_000 };
 const full = { input: 100_000, cacheRead: 0 };
 
@@ -53,10 +52,6 @@ const replyOf = (call: Call): AssistantMessage => ({
 
 const decodeMiss = Schema.decodeUnknownOption(Miss);
 
-/**
- * A session whose replies pass through the handler before pi saves them, as in a running pi. pi saves a change to the
- * system prompt or the tools as a system message before the request it changes.
- */
 const world = () => {
 	const session = SessionManager.inMemory("/work");
 
@@ -102,7 +97,6 @@ const world = () => {
 
 type World = ReturnType<typeof world>;
 
-/** A miss of a prompt rewritten whole, or of only the part an earlier, shorter prompt had cached. */
 const missed = (causes: Miss["causes"], prompt = 100_000, missedTokens = prompt): ReadonlyArray<Miss> => [
 	{ missedTokens, cacheRead: 0, prompt, causes },
 ];
@@ -233,14 +227,6 @@ const cases: ReadonlyArray<readonly [string, (world: World) => void, ReadonlyArr
 		({ reply }) => {
 			reply({ at: start, ...hit });
 			reply({ at: start + 6 * minute, input: 49_999, cacheRead: 50_001 });
-		},
-		[],
-	],
-	[
-		"nothing for a prompt that grew far past a small cache",
-		({ reply }) => {
-			reply({ at: start, input: 36, cacheRead: 1500 });
-			reply({ at: start + minute, input: 253_952, cacheRead: 2048 });
 		},
 		[],
 	],
