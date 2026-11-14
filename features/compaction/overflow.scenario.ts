@@ -1,37 +1,19 @@
-/**
- * An overflow compaction carries the harness's summary to the call pi retries. The root runs on a model whose real
- * window is 200,000 tokens with no reserve, so pi never compacts at its threshold: it compacts only when the provider
- * refuses a request as too long, then retries it. Its `STATE.md` changes before the overflow, and afterwards the root
- * quotes the new marker without a tool, from a summary whose narrative the model wrote.
- */
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Random from "effect/Random";
-import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { type Run, type ScenarioFailed, scenario } from "../../tools/driver/index.ts";
-import { carriedNote, Details, narrativeCap } from "./index.ts";
+import { type Compaction, compactionsIn, keptHolds } from "./session.fixture.ts";
+import { carriedNote, narrativeCap } from "./summary.ts";
 
-const Compaction = Schema.Struct({
-	type: Schema.Literal("compaction"),
-	id: Schema.String,
-	summary: Schema.String,
-	firstKeptEntryId: Schema.String,
-	details: Details,
-});
+const compactionIn = (entries: ReadonlyArray<SessionEntry>) => Arr.head(compactionsIn(entries));
 
-type Compaction = typeof Compaction.Type;
-
-const decodeCompaction = Schema.decodeUnknownOption(Compaction);
-
-const jsonOf = Schema.encodeUnknownOption(Schema.fromJsonString(Schema.Unknown));
-
-const compactionIn = (entries: ReadonlyArray<SessionEntry>) =>
-	Arr.findFirst(entries, (entry) => decodeCompaction(entry));
+const rootEntries = (run: Run) =>
+	run.waitFor("the root's session", "10 seconds", ({ root }) => Option.some(root.entries));
 
 const refusedIn = (entries: ReadonlyArray<SessionEntry>) =>
 	Arr.some(
@@ -42,18 +24,6 @@ const refusedIn = (entries: ReadonlyArray<SessionEntry>) =>
 			entry.message.stopReason === "error" &&
 			/too long|context/iu.test(entry.message.errorMessage ?? ""),
 	);
-
-const keptHolds = (entries: ReadonlyArray<SessionEntry>, compaction: Compaction, text: string) => {
-	const fromFirst = Arr.dropWhile(entries, (entry) => entry.id !== compaction.firstKeptEntryId);
-	const kept = Arr.takeWhile(fromFirst, (entry) => entry.id !== compaction.id);
-
-	return (
-		!Arr.isReadonlyArrayNonEmpty(kept) || Arr.some(kept, (entry) => Option.exists(jsonOf(entry), Str.includes(text)))
-	);
-};
-
-const rootEntries = (run: Run) =>
-	run.waitFor("the root's session", "10 seconds", ({ root }) => Option.some(root.entries));
 
 /** About 45 KB, under the read tool's 50 KB cut, of text dense in tokens. */
 const filler = (seed: number) =>
@@ -103,7 +73,6 @@ const checkSummary = (
 		);
 	});
 
-/** Has the root write `STATE.md` in a state folder, then puts a marker line in it that the root never saw. */
 const withStateFile = (run: Run) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
@@ -133,13 +102,14 @@ const quotes = (
 		);
 
 		yield* run.check(
-			Option.exists(reply, Str.includes(marker)) && !keptHolds(fed, compaction, marker),
+			Option.exists(reply, Str.includes(marker)) && !keptHolds({ entries: fed, last: compaction, text: marker }),
 			`the root quotes ${marker} after the overflow compaction, and no entry pi kept holds it (it replied ${Option.getOrElse(reply, () => "nothing")})`,
 		);
 	});
 
 scenario({
 	model: "ultra-a/claude-haiku-4-5",
+	// With no reserve pi never compacts at its threshold, only when the provider refuses a request as too long.
 	settings: { compaction: { enabled: true, reserveTokens: 0, keepRecentTokens: 20_000 } },
 	play: (run) =>
 		Effect.gen(function* () {

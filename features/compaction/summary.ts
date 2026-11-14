@@ -8,10 +8,7 @@ import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-/**
- * What a compaction entry's `details` holds. pi drops a hook entry's file lists, so they live here, and the narrative
- * is kept apart from the anchor and the lists, so the next compaction never summarizes those again.
- */
+/** The file lists live here because pi drops a hook entry's file lists. */
 export const Details = Schema.Struct({
 	narrative: Schema.String,
 	readFiles: Schema.Array(Schema.String),
@@ -20,9 +17,8 @@ export const Details = Schema.Struct({
 
 export type Details = typeof Details.Type;
 
-export type Files = Omit<Details, "narrative">;
+type Files = Omit<Details, "narrative">;
 
-/** The document a compaction summary carries whole: a root's `STATE.md`, or a delegate's task message. */
 export type Anchor = Data.TaggedEnum<{
 	State: { readonly path: string; readonly text: string };
 	Task: { readonly text: string };
@@ -30,7 +26,6 @@ export type Anchor = Data.TaggedEnum<{
 
 export const Anchor = Data.taggedEnum<Anchor>();
 
-/** The model wrote it at this compaction, or the harness could not, and carried the prior narrative unchanged. */
 export type Narrative = Data.TaggedEnum<{
 	Written: { readonly text: string };
 	Carried: { readonly prior: Option.Option<string>; readonly reason: string };
@@ -44,10 +39,8 @@ export interface Parts {
 	readonly files: Files;
 }
 
-/** The longest narrative in characters. The prompt asks for at most 1,500 words. */
 export const narrativeCap = 12_000;
 
-/** How the summary of a carried narrative opens, so a reader can tell it from a written one. */
 export const carriedNote = "The harness could not write a new narrative at this compaction";
 
 const narrativeBlock = Narrative.$match({
@@ -94,19 +87,16 @@ export const detailsOf = ({ narrative, files }: Parts): Details => ({
 	...files,
 });
 
-const CompactionEntry = Schema.Struct({ type: Schema.Literal("compaction"), details: Details });
+const HarnessCompaction = Schema.Struct({ type: Schema.Literal("compaction"), details: Details });
 
-const decodeCompaction = Schema.decodeUnknownOption(CompactionEntry);
+const decodeHarnessCompaction = Schema.decodeUnknownOption(HarnessCompaction);
 
 export interface Prior {
 	readonly narrative: Option.Option<string>;
 	readonly files: Files;
 }
 
-/**
- * The last compaction this handler wrote on the branch. Without one, a summary pi wrote stands in as the narrative, cut
- * to the cap, and `fileOps` already holds its file lists.
- */
+/** Without a compaction this handler wrote, `fileOps` already holds the file lists of the one pi wrote. */
 export const priorOf = ({
 	branch,
 	previousSummary,
@@ -114,7 +104,7 @@ export const priorOf = ({
 	readonly branch: ReadonlyArray<SessionEntry>;
 	readonly previousSummary: string | undefined;
 }): Prior => {
-	const ours = Arr.getSomes(Arr.map(branch, (entry) => decodeCompaction(entry)));
+	const ours = Arr.getSomes(Arr.map(branch, (entry) => decodeHarnessCompaction(entry)));
 
 	return Option.match(Arr.last(ours), {
 		onNone: () => ({
@@ -141,7 +131,6 @@ export const filesOf = ({ prior, fileOps }: { readonly prior: Files; readonly fi
 	};
 };
 
-/** A delegate's anchor is its task message, the first user message of its session. */
 export const taskOf = (branch: ReadonlyArray<SessionEntry>): Option.Option<Anchor> => {
 	const content = Arr.findFirst(branch, (entry) =>
 		entry.type === "message" && entry.message.role === "user" ? Option.some(entry.message.content) : Option.none(),
@@ -173,7 +162,6 @@ const historyLine = (anchor: Option.Option<Anchor>) =>
 		}),
 	});
 
-/** The user text of a narrative call. `overrun` is how many characters the last reply ran, on the one retry. */
 export const promptOf = ({
 	prior,
 	conversation,
@@ -243,7 +231,6 @@ export const replyOf = (message: AssistantMessage): Reply => {
 	return Str.isEmpty(text) ? Reply.Failed({ reason: "the reply held no text" }) : Reply.Fits({ text });
 };
 
-/** A reply that fits is the narrative. Otherwise the prior narrative carries over, with the reason. */
 export const narrativeFrom = ({ reply, prior }: { readonly reply: Reply; readonly prior: Option.Option<string> }) =>
 	Reply.$match(reply, {
 		Fits: ({ text }) => Narrative.Written({ text }),
@@ -264,7 +251,6 @@ const noUsage: Usage = {
 	cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 };
 
-/** Every attempt's usage added up, so the cost tally counts a retry too. */
 export const totalUsage = (usages: ReadonlyArray<Usage>): Usage =>
 	Arr.reduce(usages, noUsage, (sum, usage) => ({
 		input: sum.input + usage.input,

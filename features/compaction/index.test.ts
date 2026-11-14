@@ -7,7 +7,6 @@ import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import { entryKind } from "../state-folder/index.ts";
-import { narrativeCap } from "./index.ts";
 import {
 	answering,
 	compact,
@@ -123,12 +122,10 @@ test("three compactions keep the union of their file lists and feed each narrati
 
 			expect({
 				narratives: Arr.map([first, second, third], ({ details }) => details.narrative),
-				withinCap: Arr.every([first, second, third], ({ details }) => details.narrative.length <= narrativeCap),
 				files: { readFiles: third.details.readFiles, modifiedFiles: third.details.modifiedFiles },
 				fedPrior: Arr.map(prompts, (prompt) => [Str.includes(fed(0))(prompt), Str.includes(fed(1))(prompt)]),
 			}).toEqual({
 				narratives,
-				withinCap: true,
 				files: { readFiles: ["c.ts", "e.ts"], modifiedFiles: ["a.ts", "b.ts", "d.ts"] },
 				fedPrior: [
 					[false, false],

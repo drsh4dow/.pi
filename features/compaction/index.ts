@@ -34,8 +34,6 @@ import {
 	totalUsage,
 } from "./summary.ts";
 
-export { carriedNote, Details, narrativeCap } from "./summary.ts";
-
 type Env = Readonly<Record<string, string | undefined>>;
 
 type Caller = Pick<ExtensionContext, "model"> & {
@@ -182,9 +180,8 @@ const compact = Effect.fn("compact")(function* (env: Env, event: SessionBeforeCo
 });
 
 /**
- * The one `session_before_compact` handler, in the root and in every delegate. It writes the whole compaction: a
- * bounded narrative on the session's model under our own prompt, the anchor, and the file lists. It always returns a
- * compaction, since anything else lets pi's own prompt run, which carries every earlier summary into the next.
+ * Always returns a compaction, since anything else lets pi's own prompt run, which carries every earlier summary into
+ * the next.
  */
 export const compaction =
 	(env: Env) =>

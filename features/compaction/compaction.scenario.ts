@@ -1,12 +1,3 @@
-/**
- * On a 40,000-token window, the harness writes every compaction summary itself, in a delegate and in the root. A leaf
- * on a Claude account reads filler until pi compacts it at least three times, then quotes the marker line of its task,
- * which by then reaches it only through the summary. The root's `STATE.md` changes before each of two compactions, and
- * after each the root quotes the new marker without a tool. Every narrative is written, not carried, and under the
- * cap. Without its file lists, the leaf's third summary is at most a tenth longer than its first, and its last file
- * lists still hold the files its first listed. The root's last summary still lists `STATE.md` as modified after the
- * write left the turns it summarized.
- */
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -17,40 +8,19 @@ import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { type Run, type ScenarioFailed, scenario } from "../../tools/driver/index.ts";
-import { carriedNote, Details, narrativeCap } from "./index.ts";
+import { type Compaction, compactionsIn, keptHolds } from "./session.fixture.ts";
+import { carriedNote, narrativeCap } from "./summary.ts";
 
 const model = "ultra-a/claude-fable-5-2";
 
-const Compaction = Schema.Struct({
-	type: Schema.Literal("compaction"),
-	id: Schema.String,
-	summary: Schema.String,
-	firstKeptEntryId: Schema.String,
-	details: Details,
-});
-
-type Compaction = typeof Compaction.Type;
-
-const decodeCompaction = Schema.decodeUnknownOption(Compaction);
-
 const jsonOf = Schema.encodeUnknownOption(Schema.fromJsonString(Schema.Unknown));
 
-const compactionsIn = (entries: ReadonlyArray<SessionEntry>) =>
-	Arr.getSomes(Arr.map(entries, (entry) => decodeCompaction(entry)));
-
-const keptHolds = (entries: ReadonlyArray<SessionEntry>, compaction: Compaction, text: string) => {
-	const fromFirst = Arr.dropWhile(entries, (entry) => entry.id !== compaction.firstKeptEntryId);
-	const kept = Arr.takeWhile(fromFirst, (entry) => entry.id !== compaction.id);
-
-	return (
-		!Arr.isReadonlyArrayNonEmpty(kept) || Arr.some(kept, (entry) => Option.exists(jsonOf(entry), Str.includes(text)))
-	);
-};
+const rootEntries = (run: Run) =>
+	run.waitFor("the root's session", "10 seconds", ({ root }) => Option.some(root.entries));
 
 const markerOf = (name: string) =>
 	Effect.map(Random.nextIntBetween(1_000_000_000, 9_000_000_000), (value) => `${name}-${value.toString(36)}`);
 
-/** About 10 KB of text that costs the model about four times the tokens pi estimates for it. */
 const denseFiller = (seed: string) =>
 	Arr.join(
 		Arr.makeBy(1500, (index) => `${seed}${index.toString(36)}`),
@@ -68,17 +38,9 @@ const plainFiller = Arr.join(
 	" ",
 );
 
-/** A summary without its file lists, which grow by each file the agent touches between compactions. */
 const withoutLists = (summary: string) => Str.split("\n\n<read-files>")(summary)[0] ?? summary;
 
-/**
- * Each compaction rewrites the narrative, so two narratives of the same state differ by a few dozen characters either
- * way. A summary that carried the one before it would at least double instead.
- */
 const rewordingSlack = 1.1;
-
-const rootEntries = (run: Run) =>
-	run.waitFor("the root's session", "10 seconds", ({ root }) => Option.some(root.entries));
 
 const report = (run: Run, who: string, compactions: ReadonlyArray<Compaction>) =>
 	Effect.gen(function* () {
@@ -175,7 +137,7 @@ const leafCompacts = (run: Run, project: string) =>
 			"every leaf summary carries the task message with its marker line",
 		);
 		yield* run.check(
-			last !== undefined && !keptHolds(leaf, last, marker),
+			last !== undefined && !keptHolds({ entries: leaf, last, text: marker }),
 			"no entry pi kept after the leaf's last compaction holds its marker, so its answer quotes the summary",
 		);
 	});
@@ -212,7 +174,7 @@ const quotes = (
 			last !== undefined &&
 				Str.includes(`<state-file path="${stateFile}">`)(last.summary) &&
 				Str.includes(marker)(last.summary) &&
-				!keptHolds(entries, last, marker),
+				!keptHolds({ entries, last, text: marker }),
 			`the root's summary carries ${stateFile} with ${marker}, and no entry pi kept holds it`,
 		);
 

@@ -4,6 +4,7 @@ import {
 	DEFAULT_COMPACTION_SETTINGS,
 	type FileOperations,
 	type SessionBeforeCompactEvent,
+	type SessionEntry,
 	SessionManager,
 	serializeConversation,
 } from "@earendil-works/pi-coding-agent";
@@ -13,8 +14,10 @@ import * as Effect from "effect/Effect";
 import type * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
+import * as Str from "effect/String";
 
-import { compaction, Details } from "./index.ts";
+import { compaction } from "./index.ts";
+import { Details } from "./summary.ts";
 
 type Handler = Parameters<Parameters<ReturnType<typeof compaction>>[0]["on"]>[1];
 
@@ -171,6 +174,40 @@ export const sessionWithPrior = () => {
 	});
 
 	return session;
+};
+
+const Compaction = Schema.Struct({
+	type: Schema.Literal("compaction"),
+	id: Schema.String,
+	summary: Schema.String,
+	firstKeptEntryId: Schema.String,
+	details: Details,
+});
+
+export type Compaction = typeof Compaction.Type;
+
+const decodeCompaction = Schema.decodeUnknownOption(Compaction);
+
+const jsonOf = Schema.encodeUnknownOption(Schema.fromJsonString(Schema.Unknown));
+
+export const compactionsIn = (entries: ReadonlyArray<SessionEntry>) =>
+	Arr.getSomes(Arr.map(entries, (entry) => decodeCompaction(entry)));
+
+export const keptHolds = ({
+	entries,
+	last,
+	text,
+}: {
+	readonly entries: ReadonlyArray<SessionEntry>;
+	readonly last: Compaction;
+	readonly text: string;
+}) => {
+	const fromFirst = Arr.dropWhile(entries, (entry) => entry.id !== last.firstKeptEntryId);
+	const kept = Arr.takeWhile(fromFirst, (entry) => entry.id !== last.id);
+
+	return (
+		!Arr.isReadonlyArrayNonEmpty(kept) || Arr.some(kept, (entry) => Option.exists(jsonOf(entry), Str.includes(text)))
+	);
 };
 
 export const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem>) =>

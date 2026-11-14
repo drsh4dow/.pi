@@ -3,7 +3,6 @@ import { expect, test } from "bun:test";
 import * as Effect from "effect/Effect";
 import * as Str from "effect/String";
 
-import { carriedNote, narrativeCap } from "./index.ts";
 import {
 	answering,
 	compact,
@@ -19,6 +18,7 @@ import {
 	sessionWithTask,
 	task,
 } from "./session.fixture.ts";
+import { carriedNote, narrativeCap } from "./summary.ts";
 
 const carriedTail = `\nPrior narrative.\n\n<task>\n${task}\n</task>\n\n<read-files>\nsrc/a.ts\nsrc/new.ts\n</read-files>\n\n<modified-files>\nsrc/b.ts\n</modified-files>`;
 
