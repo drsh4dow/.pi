@@ -26,12 +26,13 @@ The gate covers every merge it sees, with no exemption list. That includes merge
 - **Match the text of tool calls, such as a `tool_call` handler that looks for `gh … merge`.** Rejected. It misses a command built inside a codemode script, `gh api`, `gh stack merge` and `--auto`, and the harness already dropped a shell-text guard on `pi --print` for its false positives. The wrapper sees the arguments `gh` itself receives.
 - **A verdict only at the exact head.** Rejected. A stack rebase moves every PR above it to a new SHA without changing its patch, so each would need a new review.
 - **Exempt merges between work branches, or docs-only changes.** Rejected. Each exemption brings back the judgment call the patch rule removes, and a fresh verdict costs $0.15 to $1.03 by the retro's measure.
-- **Allow auto-merge on a head that has a pass**, as step 4 of the Shipping playbook does today. Rejected. GitHub completes the merge later without the local gate, at whatever head is ready. Only a required check on GitHub would close that, and that is the commit-status option above.
+- **Allow auto-merge on a head that has a pass**, as step 4 of the Shipping playbook did before the gate. Rejected. GitHub completes the merge later without the local gate, at whatever head is ready. Only a required check on GitHub would close that, and that is the commit-status option above.
 - **An override for agents.** Rejected. Root B merged six PRs with review exceptions at the merged head, and an override would put such an exception one flag away.
 
 ## Consequences
 
 - The gate sees only the `gh` calls that reach it. An agent can still merge by calling the real `gh` by its full path, or through GitHub's API with another client such as `curl`. The gate stops ordinary merges, not a deliberate bypass.
-- Whether `gh stack merge` can pin the head of each pull request it lands is unproven. If it cannot, a push between the check and a stack merge can still land without a verdict, and the change that builds the gate says so.
+- `gh stack merge` cannot pin a head: it rejects `--match-head-commit` as an unknown flag. A push between the gate's check and a stack merge can still land a head that has no verdict.
+- A merge through `gh api graphql` names the pull request by node id and takes no head pin the gate could add, so the gate refuses it and names `gh pr merge` instead. A REST merge takes the pin as its `sha` field.
 - pi puts its bin folder first on PATH only when PATH lacks it, so the wrapper's place on PATH is a fact to test in a root and in a delegate.
-- Steps 3 and 4 of the Shipping playbook change with the gate. Step 3 still describes the judgment call on patches, and step 4 still arms `--auto` on a verified head.
+- Step 3 of the Shipping playbook is the patch rule above, and its step 4 waits for the checks and merges with the head pinned instead of arming `--auto`.
