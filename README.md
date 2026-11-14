@@ -79,9 +79,10 @@ The root role splits branches into the agent's and everyone's:
 
 Work that outlives a turn keeps its state on disk, so a new session or a compaction loses nothing:
 
-> **State.** Work that outlives a turn keeps its state in `~/.local/state/pi-agent/<project>/<work>/`, named for the repo and the work. Put that path in each delegate's task message.
+> **State.** Work that outlives a turn keeps its state in `~/.local/state/pi-agent/<project>/<work>/`, named for the repo and the work.
 >
 > - `STATE.md` holds the destination and the human's standing instructions in their words, then the decisions, the status, and the next step. Read it after a compaction and at the start of a session that continues the work.
+> - `facts.md` holds the project facts every delegate needs, such as commands, conventions and hazards. `owner.md` holds the rules only owners follow, such as how a slice ships. Each `delegate` call reads both into the delegate's prompt with its goal and this folder, `owner.md` for owners only. A call takes the folder your session last wrote to unless it names `state`.
 > - `TODO.md` is the checklist of the playbooks you run, kept as `<playbooks-workflow>` says. You are its one writer.
 > - `decisions.tsv` is the decision trail, per the **show-me-your-work** skill.
 > - `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own: a product choice, an approval, an irreversible action, access you lack. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does. Each item starts at a `## <title>` line, and its body has a line starting with each label below, `**Instead.**` optional. A body may hold lists and fenced code, and outside a fence none of its lines starts with `#`. Above the first item go only the `# ` title and a plain note, such as "Nothing waits on you." A write that breaks this format comes back with its problems.
