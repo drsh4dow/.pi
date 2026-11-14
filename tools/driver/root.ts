@@ -17,9 +17,9 @@ import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import * as Str from "effect/String";
 
 import { ScenarioFailed, SetupFailed } from "./failed.ts";
+import { lfLines } from "./lines.ts";
 import type { World } from "./world.ts";
 
 /** The root pi a scenario talks to. Every call fails at once if the root has exited. */
@@ -76,20 +76,6 @@ const isResponseTo =
 const isSettled = (record: Inbound) => record.type === "agent_settled";
 
 const failed = (message: string) => Effect.fail(ScenarioFailed.make({ message }));
-
-/**
- * Pure. Splits on LF only, dropping one CR before it. Unicode line and paragraph separators are valid inside JSON
- * strings, so a generic line splitter would cut records apart (pi's docs/rpc.md, Framing).
- */
-export const lfLines = ({ carried, chunk }: { readonly carried: string; readonly chunk: string }) => {
-	const parts = Str.split(`${carried}${chunk}`, "\n");
-	const complete = Arr.dropRight(parts, 1);
-
-	return {
-		lines: Arr.map(complete, (line) => (Str.endsWith("\r")(line) ? Str.slice(0, -1)(line) : line)),
-		rest: Arr.lastNonEmpty(parts),
-	};
-};
 
 /** As text, each chunk appended to `log` as it arrives. */
 const logged = <Failure>(fs: FileSystem.FileSystem, bytes: Stream.Stream<Uint8Array, Failure>, log: string) =>
