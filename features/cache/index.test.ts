@@ -146,6 +146,16 @@ const cases: ReadonlyArray<readonly [string, (world: World) => void, ReadonlyArr
 		missed([cause.PromptChanged.make({})]),
 	],
 	[
+		"a system prompt change made before a failed call",
+		({ prefix, reply }) => {
+			reply({ at: start, ...hit });
+			prefix.systemPrompt = "You are a reviewer.";
+			reply({ at: start + minute, input: 0, cacheRead: 0 });
+			reply({ at: start + 2 * minute, ...full });
+		},
+		missed([cause.PromptChanged.make({})]),
+	],
+	[
 		"changed tools",
 		({ prefix, reply }) => {
 			reply({ at: start, ...hit });
@@ -194,6 +204,22 @@ const cases: ReadonlyArray<readonly [string, (world: World) => void, ReadonlyArr
 		({ reply }) => {
 			reply({ at: start, ...hit });
 			reply({ at: start + 6 * minute, input: 98_999, cacheRead: 1001 });
+		},
+		[],
+	],
+	[
+		"nothing for a prompt that grew far past a small cache",
+		({ reply }) => {
+			reply({ at: start, input: 36, cacheRead: 1500 });
+			reply({ at: start + minute, input: 253_952, cacheRead: 2048 });
+		},
+		[],
+	],
+	[
+		"nothing when no call reported using the cache",
+		({ reply }) => {
+			reply({ at: start, ...full });
+			reply({ at: start + 6 * minute, ...full });
 		},
 		[],
 	],
