@@ -3,8 +3,9 @@ import { expect, test } from "bun:test";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Option from "effect/Option";
 
-import { lfLines, startRoot } from "./root.ts";
+import { lfLines, type Root, startRoot } from "./root.ts";
 import { layoutOf } from "./world.ts";
 
 const rows = [
@@ -52,45 +53,74 @@ for (const { name, carried, chunk, expected } of rows) {
 	});
 }
 
-/** A pi that answers every RPC command except `FAKE_IGNORES`, and settles after each prompt. */
+/**
+ * A pi that answers every RPC command except `FAKE_IGNORES`. It settles 200 ms after each prompt, and only then has
+ * `FAKE_TEXT` as its last assistant text; with none set it leaves `text` out, as pi does.
+ */
 const fakePi = `#!/usr/bin/env bun
+let text;
 for await (const line of console) {
 	const command = JSON.parse(line);
 	if (command.type === process.env.FAKE_IGNORES) continue;
-	const data = { get_state: { sessionId: "s", sessionFile: "/s.jsonl" }, prompt: { disposition: "queued" } }[command.type];
+	const data = {
+		get_state: { sessionId: "s", sessionFile: "/s.jsonl" },
+		prompt: { disposition: "queued" },
+		get_last_assistant_text: { text },
+	}[command.type];
 	console.log(JSON.stringify({ type: "response", id: command.id, command: command.type, success: true, data }));
-	if (command.type === "prompt") console.log(JSON.stringify({ type: "agent_settled" }));
+	if (command.type === "prompt") setTimeout(() => {
+		text = process.env.FAKE_TEXT;
+		console.log(JSON.stringify({ type: "agent_settled" }));
+	}, 200);
 }
 `;
 
+/** Starts the fake pi as the root, with `env` added to its environment. */
+const fakeRoot = (env: Readonly<Record<string, string>>) =>
+	Effect.gen(function* () {
+		const fs = yield* FileSystem.FileSystem;
+		const tmp = yield* fs.makeTempDirectoryScoped();
+		const layout = layoutOf({ tmp, name: "fake", stamp: "20260514-101010", pid: 42, tag: "0abc12" });
+
+		yield* Effect.forEach([layout.bin, layout.project, layout.sessions], (dir) =>
+			fs.makeDirectory(dir, { recursive: true }),
+		);
+		yield* fs.writeFileString(`${layout.bin}/pi`, fakePi, { mode: 0o755 });
+
+		return yield* startRoot({
+			world: {
+				layout,
+				agentDir: tmp,
+				env: { PATH: Bun.env["PATH"] ?? "", ...env },
+				pi: { version: "0.0.0", path: `${layout.bin}/pi` },
+				exec: () => Effect.die("unused"),
+			},
+			model: "a/b",
+			progress: () => Effect.void,
+		});
+	});
+
+const withRoot = <Value, Failure>(
+	env: Readonly<Record<string, string>>,
+	use: (root: Root) => Effect.Effect<Value, Failure>,
+) => Effect.runPromise(Effect.flatMap(fakeRoot(env), use).pipe(Effect.scoped, Effect.provide(NodeServices.layer)));
+
+test("prompt returns the text pi has once it settles, not before", () =>
+	withRoot({ FAKE_TEXT: "ok" }, (root) =>
+		Effect.gen(function* () {
+			const reply = yield* root.prompt("hi");
+
+			expect(reply).toEqual(Option.some("ok"));
+		}),
+	));
+
 for (const ignored of ["prompt", "get_last_assistant_text"]) {
 	test(`prompt fails within its deadline when pi never answers ${ignored}`, () =>
-		Effect.runPromise(
+		withRoot({ FAKE_IGNORES: ignored }, (root) =>
 			Effect.gen(function* () {
-				const fs = yield* FileSystem.FileSystem;
-				const tmp = yield* fs.makeTempDirectoryScoped();
-				const layout = layoutOf({ tmp, name: "fake", stamp: "20260514-101010", pid: 42, tag: "0abc12" });
-
-				yield* Effect.forEach([layout.bin, layout.project, layout.sessions], (dir) =>
-					fs.makeDirectory(dir, { recursive: true }),
-				);
-				yield* fs.writeFileString(`${layout.bin}/pi`, fakePi, { mode: 0o755 });
-
-				const root = yield* startRoot({
-					world: {
-						layout,
-						agentDir: tmp,
-						env: { PATH: Bun.env["PATH"] ?? "", FAKE_IGNORES: ignored },
-						pi: { version: "0.0.0", path: `${layout.bin}/pi` },
-						exec: () => Effect.die("unused"),
-					},
-					model: "a/b",
-					progress: () => Effect.void,
-				});
-
 				const failure = yield* Effect.flip(root.prompt("hi", "300 millis"));
 
 				expect(failure.message).toBe('the root did not settle within 0.3 s after "hi"');
-			}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+			}),
 		));
 }
