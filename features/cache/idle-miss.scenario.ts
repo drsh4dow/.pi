@@ -25,8 +25,13 @@ scenario({
 	model: "ultra-a/claude-fable-5-2",
 	play: (run) =>
 		Effect.gen(function* () {
-			// Random base64 costs about one token a byte, so the leaf's prompt passes 50,000 tokens and stays under 100,000.
-			const filler = yield* run.exec(["sh", "-c", "head -c 34000 /dev/urandom | base64 -w 76 > filler.txt"]);
+			// Random base64 costs about one token a byte, so the leaf's prompt nears 70,000 tokens and stays under 100,000.
+			// The read tool shows at most 50 KB a call, so the filler comes in two files.
+			const filler = yield* run.exec([
+				"sh",
+				"-c",
+				"head -c 34000 /dev/urandom | base64 -w 76 > filler-1.txt && head -c 12000 /dev/urandom | base64 -w 76 > filler-2.txt",
+			]);
 
 			yield* run.check(filler.code === 0, `the filler file was written (exit ${String(filler.code)})`);
 
@@ -34,7 +39,7 @@ scenario({
 				Arr.join(
 					[
 						"Use the delegate tool to start one leaf on the model ultra-a/claude-haiku-5-5. Its whole task, word for word:",
-						"Read the file filler.txt with the read tool, in one call. Then run the bash command `sleep 330`, in the foreground. Then reply with the single word done.",
+						"Read the files filler-1.txt and filler-2.txt with the read tool, one call each. Then run the bash command `sleep 330`, in the foreground. Then reply with the single word done.",
 						"Then end your turn without waiting for it.",
 					],
 					"\n\n",

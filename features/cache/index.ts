@@ -17,8 +17,8 @@ export const entryKind = "pi.cache-miss";
 /** The cache lifetime of Anthropic's default retention, which pi's own cache notices also assume. */
 const cacheTtlMs = 5 * 60 * 1000;
 
-/** A smaller prompt is a small cold start, not a full-price rewrite worth a record. */
-const minPrompt = 50_000;
+/** Fewer unread cached tokens make a small miss, not a full-price rewrite worth a record. */
+const minMissed = 50_000;
 
 export const Cause = Schema.TaggedUnion({
 	Idle: { ms: Schema.Finite },
@@ -41,11 +41,12 @@ export const Miss = Schema.Struct({
 
 export type Miss = typeof Miss.Type;
 
-/** The last call that read or wrote this session's cache: a reply, or a cache-warm call after it. */
-interface Touch {
+/** A model call on the branch: a reply, or a cache-warm call that repeats the reply before it. */
+interface Call {
 	readonly at: number;
 	readonly model: string;
 	readonly usage: Usage;
+	readonly isReply: boolean;
 }
 
 /** What a request sends ahead of the conversation. A change in either rewrites the cache. */
@@ -54,56 +55,72 @@ interface Prefix {
 	readonly tools: ReadonlyArray<Pick<ToolInfo, "name" | "description" | "parameters">>;
 }
 
+/** The prefix of the reply sent at `at`. */
+interface Remembered {
+	readonly at: number;
+	readonly prefix: Prefix;
+}
+
 const promptOf = (usage: Usage) => usage.input + usage.cacheRead + usage.cacheWrite;
 
-/** A failed call, or one to a provider that reports no caching, shows no cache to miss. */
 const usedCache = (usage: Usage) => usage.cacheRead + usage.cacheWrite > 0;
 
-const callOf = (entry: SessionEntry): Option.Option<Touch> => {
-	if (entry.type === "message" && entry.message.role === "assistant") {
+/** A failed call reports no prompt, so it reached no cache. */
+const callOf = (entry: SessionEntry): Option.Option<Call> => {
+	if (entry.type === "message" && entry.message.role === "assistant" && promptOf(entry.message.usage) > 0) {
 		const { timestamp, provider, model, usage } = entry.message;
 
-		return Option.some({ at: timestamp, model: `${provider}/${model}`, usage });
+		return Option.some({ at: timestamp, model: `${provider}/${model}`, usage, isReply: true });
 	}
 
-	if (entry.type === "usage" && entry.kind === "cache_warm") {
+	if (entry.type === "usage" && entry.kind === "cache_warm" && promptOf(entry.usage) > 0) {
 		const { timestamp, provider, model, usage } = entry;
 
-		return Option.some({ at: Date.parse(timestamp), model: `${provider}/${model}`, usage });
+		return Option.some({ at: Date.parse(timestamp), model: `${provider}/${model}`, usage, isReply: false });
 	}
 
 	return Option.none();
 };
 
-const touchOf = (entry: SessionEntry) => Option.filter(callOf(entry), ({ usage }) => usedCache(usage));
+/** The last call on the branch, and the entries after it. */
+interface Last {
+	readonly call: Call;
+	readonly since: ReadonlyArray<SessionEntry>;
+}
 
-/** The last touch on the branch, and the entries after it. */
-const lastTouch = (branch: ReadonlyArray<SessionEntry>) =>
+const lastCall = (branch: ReadonlyArray<SessionEntry>): Option.Option<Last> =>
 	Arr.findLast(branch, (entry, index) =>
-		Option.map(touchOf(entry), (touch) => ({ touch, since: branch.slice(index + 1) })),
+		Option.map(callOf(entry), (call) => ({ call, since: branch.slice(index + 1) })),
+	);
+
+/** The prefix the last reply on the branch sent, when this pi remembers it. Unknown after a start, reload or `/tree`. */
+const prefixBefore = (branch: ReadonlyArray<SessionEntry>, remembered: Option.Option<Remembered>) =>
+	Option.flatMap(
+		Arr.findLast(branch, (entry) => Option.filter(callOf(entry), ({ isReply }) => isReply)),
+		({ at }) =>
+			Option.map(
+				Option.filter(remembered, (reply) => reply.at === at),
+				({ prefix }) => prefix,
+			),
 	);
 
 interface Context {
+	readonly branch: ReadonlyArray<SessionEntry>;
 	readonly reply: AssistantMessage;
-	readonly before: Option.Option<Prefix>;
+	readonly remembered: Option.Option<Remembered>;
 	readonly now: Prefix;
 }
 
-/** Every cause that held between the last touch and the reply. */
-const causesOf = ({
-	reply,
-	touch,
-	since,
-	before,
-	now,
-}: Context & { readonly touch: Touch; readonly since: ReadonlyArray<SessionEntry> }) => {
-	const idleMs = reply.timestamp - touch.at;
+/** Every cause that held between the last call and the reply. */
+const causesOf = ({ branch, reply, remembered, now, call, since }: Context & Last) => {
+	const idleMs = reply.timestamp - call.at;
 	const model = `${reply.provider}/${reply.model}`;
+	const before = prefixBefore(branch, remembered);
 	const { cases } = Cause;
 
 	const held: ReadonlyArray<readonly [boolean, Cause]> = [
 		[idleMs > cacheTtlMs, cases.Idle.make({ ms: idleMs })],
-		[model !== touch.model, cases.ModelChanged.make({ from: touch.model, to: model })],
+		[model !== call.model, cases.ModelChanged.make({ from: call.model, to: model })],
 		[Arr.some(since, (entry) => entry.type === "compaction"), cases.Compacted.make({})],
 		[Arr.some(since, (entry) => entry.type === "context_edit"), cases.ContextEdited.make({})],
 		[Option.exists(before, ({ systemPrompt }) => systemPrompt !== now.systemPrompt), cases.PromptChanged.make({})],
@@ -117,33 +134,27 @@ const causesOf = ({
 };
 
 /**
- * A reply missed when its prompt is at least 50,000 tokens, it read at most max(1,000, 1% of the prompt) from the cache,
- * the retro's own threshold, and it left unread more than that many tokens the last touch had cached. The last part
- * keeps out a prompt that grew far past a small cache, which pays for new tokens, not for a miss. A session's first call
- * has nothing cached to miss. `before` is the prefix of the last touch, unknown after a start or a reload.
+ * A reply missed when it left at least 50,000 tokens unread that the last call had cached: the smaller of the two
+ * prompts, less what the reply read. A cache shows only once a call on the branch, or the reply, reads or writes it,
+ * since a provider without caching reports neither. A session's first call has nothing cached to miss.
  */
-const missOf = ({
-	branch,
-	reply,
-	before,
-	now,
-}: Context & { readonly branch: ReadonlyArray<SessionEntry> }): Option.Option<Miss> => {
+const missOf = (context: Context): Option.Option<Miss> => {
+	const { branch, reply } = context;
 	const { cacheRead } = reply.usage;
 	const prompt = promptOf(reply.usage);
-	const noise = Math.max(1000, prompt / 100);
 
-	if (prompt < minPrompt || cacheRead > noise) {
-		return Option.none();
-	}
+	const cacheShown =
+		usedCache(reply.usage) ||
+		Arr.some(branch, (entry) => Option.exists(callOf(entry), ({ usage }) => usedCache(usage)));
 
-	return Option.flatMap(lastTouch(branch), ({ touch, since }) => {
-		const missedTokens = Math.min(promptOf(touch.usage), prompt) - cacheRead;
+	return Option.flatMap(lastCall(branch), (last) => {
+		const missedTokens = Math.min(promptOf(last.call.usage), prompt) - cacheRead;
 
-		if (missedTokens <= noise) {
+		if (!cacheShown || missedTokens < minMissed) {
 			return Option.none();
 		}
 
-		return Option.some({ missedTokens, cacheRead, prompt, causes: causesOf({ reply, touch, since, before, now }) });
+		return Option.some({ missedTokens, cacheRead, prompt, causes: causesOf({ ...context, ...last }) });
 	});
 };
 
@@ -159,7 +170,7 @@ const toolsOf = (pi: Host) => {
 
 /** The `message_end` handler. pi calls it before it saves the reply, so the branch holds what came before. */
 export const recordMisses = (pi: Host) => {
-	let before: Option.Option<Prefix> = Option.none();
+	let remembered: Option.Option<Remembered> = Option.none();
 
 	return ({ message }: MessageEndEvent, ctx: Pick<ExtensionContext, "sessionManager" | "getSystemPrompt">) => {
 		if (message.role !== "assistant") {
@@ -167,10 +178,10 @@ export const recordMisses = (pi: Host) => {
 		}
 
 		const now = { systemPrompt: ctx.getSystemPrompt(), tools: toolsOf(pi) };
-		const miss = missOf({ branch: ctx.sessionManager.getBranch(), reply: message, before, now });
+		const miss = missOf({ branch: ctx.sessionManager.getBranch(), reply: message, remembered, now });
 
-		if (usedCache(message.usage)) {
-			before = Option.some(now);
+		if (promptOf(message.usage) > 0) {
+			remembered = Option.some({ at: message.timestamp, prefix: now });
 		}
 
 		if (Option.isSome(miss)) {
