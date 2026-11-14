@@ -24,7 +24,7 @@ Before the checklist, start three delegates on the change (the staged changes, t
 - `instructionsFile: "~/.pi/agent/instructions/security-auditor.md"`
 - `instructionsFile: "~/.pi/agent/instructions/test-engineer.md"`
 
-Each persona file says what to check and what to report, so each task message names only the change. With no `delegate` tool, follow the three files yourself, one after another.
+Each persona file says what to check and what to report, so each task message names only the change.
 
 Skip the reviews only when the change touches 2 files or fewer, the diff is under 50 lines, and it touches no auth, payments, data access, or config/env. A small diff with a wide blast radius still gets them.
 

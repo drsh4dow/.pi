@@ -9,7 +9,7 @@ import { type RunSpec, terminalNameOf } from "../../clients/hc/index.ts";
 import type { ChildPi, PiCli, StagedBrief } from "../../clients/pi-cli/index.ts";
 import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
 
-/** How deep a chain of agents goes, counting the root as level 1. An agent at the last level has no `delegate` tool. */
+/** How deep a chain of owners goes, counting the root as level 1. An owner at the last level starts leaves only, one level below it. */
 export const levels = 3;
 
 export const Role = Schema.Literals(["root", "owner", "leaf"]);
@@ -24,13 +24,21 @@ export type ChildRole = typeof ChildRole.Type;
 /** The roles a prompt file fits, from its frontmatter's `for`. */
 export const Roles = Role.pipe(Schema.NonEmptyArray);
 
-const Level = Schema.FiniteFromString.pipe(Schema.check(Schema.isBetween({ minimum: 2, maximum: levels })));
+const levelUpTo = (maximum: number) =>
+	Schema.FiniteFromString.pipe(Schema.check(Schema.isBetween({ minimum: 2, maximum })));
 
-const ChildEnv = Schema.Struct({
-	PI_OWNED_WORK_LEVEL: Level,
-	PI_OWNED_WORK_ROLE: ChildRole,
-	PI_OWNED_WORK_SLICE: Schema.String,
-});
+const ChildEnv = Schema.Union([
+	Schema.Struct({
+		PI_OWNED_WORK_LEVEL: levelUpTo(levels),
+		PI_OWNED_WORK_ROLE: Schema.Literal("owner"),
+		PI_OWNED_WORK_SLICE: Schema.String,
+	}),
+	Schema.Struct({
+		PI_OWNED_WORK_LEVEL: levelUpTo(levels + 1),
+		PI_OWNED_WORK_ROLE: Schema.Literal("leaf"),
+		PI_OWNED_WORK_SLICE: Schema.String,
+	}),
+]);
 
 export type Self = Data.TaggedEnum<{
 	Root: { readonly role: "root"; readonly level: 1 };
@@ -53,12 +61,20 @@ export const selfFromEnv = Effect.fn("selfFromEnv")(function* (env: Readonly<Rec
 	});
 });
 
-/** A leaf never delegates, and the level caps how deep an owner's chain goes. */
-export const mayDelegate = (self: Self) => self.role !== "leaf" && self.level < levels;
+export const childRoles = (self: Self): ReadonlyArray<ChildRole> => {
+	if (self.role === "leaf") {
+		return [];
+	}
 
-/** `choom -n` sets the OOM score adjustment, so deeper levels die first when memory runs out. */
+	return self.level < levels ? ["owner", "leaf"] : ["leaf"];
+};
+
+/**
+ * `choom -n` sets the OOM score adjustment, so deeper levels die first when memory runs out. The kernel caps it at 1000,
+ * which the deepest agent, a leaf one level below the last owner, gets.
+ */
 export const atLevel = ({ level, role }: { readonly level: number; readonly role: ChildRole }) => ({
-	oomScoreAdj: String(500 * (level - 1)),
+	oomScoreAdj: String(Math.round((1000 * (level - 1)) / levels)),
 	env: { PI_OWNED_WORK_LEVEL: String(level), PI_OWNED_WORK_ROLE: role },
 });
 

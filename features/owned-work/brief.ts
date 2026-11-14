@@ -11,7 +11,7 @@ import { type Static, Type } from "typebox";
 
 import type { StagedBrief } from "../../clients/pi-cli/index.ts";
 import { lastFolder } from "../state-folder/index.ts";
-import { type Brief, ChildRole } from "./child.ts";
+import type { Brief, ChildRole } from "./child.ts";
 import { type Alias, ModelName, modelNameOf, type ModelTable } from "./models.ts";
 import { parseProfile } from "./profile.ts";
 import { BadDelegate } from "./work.ts";
@@ -45,7 +45,13 @@ const stateParam = Type.String({
 		"The work's state folder. It defaults to yours. Its `facts.md` reaches every delegate, its `owner.md` only owners.",
 });
 
-export const delegateParams = (table: ModelTable) => {
+export const delegateParams = ({
+	table,
+	roles,
+}: {
+	readonly table: ModelTable;
+	readonly roles: ReadonlyArray<ChildRole>;
+}) => {
 	const model = Type.String({ description: modelDescription(table) });
 
 	return Type.Object({
@@ -61,9 +67,7 @@ export const delegateParams = (table: ModelTable) => {
 		goal: Type.Optional(goalParam),
 		state: Type.Optional(stateParam),
 		/** A plain string enum, as pi's `StringEnum` builds, since some providers refuse `anyOf` of constants. */
-		role: Type.Optional(
-			Type.Unsafe<ChildRole>({ type: "string", enum: [...ChildRole.literals], description: roleDescription }),
-		),
+		role: Type.Optional(Type.Unsafe<ChildRole>({ type: "string", enum: [...roles], description: roleDescription })),
 		instructionsFile: Type.Optional(
 			Type.String({
 				description:
@@ -228,6 +232,16 @@ const workOf = Effect.fn("workOf")(function* (
 	return { goal, state, ...stateFiles };
 });
 
+const roleOf = (named: Option.Option<ChildRole>, roles: ReadonlyArray<ChildRole>) =>
+	Effect.fromOption(named, () =>
+		BadDelegate.make({ why: `name a role, since neither the call nor an instructions file does: ${roleUses}` }),
+	).pipe(
+		Effect.filterOrFail(
+			(role) => Arr.contains(roles, role),
+			() => BadDelegate.make({ why: "you start leaves only, at the last owner level: name role `leaf`" }),
+		),
+	);
+
 interface Parsed {
 	readonly brief: Brief;
 	readonly cwd: Option.Option<string>;
@@ -236,6 +250,7 @@ interface Parsed {
 export const parseCall = Effect.fn("parseCall")(function* (
 	ctx: Caller,
 	table: ModelTable,
+	roles: ReadonlyArray<ChildRole>,
 	inherited: Inherited,
 	call: Static<DelegateParams>,
 ) {
@@ -247,9 +262,9 @@ export const parseCall = Effect.fn("parseCall")(function* (
 		Option.map(Option.fromUndefinedOr(call.instructionsFile), (file) => instructionsOf(ctx.cwd, file)),
 	);
 
-	const role = yield* Effect.fromOption(
+	const role = yield* roleOf(
 		Option.orElse(Option.fromUndefinedOr(call.role), () => Option.flatMap(profile, (own) => own.role)),
-		() => BadDelegate.make({ why: `name a role, since neither the call nor an instructions file does: ${roleUses}` }),
+		roles,
 	);
 
 	const named = Option.orElse(Option.map(Option.fromUndefinedOr(call.model), modelNameOf), () =>

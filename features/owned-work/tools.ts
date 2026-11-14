@@ -17,7 +17,7 @@ import { type Static, Type } from "typebox";
 import { readStagedBrief } from "../../clients/pi-cli/index.ts";
 import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
 import { type Caller, type DelegateParams, delegateParams, parseCall } from "./brief.ts";
-import { type ChildSession, levels, mayDelegate, Self } from "./child.ts";
+import { type ChildRole, type ChildSession, childRoles, Self } from "./child.ts";
 import { Ledger, type LedgerFailure } from "./ledger.ts";
 import { type ModelTable, modelTable } from "./models.ts";
 import { HandleOut, Out, ResultsOut } from "./out.ts";
@@ -115,18 +115,18 @@ const ownBrief = (ownSession: Option.Option<OwnSession>) =>
 
 const delegateTool = (
 	runtime: Runtime,
-	childLevel: number,
+	roles: ReadonlyArray<ChildRole>,
 	place: Omit<ChildSession, "id">,
 	table: ModelTable,
 	ownSession: Option.Option<OwnSession>,
 ) => {
-	const parameters = delegateParams(table);
+	const parameters = delegateParams({ table, roles });
 
 	return {
 		name: "delegate",
 		label: "delegate",
 		description: "Start a delegate on one task. It wakes you with its answer.",
-		promptGuidelines: [...delegateGuidelines, childLevel === levels ? lastLevelGuideline : nestingGuideline],
+		promptGuidelines: [...delegateGuidelines, Arr.contains(roles, "owner") ? nestingGuideline : lastLevelGuideline],
 		parameters,
 		outputSchema: HandleOut,
 		execute: (_id, call, signal, _update, ctx: Caller) =>
@@ -134,7 +134,7 @@ const delegateTool = (
 				(ledger) =>
 					Effect.gen(function* () {
 						const inherited = yield* ownBrief(ownSession);
-						const { brief, cwd } = yield* parseCall(ctx, table, inherited, call);
+						const { brief, cwd } = yield* parseCall(ctx, table, roles, inherited, call);
 
 						return yield* ledger.start(
 							StartRequest.Delegate({
@@ -223,12 +223,14 @@ const register = (
 	pi.registerTool(groupTool(runtime));
 	pi.registerTool(cancelTool(runtime));
 
-	if (mayDelegate(self)) {
+	const roles = childRoles(self);
+
+	if (Arr.isReadonlyArrayNonEmpty(roles)) {
 		const ownSession = Self.$is("Delegate")(self)
 			? Option.some({ dir: session.getSessionDir(), id: session.getSessionId() })
 			: Option.none();
 
-		pi.registerTool(delegateTool(runtime, self.level + 1, place, modelTable, ownSession));
+		pi.registerTool(delegateTool(runtime, roles, place, modelTable, ownSession));
 	}
 };
 

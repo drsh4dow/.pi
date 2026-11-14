@@ -11,6 +11,7 @@ import {
 	body,
 	callerOf,
 	delegate,
+	delegateStarting,
 	fixtures,
 	handed,
 	proxied,
@@ -20,7 +21,7 @@ import {
 	table,
 } from "./brief.fixture.ts";
 import { type DelegateParams, roleUses } from "./brief.ts";
-import type { Brief } from "./child.ts";
+import type { Brief, ChildRole } from "./child.ts";
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${fixtures}`.quiet())));
 
@@ -52,6 +53,7 @@ const briefRows: ReadonlyArray<{
 	name: string;
 	call: Static<DelegateParams>;
 	caller?: Partial<ReturnType<typeof callerOf>>;
+	roles?: ReadonlyArray<ChildRole>;
 	expect: ReturnType<typeof handed> | ReturnType<typeof refused>;
 }> = [
 	{
@@ -147,6 +149,18 @@ const briefRows: ReadonlyArray<{
 		expect: handed({ role: "owner", instructions: { file: `${fixtures}/owned.md`, text: body } }),
 	},
 	{
+		name: "an owner at the last level is refused the owner role an instructions file names",
+		call: { name: "m", message: "m", model: "quick", instructionsFile: "../owned.md" },
+		roles: ["leaf"],
+		expect: refused("you start leaves only, at the last owner level: name role `leaf`"),
+	},
+	{
+		name: "an owner at the last level starts a leaf on an owner's instructions file when the call names the leaf role",
+		call: { name: "m", message: "m", role: "leaf", model: "quick", instructionsFile: "../owned.md" },
+		roles: ["leaf"],
+		expect: handed({ instructions: { file: `${fixtures}/owned.md`, text: body } }),
+	},
+	{
 		name: "the call's role wins over the instructions file's",
 		call: { name: "m", message: "m", role: "owner", instructionsFile: "../profiled.md" },
 		expect: handed({
@@ -216,9 +230,10 @@ for (const row of briefRows) {
 		runtime.runPromise(
 			Effect.gen(function* () {
 				const caller = { ...callerOf(), ...row.caller };
+				const tool = delegateStarting(row.roles ?? ["owner", "leaf"]);
 
 				const { isError, details } = yield* Effect.promise(() =>
-					delegate.execute("call", { goal, ...row.call }, undefined, undefined, caller),
+					tool.execute("call", { goal, ...row.call }, undefined, undefined, caller),
 				);
 
 				const shown = Arr.map(started.splice(0), ({ brief, cwd }) => ({
