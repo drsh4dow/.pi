@@ -91,13 +91,20 @@ test.each([
 	),
 );
 
-test("STATE.md nested deeper than Markdown can read still gets its size checked", () =>
+test("STATE.md over the cap gets its size checked however deep its quotes nest", () =>
 	runTest(
 		Effect.gen(function* () {
-			const { messages } = yield* problemsOf("STATE.md", `${Str.repeat(20_000)("> ")}## 2026-11-13\n`);
+			const depths = Arr.makeBy(20, (step) => (step + 1) * 1000);
 
-			expect(messages).toContain("40,014 bytes");
-			expect(messages).toContain("Markdown cannot read the file");
+			const sized = yield* Effect.forEach(depths, (depth) => {
+				const text = `${Str.repeat(17_000)("x")}\n\n${Str.repeat(depth)("> ")}## 2026-11-13\n`;
+
+				return Effect.map(problemsOf("STATE.md", text), ({ messages }) =>
+					Str.includes(`the file is ${text.length.toLocaleString("en-US")} bytes`)(messages),
+				);
+			});
+
+			expect(sized).toEqual(Arr.map(depths, () => true));
 		}),
 	));
 

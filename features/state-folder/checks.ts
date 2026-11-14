@@ -92,15 +92,10 @@ const datedHeadings = ({ type, depth = 0, text = "", tokens = [], items = [] }: 
  * Each dated section, read by a Markdown parser, so a fence, indented code, a quote or a list puts a line where Markdown
  * puts it. The parser's top-level blocks together hold the whole text, which places each heading on its line.
  */
-const datedProblems = Effect.fn("datedProblems")(function* (text: string) {
+const findDated = Effect.fn("findDated")(function* (text: string) {
 	const source = Str.replaceAll(/\r\n?/gu, "\n")(text);
-	const parsed = yield* Effect.option(Effect.try({ try: () => marked.lexer(source), catch: String }));
-
-	if (Option.isNone(parsed)) {
-		return [{ line: 1, message: "Markdown cannot read the file, so its sections cannot be checked. Flatten it" }];
-	}
-
-	const blocks = yield* Effect.orDie(decodeBlocks(parsed.value));
+	const tokens = yield* Effect.sync(() => marked.lexer(source));
+	const blocks = yield* Effect.orDie(decodeBlocks(tokens));
 	const starts = Arr.scan(blocks, 0, (offset, { raw }) => offset + raw.length);
 
 	return Arr.flatMap(blocks, (block, index) =>
@@ -116,6 +111,13 @@ const datedProblems = Effect.fn("datedProblems")(function* (text: string) {
 		}),
 	);
 });
+
+const unreadable: ReadonlyArray<FormatProblem> = [
+	{ line: 1, message: "Markdown cannot read the file, so its sections cannot be checked. Flatten it" },
+];
+
+/** A file nested deeper than the parser or the walk can recurse throws, which must not take the size problem with it. */
+const datedProblems = (text: string) => Effect.catchDefect(findDated(text), () => Effect.succeed(unreadable));
 
 /** A cited path as the file system sees it: `~/` is home, an absolute path stays, any other is in the state folder. */
 const resolvePath = (path: string, { home, folder }: Place) => {
