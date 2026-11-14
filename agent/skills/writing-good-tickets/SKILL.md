@@ -64,7 +64,7 @@ A ticket that still waits on a product call only a person can make is not ready.
 
 ### Non-goals
 
-One line for each thing a reader could expect the closing PR to cover that it leaves out. Once work starts, Done when and Non-goals stay as written, and a finding outside Done when is a known limit.
+One line for each thing a reader could expect the closing PR to cover that it leaves out. Once work starts, Done when and Non-goals stay as written.
 
 ### Suggested approach
 
