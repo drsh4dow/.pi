@@ -7,6 +7,8 @@ import { exit, sessionRoot } from "./world.fixture.ts";
 
 const { Hook, Start, Answer, TurnEnds, Delivered, VerdictRecords } = Act;
 
+const verifying = (number: number, head: string) => ({ review: { repo: "o/r", number, head, patchId: "p" } });
+
 const runs = Hook({ event: "run starts" });
 
 const answerFile = (session: string) => `${sessionRoot}/delegates/${session}.answer.md`;
@@ -49,7 +51,7 @@ const rows: ReadonlyArray<Row> = [
 		role: "owner",
 		acts: [
 			runs,
-			Start({ kind: "delegate", name: "verifier", reviews: { number: 1, head: "h1" } }),
+			Start({ kind: "delegate", name: "verifier", verifies: verifying(1, "h1") }),
 			Answer({ terminal: "t1", text: "VERDICT: FAIL\n\nFixed on a second look.\n\nVERDICT: PASS", end: exit(0) }),
 			TurnEnds({ expect: "continue: delegate-1 done: VERDICT: FAIL\n\nFixed on a second look.\n\nVERDICT: PASS" }),
 			Delivered({
@@ -71,7 +73,7 @@ const rows: ReadonlyArray<Row> = [
 		role: "root",
 		acts: [
 			runs,
-			Start({ kind: "delegate", name: "verifier", reviews: { number: 2, head: "h2" } }),
+			Start({ kind: "delegate", name: "verifier", verifies: verifying(2, "h2") }),
 			Answer({ terminal: "t1", text: "The tests pass.", end: exit(0) }),
 			TurnEnds({ expect: "continue: delegate-1 done: The tests pass." }),
 			VerdictRecords({
@@ -85,8 +87,8 @@ const rows: ReadonlyArray<Row> = [
 		role: "root",
 		acts: [
 			runs,
-			Start({ kind: "delegate", name: "verifier a", reviews: { number: 3, head: "h3" } }),
-			Start({ kind: "delegate", name: "verifier b", reviews: { number: 3, head: "h3" } }),
+			Start({ kind: "delegate", name: "verifier a", verifies: verifying(3, "h3") }),
+			Start({ kind: "delegate", name: "verifier b", verifies: verifying(3, "h3") }),
 			Answer({ terminal: "t1", text: "VERDICT: PASS", end: exit(0) }),
 			Answer({ terminal: "t2", text: "VERDICT: PASS+NOTES", end: exit(0) }),
 			TurnEnds({ expect: "continue: delegate-1 done: VERDICT: PASS; delegate-2 done: VERDICT: PASS+NOTES" }),
@@ -104,13 +106,13 @@ const rows: ReadonlyArray<Row> = [
 		role: "owner",
 		acts: [
 			runs,
-			Start({ kind: "delegate", name: "verifier 1", reviews: { number: 4, head: "h4a" } }),
+			Start({ kind: "delegate", name: "verifier 1", verifies: verifying(4, "h4a") }),
 			Answer({ terminal: "t1", text: "VERDICT: FAIL", end: exit(0) }),
 			TurnEnds({ expect: "continue: delegate-1 done: VERDICT: FAIL" }),
-			Start({ kind: "delegate", name: "verifier 2", reviews: { number: 4, head: "h4b" } }),
+			Start({ kind: "delegate", name: "verifier 2", verifies: verifying(4, "h4b") }),
 			Answer({ terminal: "t2", text: "VERDICT: FAIL", end: exit(0) }),
 			TurnEnds({ expect: "continue: delegate-2 done: VERDICT: FAIL" }),
-			Start({ kind: "delegate", name: "verifier 3", reviews: { number: 4, head: "h4c" } }),
+			Start({ kind: "delegate", name: "verifier 3", verifies: verifying(4, "h4c") }),
 			Answer({ terminal: "t3", text: "VERDICT: FAIL", end: exit(0) }),
 			TurnEnds({ expect: "continue: delegate-3 done: VERDICT: FAIL" }),
 			Delivered({
@@ -145,8 +147,8 @@ const rows: ReadonlyArray<Row> = [
 		role: "owner",
 		acts: [
 			runs,
-			Start({ kind: "delegate", name: "verifier 1", reviews: { number: 5, head: "h5" } }),
-			Start({ kind: "delegate", name: "verifier 2", reviews: { number: 6, head: "h6" } }),
+			Start({ kind: "delegate", name: "verifier 1", verifies: verifying(5, "h5") }),
+			Start({ kind: "delegate", name: "verifier 2", verifies: verifying(6, "h6") }),
 			Answer({ terminal: "t1", text: "VERDICT: FAIL", end: exit(0) }),
 			Answer({ terminal: "t2", text: "VERDICT: FAIL", end: exit(0) }),
 			TurnEnds({ expect: "continue: delegate-1 done: VERDICT: FAIL; delegate-2 done: VERDICT: FAIL" }),

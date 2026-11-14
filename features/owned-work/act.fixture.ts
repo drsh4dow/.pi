@@ -2,6 +2,7 @@ import type { StopReason } from "@earendil-works/pi-ai";
 import * as Data from "effect/Data";
 
 import type { TerminalEnd } from "../../clients/hc/index.ts";
+import type { ReviewTarget } from "../pr/index.ts";
 import type { Role } from "./child.ts";
 import type { HeldSpawn } from "./world.fixture.ts";
 
@@ -19,7 +20,7 @@ export type Act = Data.TaggedEnum<{
 		readonly heldThen?: HeldSpawn;
 		readonly group?: string;
 		readonly handle?: Readonly<Record<string, string | boolean>>;
-		readonly reviews?: { readonly number: number; readonly head: string };
+		readonly verifies?: { readonly review: ReviewTarget };
 	};
 	Launched: {
 		readonly terminal: string;
@@ -57,6 +58,8 @@ export type Act = Data.TaggedEnum<{
 	WallClockSteps: { readonly backMs: number };
 	Pause: { readonly ms: number };
 }>;
+
+export { recordsAre } from "./verdict.fixture.ts";
 
 export const Act = Data.taggedEnum<Act>();
 

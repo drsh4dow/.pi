@@ -195,15 +195,11 @@ const run = (kit: Kit, command: Command): Effect.Effect<unknown> =>
 		RecordVerdict: ({ record }) => recordOf(kit, record),
 	});
 
-const recordOf = (kit: Kit, record: VerdictRecord) => {
-	const write = recordVerdict(verdictsFolder(kit.options.passEnv["HOME"] ?? ""))(record);
-
-	return Effect.provideService(write, FileSystem.FileSystem, kit.fs).pipe(
-		Effect.catchCause((cause) =>
-			Effect.logWarning(`no verdict record for ${record.repo}#${String(record.number)} at ${record.head}`, cause),
-		),
+const recordOf = (kit: Kit, record: VerdictRecord) =>
+	recordVerdict(verdictsFolder(kit.options.passEnv["HOME"] ?? ""))(record).pipe(
+		Effect.provideService(FileSystem.FileSystem, kit.fs),
+		Effect.catchCause((cause) => Effect.logWarning(`no verdict record at ${record.head}`, cause)),
 	);
-};
 
 const runOutsideLock = (kit: Kit, command: Command): Effect.Effect<void> =>
 	Effect.asVoid(FiberSet.run(kit.fibers, run(kit, command)));
