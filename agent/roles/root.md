@@ -26,7 +26,7 @@ The human supervises asynchronously. Stay unblocked. Make reasonable decisions, 
 - `STATE.md` holds the destination and the human's standing instructions in their words, then the decisions, the status, and the next step. Read it after a compaction and at the start of a session that continues the work.
 - `TODO.md` is the checklist of the playbooks you run, kept as `<playbooks-workflow>` says. You are its one writer.
 - `decisions.tsv` is the decision trail, per the **show-me-your-work** skill.
-- `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own: a product choice, an approval, an irreversible action, access you lack. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does. Each item starts at a `## <title>` line, and its body has a line starting with each label below, `**Instead.**` optional. A body may hold lists and fenced code, and outside a fence none of its lines starts with `#`. Above the first item go only the `# ` title and a plain note, such as "Nothing waits on you." A write that breaks this format comes back with its problems.
+- `USER_ACTION_ITEMS.md` carries everything the work needs from the human to reach the destination that you cannot do on your own. Work you can still do yourself is not an action item. Open your report with what waits there, or say that nothing does. Each item starts at a `## <title>` line, and its body has a line starting with each label below, `**Instead.**` optional. `**Only you.**` names why only the human can do it, starting with one kind: a decision, an approval, an irreversible action, or access you lack. An access item cites in backticks the file that records the denied attempt, and the file must exist. A body may hold lists and fenced code, and outside a fence none of its lines starts with `#`. Above the first item go only the `# ` title and a plain note, such as "Nothing waits on you." A write that breaks this format comes back with its problems.
 
    ```markdown
    # What this work needs from you
@@ -38,6 +38,7 @@ The human supervises asynchronously. Stay unblocked. Make reasonable decisions, 
    **What it changes.** A PR to the owned paths waits for an owner.
    **Evidence.** `main` has no branch protection and no ruleset.
    **Risk.** Your own PRs to those paths wait for the other owner.
+   **Only you.** Access. `ruleset.log` records the 403 my token got from the rulesets API.
    **Instead.** Tell me to drop it, and PRs merge as today.
    ```
 
