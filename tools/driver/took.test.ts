@@ -47,9 +47,7 @@ const rows: ReadonlyArray<{
 		name: "a settings key the record cannot confirm is refused, even when the record shows it",
 		asked: { setup: { settings: { compaction, contextWindow: 40_000 } } },
 		loaded: { settings: { compaction, contextWindow: 40_000 } },
-		expected: [
-			"the driver cannot confirm the setting contextWindow, only compaction.enabled, compaction.reserveTokens, compaction.keepRecentTokens",
-		],
+		expected: ["the driver confirms only the settings key compaction, not contextWindow"],
 	},
 	{
 		name: "a compaction field pi does not read is refused",
@@ -63,9 +61,13 @@ const rows: ReadonlyArray<{
 		name: "an unknown setting set to an empty object is refused",
 		asked: { setup: { settings: { compaction, bogusSetting: {} } } },
 		loaded: { settings: { compaction, bogusSetting: {} } },
-		expected: [
-			"the driver cannot confirm the setting bogusSetting, only compaction.enabled, compaction.reserveTokens, compaction.keepRecentTokens",
-		],
+		expected: ["the driver confirms only the settings key compaction, not bogusSetting"],
+	},
+	{
+		name: "a dotted top-level key is refused, though pi records it as set",
+		asked: { setup: { settings: { "compaction.enabled": false } } },
+		loaded: { settings: { compaction, "compaction.enabled": false } },
+		expected: ["the driver confirms only the settings key compaction, not compaction.enabled"],
 	},
 	{
 		name: "a context window given only through models is refused",

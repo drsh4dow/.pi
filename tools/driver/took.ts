@@ -34,11 +34,16 @@ const confirmable = new Set(["compaction.enabled", "compaction.reserveTokens", "
 const isJsonObject = (value: Schema.Json): value is Schema.JsonObject =>
 	Predicate.isObject(value) && !isJsonArray(value);
 
-/** Pure. `key`, or `key.field` for each field when the setting is an object with fields. */
-const pathsOf = ([key, value]: readonly [string, Schema.Json]) =>
-	isJsonObject(value) && !Rec.isEmptyReadonlyRecord(value)
+/** Pure. For `compaction`, `compaction.field` for each field, or `compaction` when it has none. Nothing for another key. */
+const fieldsOf = ([key, value]: readonly [string, Schema.Json]) => {
+	if (key !== "compaction") {
+		return [];
+	}
+
+	return isJsonObject(value) && !Rec.isEmptyReadonlyRecord(value)
 		? Arr.map(Rec.toEntries(value), ([field]) => `${key}.${field}`)
 		: [key];
+};
 
 /** Pure. Whether a JSON value sets `contextWindow` at any depth. */
 const setsWindow = (value: Schema.Json): boolean => {
@@ -60,7 +65,8 @@ const setsWindow = (value: Schema.Json): boolean => {
 export const unmetOf = ({ asked, loaded }: { readonly asked: Asked; readonly loaded: Loaded }) => {
 	const window = asked.contextWindow ?? loaded.contextWindow;
 	const settings = Rec.toEntries(asked.setup.settings ?? {});
-	const unconfirmed = Arr.filter(Arr.flatMap(settings, pathsOf), (path) => !confirmable.has(path));
+	const others = Arr.filter(settings, ([key]) => key !== "compaction");
+	const unconfirmed = Arr.filter(Arr.flatMap(settings, fieldsOf), (path) => !confirmable.has(path));
 	const missed = Arr.filter(settings, ([key, value]) => !Equal.equals(loaded.settings[key], value));
 	const dropped = asked.setup.models === undefined ? Option.none() : loaded.modelsError;
 	const windowInModels = Arr.some(Rec.values(asked.models ?? {}), setsWindow);
@@ -72,6 +78,7 @@ export const unmetOf = ({ asked, loaded }: { readonly asked: Asked; readonly loa
 			: [`its context window is ${String(loaded.contextWindow)}, not ${String(window)}`]),
 		...Arr.map(Option.toArray(dropped), (error) => `it dropped models.json: ${error}`),
 		...Arr.map(missed, ([key]) => `its settings key ${key} is not the one set`),
+		...Arr.map(others, ([key]) => `the driver confirms only the settings key compaction, not ${key}`),
 		...Arr.map(
 			unconfirmed,
 			(path) => `the driver cannot confirm the setting ${path}, only ${Arr.join([...confirmable], ", ")}`,

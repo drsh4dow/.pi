@@ -143,7 +143,8 @@ included, sees them.
 - `settings` replaces top-level keys of the run's copy of your `settings.json`. The copy never holds your
   `packages`, `extensions`, `skills`, `prompts` or `themes`, so nothing of the live harness loads into a run. The
   driver accepts only `compaction` with the fields `enabled`, `reserveTokens` and `keepRecentTokens`, the ones it can
-  read back from the running pi, and exits 2 on any other key or field: pi keeps a key it ignores without a word.
+  read back from the running pi, nested as in `settings: { compaction: { enabled: false } }`. It exits 2 on any other
+  key or field, a dotted key such as `"compaction.enabled"` included: pi keeps a key it ignores without a word.
 - `models` holds provider entries by name, as in `models.json`'s `providers` (fields in pi's
   `docs/models-configuration.md`, `modelOverrides` included). Each replaces your entry of that name in the run's copy
   of your `models.json`, or starts the file if you have none. pi in RPC mode drops a `models.json` it rejects
