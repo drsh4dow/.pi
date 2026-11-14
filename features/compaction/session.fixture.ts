@@ -92,9 +92,11 @@ export const sessionWithTask = () => {
 export const eventFor = ({
 	session,
 	fileOps,
+	reason = "threshold",
 }: {
 	readonly session: SessionManager;
 	readonly fileOps: FileOperations;
+	readonly reason?: SessionBeforeCompactEvent["reason"];
 }): SessionBeforeCompactEvent => {
 	const firstKeptEntryId = session.appendMessage({ role: "user", content: "Carry on.", timestamp: 0 });
 	const branchEntries = session.getBranch();
@@ -120,8 +122,8 @@ export const eventFor = ({
 			onSome: (summary) => ({ ...preparation, previousSummary: summary }),
 		}),
 		branchEntries,
-		reason: "threshold",
-		willRetry: false,
+		reason,
+		willRetry: reason === "overflow",
 		signal: new AbortController().signal,
 	};
 };

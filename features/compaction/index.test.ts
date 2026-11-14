@@ -75,6 +75,21 @@ for (const row of anchorRows) {
 	);
 }
 
+for (const reason of ["manual", "overflow"] as const) {
+	test(`a delegate's ${reason} compaction gets the same summary`, () =>
+		run(
+			Effect.gen(function* () {
+				const { summary } = yield* compact(
+					delegateEnv,
+					eventFor({ session: sessionWithTask(), fileOps: readA, reason }),
+					answering(reply({ text: "Narrative." })).ctx,
+				);
+
+				expect(summary).toBe(`Narrative.\n\n<task>\n${task}\n</task>\n\n<read-files>\nsrc/a.ts\n</read-files>`);
+			}),
+		));
+}
+
 test("three compactions keep the union of their file lists and feed each narrative, alone, to the next", () =>
 	run(
 		Effect.gen(function* () {
