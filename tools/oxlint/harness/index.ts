@@ -13,6 +13,9 @@ const layers = new Map<string, Layer>([
 
 const layered = /^.*\/(?<root>agent\/extensions|features|clients|tools)\/(?<name>[^/]+)\/(?<rest>.+)$/u;
 
+/** Each file in `agent/bin/` is an entrypoint of its own, a command that wires one feature to argv. */
+const command = /^.*\/agent\/bin\/(?<rest>[^/]+)$/u;
+
 /**
  * No layer lists "scenario", and only a scenario lists "tool": `bun test` can never load a scenario, and the runtime
  * driver is reachable only from `*.scenario.ts` files, through its index.ts.
@@ -27,7 +30,7 @@ const mayImport: Readonly<Record<Layer, ReadonlyArray<Layer>>> = {
 };
 
 const described: Readonly<Record<Layer, string>> = {
-	entrypoint: "an entrypoint (agent/extensions/<name>/)",
+	entrypoint: "an entrypoint (agent/extensions/<name>/ or agent/bin/)",
 	feature: "a feature (features/<name>/)",
 	client: "a client (clients/<system>/)",
 	tool: "a tool (tools/<name>/)",
@@ -35,10 +38,25 @@ const described: Readonly<Record<Layer, string>> = {
 	outside: "a file outside agent/extensions, features, clients and tools",
 };
 
+interface Place {
+	readonly layer: Layer;
+	readonly folder: string;
+	readonly file: string;
+}
+
 /** A `*.scenario.ts` file is a scenario wherever it sits; every other file's layer is where it sits. */
-const placeOf = (file: string) => {
+const placeOf = (file: string): Place => {
+	const scenario = Str.endsWith(".scenario.ts")(file);
+	const bin = command.exec(file)?.groups;
+
+	if (bin !== undefined) {
+		const { rest = "" } = bin;
+
+		return { layer: scenario ? "scenario" : "entrypoint", folder: "agent/bin", file: rest };
+	}
+
 	const { root = "", name = "", rest = "" } = layered.exec(file)?.groups ?? {};
-	const layer: Layer = Str.endsWith(".scenario.ts")(file) ? "scenario" : (layers.get(root) ?? "outside");
+	const layer: Layer = scenario ? "scenario" : (layers.get(root) ?? "outside");
 
 	return { layer, folder: `${root}/${name}`, file: rest };
 };
@@ -63,8 +81,6 @@ type Sourced = ESTree.ImportDeclaration | ESTree.ExportAllDeclaration | ESTree.E
 /** The module an `import()` names, when it names one by a literal. */
 const literalSource = (node: ESTree.ImportExpression) =>
 	node.source.type === "Literal" ? String(node.source.value) : "";
-
-type Place = ReturnType<typeof placeOf>;
 
 type Problem =
 	| { readonly messageId: "extension" | "scenario"; readonly data: { readonly source: string } }
