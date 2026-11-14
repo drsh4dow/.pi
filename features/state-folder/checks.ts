@@ -145,7 +145,7 @@ const actionItemsProblems = Effect.fn("actionItemsProblems")(function* (file: Ui
 
 	const uncited = Arr.map(missing, ({ line, paths }) => ({
 		line,
-		message: `no code span on the line names an existing file: ${Arr.join(
+		message: `no text between backticks on the line names an existing file: ${Arr.join(
 			Arr.map(paths, (path) => resolvePath(path, place)),
 			", ",
 		)}`,

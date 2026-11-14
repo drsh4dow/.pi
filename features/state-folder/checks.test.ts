@@ -143,6 +143,11 @@ test.each([
 		"**Only you.** Access. ``gh api `cat endpoint.txt` `` returned 403; `ruleset.log` records it.\n",
 		[],
 	],
+	[
+		"access citing a file after an escaped backtick",
+		"**Only you.** Access. The API rejected an escaped \\` in the name; `ruleset.log` records it.\n",
+		[],
+	],
 	["access citing a padded file span", "**Only you.** Access. `` ruleset.log `` records the 403.\n", []],
 	["access whose code spans name no file", "**Only you.** Access. The API returned `403` to `gh api`.\n", [9]],
 	["access citing a folder", "**Only you.** Access. `.` records the 403.\n", [9]],

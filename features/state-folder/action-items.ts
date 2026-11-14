@@ -20,7 +20,10 @@ export const onlyYouLabel = "**Only you.**";
 
 export const onlyYouKinds = ["decision", "approval", "irreversible action", "access"] as const;
 
-/** The code spans of an access item's line, one of which must name the file that records the denied attempt. */
+/**
+ * The texts between backticks on an access item's line, one of which must name the file that records the denied attempt.
+ * Every text between two backticks is a candidate, so no escape, padding or nested span can hide the citation.
+ */
 export interface Denial {
 	readonly line: number;
 	readonly paths: Arr.NonEmptyReadonlyArray<string>;
@@ -47,9 +50,6 @@ const fenceLine = /^\s*(?<marker>`{3,}|~{3,})\s*(?<info>.*)$/u;
 const itemContent = /^\s*(?:[-*+]|\d+[.)])\s|^\s*\*\*|^#|^\s*(?:`{3}|~{3})/u;
 const listMarker = /^\s*(?:(?:[-*+]|\d+[.)])\s+)?/u;
 const onlyYouKind = new RegExp(`^(?:an? )?(${Arr.join(onlyYouKinds, "|")})\\b`, "iu");
-
-/** CommonMark's code span: a run of backticks closed by the next run of the same length. */
-const codeSpan = /(?<!`)(?<ticks>`+)(?!`)(?<path>.+?)(?<!`)\k<ticks>(?!`)/gu;
 
 const byLine = Order.mapInput(Order.Number, ({ line }: FormatProblem) => line);
 
@@ -185,11 +185,7 @@ const reasonOf = ({ number, text }: Line): OnlyYou => {
 		return { problems: [], denials: [] };
 	}
 
-	const paths = Arr.getSomes(
-		Arr.map([...Str.matchAll(codeSpan)(text)], (match) =>
-			Option.map(Option.fromNullishOr(match.groups?.["path"]), Str.trim),
-		),
-	);
+	const paths = Arr.filter(Arr.map(Str.split("`")(text).slice(1, -1), Str.trim), Str.isNonEmpty);
 
 	if (!Arr.isReadonlyArrayNonEmpty(paths)) {
 		return noDenials(
