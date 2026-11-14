@@ -31,6 +31,8 @@ export interface Root {
 	 * Fails when pi rejects the prompt or `within` (default 10 minutes) passes first.
 	 */
 	readonly prompt: (message: string, within?: Duration.Input) => Effect.Effect<Option.Option<string>, ScenarioFailed>;
+	/** Runs pi's manual compaction, as `/compact` does, and returns once pi answers. */
+	readonly compact: Effect.Effect<void, ScenarioFailed>;
 	/** The root pi's stderr so far. */
 	readonly output: Effect.Effect<string>;
 }
@@ -47,7 +49,8 @@ export interface RootProcess extends Root {
 type Command =
 	| { readonly type: "get_state" }
 	| { readonly type: "prompt"; readonly message: string; readonly streamingBehavior: "followUp" }
-	| { readonly type: "get_last_assistant_text" };
+	| { readonly type: "get_last_assistant_text" }
+	| { readonly type: "compact" };
 
 const Response = Schema.Struct({
 	type: Schema.Literal("response"),
@@ -278,6 +281,7 @@ export const startRoot = (input: {
 
 		return {
 			prompt: prompted(wire, input.progress),
+			compact: Effect.asVoid(asked(wire, { type: "compact" }, Schema.Unknown)),
 			output: wire.stderr,
 			session: { id: state.sessionId, file: state.sessionFile },
 			exited: wire.exited,
