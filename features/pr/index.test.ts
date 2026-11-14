@@ -16,6 +16,7 @@ const open: PrView = {
 	repo: "o/r",
 	number: 1,
 	ref: "o/r#1",
+	url: "https://github.com/o/r/pull/1",
 	head: "9c1e2a0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 	reviewDecision: Option.none(),
 	reviews: [{ author: "bot", state: "COMMENTED", submittedAt: "2026-11-14T12:00:00Z" }],
@@ -91,7 +92,7 @@ const scripted = (scripts: Readonly<Record<string, ReadonlyArray<Reading>>>) => 
 			return script[Math.min(read, script.length - 1)] ?? failed(`no script for ${pr}`);
 		});
 
-	return Layer.succeed(Gh, Gh.of({ view, patchId: () => Effect.succeed("6499691") }));
+	return Layer.succeed(Gh, Gh.of({ view, patchId: () => Effect.succeed("6499691"), stackOf: failed }));
 };
 
 const outcome = (prs: Arr.NonEmptyReadonlyArray<string>) =>

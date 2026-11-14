@@ -3,7 +3,10 @@ import { afterAll, expect, test } from "bun:test";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Rec from "effect/Record";
 import * as Str from "effect/String";
+
+import { patchIdOf, recordVerdict, verdictsFolder } from "../../features/pr/index.ts";
 
 const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/gh-wrapper-test-${String(process.pid)}`;
 
@@ -70,6 +73,95 @@ for (const [index, row] of rows.entries()) {
 				const got = yield* ghWith(String(index), row.path);
 
 				expect(got).toEqual(row.expect);
+			}).pipe(Effect.provide(NodeServices.layer)),
+		));
+}
+
+const head = "9c1e2a0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+const view = `{"url":"https://github.com/o/r/pull/7","headRefOid":"${head}","reviewDecision":"","reviews":[],"statusCheckRollup":[],"state":"OPEN"}`;
+
+const diff = "diff --git a/f b/f\nindex 1..2 100644\n--- a/f\n+++ b/f\n@@ -1 +1 @@\n-a\n+b\n";
+
+const fakeGh = `#!/bin/sh
+case "$1 $2" in
+"pr view") printf '%s' '${view}' ;;
+"pr diff") printf '${diff}' ;;
+*) printf REAL; printf '[%s]' "$@" ;;
+esac
+`;
+
+const passIn = (home: string) =>
+	Effect.gen(function* () {
+		const patchId = yield* patchIdOf(diff);
+		const verifier = { name: "verify 7", session: "s1", model: "m" };
+		const record = { repo: "o/r", number: 7, head, patchId, result: "pass" as const, verifier, answer: "/a.md" };
+
+		yield* recordVerdict(verdictsFolder(home))(record);
+	});
+
+const gatedWorld = (root: string, verdict: boolean) =>
+	Effect.gen(function* () {
+		const fs = yield* FileSystem.FileSystem;
+		const tools = { readlink: Bun.which("readlink") ?? "/usr/bin/readlink", git: Bun.which("git") ?? "/usr/bin/git" };
+
+		yield* fs.makeDirectory(`${root}/real`, { recursive: true });
+		yield* fs.makeDirectory(`${root}/tools`);
+		yield* fs.writeFileString(`${root}/real/gh`, fakeGh, { mode: 0o755 });
+		yield* fs.symlink(import.meta.dirname, `${root}/bin`);
+		yield* fs.symlink(process.execPath, `${root}/tools/bun`);
+		yield* Effect.forEach(Rec.toEntries(tools), ([name, path]) => fs.symlink(path, `${root}/tools/${name}`));
+
+		if (verdict) {
+			yield* passIn(`${root}/home`);
+		}
+	});
+
+const gatedRun = (folder: string, verdict: boolean, args: ReadonlyArray<string>) =>
+	Effect.gen(function* () {
+		const root = `${scratch}/gate-${folder}`;
+
+		yield* gatedWorld(root, verdict);
+
+		const run = Bun.spawn([`${root}/bin/gh`, ...args], {
+			env: { PATH: `${root}/bin:${root}/real:${root}/tools`, HOME: `${root}/home` },
+			stderr: "pipe",
+		});
+
+		const out = yield* Effect.promise(() => new Response(run.stdout).text());
+		const err = yield* Effect.promise(() => new Response(run.stderr).text());
+
+		return { code: yield* Effect.promise(() => run.exited), out, err: Str.trim(err) };
+	});
+
+const gatedRows = [
+	{
+		name: "refuses a merge with no verdict before the real gh merges",
+		verdict: false,
+		args: ["pr", "merge", "7", "--squash"],
+		expect: { code: 1, out: "", firstLine: "merge gate: merge refused." },
+	},
+	{
+		name: "hands a merge with a pass at its head to the real gh, pinned to that head",
+		verdict: true,
+		args: ["pr", "merge", "7", "--squash"],
+		expect: { code: 0, out: `REAL[pr][merge][7][--squash][--match-head-commit][${head}]`, firstLine: "" },
+	},
+	{
+		name: "hands a call that only names a merge to the real gh unchanged",
+		verdict: false,
+		args: ["issue", "view", "merge-1"],
+		expect: { code: 0, out: "REAL[issue][view][merge-1]", firstLine: "" },
+	},
+];
+
+for (const [index, row] of gatedRows.entries()) {
+	test(`the gh wrapper ${row.name}`, () =>
+		Effect.runPromise(
+			Effect.gen(function* () {
+				const { code, out, err } = yield* gatedRun(String(index), row.verdict, row.args);
+
+				expect({ code, out, firstLine: Str.split(err, "\n")[0] ?? "" }).toEqual(row.expect);
 			}).pipe(Effect.provide(NodeServices.layer)),
 		));
 }

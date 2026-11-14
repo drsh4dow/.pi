@@ -105,6 +105,7 @@ const gh = Layer.succeed(
 				? Effect.succeed({
 						...pinned,
 						ref: "o/r#7",
+						url: "https://github.com/o/r/pull/7",
 						reviewDecision: Option.none(),
 						reviews: [],
 						checks: "none",
@@ -112,6 +113,7 @@ const gh = Layer.succeed(
 					})
 				: noPullRequest(pr),
 		patchId: (pr) => (pr === "7" ? Effect.succeed(pinned.patchId) : noPullRequest(pr)),
+		stackOf: noPullRequest,
 	}),
 );
 

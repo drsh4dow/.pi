@@ -22,6 +22,7 @@ test("a reviewed pull request reads with its ref, decision and submitted reviews
 		repo: "o/r",
 		number: 7,
 		ref: "o/r#7",
+		url: "https://github.com/o/r/pull/7",
 		head: "9c1e2a0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		reviewDecision: Option.some("CHANGES_REQUESTED"),
 		reviews: [{ author: "review-bot", state: "CHANGES_REQUESTED", submittedAt: "2026-11-14T12:07:09Z" }],

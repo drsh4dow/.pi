@@ -7,6 +7,9 @@ IFS=:
 for dir in $path; do
 	candidate=${dir:-.}/gh
 	if [ -f "$candidate" ] && [ -x "$candidate" ] && [ "$(readlink -f "$candidate")" != "$self" ]; then
+		case "$*" in
+		*[Mm][Ee][Rr][Gg][Ee]*) exec bun "${self%/*}/merge-gate.ts" "$candidate" "$@" ;;
+		esac
 		exec "$candidate" "$@"
 	fi
 done
