@@ -96,6 +96,25 @@ test("the label holds the session's own spend and each delegate's, at every leve
 		}),
 	));
 
+test("a continued delegate's one session file, with both runs, counts each reply once", () =>
+	run(
+		Effect.gen(function* () {
+			const { dir, delegates } = sessionsDir();
+			const { root, child } = { root: open(dir), child: open(delegates) };
+
+			reply(root, 1);
+			startDelegate(root, child, "review auth");
+			reply(child, 0.5);
+			startDelegate(root, child, "review auth");
+			child.appendMessage({ role: "user", content: "Also update the docs.", timestamp: 0 });
+			reply(child, 0.25);
+
+			const label = yield* readerOf(root, delegates).read;
+
+			expect(label).toEqual({ own: 1, delegates: [{ name: "review auth", usd: 0.75 }] });
+		}),
+	));
+
 test("compactions and branch summaries count, since each one calls the model", () =>
 	run(
 		Effect.gen(function* () {
