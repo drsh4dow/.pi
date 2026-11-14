@@ -106,6 +106,16 @@ for (const row of rows) {
 	});
 }
 
+test("a deferred merge's refusal names a merge in the repository the call named", () => {
+	const why = Option.match(mergeRequestOf(["pr", "merge", "5", "-R", "o/r", "--auto", "--squash"]), {
+		onNone: () => "",
+		onSome: MergeRequest.$match({ Merge: () => "", StackMerge: () => "", Refuse: (refusal) => refusal.why }),
+	});
+
+	expect(why).toContain("`gh pr checks 5 -R o/r --watch`");
+	expect(why).toContain("`gh pr merge 5 -R o/r --squash`");
+});
+
 test("every call the parser does not pass through names merge, which is all the gh wrapper looks for", () => {
 	const gated = Arr.filter(rows, (row) => row.expect !== "passes through");
 

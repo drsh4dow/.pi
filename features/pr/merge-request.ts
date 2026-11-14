@@ -104,8 +104,12 @@ const prMergeOf = (target: string | undefined, values: Values): Option.Option<Me
 		return Option.none();
 	}
 
+	const repo = Arr.last(values("-R", "--repo"));
+
 	if (isOn(values("--auto"))) {
-		return Option.some(deferred(target ?? "<number>"));
+		const named = Option.match(repo, { onNone: () => "", onSome: (name) => ` -R ${name}` });
+
+		return Option.some(deferred(`${target ?? "<number>"}${named}`));
 	}
 
 	if (target === undefined) {
@@ -117,7 +121,7 @@ const prMergeOf = (target: string | undefined, values: Values): Option.Option<Me
 		);
 	}
 
-	const selector = selectorOf(target, Arr.last(values("-R", "--repo")));
+	const selector = selectorOf(target, repo);
 
 	return Option.some(
 		Option.match(selector, {
