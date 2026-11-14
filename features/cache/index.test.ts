@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 
 import type { AssistantMessage } from "@earendil-works/pi-ai";
-import { SessionManager, type ToolInfo } from "@earendil-works/pi-coding-agent";
+import { SessionManager } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -18,14 +18,6 @@ const { cases: cause } = Cause;
 const idle = cause.Idle.make({ ms: 6 * minute });
 
 const haiku = cause.ModelChanged.make({ from: "ultra-a/claude-opus-5-5", to: "ultra-a/claude-haiku-5-5" });
-
-const toolOf = (name: string): ToolInfo => ({
-	name,
-	description: `The ${name} tool.`,
-	parameters: Type.Object({}),
-	exposure: "direct",
-	sourceInfo: { path: `builtin:${name}`, source: "builtin", scope: "temporary", origin: "top-level" },
-});
 
 interface Call {
 	readonly at: number;
@@ -61,27 +53,42 @@ const replyOf = (call: Call): AssistantMessage => ({
 
 const decodeMiss = Schema.decodeUnknownOption(Miss);
 
-/** A session whose replies pass through the handler before pi saves them, as in a running pi. */
+/**
+ * A session whose replies pass through the handler before pi saves them, as in a running pi. pi saves a change to the
+ * system prompt or the tools as a system message before the request it changes.
+ */
 const world = () => {
 	const session = SessionManager.inMemory("/work");
-	const prefix = { systemPrompt: "You are a coding agent.", active: ["read"] };
-	const tools = [toolOf("read"), toolOf("bash")];
 
 	const record = recordMisses({
 		appendEntry: (customType, data) => {
 			session.appendCustomEntry(customType, data);
 		},
-		getActiveTools: () => prefix.active,
-		getAllTools: () => tools,
 	});
 
 	const reply = (call: Call) => {
 		const message = replyOf(call);
 
-		record({ type: "message_end", message }, { sessionManager: session, getSystemPrompt: () => prefix.systemPrompt });
+		record({ type: "message_end", message }, { sessionManager: session });
 
 		return session.appendMessage(message);
 	};
+
+	const changePrompt = () =>
+		session.appendMessage({
+			role: "system",
+			content: "",
+			sections: { preamble: "You are a reviewer." },
+			timestamp: start,
+		});
+
+	const addTool = () =>
+		session.appendMessage({
+			role: "system",
+			content: "",
+			toolsAdded: [{ name: "bash", description: "Run a command.", parameters: Type.Object({}) }],
+			timestamp: start,
+		});
 
 	const misses = () =>
 		Arr.getSomes(
@@ -90,7 +97,7 @@ const world = () => {
 			),
 		);
 
-	return { session, prefix, reply, misses };
+	return { session, reply, changePrompt, addTool, misses };
 };
 
 type World = ReturnType<typeof world>;
@@ -139,18 +146,18 @@ const cases: ReadonlyArray<readonly [string, (world: World) => void, ReadonlyArr
 	],
 	[
 		"a changed system prompt",
-		({ prefix, reply }) => {
+		({ changePrompt, reply }) => {
 			reply({ at: start, ...hit });
-			prefix.systemPrompt = "You are a reviewer.";
+			changePrompt();
 			reply({ at: start + minute, ...full });
 		},
 		missed([cause.PromptChanged.make({})]),
 	],
 	[
 		"a system prompt change made before a failed call",
-		({ prefix, reply }) => {
+		({ changePrompt, reply }) => {
 			reply({ at: start, ...hit });
-			prefix.systemPrompt = "You are a reviewer.";
+			changePrompt();
 			reply({ at: start + minute, input: 0, cacheRead: 0 });
 			reply({ at: start + 2 * minute, ...full });
 		},
@@ -158,9 +165,9 @@ const cases: ReadonlyArray<readonly [string, (world: World) => void, ReadonlyArr
 	],
 	[
 		"changed tools",
-		({ prefix, reply }) => {
+		({ addTool, reply }) => {
 			reply({ at: start, ...hit });
-			prefix.active = ["read", "bash"];
+			addTool();
 			reply({ at: start + minute, ...full });
 		},
 		missed([cause.ToolsChanged.make({})]),
@@ -210,14 +217,13 @@ const cases: ReadonlyArray<readonly [string, (world: World) => void, ReadonlyArr
 		[...missed([idle]), ...missed([])],
 	],
 	[
-		"no prompt change after /tree returns to a reply sent with the same prompt",
-		({ session, prefix, reply }) => {
+		"no prompt change after /tree returns past a branch that changed it",
+		({ session, changePrompt, reply }) => {
 			const first = reply({ at: start, ...hit });
 
-			prefix.systemPrompt = "You are a reviewer.";
+			changePrompt();
 			reply({ at: start + minute, ...hit });
 			session.branch(first);
-			prefix.systemPrompt = "You are a coding agent.";
 			reply({ at: start + 2 * minute, ...full });
 		},
 		missed([]),
