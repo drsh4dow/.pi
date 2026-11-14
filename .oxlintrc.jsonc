@@ -140,7 +140,6 @@
 				"tools/prompts/**",
 				"tools/loaded/**",
 				"tools/driver/**",
-				"**/*.scenario.ts",
 				"tools/oxlint/fixtures/effect-pi-idioms.ts",
 			],
 			"rules": {
