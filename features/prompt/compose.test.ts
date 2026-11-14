@@ -27,7 +27,7 @@ const options = (overrides: Partial<NormalizedBuildSystemPromptOptions>): Normal
 
 const root: Layers = {
 	role: "<role>\nroot\n</role>",
-	instructions: Option.none(),
+	brief: Option.none(),
 	principles: Option.none(),
 	playbooks: Option.none(),
 	skills: [],
@@ -45,7 +45,7 @@ const composed = (given: NormalizedBuildSystemPromptOptions, layers: Layers) => 
 	return given;
 };
 
-const preambleRows = [
+const preambleRows: ReadonlyArray<{ name: string; shared: string; layers: Layers; expect: string }> = [
 	{
 		name: "the root reads SYSTEM.md, then its role file",
 		shared: "you are a coding agent.\n",
@@ -53,16 +53,42 @@ const preambleRows = [
 		expect: "you are a coding agent.\n\n<role>\nroot\n</role>",
 	},
 	{
-		name: "an owner reads SYSTEM.md, its role file, its instructions, the principles index, then the playbooks workflow and index",
+		name: "an owner reads SYSTEM.md, its role file, its goal and state folder, project facts, owner rules and instructions, the principles index, then the playbooks workflow and index",
 		shared: "you are a coding agent.",
 		layers: {
 			role: "<role>\nowner\n</role>\n",
-			instructions: Option.some("Review one diff.\n"),
+			brief: Option.some({
+				role: "owner",
+				goal: "Cap the retries.\n",
+				state: Option.some("/state/work"),
+				facts: Option.some("Build with make.\n"),
+				ownerRules: Option.some("\nPush only to work branches.\n"),
+				instructions: Option.some("Review one diff.\n"),
+			}),
 			principles: Option.some("<principles>\n…\n</principles>"),
 			playbooks: Option.some("<playbooks>\n…\n</playbooks>"),
 			skills: [],
 		},
-		expect: `you are a coding agent.\n\n<role>\nowner\n</role>\n\n<instructions>\nReview one diff.\n</instructions>\n\n<principles>\n…\n</principles>\n\n${playbooksWorkflow}\n\n<playbooks>\n…\n</playbooks>`,
+		expect: `you are a coding agent.\n\n<role>\nowner\n</role>\n\n<work>\nThe user's goal: Cap the retries.\nThe work's state folder: /state/work\n</work>\n\n<project-facts>\nBuild with make.\n</project-facts>\n\n<owner-rules>\nPush only to work branches.\n</owner-rules>\n\n<instructions>\nReview one diff.\n</instructions>\n\n<principles>\n…\n</principles>\n\n${playbooksWorkflow}\n\n<playbooks>\n…\n</playbooks>`,
+	},
+	{
+		name: "a leaf with project facts and no state folder reads its goal and the facts, and no owner rules",
+		shared: "you are a coding agent.",
+		layers: {
+			role: "<role>\nleaf\n</role>",
+			brief: Option.some({
+				role: "leaf",
+				goal: "Cap the retries.",
+				state: Option.none(),
+				facts: Option.some("Build with make."),
+				instructions: Option.none(),
+			}),
+			principles: Option.some("<principles>\n…\n</principles>"),
+			playbooks: Option.none(),
+			skills: [],
+		},
+		expect:
+			"you are a coding agent.\n\n<role>\nleaf\n</role>\n\n<work>\nThe user's goal: Cap the retries.\n</work>\n\n<project-facts>\nBuild with make.\n</project-facts>\n\n<principles>\n…\n</principles>",
 	},
 	{
 		name: "with no SYSTEM.md the role layer still comes first",

@@ -94,15 +94,15 @@ const requestOf = (act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
 
 	const childSession = { id: `child-${String(counter.sessions)}`, cwd: sessionRoot, dir: `${sessionRoot}/delegates` };
 	const deadline = Option.map(Option.fromUndefinedOr(act.deadlineMs), Duration.millis);
+	const group = Option.fromUndefinedOr(act.group);
 	const message = act.messageKiB === undefined ? "Review it." : Str.repeat(act.messageKiB * 1024)("x");
 	const text = act.instructionsKiB === undefined ? "Review." : Str.repeat(act.instructionsKiB * 1024)("p");
-	const fixed = { name: "Review it", role: "leaf", model: "a/b", thinking: Option.none(), readOnly: false } as const;
-	const brief = { ...fixed, message, instructions: Option.some({ file: "/r.md", text }) };
+	const fixed = { name: "Review it", role: "leaf", model: "a/b", goal: "Cap the retries.", readOnly: false } as const;
+	const unset = { thinking: Option.none(), state: Option.none(), facts: Option.none() };
+	const brief = { ...fixed, ...unset, message, instructions: Option.some({ file: "/r.md", text }) };
 
 	return Match.value(act.kind).pipe(
-		Match.when("delegate", () =>
-			StartRequest.Delegate({ brief, childSession, group: Option.fromUndefinedOr(act.group) }),
-		),
+		Match.when("delegate", () => StartRequest.Delegate({ brief, childSession, group })),
 		Match.when("serve", () => StartRequest.Serve({ command: "serve", ready: Option.some("ready") })),
 		Match.when("watch", () => StartRequest.Watch({ command: "watch", deadline, log: "watch.log" })),
 		Match.exhaustive,

@@ -155,7 +155,7 @@ const sessionOf = (pi: ExtensionAPI, start: Start) =>
 		const { ctx, env } = start;
 		const session = runtimeOf(pi, start, self);
 
-		Tools.register(pi, session.runtime, self, placeOf(self, ctx, env));
+		Tools.register(pi, session.runtime, self, placeOf(self, ctx, env), ctx.sessionManager);
 
 		return session;
 	});

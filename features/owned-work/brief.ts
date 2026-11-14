@@ -9,6 +9,8 @@ import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 import { type Static, Type } from "typebox";
 
+import type { StagedBrief } from "../../clients/pi-cli/index.ts";
+import { lastFolder } from "../state-folder/index.ts";
 import { type Brief, ChildRole } from "./child.ts";
 import { type Alias, ModelName, modelNameOf, type ModelTable } from "./models.ts";
 import { parseProfile } from "./profile.ts";
@@ -32,6 +34,17 @@ export const roleUses =
 
 const roleDescription = `${roleUses}. A leaf gets no playbooks and starts no delegates. It overrides the role an instructions file names, and is required when the file names none.`;
 
+const goalParam = Type.String({
+	pattern: String.raw`\S`,
+	description: "The user's goal in one sentence. It defaults to your own goal and is required when you have none.",
+});
+
+const stateParam = Type.String({
+	pattern: String.raw`\S`,
+	description:
+		"The work's state folder. It defaults to yours. Its `facts.md` reaches every delegate, its `owner.md` only owners.",
+});
+
 export const delegateParams = (table: ModelTable) => {
 	const model = Type.String({ description: modelDescription(table) });
 
@@ -45,6 +58,8 @@ export const delegateParams = (table: ModelTable) => {
 			pattern: String.raw`\S`,
 			description: "Everything the delegate needs. You cannot send it anything later, and it cannot ask you.",
 		}),
+		goal: Type.Optional(goalParam),
+		state: Type.Optional(stateParam),
 		/** A plain string enum, as pi's `StringEnum` builds, since some providers refuse `anyOf` of constants. */
 		role: Type.Optional(
 			Type.Unsafe<ChildRole>({ type: "string", enum: [...ChildRole.literals], description: roleDescription }),
@@ -75,6 +90,7 @@ export type DelegateParams = ReturnType<typeof delegateParams>;
 
 export type Caller = Pick<ExtensionContext, "cwd" | "model"> & {
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll">;
+	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;
 };
 
 /** `provider/id` of the alias's model on the caller's provider when that provider has it, so a delegate stays on its parent's account. */
@@ -143,14 +159,77 @@ const instructionsOf = Effect.fn("instructionsOf")(function* (cwd: string, file:
 });
 
 /** The real path, since the child records that one in its session, and pi finds the session by comparing the two as text. */
-const folderOf = Effect.fn("folderOf")(function* (cwd: string, folder: string) {
+const folderOf = Effect.fn("folderOf")(function* (cwd: string, folder: string, refused: string) {
 	const fs = yield* FileSystem.FileSystem;
 	const absolute = yield* absoluteOf(cwd, folder);
-	const refusal = (why: string) => BadDelegate.make({ why: `cannot start in cwd ${folder}: ${why}` });
+	const refusal = (why: string) => BadDelegate.make({ why: `${refused} ${folder}: ${why}` });
 	const real = yield* Effect.mapError(fs.realPath(absolute), (error) => refusal(error.reason._tag));
 	const info = yield* Effect.mapError(fs.stat(real), (error) => refusal(error.reason._tag));
 
 	return info.type === "Directory" ? real : yield* refusal("not a folder");
+});
+
+/** A missing file is none, since a state folder need not hold it. */
+const stateFile = (state: Option.Option<string>, name: string) =>
+	Option.match(state, {
+		onNone: () => Effect.succeedNone,
+		onSome: (folder) => {
+			const file = `${folder}/${name}`;
+
+			return Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readFileString(file)).pipe(
+				Effect.asSome,
+				Effect.catchReason("PlatformError", "NotFound", () => Effect.succeedNone),
+				Effect.mapError((error) => BadDelegate.make({ why: `cannot read ${file}: ${error.reason._tag}` })),
+			);
+		},
+	});
+
+/** The state folder's `facts.md`, and its `owner.md` for an owner alone, read at each call so an edit reaches the next delegate. */
+export const stateFilesFor = Effect.fn("stateFilesFor")(function* (state: Option.Option<string>, role: ChildRole) {
+	const facts = yield* stateFile(state, "facts.md");
+
+	if (role === "leaf") {
+		return { role, facts };
+	}
+
+	const ownerRules = yield* stateFile(state, "owner.md");
+
+	return { role, facts, ownerRules };
+});
+
+const goalMissing = BadDelegate.make({
+	why: "name a `goal`: the user's goal in one sentence. A root's call must name it, and every delegate below inherits it",
+});
+
+/** The caller's own staged brief, none for the root. */
+type Inherited = Option.Option<Pick<StagedBrief, "goal" | "state">>;
+
+/** The goal and state folder are the call's, else the caller's own. A root's state folder is the one its session last wrote to. */
+const workOf = Effect.fn("workOf")(function* (
+	ctx: Caller,
+	inherited: Inherited,
+	call: Static<DelegateParams>,
+	role: ChildRole,
+) {
+	const goal = yield* Effect.fromOption(
+		Option.orElse(Option.fromUndefinedOr(call.goal), () => Option.map(inherited, (own) => own.goal)),
+		() => goalMissing,
+	);
+
+	const namedState = yield* Effect.transposeOption(
+		Option.map(Option.fromUndefinedOr(call.state), (folder) => folderOf(ctx.cwd, folder, "cannot use state folder")),
+	);
+
+	const state = Option.orElse(namedState, () =>
+		Option.orElse(
+			Option.flatMap(inherited, (own) => own.state),
+			() => lastFolder(ctx.sessionManager.getBranch()),
+		),
+	);
+
+	const stateFiles = yield* stateFilesFor(state, role);
+
+	return { goal, state, ...stateFiles };
 });
 
 interface Parsed {
@@ -161,10 +240,11 @@ interface Parsed {
 export const parseCall = Effect.fn("parseCall")(function* (
 	ctx: Caller,
 	table: ModelTable,
+	inherited: Inherited,
 	call: Static<DelegateParams>,
 ) {
 	const cwd = yield* Effect.transposeOption(
-		Option.map(Option.fromUndefinedOr(call.cwd), (folder) => folderOf(ctx.cwd, folder)),
+		Option.map(Option.fromUndefinedOr(call.cwd), (folder) => folderOf(ctx.cwd, folder, "cannot start in cwd")),
 	);
 
 	const profile = yield* Effect.transposeOption(
@@ -187,11 +267,12 @@ export const parseCall = Effect.fn("parseCall")(function* (
 	);
 
 	const model = yield* modelOf(ctx, table, wanted);
+	const work = yield* workOf(ctx, inherited, call, role);
 
 	const brief: Brief = {
 		name: call.name,
 		message: call.message,
-		role,
+		...work,
 		model,
 		thinking: Option.orElseSome(
 			Option.flatMap(profile, (own) => own.thinking),

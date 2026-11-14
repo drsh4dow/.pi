@@ -35,7 +35,7 @@ const startedOf = (request: StartRequest, ref: WorkRef, now: MonotonicNanos): St
 
 	return Match.valueTags(request, {
 		Delegate: ({ brief, childSession }): Started => [
-			Work.Delegate({ ...job, childSession }),
+			Work.Delegate({ ...job, brief, childSession }),
 			WorkEntry.DelegateStarted({
 				handle: ref,
 				name: brief.name,

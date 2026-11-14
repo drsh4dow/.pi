@@ -7,14 +7,15 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
+import type { StagedBrief } from "../../clients/pi-cli/index.ts";
 import { skillsSection } from "./skills.ts";
 
-/** What the harness adds after `SYSTEM.md`. The role, principles and playbooks arrive rendered. The instructions arrive raw, and `compose` wraps them. */
+/** What the harness adds after `SYSTEM.md`. The role, principles and playbooks arrive rendered. The brief arrives as data, and `compose` renders it. */
 export interface Layers {
 	/** The role file: its `<role>` and `<collaboration>` blocks. */
 	readonly role: string;
-	/** A delegate's own instructions, from the instructions file its parent named. */
-	readonly instructions: Option.Option<string>;
+	/** A delegate's brief, as its parent staged it. */
+	readonly brief: Option.Option<StagedBrief>;
 	/** The `<principles>` index. */
 	readonly principles: Option.Option<string>;
 	/** The `<playbooks>` index. */
@@ -59,10 +60,29 @@ Playbooks, listed under \`<playbooks>\` as \`name: when\`, are the workflows for
 - End with the reply the playbook asks for. Before you send it, walk the playbook's numbered steps, and give each step you did not run as written a one-line \`skip: <reason>\` that names the step, taken from \`TODO.md\` when you keep one.
 </playbooks-workflow>`;
 
-const instructionsBlock = (text: string) => `<instructions>\n${Str.trim(text)}\n</instructions>`;
+const block = (tag: string, body: string) => `<${tag}>\n${Str.trim(body)}\n</${tag}>`;
+
+/** The brief's blocks in prompt order, each only when its field is present. */
+export const briefBlocks = (brief: StagedBrief): string => {
+	const workLines = [
+		`The user's goal: ${Str.trim(brief.goal)}`,
+		...Option.toArray(Option.map(brief.state, (state) => `The work's state folder: ${Str.trim(state)}`)),
+	];
+
+	const ownerRules = brief.role === "owner" ? brief.ownerRules : Option.none();
+
+	const blocks = [
+		block("work", Arr.join(workLines, "\n")),
+		...Option.toArray(Option.map(brief.facts, (facts) => block("project-facts", facts))),
+		...Option.toArray(Option.map(ownerRules, (rules) => block("owner-rules", rules))),
+		...Option.toArray(Option.map(brief.instructions, (text) => block("instructions", text))),
+	];
+
+	return Arr.join(blocks, "\n\n");
+};
 
 /**
- * Writes `SYSTEM.md`, the role file, the delegate's instructions and the principles and playbooks indexes into pi's
+ * Writes `SYSTEM.md`, the role file, the delegate's brief and the principles and playbooks indexes into pi's
  * preamble, so they render before `<project_context>`. A custom preamble makes pi drop its `<tools>`, `<rules>` and `<docs>`. This adds
  * back `<rules>` as a custom section, which pi renders last. It leaves `<tools>` out, since each tool's schema already
  * describes it, and `<docs>`, which only work on this harness needs and its `AGENTS.md` carries. The `<skills>` section
@@ -74,7 +94,7 @@ export const compose = (layers: Layers) => (event: BeforeAgentStartEvent) => {
 	const parts = [
 		options.customPrompt ?? "",
 		layers.role,
-		...Option.toArray(Option.map(layers.instructions, instructionsBlock)),
+		...Option.toArray(Option.map(layers.brief, briefBlocks)),
 		...Option.toArray(layers.principles),
 		...Option.toArray(Option.map(layers.playbooks, (index) => `${playbooksWorkflow}\n\n${index}`)),
 	];

@@ -11,6 +11,7 @@ import * as Str from "effect/String";
 
 import { Self } from "./child.ts";
 import { Ledger } from "./ledger.ts";
+import { modelTable } from "./models.ts";
 import { Tools } from "./tools.ts";
 
 const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, Layer.mock(Ledger)({})));
@@ -28,6 +29,7 @@ const toolsOf = (self: Self) => {
 		runtime,
 		self,
 		{ cwd: "/", dir: "/d" },
+		{ getSessionDir: () => "/d", getSessionId: () => "self" },
 	);
 
 	return tools;
@@ -73,7 +75,7 @@ for (const row of levelRows) {
 	});
 }
 
-const delegate = Tools.delegate(runtime, 2, { cwd: "/", dir: "/d" });
+const delegate = Tools.delegate(runtime, 2, { cwd: "/", dir: "/d" }, modelTable, Option.none());
 
 const validated = (tool: Pick<ToolDefinition, "name" | "description" | "parameters">, args: JsonObject) => () => {
 	validateToolArguments(tool, { type: "toolCall", id: "c", name: tool.name, arguments: args });

@@ -97,7 +97,7 @@ const rows: ReadonlyArray<Row> = [
 			delegate,
 			idles,
 			reloads,
-			Leftovers({ expect: ["t1.instructions", "t1.message"] }),
+			Leftovers({ expect: ["t1.brief.json", "t1.message"] }),
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
 			Leftovers({ expect: [] }),
 		],

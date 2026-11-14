@@ -1,5 +1,10 @@
 import { type JsonValue, uuidv7 } from "@earendil-works/pi-ai";
-import { defineTool, type ExtensionAPI, type ToolDefinition } from "@earendil-works/pi-coding-agent";
+import {
+	defineTool,
+	type ExtensionAPI,
+	type ExtensionContext,
+	type ToolDefinition,
+} from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -9,12 +14,14 @@ import * as Option from "effect/Option";
 import type * as Path from "effect/Path";
 import { type Static, Type } from "typebox";
 
+import { readStagedBrief } from "../../clients/pi-cli/index.ts";
+import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
 import { type Caller, type DelegateParams, delegateParams, parseCall } from "./brief.ts";
-import { type ChildSession, levels, mayDelegate, type Self } from "./child.ts";
+import { type ChildSession, levels, mayDelegate, Self } from "./child.ts";
 import { Ledger, type LedgerFailure } from "./ledger.ts";
 import { type ModelTable, modelTable } from "./models.ts";
 import { HandleOut, Out, ResultsOut } from "./out.ts";
-import { type BadDelegate, StartRequest, WorkRef } from "./work.ts";
+import { BadDelegate, StartRequest, WorkRef } from "./work.ts";
 
 const HandleRef = Type.Object({ ref: Type.String() });
 
@@ -56,7 +63,7 @@ const delegateGuidelines = [
 	"Reading of more than about 1,500 lines, or of three or more areas, goes to delegates, one per area in parallel, each asked for the facts you need with file, line, and quotes. This holds when the reading serves your own plan. Context spent on reading never comes back, so read yourself only what you will edit.",
 	"Run independent parts, where no two write the same file and none needs another's result, as delegates started in one turn with one `group` name.",
 	"Hand implementation to one owner per slice when a slice has written acceptance criteria or the work has two or more slices. Coupled code gets one owner.",
-	"Write each delegate task message as the delegate's whole world. Name the user's goal, the task, the inputs as file paths, what counts as done, and the shape of the answer.",
+	"Write each delegate task message as the delegate's whole world. Name the task, the inputs as file paths, what counts as done, and the shape of the answer.",
 	"Give each delegate that commits its own branch or worktree, and start it there with cwd.",
 	"A delegate's answer is a claim. Check what you will act on against the real artifact before you report it as done.",
 	"A delegate that reports something missing hands you a gap. Supply it in a fresh delegate's message. If only someone above you can settle it, it is your own open question now.",
@@ -95,11 +102,24 @@ const runTool =
 
 const refsOf = (of: ReadonlyArray<Static<typeof HandleRef>>) => Arr.map(of, ({ ref }) => WorkRef(ref));
 
+type OwnSession = Pick<SessionAddress, "dir" | "id">;
+
+const ownBrief = (own: Option.Option<OwnSession>) =>
+	Effect.transposeOption(
+		Option.map(own, (session) =>
+			Effect.mapError(readStagedBrief(session), ({ file, why }) =>
+				BadDelegate.make({ why: `cannot read your own brief ${file}: ${why}` }),
+			),
+		),
+	);
+
+/** `own` is the calling agent's own session address when it is a delegate, so its delegates inherit its goal and state folder. */
 const delegateTool = (
 	runtime: Runtime,
 	childLevel: number,
 	place: Omit<ChildSession, "id">,
-	table: ModelTable = modelTable,
+	table: ModelTable,
+	own: Option.Option<OwnSession>,
 ) => {
 	const parameters = delegateParams(table);
 
@@ -113,15 +133,18 @@ const delegateTool = (
 		execute: (_id, call, signal, _update, ctx: Caller) =>
 			runTool(runtime, signal)(
 				(ledger) =>
-					Effect.flatMap(parseCall(ctx, table, call), ({ brief, cwd }) =>
-						ledger.start(
+					Effect.gen(function* () {
+						const inherited = yield* ownBrief(own);
+						const { brief, cwd } = yield* parseCall(ctx, table, inherited, call);
+
+						return yield* ledger.start(
 							StartRequest.Delegate({
 								brief,
 								childSession: { ...place, cwd: Option.getOrElse(cwd, () => place.cwd), id: uuidv7() },
 								group: Option.fromUndefinedOr(call.group),
 							}),
-						),
-					),
+						);
+					}),
 				Out.handle,
 			),
 	} satisfies ToolDefinition<DelegateParams, JsonValue>;
@@ -189,11 +212,13 @@ const cancelTool = (runtime: Runtime) =>
 			),
 	});
 
+/** `session` locates the agent's own staged brief, which only a delegate has. */
 const register = (
 	pi: Pick<ExtensionAPI, "registerTool">,
 	runtime: Runtime,
 	self: Self,
 	place: Omit<ChildSession, "id">,
+	session: Pick<ExtensionContext["sessionManager"], "getSessionDir" | "getSessionId">,
 ) => {
 	pi.registerTool(serveTool(runtime));
 	pi.registerTool(watchTool(runtime, place));
@@ -201,7 +226,11 @@ const register = (
 	pi.registerTool(cancelTool(runtime));
 
 	if (mayDelegate(self)) {
-		pi.registerTool(delegateTool(runtime, self.level + 1, place));
+		const own = Self.$is("Delegate")(self)
+			? Option.some({ dir: session.getSessionDir(), id: session.getSessionId() })
+			: Option.none();
+
+		pi.registerTool(delegateTool(runtime, self.level + 1, place, modelTable, own));
 	}
 };
 
