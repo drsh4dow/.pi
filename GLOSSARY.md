@@ -99,7 +99,7 @@ Terms from the usage feature (`features/usage/`), which shows `/usage`.
 
 Terms from the cost feature (`features/cost/`) and herdr-app's status bar (`herdr/mods/ow-status/`).
 
-- **Spend.** What a session priced its model calls at: replies, tool results that called a model, compactions and branch summaries, at the list price pi stored on each. A fork's spend starts at its own header. Unlike an **Estimate**, it covers one session tree, delegates included.
+- **Spend.** What a session priced its model calls at: replies, tool results that called a model, compactions, branch summaries and cache-warm calls, at the list price pi stored on each. A fork's spend starts at its own header. Unlike an **Estimate**, it covers one session tree, delegates included.
 - **Cost label.** The `pi.cost` hc label on a root agent's own terminal: JSON with the root's own spend and each delegate's below it, at any level. Only the root writes one, from the session files, so a delegate that settled still counts. See ADR 0004.
 
 ## Loaded

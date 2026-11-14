@@ -39,8 +39,12 @@ const Line = Schema.Union([
 		timestamp: Schema.String,
 		message: Schema.Struct({ usage: Priced }),
 	}),
-	// A compaction or a branch summary calls the model too, and carries its usage on the entry.
-	Schema.Struct({ type: Schema.Literals(["compaction", "branch_summary"]), timestamp: Schema.String, usage: Priced }),
+	// A compaction, a branch summary or a cache-warm call calls the model too, and carries its usage on the entry.
+	Schema.Struct({
+		type: Schema.Literals(["compaction", "branch_summary", "usage"]),
+		timestamp: Schema.String,
+		usage: Priced,
+	}),
 	Schema.Struct({
 		type: Schema.Literal("custom"),
 		customType: Schema.Literal("owned-work"),
