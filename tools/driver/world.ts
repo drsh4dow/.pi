@@ -31,8 +31,10 @@ export interface Layout {
 	readonly home: string;
 	/** `PI_CODING_AGENT_DIR`, `<home>/.pi/agent`: links to the worktree's shipped entries and the human's `auth.json`. */
 	readonly agent: string;
-	/** First on the run's PATH. Holds the `pi` wrapper that adds the probe. */
+	/** First on the run's PATH. Holds the `pi` wrapper that adds the probe and refuses to start outside `folder`. */
 	readonly bin: string;
+	/** Each working folder outside `folder` that the wrapper refused, one per line. */
+	readonly refused: string;
 	/** `PI_DRIVER_PROBE`: one JSON lines file per pi process. */
 	readonly probe: string;
 	/** The root's cwd, `<folder>/<id>`, so a session or state folder named for it holds `id`. Empty at the start. */
@@ -69,6 +71,7 @@ export const layoutOf = (run: {
 		home: `${folder}/home`,
 		agent: `${folder}/home/.pi/agent`,
 		bin: `${folder}/bin`,
+		refused: `${folder}/refused.txt`,
 		probe: `${folder}/probe`,
 		project: `${folder}/${id}`,
 		sessions: `${folder}/sessions`,
@@ -190,7 +193,10 @@ const writeConfig = Effect.fn("writeConfig")(function* (layout: Layout, setup: S
 	yield* fs.writeFileString(`${layout.agent}/models.json`, models);
 });
 
-/** The `pi` on the run's PATH, through links, before the wrapper exists, and its version. */
+/**
+ * The `pi` on the run's PATH, through links, before the wrapper exists, and its version. pi names a session folder for
+ * its working folder, so the wrapper starts pi only inside the run's folder, whose path holds the run's id.
+ */
 const resolvePi = Effect.fn("resolvePi")(function* (layout: Layout, env: Env) {
 	const fs = yield* FileSystem.FileSystem;
 	const found = yield* ran({ argv: ["sh", "-c", "command -v pi"], env, cwd: layout.folder });
@@ -201,7 +207,14 @@ const resolvePi = Effect.fn("resolvePi")(function* (layout: Layout, env: Env) {
 
 	const path = yield* fs.realPath(Str.trim(found.output));
 	const version = yield* ran({ argv: [path, "--version"], env, cwd: layout.folder });
-	const wrapper = `#!/bin/sh\nexec '${path}' -e '${worktree}/tools/driver/probe.ts' "$@"\n`;
+	const folder = yield* fs.realPath(layout.folder);
+
+	const wrapper = `#!/bin/sh
+case "$(pwd -P)/" in '${folder}'/*) exec '${path}' -e '${worktree}/tools/driver/probe.ts' "$@" ;; esac
+pwd -P >>'${layout.refused}'
+echo "pi starts only inside the run folder ${folder}, not in $(pwd -P)" >&2
+exit 2
+`;
 
 	yield* fs.writeFileString(`${layout.bin}/pi`, wrapper, { mode: 0o755 });
 

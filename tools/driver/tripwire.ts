@@ -1,8 +1,8 @@
 /**
  * The tripwire for a run's isolation. What the run names outside its own folder carries its run id or its core's
- * session: pi names a session folder for its working folder, an agent names its state folder for its project, and the
- * core names its state folder for its session. So either name under the human's session or state folders is this run's
- * write, whoever else writes there meanwhile.
+ * session: pi names a session folder for its working folder, which the run's `pi` wrapper keeps inside the run's folder,
+ * an agent names its state folder for its project, and the core names its state folder for its session. So either name
+ * under the human's session or state folders is this run's write, whoever else writes there meanwhile.
  */
 import * as Arr from "effect/Array";
 import * as Config from "effect/Config";
@@ -45,9 +45,22 @@ export const strayed = Effect.fn("strayed")(function* (input: { readonly home: s
 	return Arr.filter(Str.split(found.output, "\n"), Str.isNonEmpty);
 });
 
-/** Fails with `SetupFailed`, exit 2, naming each path the run wrote under the human's session and state folders. */
+/**
+ * Fails with `SetupFailed`, exit 2, naming each working folder outside the run's folder where the wrapper refused to
+ * start pi, or else each path the run wrote under the human's session and state folders.
+ */
 export const leftAlone = Effect.fn("leftAlone")(
 	function* (layout: Layout) {
+		const fs = yield* FileSystem.FileSystem;
+		const refused = (yield* fs.exists(layout.refused)) ? yield* fs.readFileString(layout.refused) : "";
+		const outside = Arr.filter(Str.split(refused, "\n"), Str.isNonEmpty);
+
+		if (Arr.isReadonlyArrayNonEmpty(outside)) {
+			return yield* SetupFailed.make({
+				message: `the run started pi outside its folder: ${Arr.join(outside, " ")}`,
+			});
+		}
+
 		const home = yield* Config.String("HOME");
 		const leaked = yield* strayed({ home, names: [layout.id, layout.coreSession] });
 

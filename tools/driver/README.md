@@ -41,9 +41,11 @@ run killed outright cleans up the same way: the root pi exits when its stdin clo
 terminal core stops it with its delegates and removes the link once the driver's pipe closes. That shell starts before
 the link exists, so a kill at any moment leaves only the run folder.
 
-Isolation is by construction. After every run, a tripwire exits 2 listing each name under your `~/.pi/agent/sessions/`
-or `~/.local/state/` that holds the run's id or its core's session, which every folder the run names carries, so a
-broken redirect fails the run and another session writing meanwhile never does. It is not a sandbox: a hostile process,
+Isolation is by construction. Every pi of the run starts through the run's `pi` wrapper, which refuses to start in
+any working folder outside the run folder, so every folder pi names for its working folder holds the run's id. After
+every run, the driver exits 2 naming each folder the wrapper refused, and a tripwire exits 2 listing each name under
+your `~/.pi/agent/sessions/` or `~/.local/state/` that holds the run's id or its core's session, which every folder the
+run names carries, so a broken redirect fails the run and another session writing meanwhile never does. It is not a sandbox: a hostile process,
 a write the run undoes, and a write that leaves no new name, such as an edit to an existing file, are out of its scope.
 
 ## Write one
@@ -81,8 +83,12 @@ The run's name is the file name without `.scenario.ts`.
   `Option.some(value)`, and returns the value. It fails with `timed out after <within> waiting for <what>`, and fails
   at once if the root pi exits. Use it for every read: pi writes session files as it goes.
 - `run.exec(["hc", "ls"])` runs a command with the run's environment: the run's terminal core, scratch HOME and agent
-  folder, and the same `pi`. It returns `{ code, output }`. Never spawn a process yourself; it would reach your own
-  terminal core and folders.
+  folder, and the same `pi`. It runs in the root's project folder, inside the run folder. It returns
+  `{ code, output }`. Never spawn a process yourself; it would reach your own terminal core and folders. A `pi` that
+  `run.exec` or a delegate starts outside the run folder does not start, and the run exits 2.
+- A scratch repository is the root's project folder: `run.exec(["git", "init", "-q"])` makes it one, named with the
+  run's id. Keep every other repository and worktree inside it, as in `run.exec(["git", "init", "-q", "--bare",
+  "origin.git"])` for a remote, so every pi that works in them starts inside the run folder.
 - `run.say(value)` prints a line to the output and `report.txt`. A string prints as is, any other JSON value as one
   line of JSON.
 - `run.pi` is `{ version, path }` of the pi every agent in the run executes. `run.agentDir` is the worktree's
