@@ -27,4 +27,4 @@ It has to be one handler. For `session_before_compact` the last handler that ret
 - The root prompt's line telling the agent to read `STATE.md` after a compaction goes, since the summary carries the file.
 - A hook's result makes pi drop the read and modified file lists from the compaction, so the handler carries them itself.
 - When the summary call fails, the handler writes a deterministic summary. Falling back to pi's default would restore no guides for that compaction.
-- Delegates load the handler too, though today they load only the owned-work, prompt, web and claude-accounts extensions.
+- Delegates load the handler too.
