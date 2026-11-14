@@ -5,7 +5,8 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 
-import { lfLines, type Root, startRoot } from "./root.ts";
+import { lfLines } from "./lines.ts";
+import { type Root, startRoot } from "./root.ts";
 import { layoutOf } from "./world.ts";
 
 const rows = [

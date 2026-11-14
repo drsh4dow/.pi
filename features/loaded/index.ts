@@ -40,7 +40,7 @@ export type ContextLabel = typeof ContextLabel.Type;
 const encodeLabel = Schema.encodeEffect(Schema.fromJsonString(ContextLabel));
 
 /** Reads each guide file. One that cannot be read is left out, so a deleted skill never hides the rest. */
-export const loadGuides = Effect.fn("loadGuides")(function* (files: ReadonlyArray<GuideFile>) {
+export const readGuides = Effect.fn("readGuides")(function* (files: ReadonlyArray<GuideFile>) {
 	const fs = yield* FileSystem.FileSystem;
 
 	const read = yield* Effect.forEach(
@@ -53,8 +53,11 @@ export const loadGuides = Effect.fn("loadGuides")(function* (files: ReadonlyArra
 		{ concurrency: "unbounded" },
 	);
 
-	return indexOf(guidesOf(Arr.flatten(read)));
+	return Arr.flatten(read);
 });
+
+export const loadGuides = (files: ReadonlyArray<GuideFile>) =>
+	Effect.map(readGuides(files), (read) => indexOf(guidesOf(read)));
 
 /** Every `<name>.md` principle or playbook directly in `dir`, none when it is missing. A subfolder's files are not guides. */
 export const guideFilesIn = Effect.fn("guideFilesIn")(function* (kind: Exclude<GuideKind, "skill">, dir: string) {
@@ -99,11 +102,17 @@ interface Publisher {
 
 const ownTerminal = Effect.map(Effect.option(Config.String("HC_TERMINAL_ID")), Option.map(TerminalAddress));
 
-/** Reads the guides pi can load now: its skill commands' files and the harness principles and playbooks. */
-const load = Effect.fn("load")(function* (publisher: Publisher, commands: ReadonlyArray<SlashCommandInfo>) {
+/** The guides pi can load now: its skill commands' files and the harness principles and playbooks. */
+export const guideFiles = Effect.fn("guideFiles")(function* (commands: ReadonlyArray<SlashCommandInfo>) {
 	const principles = yield* guideFilesIn("principle", `${getAgentDir()}/principles`);
 	const playbooks = yield* guideFilesIn("playbook", `${getAgentDir()}/playbooks`);
-	const index = yield* loadGuides([...skillFiles(commands), ...principles, ...playbooks]);
+
+	return [...skillFiles(commands), ...principles, ...playbooks];
+});
+
+const load = Effect.fn("load")(function* (publisher: Publisher, commands: ReadonlyArray<SlashCommandInfo>) {
+	const files = yield* guideFiles(commands);
+	const index = yield* loadGuides(files);
 
 	publisher.index = Option.some(index);
 });
@@ -138,20 +147,21 @@ const run = <Failure>(effect: Effect.Effect<void, Failure, FileSystem.FileSystem
 /**
  * Keeps the `pi.context` label on this agent's hc terminal equal to the skills, principles and playbooks its model sees now. It
  * recomputes after each turn, a `/tree` move and a compaction, and clears the label when the session ends. Outside
- * herdr-core it does nothing.
+ * herdr-core it does nothing. A compaction reads the guides again, since its summary carries them as their files read now.
  */
 export const loaded = (pi: Pick<ExtensionAPI, "on" | "getCommands">) => {
 	const publisher: Publisher = { index: Option.none(), published: "" };
 
-	pi.on("session_start", (_event, ctx) => {
-		const start = Effect.andThen(load(publisher, pi.getCommands()), refresh(publisher, ctx));
+	const reload = (ctx: ExtensionContext) => {
+		const loadThenRefresh = Effect.andThen(load(publisher, pi.getCommands()), refresh(publisher, ctx));
 
-		return run(start);
-	});
+		return run(loadThenRefresh);
+	};
 
+	pi.on("session_start", (_event, ctx) => reload(ctx));
 	pi.on("turn_end", (_event, ctx) => run(refresh(publisher, ctx)));
 	pi.on("agent_end", (_event, ctx) => run(refresh(publisher, ctx)));
 	pi.on("session_tree", (_event, ctx) => run(refresh(publisher, ctx)));
-	pi.on("session_compact", (_event, ctx) => run(refresh(publisher, ctx)));
+	pi.on("session_compact", (_event, ctx) => reload(ctx));
 	pi.on("session_shutdown", () => run(clear(publisher)));
 };

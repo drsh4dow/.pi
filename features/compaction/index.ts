@@ -6,6 +6,7 @@ import {
 	type SessionBeforeCompactResult,
 	type SessionEntry,
 	serializeConversation,
+	type SlashCommandInfo,
 } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Clock from "effect/Clock";
@@ -13,8 +14,10 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 
+import { guideFiles, readGuides } from "../loaded/index.ts";
 import { selfFromEnv } from "../owned-work/index.ts";
 import { lastFolder } from "../state-folder/index.ts";
+import { guidesToRestore, noGuides } from "./guides.ts";
 import {
 	Anchor,
 	carriedNote,
@@ -65,6 +68,22 @@ const anchorOf = Effect.fn("anchorOf")(
 			Effect.logWarning("the compaction summary carries no anchor, reading it failed", cause),
 			Option.none<Anchor>(),
 		),
+	),
+);
+
+const guidesFor = Effect.fn("guidesFor")(
+	function* (commands: ReadonlyArray<SlashCommandInfo>, event: SessionBeforeCompactEvent) {
+		const paths = yield* guideFiles(commands);
+		const files = yield* readGuides(paths);
+
+		return guidesToRestore({
+			files,
+			branch: event.branchEntries,
+			firstKeptEntryId: event.preparation.firstKeptEntryId,
+		});
+	},
+	Effect.catchCause((cause) =>
+		Effect.as(Effect.logWarning("the compaction summary restores no guides, reading them failed", cause), noGuides),
 	),
 );
 
@@ -155,10 +174,21 @@ const narrativeCall = Effect.fn("narrativeCall")(
 	),
 );
 
-const compact = Effect.fn("compact")(function* (env: Env, event: SessionBeforeCompactEvent, ctx: Caller) {
+const compact = Effect.fn("compact")(function* ({
+	env,
+	commands,
+	event,
+	ctx,
+}: {
+	readonly env: Env;
+	readonly commands: ReadonlyArray<SlashCommandInfo>;
+	readonly event: SessionBeforeCompactEvent;
+	readonly ctx: Caller;
+}) {
 	const { preparation, branchEntries } = event;
 	const prior = priorOf({ branch: branchEntries, previousSummary: preparation.previousSummary });
 	const anchor = yield* anchorOf(env, branchEntries);
+	const guides = yield* guidesFor(commands, event);
 	const { reply, usage } = yield* narrativeCall({ event, ctx, prior, anchor });
 	const narrative = narrativeFrom({ reply, prior: prior.narrative });
 
@@ -166,7 +196,12 @@ const compact = Effect.fn("compact")(function* (env: Env, event: SessionBeforeCo
 		yield* Effect.logWarning(`${carriedNote}, because ${narrative.reason}`);
 	}
 
-	const parts: Parts = { narrative, anchor, files: filesOf({ prior: prior.files, fileOps: preparation.fileOps }) };
+	const parts: Parts = {
+		narrative,
+		anchor,
+		guides,
+		files: filesOf({ prior: prior.files, fileOps: preparation.fileOps }),
+	};
 
 	return {
 		compaction: {
@@ -190,8 +225,11 @@ export const compaction =
 			event: "session_before_compact",
 			handler: (event: SessionBeforeCompactEvent, ctx: Caller) => Promise<SessionBeforeCompactResult>,
 		) => void;
+		readonly getCommands: () => ReadonlyArray<SlashCommandInfo>;
 	}) => {
 		pi.on("session_before_compact", (event, ctx) =>
-			Effect.runPromise(compact(env, event, ctx).pipe(Effect.provide(NodeServices.layer))),
+			Effect.runPromise(
+				compact({ env, commands: pi.getCommands(), event, ctx }).pipe(Effect.provide(NodeServices.layer)),
+			),
 		);
 	};

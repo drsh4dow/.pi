@@ -94,6 +94,8 @@ The run's name is the file name without `.scenario.ts`.
 - `run.root.prompt(message, within?)` sends a prompt to the root and waits until pi settles: no retries, compaction
   or queued messages left. It returns the root's last assistant text, or none, as when pi aborted the run. A wake from a delegate arrives later as
   a turn of its own, so wait for it with `waitFor`. Default `within` is 10 minutes.
+- `run.root.compact` runs pi's manual compaction, as `/compact` does, and returns once pi answers. It fails when pi
+  rejects it, as when there is nothing to compact.
 - `run.root.output` is the root pi's stderr so far.
 - `run.waitFor(what, within, find)` reads the root's and every delegate's session once a second until `find` returns
   `Option.some(value)`, and returns the value. It fails with `timed out after <within> waiting for <what>`, and fails

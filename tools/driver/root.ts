@@ -17,9 +17,9 @@ import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import * as Str from "effect/String";
 
 import { ScenarioFailed, SetupFailed } from "./failed.ts";
+import { lfLines } from "./lines.ts";
 import type { World } from "./world.ts";
 
 /** The root pi a scenario talks to. Every call fails at once if the root has exited. */
@@ -31,6 +31,8 @@ export interface Root {
 	 * Fails when pi rejects the prompt or `within` (default 10 minutes) passes first.
 	 */
 	readonly prompt: (message: string, within?: Duration.Input) => Effect.Effect<Option.Option<string>, ScenarioFailed>;
+	/** Runs pi's manual compaction, as `/compact` does, and returns once pi answers. */
+	readonly compact: Effect.Effect<void, ScenarioFailed>;
 	/** The root pi's stderr so far. */
 	readonly output: Effect.Effect<string>;
 }
@@ -47,7 +49,8 @@ export interface RootProcess extends Root {
 type Command =
 	| { readonly type: "get_state" }
 	| { readonly type: "prompt"; readonly message: string; readonly streamingBehavior: "followUp" }
-	| { readonly type: "get_last_assistant_text" };
+	| { readonly type: "get_last_assistant_text" }
+	| { readonly type: "compact" };
 
 const Response = Schema.Struct({
 	type: Schema.Literal("response"),
@@ -76,20 +79,6 @@ const isResponseTo =
 const isSettled = (record: Inbound) => record.type === "agent_settled";
 
 const failed = (message: string) => Effect.fail(ScenarioFailed.make({ message }));
-
-/**
- * Pure. Splits on LF only, dropping one CR before it. Unicode line and paragraph separators are valid inside JSON
- * strings, so a generic line splitter would cut records apart (pi's docs/rpc.md, Framing).
- */
-export const lfLines = ({ carried, chunk }: { readonly carried: string; readonly chunk: string }) => {
-	const parts = Str.split(`${carried}${chunk}`, "\n");
-	const complete = Arr.dropRight(parts, 1);
-
-	return {
-		lines: Arr.map(complete, (line) => (Str.endsWith("\r")(line) ? Str.slice(0, -1)(line) : line)),
-		rest: Arr.lastNonEmpty(parts),
-	};
-};
 
 /** As text, each chunk appended to `log` as it arrives. */
 const logged = <Failure>(fs: FileSystem.FileSystem, bytes: Stream.Stream<Uint8Array, Failure>, log: string) =>
@@ -292,6 +281,7 @@ export const startRoot = (input: {
 
 		return {
 			prompt: prompted(wire, input.progress),
+			compact: Effect.asVoid(asked(wire, { type: "compact" }, Schema.Unknown)),
 			output: wire.stderr,
 			session: { id: state.sessionId, file: state.sessionFile },
 			exited: wire.exited,
