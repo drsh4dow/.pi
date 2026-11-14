@@ -1,9 +1,11 @@
+import * as Arr from "effect/Array";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import type * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
+import * as Str from "effect/String";
 
 import { type RunSpec, terminalNameOf } from "../../clients/hc/index.ts";
 import type { ChildPi, PiCli } from "../../clients/pi-cli/index.ts";
@@ -66,6 +68,19 @@ export const inheritedEnv = (env: Readonly<Record<string, string | undefined>>):
 	Rec.filterMap(env, (value, key) =>
 		value === undefined || /^HC_TERMINAL_|^PI_OWNED_WORK_/u.test(key) ? Result.failVoid : Result.succeed(value),
 	);
+
+/**
+ * Puts the agent folder's `bin/` first on PATH, once, for every command and delegate owned-work starts, so the harness's
+ * own `gh` and `pr-wait` win there. pi's bash prepends it only when PATH lacks it, so a PATH that holds it later keeps it
+ * later there.
+ */
+export const withAgentBin = (agentDir: string) => (env: Readonly<Record<string, string | undefined>>) => {
+	const bin = `${agentDir}/bin`;
+	const path = env["PATH"] ?? "";
+	const rest = path === "" ? [] : Arr.filter(Str.split(path, ":"), (folder) => folder !== bin);
+
+	return { ...env, PATH: Arr.join([bin, ...rest], ":") };
+};
 
 /** `dir` is the `delegates/` subfolder of the root's session folder, so `pi -c` never picks a child. */
 export type ChildSession = SessionAddress;
