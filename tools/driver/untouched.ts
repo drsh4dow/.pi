@@ -73,25 +73,45 @@ export const judge = (input: {
 		return { ...change, session, cleared: Option.exists(session, (id) => !input.recorded.has(id)) };
 	});
 
-/** Each file `find <args>` matches, by path, with its size and change time. A missing folder lists nothing. */
-const found = Effect.fn("found")(function* (args: ReadonlyArray<string>) {
-	const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-	const format = String.raw`%s %C@ %p\0`;
-
-	const handle = yield* spawner.spawn(
-		ChildProcess.make("find", [...args, "!", "-type", "d", "-printf", format], { stderr: "ignore" }),
-	);
-
-	const text = yield* handle.stdout.pipe(Stream.decodeText, Stream.mkString);
+/** Pure. `find -printf '%s %C@ %p\0'` output as a map from path to size and change time. */
+const listed = (text: string) => {
 	const entries = Arr.filter(Str.split(text, "\0"), Str.isNonEmpty);
 
 	return new Map(
 		Arr.map(entries, (entry) => {
 			const [size, changed, ...path] = Str.split(entry, " ");
 
-			return [Arr.join(path, " "), `${size ?? ""} ${changed ?? ""}`];
+			return [Arr.join(path, " "), `${size ?? ""} ${changed ?? ""}`] as const;
 		}),
 	);
+};
+
+/**
+ * Each file under `root` that `filter` matches, by path, with its size and change time. A missing folder lists nothing,
+ * and a folder `find` cannot read whole fails the check rather than hiding a change.
+ */
+const found = Effect.fn("found")(function* (root: string, filter: ReadonlyArray<string>) {
+	const fs = yield* FileSystem.FileSystem;
+	const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+
+	if (!(yield* fs.exists(root))) {
+		return new Map<string, string>();
+	}
+
+	const handle = yield* spawner.spawn(
+		ChildProcess.make("find", [root, ...filter, "!", "-type", "d", "-printf", String.raw`%s %C@ %p\0`], {
+			stderr: "inherit",
+		}),
+	);
+
+	const text = yield* handle.stdout.pipe(Stream.decodeText, Stream.mkString);
+	const code = yield* handle.exitCode;
+
+	if (code !== 0) {
+		return yield* NotUntouched.make({ code: 2, message: `find could not list all of ${root}, exit ${String(code)}` });
+	}
+
+	return listed(text);
 }, Effect.scoped);
 
 /** Runs the scenario, streaming its output, and returns its exit code and its `evidence` folder. */
@@ -153,8 +173,8 @@ const observed = Effect.fn("observed")(function* (scenario: string) {
 	const sessions = `${home}/.pi/agent/sessions`;
 
 	const listing = Effect.zipWith(
-		found([sessions, "-name", "*.jsonl"]),
-		found([`${home}/.local/state/pi-agent`]),
+		found(sessions, ["-name", "*.jsonl"]),
+		found(`${home}/.local/state/pi-agent`, []),
 		(sessionFiles, stateFiles) => new Map([...sessionFiles, ...stateFiles]),
 	);
 
