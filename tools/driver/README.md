@@ -2,8 +2,8 @@
 
 A scenario proves one fact about the pi that agents run on. It runs the real `pi` on your PATH (never this checkout's
 dev copy) on this worktree's own `agent/` folder, with your credentials, and with scratch HOME, agent, session and state
-folders and a private terminal core. A run that writes under your sessions or state folders fails. It costs real model
-calls, so nothing runs it for you.
+folders and a private terminal core, in a systemd user service of its own. A run that writes under your sessions or
+state folders fails. It costs real model calls, so nothing runs it for you.
 
 ## Run one
 
@@ -26,22 +26,30 @@ pass leaf-wake in 15 s
 evidence /tmp/pi-driver/leaf-wake-20260514-101010-4242
 ```
 
-| Exit | Meaning                                                                                                                                                                                                                                |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Every check passed.                                                                                                                                                                                                                    |
-| 1    | The scenario failed: a `check`, a `waitFor` that timed out, a prompt that never settled, or the root pi dying. The line before `evidence` says which, as `fail <name>: <claim>`.                                                       |
-| 2    | The driver could not build the run (no `pi` on PATH, the terminal core never came up, the root pi never answered or does not run on what the scenario set), or the run wrote under your folders. Nothing about the harness was tested. |
-| 130  | You pressed Ctrl-C.                                                                                                                                                                                                                    |
+| Exit | Meaning                                                                                                                                                                                                                                                                             |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Every check passed.                                                                                                                                                                                                                                                                 |
+| 1    | The scenario failed: a `check`, a `waitFor` that timed out, a prompt that never settled, or the root pi dying. The line before `evidence` says which, as `fail <name>: <claim>`.                                                                                                    |
+| 2    | The driver could not build the run (`systemd-run --user` cannot start a service, no `pi` on PATH, the terminal core never came up, the root pi never answered or does not run on what the scenario set), or the run wrote under your folders. Nothing about the harness was tested. |
+| 130  | You pressed Ctrl-C.                                                                                                                                                                                                                                                                 |
 
 Every outcome stops the root pi, its delegates and the run's terminal core, and keeps the run folder as evidence:
 `report.txt` (everything printed), `sessions/` (the root's and every delegate's session file), `probe/` (what each pi
 loaded and the payloads it built), `root.in.jsonl` and `root.out.jsonl` (every RPC record sent and received), `root.stderr`, `core.log`,
 and `home/` (the scratch HOME, including any state folder an agent made). The link to your `auth.json` is removed.
 While it exists, a pi that refreshes an OAuth token rewrites your real `auth.json` through it, in place, so a run
-killed during that write can leave the file empty. A
-run killed outright cleans up the same way: the root pi exits when its stdin closes, and the shell that watches the
-terminal core stops it with its delegates and removes the link once the driver's pipe closes. That shell starts before
-the link exists, so a kill at any moment leaves only the run folder.
+killed during that write can leave the file empty.
+
+`bun <file>` starts the driver again as the main process of a transient systemd user service, with its stdin a pipe
+from the `bun` you started. Ctrl-C, SIGTERM or `kill -9` of that `bun` closes the pipe, and the driver ends the run
+as if interrupted, with the same cleanup. Once the driver in the service exits, however it exits, systemd kills every
+process left in the service. Delegates run in owned-work's own systemd scopes, which owned-work stops when the root pi
+exits. No code of the driver signals a process.
+
+A run whose driver in the service dies outright, by `kill -9` of that process or `systemctl --user stop` of its
+unit, leaves no process, but two things on disk: the run folder, with the link `home/.pi/agent/auth.json` to your
+`auth.json`, and the core's folder `$TMPDIR/pi-driver/pi-driver-<pid>-<tag>`, which holds a dead socket. Both are
+safe to delete: removing the link leaves your `auth.json` as it is.
 
 Isolation is by construction. Every pi of the run starts through the run's `pi` wrapper, which refuses to start in
 any working folder outside the run folder, so every folder pi names for its working folder holds the run's id. After

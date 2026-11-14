@@ -18,13 +18,13 @@ import * as Option from "effect/Option";
 import type * as Path from "effect/Path";
 import * as Predicate from "effect/Predicate";
 import * as Random from "effect/Random";
-import type * as Runtime from "effect/Runtime";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import type { Exited } from "./core.ts";
 import { ScenarioFailed, SetupFailed } from "./failed.ts";
 import { type Root, type RootProcess, startRoot } from "./root.ts";
+import { inService, runAsService, stdinEnded } from "./service.ts";
 import { readSessions, type Sessions } from "./sessions.ts";
 import { type Setup, setupOf } from "./setup.ts";
 import { tookSetup } from "./took.ts";
@@ -277,19 +277,22 @@ const codeOf = <Value, Failure>(exit: Exit.Exit<Value, Failure>): number => {
 	return Option.exists(Cause.findErrorOption(exit.cause), Schema.is(SetupFailed)) ? 2 : 1;
 };
 
-const exitCode: Runtime.Teardown = (exit, onExit) => {
-	onExit(codeOf(exit));
-};
-
 /**
  * Runs this file's scenario and exits: 0 passed, 1 failed (any error from `play`, a timeout, the root dying), 2 the run
- * could not be built, 130 interrupted. The scenario's name is the entry file's name without `.scenario.ts`.
+ * could not be built, 130 interrupted. The scenario's name is the entry file's name without `.scenario.ts`. The first
+ * call starts the file again as the run's service, where the second call plays it.
  */
 export const scenario = <Failure>(spec: Scenario<Failure>): void => {
-	const program = played({ name: nameOf(process.argv[1] ?? "scenario"), spec });
+	const name = nameOf(process.argv[1] ?? "scenario");
+	const program = Effect.raceFirst(played({ name, spec }), stdinEnded);
 
-	NodeRuntime.runMain(Effect.provide(program, NodeServices.layer), {
-		disableErrorReporting: true,
-		teardown: exitCode,
-	});
+	if (inService()) {
+		NodeRuntime.runMain(Effect.provide(program, NodeServices.layer), {
+			disableErrorReporting: true,
+			// Exits on success too, which runMain leaves to the event loop: `stdinEnded` keeps stdin open.
+			teardown: (exit) => process.exit(exit.pipe(codeOf)),
+		});
+	} else {
+		runAsService({ name, argv: process.argv });
+	}
 };

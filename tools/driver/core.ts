@@ -1,15 +1,14 @@
 /**
  * Side commands in the run's environment, and the run's private terminal core, where owned-work starts delegates. The
  * core gets its own `XDG_RUNTIME_DIR`: with no systemd socket in it, herdr-core runs terminals as its own descendants
- * instead of systemd services, so they end with it.
+ * instead of systemd services, so they stay in the run's service. Every spawn here is `detached: false`: Effect then
+ * never signals a child that already exited, whose pid another process may hold by then.
  */
 import * as Arr from "effect/Array";
-import type * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as ChildProcess from "effect/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
-import * as Queue from "effect/Queue";
 import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
 
@@ -40,6 +39,7 @@ export const ran = Effect.fn("ran")(function* (command: {
 			cwd: command.cwd,
 			env: command.env,
 			stdin: "ignore",
+			detached: false,
 			forceKillAfter: "2 seconds",
 		}),
 	);
@@ -68,45 +68,35 @@ export const execIn = Effect.fn("execIn")(function* (place: { readonly env: Env;
 });
 
 /**
- * Stops the core once its stdin ends, whether the scope closed it or the kernel did because the driver died outright.
- * Unless `hc` reports it stopped the core, which it does not for a core not yet listening, the guardian signals its own
- * process group, never a pid: the shell may already have reaped the core, freeing its pid for any process. The
- * guardian leads that group, so its id stays the guardian's while it lives, and by then only the core is left in it.
- * It unlinks the human's credentials first, and removes the core's folder only after the core exited. Every path it
- * removes comes from its own environment, set when the driver started it.
+ * Starts the run's core and waits for its socket. Closing the scope asks the core to stop, which ends its terminals
+ * before the tripwire reads, and then removes the core's folder.
  */
-const guardian = `herdr-core serve >>"$1" 2>&1 &
-cat >/dev/null
-rm -f "$HOME/.pi/agent/auth.json"
-stop=$(hc server stop 2>&1)
-echo "$stop" >>"$1"
-case $stop in *'"stopped":true'*) ;; *) trap '' TERM; kill 0 ;; esac
-wait
-rm -rf "$XDG_RUNTIME_DIR"`;
-
-/** Starts the run's core under `guardian` and waits for its socket. Closing the scope runs the guardian's cleanup. */
 export const startCore = Effect.fn("startCore")(
 	function* ({ layout, env }: { readonly layout: Layout; readonly env: Env }) {
 		const fs = yield* FileSystem.FileSystem;
 		const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-		const input = yield* Queue.unbounded<Uint8Array, Cause.Done>();
+		const place = { env: { ...env, XDG_RUNTIME_DIR: layout.runtime }, cwd: layout.folder };
 
 		yield* fs.makeDirectory(layout.runtime, { recursive: true, mode: 0o700 });
+		yield* Effect.addFinalizer(() => Effect.ignore(fs.remove(layout.runtime, { recursive: true })));
 
-		const guard = yield* spawner.spawn(
-			ChildProcess.make("sh", ["-c", guardian, "guardian", layout.coreLog], {
-				cwd: layout.folder,
-				env: { ...env, XDG_RUNTIME_DIR: layout.runtime },
-				stdin: Stream.fromQueue(input),
+		yield* spawner.spawn(
+			ChildProcess.make("sh", ["-c", 'exec herdr-core serve >>"$1" 2>&1', "core", layout.coreLog], {
+				...place,
+				stdin: "ignore",
 				stdout: "ignore",
 				stderr: "ignore",
-				detached: true,
+				detached: false,
 				forceKillAfter: "10 seconds",
 			}),
 		);
 
 		yield* Effect.addFinalizer(() =>
-			Queue.end(input).pipe(Effect.andThen(guard.exitCode), Effect.timeout("30 seconds"), Effect.ignore),
+			ran({ argv: ["hc", "server", "stop"], ...place }).pipe(
+				Effect.timeout("10 seconds"),
+				Effect.ignore,
+				Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+			),
 		);
 
 		// Polls the socket file, not `hc ls`: hc starts a core of its own as a systemd service when it finds none.

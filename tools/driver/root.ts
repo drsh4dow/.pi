@@ -126,7 +126,7 @@ interface Channels {
 
 /**
  * Spawns the root through the `bin/pi` wrapper and feeds stdout records to `records`, stderr to its log, and the exit
- * code to `ended`. The scope ends stdin, waits a minute for pi to exit, then signals the process group.
+ * code to `ended`. The scope ends stdin, waits a minute for pi to exit, then signals pi if it still runs.
  */
 const spawned = Effect.fn("spawned")(function* ({
 	world: { layout, env },
@@ -143,7 +143,13 @@ const spawned = Effect.fn("spawned")(function* ({
 	const args = ["--mode", "rpc", "--model", model, "--session-dir", layout.sessions];
 
 	const handle = yield* spawner.spawn(
-		ChildProcess.make(`${layout.bin}/pi`, args, { cwd: layout.project, env, stdin, forceKillAfter: "10 seconds" }),
+		ChildProcess.make(`${layout.bin}/pi`, args, {
+			cwd: layout.project,
+			env,
+			stdin,
+			detached: false,
+			forceKillAfter: "10 seconds",
+		}),
 	);
 
 	const records = recordsIn(logged(fs, handle.stdout, layout.rpcOut));
