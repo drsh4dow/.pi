@@ -1,6 +1,7 @@
 ---
 name: interrogate
 description: Adversaries on several models try to break a change or design, and only findings proven by a run survive. Use for a contested design before shipping, when asked to interrogate a change, or for an adversarial review.
+for: [root, owner]
 ---
 
 # Interrogate

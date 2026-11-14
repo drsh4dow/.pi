@@ -1,6 +1,7 @@
 ---
 name: how
 description: "Asked how something works, before a nontrivial change or an architecture decision, on 'are we sure?', or where code should live. `why` covers motivation."
+for: [root, owner]
 ---
 
 # How

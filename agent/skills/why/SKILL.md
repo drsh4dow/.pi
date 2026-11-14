@@ -1,11 +1,11 @@
 ---
 name: why
-description: "A cited read from git history and evidence sources. Asked why something works this way or why a choice was made: design rationale, regressions, postmortems, data-backed thresholds. `how` covers runtime behavior."
+description: "A cited read from git history and evidence sources. Asked why something works this way or why a choice was made: design rationale, regressions, postmortems, data-backed thresholds, not runtime behavior."
 ---
 
 # Why
 
-Investigate the motivation and intent behind code. The companion `how` skill answers what the code does and how it works. `why` answers what forces led to its shape.
+Investigate the motivation and intent behind code: what forces led to its shape, not what it does.
 
 ## Operating Posture
 

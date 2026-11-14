@@ -1,6 +1,7 @@
 ---
 name: figure-it-out
 description: "A large or cross-cutting effort, such as a migration across many call sites or an ambitious multi-part change, work the user steps away from to trust later, or a task no playbook fits: design its phased workflow first."
+for: [root, owner]
 ---
 
 # Figure it out

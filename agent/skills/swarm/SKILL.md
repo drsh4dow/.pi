@@ -1,6 +1,7 @@
 ---
 name: swarm
 description: Fan out parallel workers and return one report. Use when asked to swarm, or for parallel coverage, races, gauntlets or exploration.
+for: [root, owner]
 ---
 
 # Swarm
