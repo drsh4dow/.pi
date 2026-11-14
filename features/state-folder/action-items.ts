@@ -16,6 +16,15 @@ export const requiredLabels = [
 	"**Risk.**",
 ] as const;
 
+export const onlyYouLabel = "**Only you.**";
+
+export const onlyYouKinds = ["decision", "approval", "irreversible action", "access"] as const;
+
+export interface Denial {
+	readonly line: number;
+	readonly paths: Arr.NonEmptyReadonlyArray<string>;
+}
+
 interface Line {
 	readonly number: number;
 	readonly text: string;
@@ -36,6 +45,8 @@ interface Item {
 const fenceLine = /^\s*(?<marker>`{3,}|~{3,})\s*(?<info>.*)$/u;
 const itemContent = /^\s*(?:[-*+]|\d+[.)])\s|^\s*\*\*|^#|^\s*(?:`{3}|~{3})/u;
 const listMarker = /^\s*(?:(?:[-*+]|\d+[.)])\s+)?/u;
+const onlyYouKind = new RegExp(`^(?:an? )?(${Arr.join(onlyYouKinds, "|")})\\b`, "iu");
+
 const byLine = Order.mapInput(Order.Number, ({ line }: FormatProblem) => line);
 
 const quote = (text: string) => `"${text.length > 48 ? `${Str.slice(0, 48)(text)}...` : text}"`;
@@ -46,7 +57,7 @@ const closes = (fence: Fence, text: string) => {
 	return groups?.["info"] === "" && Str.startsWith(fence.marker)(groups["marker"] ?? "");
 };
 
-const linesOf = (file: string) => {
+export const linesOf = (file: string) => {
 	const [unclosedFence, lines] = Arr.mapAccum(
 		Str.split("\n")(file),
 		Option.none<Fence>(),
@@ -84,8 +95,12 @@ const sections = (lines: ReadonlyArray<Line>) => {
 	return { preamble, items };
 };
 
-const labelProblems = (item: Item, prose: ReadonlyArray<Line>): ReadonlyArray<FormatProblem> => {
-	const missing = Arr.filter(requiredLabels, (label) => !Arr.some(prose, ({ text }) => Str.startsWith(label)(text)));
+const labelProblems = (
+	wanted: ReadonlyArray<string>,
+	item: Item,
+	prose: ReadonlyArray<Line>,
+): ReadonlyArray<FormatProblem> => {
+	const missing = Arr.filter(wanted, (label) => !Arr.some(prose, ({ text }) => Str.startsWith(label)(text)));
 
 	const listedAt = (label: string) =>
 		Arr.findFirst(prose, ({ text }) => Str.startsWith(label)(Str.replace(listMarker, "")(text)));
@@ -121,7 +136,7 @@ const itemProblems = (item: Item): ReadonlyArray<FormatProblem> => {
 			line: number,
 			message: `${quote(text)} starts with "#" inside item "${item.title}". Only "## <title>" lines start items, and inside an item only fenced code may start with "#"`,
 		})),
-		...labelProblems(item, prose),
+		...labelProblems(requiredLabels, item, prose),
 	];
 };
 
@@ -143,4 +158,58 @@ export const actionItemProblems = (file: string): ReadonlyArray<FormatProblem> =
 		],
 		byLine,
 	);
+};
+
+interface OnlyYou {
+	readonly problems: ReadonlyArray<FormatProblem>;
+	readonly denials: ReadonlyArray<Denial>;
+}
+
+const noDenials = (line: number, message: string): OnlyYou => ({ problems: [{ line, message }], denials: [] });
+
+const reasonOf = ({ number, text }: Line): OnlyYou => {
+	const kind = onlyYouKind.exec(Str.trim(Str.slice(onlyYouLabel.length)(text)))?.[1];
+
+	if (kind === undefined) {
+		return noDenials(
+			number,
+			`${quote(text)} names no kind. After ${onlyYouLabel} comes one of: ${Arr.join(onlyYouKinds, ", ")}`,
+		);
+	}
+
+	if (Str.toLowerCase(kind) !== "access") {
+		return { problems: [], denials: [] };
+	}
+
+	const paths = Str.split("`")(text).slice(1, -1);
+
+	if (!Arr.isReadonlyArrayNonEmpty(paths)) {
+		return noDenials(
+			number,
+			`${quote(text)} is an access item that cites no file. Cite the file that records the denied attempt in backticks`,
+		);
+	}
+
+	return { problems: [], denials: [{ line: number, paths }] };
+};
+
+const onlyYouOf = (item: Item): OnlyYou => {
+	const prose = Arr.filter(item.body, ({ fenced }) => !fenced);
+
+	return Option.match(
+		Arr.findFirst(prose, ({ text }) => Str.startsWith(onlyYouLabel)(text)),
+		{
+			onNone: () => ({ problems: labelProblems([onlyYouLabel], item, prose), denials: [] }),
+			onSome: reasonOf,
+		},
+	);
+};
+
+export const onlyYouReasons = (file: string): OnlyYou => {
+	const found = Arr.map(sections(linesOf(file).lines).items, onlyYouOf);
+
+	return {
+		problems: Arr.flatMap(found, ({ problems }) => problems),
+		denials: Arr.flatMap(found, ({ denials }) => denials),
+	};
 };
