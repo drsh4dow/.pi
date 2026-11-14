@@ -26,7 +26,6 @@ const newReviews = (before: PrView, after: PrView) => {
 	);
 };
 
-/** What changed between two readings of one pull request, one line each, or none. Pure. */
 export const changes = ({
 	before,
 	after,
@@ -41,7 +40,6 @@ export const changes = ({
 	...changed("state", before.state, after.state),
 ];
 
-/** Retries after the first failed round, so the third failed round in a row ends the wait. */
 const retriedRounds = 2;
 
 const untilChanged = <Services>(

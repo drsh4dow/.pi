@@ -7,7 +7,6 @@ import * as Str from "effect/String";
 
 const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/gh-wrapper-test-${String(process.pid)}`;
 
-/** Fake gh's in `real`, `star*` and `current`, a folder named gh, a `tools` folder with readlink only, and `bin`, a link here. */
 const worldIn = (root: string) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
@@ -29,7 +28,6 @@ const worldIn = (root: string) =>
 		yield* fs.symlink(import.meta.dirname, `${root}/bin`);
 	});
 
-/** Runs `bin/gh a "b c" owner:branch ""` in `current`, with PATH `bin:<path>:tools`. */
 const ghWith = (folder: string, path: string) =>
 	Effect.gen(function* () {
 		const root = `${scratch}/${folder}`;

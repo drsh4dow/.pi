@@ -1,7 +1,3 @@
-/**
- * The agent's `bin/` folder comes first on PATH in every shell an agent uses: pi's bash and codemode's bash in a root
- * and in a delegate, and a command the root runs in a `watch`. So `pr-wait` runs, and `gh` is the harness's own.
- */
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -42,8 +38,7 @@ const textOf = ({ content }: typeof ToolMessage.Type) =>
 		"\n",
 	);
 
-/** The text of every result of `tool` in a session that mentions `pr-wait`. */
-const outputsOf = (entries: ReadonlyArray<SessionEntry>, tool: string) => {
+const prWaitOutputsOf = (entries: ReadonlyArray<SessionEntry>, tool: string) => {
 	const results = Arr.filter(
 		Arr.getSomes(Arr.map(entries, (entry) => decodeToolResult(entry))),
 		({ message }) => message.toolName === tool,
@@ -92,14 +87,14 @@ scenario({
 				}),
 			);
 
-			yield* resolvesToBin(run, "the root's bash", outputsOf(root.entries, "bash"));
-			yield* resolvesToBin(run, "the root's codemode bash", outputsOf(root.entries, "codemode"));
+			yield* resolvesToBin(run, "the root's bash", prWaitOutputsOf(root.entries, "bash"));
+			yield* resolvesToBin(run, "the root's codemode bash", prWaitOutputsOf(root.entries, "codemode"));
 			yield* resolvesToBin(
 				run,
 				"the root's watch",
 				Option.toArray(Option.fromUndefinedOr(watch.details.outcome.tail)),
 			);
-			yield* resolvesToBin(run, "the leaf's bash", outputsOf(leaf.entries, "bash"));
-			yield* resolvesToBin(run, "the leaf's codemode bash", outputsOf(leaf.entries, "codemode"));
+			yield* resolvesToBin(run, "the leaf's bash", prWaitOutputsOf(leaf.entries, "bash"));
+			yield* resolvesToBin(run, "the leaf's codemode bash", prWaitOutputsOf(leaf.entries, "codemode"));
 		}),
 });

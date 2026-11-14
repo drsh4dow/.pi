@@ -10,18 +10,15 @@ export type PrState = "OPEN" | "MERGED" | "CLOSED";
 
 export type ReviewDecision = "APPROVED" | "CHANGES_REQUESTED" | "REVIEW_REQUIRED";
 
-/** One submitted review. PENDING (unsubmitted) reviews are dropped at the parse. */
 export interface Review {
 	readonly author: string;
 	readonly state: string;
 	readonly submittedAt: string;
 }
 
-/** The statusCheckRollup that gh reports, reduced to one bucket. */
 export type Checks = "none" | "pending" | "pass" | "fail";
 
 export interface PrView {
-	/** `owner/repo#number`, from the pull request's `url`. */
 	readonly ref: string;
 	readonly head: string;
 	readonly reviewDecision: Option.Option<ReviewDecision>;
@@ -105,7 +102,6 @@ const checksOf = (rollup: ReadonlyArray<Check>): Checks => {
 
 const decodeWire = Schema.decodeUnknownResult(Schema.fromJsonString(Wire));
 
-/** Reads the stdout of `gh pr view --json <fields>`, or says why it could not. */
 export const viewOf = (stdout: string): Result.Result<PrView, string> =>
 	decodeWire(stdout).pipe(
 		Result.mapError((error) => error.message),

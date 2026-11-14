@@ -14,7 +14,6 @@ interface Bare {
 	readonly url?: string;
 }
 
-/** The output gh gives for an open pull request with no decision, no reviews and the given rollup entries. */
 const bare = ({ rollup = [], state = "OPEN", url = "https://github.com/drsh4dow/pi-gate-scratch/pull/1" }: Bare) =>
 	`{"headRefOid":"02732a55f571c4f41c80be807b0e5f1bc21dc669","reviewDecision":"","reviews":[],"statusCheckRollup":[${Arr.join(rollup, ",")}],"state":"${state}","url":"${url}"}`;
 

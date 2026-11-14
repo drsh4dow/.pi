@@ -77,7 +77,6 @@ type Reading = Effect.Effect<PrView, GhError>;
 
 const failed = (why: string) => Effect.fail(GhError.make({ args: ["pr", "view"], why }));
 
-/** Answers each pull request's reads in script order, then repeats its last answer. */
 const scripted = (scripts: Readonly<Record<string, ReadonlyArray<Reading>>>) => {
 	const reads = new Map<string, number>();
 
@@ -94,7 +93,6 @@ const scripted = (scripts: Readonly<Record<string, ReadonlyArray<Reading>>>) => 
 	return Layer.succeed(Gh, Gh.of({ view }));
 };
 
-/** What `prWait` ended with, and how many seconds of the test clock it took. */
 const outcome = (prs: Arr.NonEmptyReadonlyArray<string>) =>
 	Effect.gen(function* () {
 		const result = yield* Effect.result(prWait(prs));

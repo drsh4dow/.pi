@@ -69,11 +69,7 @@ export const inheritedEnv = (env: Readonly<Record<string, string | undefined>>):
 		value === undefined || /^HC_TERMINAL_|^PI_OWNED_WORK_/u.test(key) ? Result.failVoid : Result.succeed(value),
 	);
 
-/**
- * Puts the agent folder's `bin/` first on PATH, once, for every command and delegate owned-work starts, so the harness's
- * own `gh` and `pr-wait` win there. pi's bash prepends it only when PATH lacks it, so a PATH that holds it later keeps it
- * later there.
- */
+/** The bash tool of pi adds the agent's `bin/` only when PATH lacks it. This also moves a later entry to the front. */
 export const withAgentBin = (agentDir: string) => (env: Readonly<Record<string, string | undefined>>) => {
 	const bin = `${agentDir}/bin`;
 	const path = env["PATH"] ?? "";

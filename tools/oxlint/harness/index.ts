@@ -13,8 +13,7 @@ const layers = new Map<string, Layer>([
 
 const layered = /^.*\/(?<root>agent\/extensions|features|clients|tools)\/(?<name>[^/]+)\/(?<rest>.+)$/u;
 
-/** Each file in `agent/bin/` is an entrypoint of its own, a command that wires one feature to argv. */
-const command = /^.*\/agent\/bin\/(?<rest>[^/]+)$/u;
+const binCommand = /^.*\/agent\/bin\/(?<rest>[^/]+)$/u;
 
 /**
  * No layer lists "scenario", and only a scenario lists "tool": `bun test` can never load a scenario, and the runtime
@@ -47,7 +46,7 @@ interface Place {
 /** A `*.scenario.ts` file is a scenario wherever it sits; every other file's layer is where it sits. */
 const placeOf = (file: string): Place => {
 	const scenario = Str.endsWith(".scenario.ts")(file);
-	const bin = command.exec(file)?.groups;
+	const bin = binCommand.exec(file)?.groups;
 
 	if (bin !== undefined) {
 		const { rest = "" } = bin;
