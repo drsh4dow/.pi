@@ -48,6 +48,7 @@ const defaultShapes: Record<Kind, readonly SectionRule[]> = {
   ticket: [
     { heading: "Problem", required: true },
     { heading: "Done when", required: true },
+    { heading: "Non-goals", required: false },
     { heading: "Suggested approach", required: false },
     { heading: "Context", required: false },
   ],
