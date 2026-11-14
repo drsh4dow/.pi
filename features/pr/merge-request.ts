@@ -164,22 +164,27 @@ const graphqlMergeOf = (values: Values): Option.Option<MergeRequest> => {
 	return /\bmergePullRequest\b/u.test(query)
 		? Option.some(
 				refuse([
-					"merge gate: a merge through `gh api graphql` is refused, because the gate cannot pin its head.",
+					"merge gate: a merge through `gh api graphql` is refused, because it names the pull request by node id, which the gate does not read.",
 					"Run `gh pr merge <number> --squash` instead.",
 				]),
 			)
 		: Option.none();
 };
 
-const restMerge = /^(?:https:\/\/api\.github\.com)?\/?repos\/(?<repo>[^/]+\/[^/]+)\/pulls\/(?<number>\d+)\/merge\/?$/u;
+/** An endpoint reaches gh as a path, with or without a leading slash or query, or as an absolute API URL. */
+const pathOf = (endpoint: string) => Str.replaceAll(/^(?:https:\/\/api\.github\.com)?\/?|\?.*$/gu, "")(endpoint);
+
+const restMerge = /^repos\/(?<repo>[^/]+\/[^/]+)\/pulls\/(?<number>\d+)\/merge\/?$/u;
 
 const apiMergeOf = (endpoint: string, values: Values): Option.Option<MergeRequest> => {
-	if (endpoint === "graphql") {
+	const path = pathOf(endpoint);
+
+	if (path === "graphql") {
 		return graphqlMergeOf(values);
 	}
 
 	const method = Option.getOrElse(Arr.last(values("-X", "--method")), () => "GET");
-	const { repo, number } = restMerge.exec(endpoint)?.groups ?? {};
+	const { repo, number } = restMerge.exec(path)?.groups ?? {};
 
 	if (Str.toUpperCase(method) !== "PUT" || repo === undefined || number === undefined) {
 		return Option.none();

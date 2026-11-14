@@ -53,6 +53,17 @@ const rows: ReadonlyArray<{ readonly argv: ReadonlyArray<string>; readonly expec
 		argv: ["api", "-X", "PUT", "https://api.github.com/repos/o/r/pulls/5/merge"],
 		expect: `merge ${scratchPr} via api`,
 	},
+	{ argv: ["api", "-X", "PUT", "repos/o/r/pulls/5/merge?merge_method=squash"], expect: `merge ${scratchPr} via api` },
+	{
+		argv: [
+			"api",
+			"https://api.github.com/graphql",
+			"-f",
+			"query=mutation { mergePullRequest(input: {}) { clientMutationId } }",
+		],
+		expect:
+			"refuse: merge gate: a merge through `gh api graphql` is refused, because it names the pull request by node id, which the gate does not read.",
+	},
 	{ argv: ["api", "repos/o/r/pulls/5/merge"], expect: "passes through" },
 	{
 		argv: [
@@ -61,7 +72,8 @@ const rows: ReadonlyArray<{ readonly argv: ReadonlyArray<string>; readonly expec
 			"-f",
 			'query=mutation { mergePullRequest(input: {pullRequestId: "PR_x"}) { clientMutationId } }',
 		],
-		expect: "refuse: merge gate: a merge through `gh api graphql` is refused, because the gate cannot pin its head.",
+		expect:
+			"refuse: merge gate: a merge through `gh api graphql` is refused, because it names the pull request by node id, which the gate does not read.",
 	},
 	{
 		argv: [
