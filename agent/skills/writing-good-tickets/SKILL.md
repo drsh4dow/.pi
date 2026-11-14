@@ -120,7 +120,7 @@ Hypothesis: the guard splits commands on `;` and `|` inside quotes, so the quote
 
 ## Context
 
-- The glossary's Owned work section defines levels and why an agent at the last level starts no delegates. The fix must keep that rule.
+- The glossary's Owned work section defines levels and which agents may start delegates. The fix must keep that rule.
 ````
 
 The same ticket, written badly:
