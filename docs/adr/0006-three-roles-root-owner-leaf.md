@@ -1,5 +1,7 @@
 # Three roles: root, owner and leaf
 
+Superseded in part by ADR 0008, which lets an owner at the last level start leaves.
+
 Every agent has one of three roles. The **root** is the pi at the human's terminal. An **owner** is a delegate handed one slice to build, verify, commit and report on; it may run a playbook and start delegates of its own. A **leaf** is a delegate handed one bounded task, such as a search, a review, a verification lane or a scoped edit; it never delegates and runs no playbook. The roles follow pstack's topology: the chat the human talks to, the agent that carries one PR, and the helper that does one piece of it.
 
 The parent picks a delegate's role, in the `delegate` call's `role` or in the `role` of the instructions file's profile. The call wins, as it does for `model`. A call that names neither fails before anything starts, and the error says what each role is for, so the choice is never a silent default. The child reads its role from `PI_OWNED_WORK_ROLE` beside its level, and the prompt feature builds its prompt from `agent/roles/<role>.md`.
