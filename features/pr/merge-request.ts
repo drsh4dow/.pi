@@ -56,6 +56,12 @@ const flagOf = (token: string, rest: ReadonlyArray<string>): readonly [Flag, Rea
 		return [[Str.slice(0, equals.value)(token), Str.slice(equals.value + 1)(token)], rest];
 	}
 
+	const short = Str.slice(0, 2)(token);
+
+	if (!Str.startsWith("--")(token) && token.length > 2 && valueFlags.has(short)) {
+		return [[short, Str.replace(/^=/u, "")(Str.slice(2)(token))], rest];
+	}
+
 	return valueFlags.has(token) ? [[token, rest[0] ?? ""], Arr.drop(rest, 1)] : [[token, "true"], rest];
 };
 
@@ -80,7 +86,10 @@ const parsed = (argv: ReadonlyArray<string>): Parsed => {
 
 type Values = (...names: ReadonlyArray<string>) => ReadonlyArray<string>;
 
-const isOn = (values: ReadonlyArray<string>) => Option.exists(Arr.last(values), (value) => value !== "false");
+/** The spellings of false that gh's flag parser accepts. */
+const falseValues = new Set(["false", "0", "f", "F", "FALSE", "False"]);
+
+const isOn = (values: ReadonlyArray<string>) => Option.exists(Arr.last(values), (value) => !falseValues.has(value));
 
 const refuse = (lines: ReadonlyArray<string>) => MergeRequest.Refuse({ why: Arr.join(lines, "\n") });
 
@@ -95,6 +104,15 @@ const deferred = (pr: string) =>
 /** `-R` takes `[HOST/]OWNER/REPO`. */
 const prUrl = (repo: string, number: string) =>
 	Str.split(repo, "/").length === 3 ? `https://${repo}/pull/${number}` : `https://github.com/${repo}/pull/${number}`;
+
+/** None for a branch name with `-R`: gh resolves it in that repository, and the gate cannot. */
+const selectorOf = (target: string, repo: Option.Option<string>): Option.Option<string> => {
+	if (/^\d+$/u.test(target)) {
+		return Option.some(Option.match(repo, { onNone: () => target, onSome: (named) => prUrl(named, target) }));
+	}
+
+	return Option.isSome(repo) && !Str.startsWith("https://")(target) ? Option.none() : Option.some(target);
+};
 
 const prMergeOf = (target: string | undefined, values: Values): Option.Option<MergeRequest> => {
 	if (isOn(values("--disable-auto"))) {
@@ -114,10 +132,18 @@ const prMergeOf = (target: string | undefined, values: Values): Option.Option<Me
 		);
 	}
 
-	const repo = Option.filter(Arr.last(values("-R", "--repo")), () => /^\d+$/u.test(target));
-	const pr = Option.match(repo, { onNone: () => target, onSome: (named) => prUrl(named, target) });
+	const selector = selectorOf(target, Arr.last(values("-R", "--repo")));
 
-	return Option.some(MergeRequest.Merge({ pr, via: "pr" }));
+	return Option.some(
+		Option.match(selector, {
+			onNone: () =>
+				refuse([
+					"merge gate: with -R, name the pull request by number or URL, as in `gh pr merge <number> -R <owner/repo> --squash`.",
+					"The gate would read a branch name in this folder's repository, not the one -R names.",
+				]),
+			onSome: (pr) => MergeRequest.Merge({ pr, via: "pr" }),
+		}),
+	);
 };
 
 const stackMergeOf = (target: string | undefined): MergeRequest =>
@@ -145,7 +171,7 @@ const graphqlMergeOf = (values: Values): Option.Option<MergeRequest> => {
 		: Option.none();
 };
 
-const restMerge = /^\/?repos\/(?<repo>[^/]+\/[^/]+)\/pulls\/(?<number>\d+)\/merge\/?$/u;
+const restMerge = /^(?:https:\/\/api\.github\.com)?\/?repos\/(?<repo>[^/]+\/[^/]+)\/pulls\/(?<number>\d+)\/merge\/?$/u;
 
 const apiMergeOf = (endpoint: string, values: Values): Option.Option<MergeRequest> => {
 	if (endpoint === "graphql") {

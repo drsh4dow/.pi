@@ -26,6 +26,13 @@ const rows: ReadonlyArray<{ readonly argv: ReadonlyArray<string>; readonly expec
 	{ argv: ["pr", "merge", "-R", "ghe.example/o/r", "5"], expect: "merge https://ghe.example/o/r/pull/5 via pr" },
 	{ argv: ["pr", "merge", "-b", "merge it", "5", "--admin"], expect: "merge 5 via pr" },
 	{ argv: ["pr", "merge", scratchPr, "--squash"], expect: `merge ${scratchPr} via pr` },
+	{ argv: ["pr", "merge", "-Ro/r", "5"], expect: `merge ${scratchPr} via pr` },
+	{
+		argv: ["pr", "merge", "topic", "-R", "o/r", "--squash"],
+		expect:
+			"refuse: merge gate: with -R, name the pull request by number or URL, as in `gh pr merge <number> -R <owner/repo> --squash`.",
+	},
+	{ argv: ["pr", "merge", "5", "--squash", "--disable-auto=0"], expect: "merge 5 via pr" },
 	{
 		argv: ["pr", "merge", "--squash"],
 		expect: "refuse: merge gate: name the pull request, as in `gh pr merge <number> --squash`.",
@@ -41,6 +48,11 @@ const rows: ReadonlyArray<{ readonly argv: ReadonlyArray<string>; readonly expec
 	},
 	{ argv: ["api", "-X", "PUT", "repos/o/r/pulls/5/merge"], expect: `merge ${scratchPr} via api` },
 	{ argv: ["api", "--method=put", "/repos/{owner}/{repo}/pulls/5/merge"], expect: "merge 5 via api" },
+	{ argv: ["api", "-XPUT", "repos/o/r/pulls/5/merge"], expect: `merge ${scratchPr} via api` },
+	{
+		argv: ["api", "-X", "PUT", "https://api.github.com/repos/o/r/pulls/5/merge"],
+		expect: `merge ${scratchPr} via api`,
+	},
 	{ argv: ["api", "repos/o/r/pulls/5/merge"], expect: "passes through" },
 	{
 		argv: [
