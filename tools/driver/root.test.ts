@@ -1,0 +1,96 @@
+import { expect, test } from "bun:test";
+
+import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
+
+import { lfLines, startRoot } from "./root.ts";
+import { layoutOf } from "./world.ts";
+
+const rows = [
+	{
+		name: "U+2028 inside a record does not split it",
+		carried: "",
+		chunk: '{"text":"a\u2028b"}\n',
+		expected: { lines: ['{"text":"a\u2028b"}'], rest: "" },
+	},
+	{
+		name: "U+2029 inside a record does not split it",
+		carried: "",
+		chunk: '{"text":"a\u2029b"}\n{"n":2}\n',
+		expected: { lines: ['{"text":"a\u2029b"}', '{"n":2}'], rest: "" },
+	},
+	{
+		name: "a CR before the LF is dropped",
+		carried: "",
+		chunk: '{"n":1}\r\n{"n":2}\n',
+		expected: { lines: ['{"n":1}', '{"n":2}'], rest: "" },
+	},
+	{
+		name: "a record split across chunks waits for its LF",
+		carried: "",
+		chunk: '{"n":1}\n{"te',
+		expected: { lines: ['{"n":1}'], rest: '{"te' },
+	},
+	{
+		name: "the carried part joins the next chunk",
+		carried: '{"te',
+		chunk: 'xt":"x"}\n',
+		expected: { lines: ['{"text":"x"}'], rest: "" },
+	},
+	{
+		name: "a chunk with no LF yields no line",
+		carried: '{"a"',
+		chunk: ":1",
+		expected: { lines: [], rest: '{"a":1' },
+	},
+];
+
+for (const { name, carried, chunk, expected } of rows) {
+	test(`lfLines: ${name}`, () => {
+		expect(lfLines({ carried, chunk })).toEqual(expected);
+	});
+}
+
+/** A pi that answers every RPC command except `FAKE_IGNORES`, and settles after each prompt. */
+const fakePi = `#!/usr/bin/env bun
+for await (const line of console) {
+	const command = JSON.parse(line);
+	if (command.type === process.env.FAKE_IGNORES) continue;
+	const data = { get_state: { sessionId: "s", sessionFile: "/s.jsonl" }, prompt: { disposition: "queued" } }[command.type];
+	console.log(JSON.stringify({ type: "response", id: command.id, command: command.type, success: true, data }));
+	if (command.type === "prompt") console.log(JSON.stringify({ type: "agent_settled" }));
+}
+`;
+
+for (const ignored of ["prompt", "get_last_assistant_text"]) {
+	test(`prompt fails within its deadline when pi never answers ${ignored}`, () =>
+		Effect.runPromise(
+			Effect.gen(function* () {
+				const fs = yield* FileSystem.FileSystem;
+				const tmp = yield* fs.makeTempDirectoryScoped();
+				const layout = layoutOf({ tmp, name: "fake", stamp: "20260514-101010", pid: 42, tag: "0abc12" });
+
+				yield* Effect.forEach([layout.bin, layout.project, layout.sessions], (dir) =>
+					fs.makeDirectory(dir, { recursive: true }),
+				);
+				yield* fs.writeFileString(`${layout.bin}/pi`, fakePi, { mode: 0o755 });
+
+				const root = yield* startRoot({
+					world: {
+						layout,
+						agentDir: tmp,
+						env: { PATH: Bun.env["PATH"] ?? "", FAKE_IGNORES: ignored },
+						pi: { version: "0.0.0", path: `${layout.bin}/pi` },
+						exec: () => Effect.die("unused"),
+					},
+					model: "a/b",
+					progress: () => Effect.void,
+				});
+
+				const failure = yield* Effect.flip(root.prompt("hi", "300 millis"));
+
+				expect(failure.message).toBe('the root did not settle within 0.3 s after "hi"');
+			}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+		));
+}
