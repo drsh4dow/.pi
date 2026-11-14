@@ -41,13 +41,13 @@ const rows: ReadonlyArray<Row> = [
 					"continue: delegate-1 done: built; group-3 [delegate-2 done: VERDICT: pass]; watch-4 fired 0 (log watch.log): tail",
 			}),
 			Delivered({
-				expect: (session) => [
+				expect: (sessionIdOf) => [
 					{
 						ref: "delegate-1",
 						kind: "delegate",
 						name: "slice owner",
-						session: session("t1"),
-						outcome: { status: "done", text: "built", cut: false, answer: answerFile(session("t1")) },
+						session: sessionIdOf("t1"),
+						outcome: { status: "done", text: "built", cut: false, answer: answerFile(sessionIdOf("t1")) },
 					},
 					{
 						ref: "group-3",
@@ -60,12 +60,12 @@ const rows: ReadonlyArray<Row> = [
 									ref: "delegate-2",
 									kind: "delegate",
 									name: "reviewer",
-									session: session("t2"),
+									session: sessionIdOf("t2"),
 									outcome: {
 										status: "done",
 										text: "VERDICT: pass",
 										cut: false,
-										answer: answerFile(session("t2")),
+										answer: answerFile(sessionIdOf("t2")),
 									},
 								},
 							],
@@ -114,17 +114,17 @@ const rows: ReadonlyArray<Row> = [
 			idles,
 			Answer({ terminal: "t1", text: longAnswer, end: exit(0) }),
 			Delivered({
-				expect: (session) => [
+				expect: (sessionIdOf) => [
 					{
 						ref: "delegate-1",
 						kind: "delegate",
 						name: "Review 1",
-						session: session("t1"),
+						session: sessionIdOf("t1"),
 						outcome: {
 							status: "done",
-							text: `${firstFive}\n\n[The answer is cut at 4,998 of 20,000 characters. Read the whole answer in ${answerFile(session("t1"))}]`,
+							text: `${firstFive}\n\n[The answer is cut at 4,998 of 20,000 characters. Read the whole answer in ${answerFile(sessionIdOf("t1"))}]`,
 							cut: true,
-							answer: answerFile(session("t1")),
+							answer: answerFile(sessionIdOf("t1")),
 						},
 					},
 				],

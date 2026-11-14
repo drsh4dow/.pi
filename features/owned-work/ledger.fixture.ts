@@ -44,9 +44,9 @@ const checked = <Value>(got: () => Value, expected: Value) =>
 	});
 
 const briefOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
-	world.delegates += 1;
+	world.delegatesStarted += 1;
 
-	const name = act.name ?? `Review ${String(world.delegates)}`;
+	const name = act.name ?? `Review ${String(world.delegatesStarted)}`;
 	const message = act.messageKiB === undefined ? "Review it." : Str.repeat(act.messageKiB * 1024)("x");
 	const text = act.instructionsKiB === undefined ? "Review." : Str.repeat(act.instructionsKiB * 1024)("p");
 	const fixed = { name, role: "leaf", model: "a/b", goal: "Cap the retries.", readOnly: false } as const;

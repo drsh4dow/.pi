@@ -59,8 +59,7 @@ export interface World {
 	readonly settledRefs: Array<string>;
 	readonly fs: FileSystem.FileSystem;
 	readonly clock: { backMs: number; sleeping: number };
-	/** Delegates started so far, which names each one apart from the others by default. */
-	delegates: number;
+	delegatesStarted: number;
 	dead: boolean;
 }
 
@@ -217,7 +216,7 @@ const blankWorld = (seed: Pick<Outside, "notices" | "listening" | "gate" | "scop
 	hostCallsAfterDeath: [],
 	settles: [],
 	settledRefs: [],
-	delegates: 0,
+	delegatesStarted: 0,
 	dead: false,
 });
 

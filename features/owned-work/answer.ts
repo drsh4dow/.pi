@@ -3,7 +3,6 @@ import * as Str from "effect/String";
 
 import type { Answer } from "./work.ts";
 
-/** Characters of an answer a wake carries. One bound for every delegate, so no call sets its own. */
 export const answerCap = 6000;
 
 const paragraphBreak = "\n\n";
@@ -13,7 +12,6 @@ const count = (characters: number) => characters.toLocaleString("en-US");
 const closingLine = (kept: number, total: number, file: string) =>
 	`[The answer is cut at ${count(kept)} of ${count(total)} characters. Read the whole answer in ${file}]`;
 
-/** The whole answer when it fits `answerCap`, else the paragraphs that fit and a closing line that names `file`. */
 export const answerOf =
 	(file: string) =>
 	(text: string): Answer => {

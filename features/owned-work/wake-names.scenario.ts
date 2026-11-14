@@ -1,7 +1,3 @@
-/**
- * A root starts an owner, and the owner starts a leaf. Each wake names the delegate it is about with the name its parent
- * chose, and with the id of that delegate's own session file.
- */
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -32,7 +28,6 @@ const decodeWake = Schema.decodeUnknownOption(Wake);
 const wakeNamed = (entries: ReadonlyArray<SessionEntry>, name: string) =>
 	Arr.findFirst(entries, (entry) => Option.filter(decodeWake(entry), ({ details }) => details.name === name));
 
-/** The wake in `parent`'s session that names `name`, and the delegate session whose id it names. */
 const wakeOf = (run: Run, name: string, parent: (sessions: Sessions) => Option.Option<ReadonlyArray<SessionEntry>>) =>
 	run.waitFor(`the wake that names ${name}`, "5 minutes", (sessions) =>
 		Option.flatMap(parent(sessions), (entries) =>

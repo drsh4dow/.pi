@@ -44,7 +44,6 @@ const delegatesLive = (state: LedgerState) =>
 export const liveDelegates = (state: LedgerState): ReadonlyArray<ChildSession> =>
 	Arr.map(delegatesLive(state), ({ childSession }) => childSession);
 
-/** A new delegate's name may not be one a live delegate of this agent runs under. */
 export const nameTaken =
 	(state: LedgerState) =>
 	(request: StartRequest): Option.Option<NameTaken> => {

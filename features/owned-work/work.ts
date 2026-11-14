@@ -35,7 +35,6 @@ export type FailReason = Data.TaggedEnum<{
 
 export const FailReason = Data.taggedEnum<FailReason>();
 
-/** A delegate's answer as its parent gets it: `text` is cut to `answerCap` characters, and `file` holds the whole answer. */
 export interface Answer {
 	readonly text: string;
 	readonly cut: boolean;
@@ -51,7 +50,6 @@ export type Outcome = Data.TaggedEnum<{
 
 export const Outcome = Data.taggedEnum<Outcome>();
 
-/** Who a result is about: the name the parent chose and the child session, or the command, or the group's name. */
 export type Identity =
 	| { readonly kind: "delegate"; readonly name: string; readonly session: string }
 	| { readonly kind: "watch" | "serve"; readonly command: string }
@@ -134,7 +132,6 @@ export class BadDelegate extends Schema.TaggedError<BadDelegate, { readonly bran
 	why: Schema.String,
 }) {}
 
-/** A delegate's name stays its own while it runs, so a parent never starts two delegates for one slice. */
 export class NameTaken extends Schema.TaggedError<NameTaken, { readonly brand: unique symbol }>()("NameTaken", {
 	wanted: Schema.String,
 	by: Schema.String,
