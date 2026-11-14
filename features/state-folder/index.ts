@@ -91,9 +91,20 @@ const changedNames = (before: Fingerprint, after: Fingerprint) =>
 
 const byLine = Order.mapInput(Order.Number, ({ line }: FormatProblem) => line);
 
+/** A regular file's bytes, none for a missing file or a folder, or a FIFO or device, whose read would block the call. */
+const regularFile = Effect.fn("regularFile")(function* (path: string) {
+	const fs = yield* FileSystem.FileSystem;
+	const info = yield* Effect.option(fs.stat(path));
+
+	if (Option.isNone(info) || info.value.type !== "File") {
+		return Option.none<Uint8Array>();
+	}
+
+	return yield* Effect.option(fs.readFile(path));
+});
+
 /** The problems a changed state file's check finds, as a report, none when the file has no check or is gone. */
 const reportOn = Effect.fn("reportOn")(function* (place: Place, name: string) {
-	const fs = yield* FileSystem.FileSystem;
 	const path = `${place.folder}/${name}`;
 	const check = checks.get(name);
 
@@ -101,7 +112,7 @@ const reportOn = Effect.fn("reportOn")(function* (place: Place, name: string) {
 		return Option.none<string>();
 	}
 
-	const file = yield* Effect.option(fs.readFile(path));
+	const file = yield* regularFile(path);
 
 	if (Option.isNone(file)) {
 		return Option.none<string>();

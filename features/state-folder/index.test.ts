@@ -71,7 +71,7 @@ await runTest(
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 
-		for (const work of ["alpha", "beta", "gamma", "delta", "epsilon"]) {
+		for (const work of ["alpha", "beta", "gamma", "delta", "epsilon", "zeta"]) {
 			yield* fs.makeDirectory(folder(work), { recursive: true });
 			yield* fs.writeFileString(`${folder(work)}/STATE.md`, `# ${work}\n`);
 		}
@@ -256,6 +256,16 @@ test("a bash heredoc that grows STATE.md past the cap comes back as an error nam
 
 			expect(texts[1]).toContain("16,384");
 			expect(texts[1]).toContain("decisions.tsv");
+		}),
+	));
+
+test("a call that leaves a FIFO as STATE.md comes back without waiting on it", () =>
+	runTest(
+		Effect.gen(function* () {
+			const path = `${folder("zeta")}/STATE.md`;
+			const finished = yield* finish(new Map(), "0", runBash(`rm ${path} && mkfifo ${path}`));
+
+			expect(finished).toEqual({ wrote: Option.some(folder("zeta")), checked: Option.none() });
 		}),
 	));
 
