@@ -13,6 +13,8 @@ import { Gh, GhError, type PrView } from "../../clients/gh/index.ts";
 import { changes, prWait } from "./index.ts";
 
 const open: PrView = {
+	repo: "o/r",
+	number: 1,
 	ref: "o/r#1",
 	head: "9c1e2a0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 	reviewDecision: Option.none(),
@@ -89,7 +91,7 @@ const scripted = (scripts: Readonly<Record<string, ReadonlyArray<Reading>>>) => 
 			return script[Math.min(read, script.length - 1)] ?? failed(`no script for ${pr}`);
 		});
 
-	return Layer.succeed(Gh, Gh.of({ view }));
+	return Layer.succeed(Gh, Gh.of({ view, patchId: () => failed("no diff") }));
 };
 
 const outcome = (prs: Arr.NonEmptyReadonlyArray<string>) =>

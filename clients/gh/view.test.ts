@@ -19,6 +19,8 @@ const bare = ({ rollup = [], state = "OPEN", url = "https://github.com/drsh4dow/
 
 test("a reviewed pull request reads with its ref, decision and submitted reviews only", () => {
 	const expected: PrView = {
+		repo: "o/r",
+		number: 7,
 		ref: "o/r#7",
 		head: "9c1e2a0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		reviewDecision: Option.some("CHANGES_REQUESTED"),

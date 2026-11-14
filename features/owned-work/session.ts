@@ -45,10 +45,10 @@ import { Host, Ledger, ledgerLayer } from "./ledger.ts";
 import { Out } from "./out.ts";
 import { warnPolling } from "./polling.ts";
 import { entryKind, firstRefAfter } from "./recorded.ts";
-import { Tools } from "./tools.ts";
+import { Tools, type ToolServices } from "./tools.ts";
 import type { Settled } from "./work.ts";
 
-type RuntimeServices = Ledger | Hc | Slices | PiCli | PiSessions | HerdrApp | NodeServices.NodeServices;
+type RuntimeServices = Ledger | ToolServices | Hc | Slices | PiCli | PiSessions | HerdrApp | NodeServices.NodeServices;
 
 type Runtime = ManagedRuntime.ManagedRuntime<RuntimeServices, never>;
 
@@ -119,7 +119,7 @@ const runtimeOf = (pi: ExtensionAPI, { ctx, env, childExtensions, inheritance, s
 			piCliLayer(childExtensions),
 			herdrAppLayer,
 		),
-		NodeServices.layer,
+		Layer.provideMerge(Tools.layer, NodeServices.layer),
 	);
 
 	const runtime = ManagedRuntime.make(Layer.provideMerge(ledger, services));

@@ -20,6 +20,7 @@ import type { Act, Row } from "./act.fixture.ts";
 import type { LedgerFailure } from "./ledger.ts";
 import { Out } from "./out.ts";
 import { Verdict } from "./step.ts";
+import { recordsAre } from "./verdict.fixture.ts";
 import { type Handle, MonotonicNanos, monotonicNow, Outcome, type Settled, StartRequest, WorkRef } from "./work.ts";
 import {
 	deliveredRefs,
@@ -52,7 +53,9 @@ const briefOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
 	const fixed = { name, role: "leaf", model: "a/b", goal: "Cap the retries.", readOnly: false } as const;
 	const unset = { thinking: Option.none(), state: Option.none(), facts: Option.none() };
 
-	return { ...fixed, ...unset, message, instructions: Option.some({ file: "/r.md", text }) };
+	const review = act.reviews === undefined ? {} : { review: { repo: "o/r", patchId: "p", ...act.reviews } };
+
+	return { ...fixed, ...unset, ...review, message, instructions: Option.some({ file: "/r.md", text }) };
 };
 
 const requestOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">): StartRequest => {
@@ -257,6 +260,7 @@ const perform = (world: World, act: Act): Effect.Effect<void> =>
 			checked(() => Arr.map(world.delivered, Out.result), [...expected(sessionOf(world))]),
 		AnswerFiles: ({ expect: expected }) =>
 			Effect.flatMap(Effect.orDie(answerFiles(world)), (texts) => checked(() => texts, [...expected])),
+		VerdictRecords: ({ pr, expect: expected }) => recordsAre(world.fs)({ pr, expected: expected(sessionOf(world)) }),
 		Killed: ({ expect: expected }) => checked(() => world.kills.splice(0), [...expected]),
 		Settles: ({ expect: expected }) => checked(() => world.settles.splice(0), [...expected]),
 		Leftovers: ({ expect: expected }) =>

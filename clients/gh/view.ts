@@ -19,6 +19,8 @@ export interface Review {
 export type Checks = "none" | "pending" | "pass" | "fail";
 
 export interface PrView {
+	readonly repo: string;
+	readonly number: number;
 	readonly ref: string;
 	readonly head: string;
 	readonly reviewDecision: Option.Option<ReviewDecision>;
@@ -105,14 +107,21 @@ const decodeWire = Schema.decodeUnknownResult(Schema.fromJsonString(Wire));
 export const viewOf = (stdout: string): Result.Result<PrView, string> =>
 	decodeWire(stdout).pipe(
 		Result.mapError((error) => error.message),
-		Result.map((wire) => ({
-			ref: Str.replace(prUrl, "$<repo>#$<number>")(wire.url),
-			head: wire.headRefOid,
-			reviewDecision: wire.reviewDecision === "" ? Option.none() : Option.some(wire.reviewDecision),
-			reviews: Arr.flatMap(wire.reviews, ({ author, state, submittedAt }) =>
-				state === "PENDING" ? [] : [{ author: author.login, state, submittedAt }],
-			),
-			checks: checksOf(wire.statusCheckRollup),
-			state: wire.state,
-		})),
+		Result.map((wire) => {
+			const repo = Str.replace(prUrl, "$<repo>")(wire.url);
+			const number = Str.replace(prUrl, "$<number>")(wire.url);
+
+			return {
+				repo,
+				number: Number(number),
+				ref: `${repo}#${number}`,
+				head: wire.headRefOid,
+				reviewDecision: wire.reviewDecision === "" ? Option.none() : Option.some(wire.reviewDecision),
+				reviews: Arr.flatMap(wire.reviews, ({ author, state, submittedAt }) =>
+					state === "PENDING" ? [] : [{ author: author.login, state, submittedAt }],
+				),
+				checks: checksOf(wire.statusCheckRollup),
+				state: wire.state,
+			};
+		}),
 	);

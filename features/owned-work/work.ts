@@ -8,6 +8,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 import type { TerminalAddress, TerminalEnd } from "../../clients/hc/index.ts";
+import type { VerdictRecord } from "../pr/index.ts";
 import type { Brief, ChildSession } from "./child.ts";
 
 export type WorkRef = string & Brand.Brand<"WorkRef">;
@@ -41,8 +42,14 @@ export interface Answer {
 	readonly file: string;
 }
 
+/** What the ledger made of a verifier's answer: the record it writes, and the line repeated fails add to the wake. */
+export interface Reviewed {
+	readonly record: VerdictRecord;
+	readonly next: Option.Option<string>;
+}
+
 export type Outcome = Data.TaggedEnum<{
-	Done: { readonly answer: Answer };
+	Done: { readonly answer: Answer; readonly verdict: Option.Option<Reviewed> };
 	Fired: { readonly exitCode: number; readonly tail: string };
 	Members: { readonly results: ReadonlyArray<Settled> };
 	Failed: { readonly reason: FailReason };

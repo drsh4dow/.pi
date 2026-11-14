@@ -66,6 +66,9 @@ const designLine = Design.match({
 	Yours: () => "Your design is yours to settle: run the `architect` skill before you write code.",
 });
 
+const reviewText = (pr: string, head: string) =>
+	`You verify pull request ${pr} at head ${head}. Review that commit. End your answer with one of these as its last line: \`VERDICT: PASS\`, \`VERDICT: PASS+NOTES\`, \`VERDICT: FAIL\`, or \`VERDICT: INCOMPLETE\` when you could not finish. Your parent's ledger records it for that head, and an answer without it records incomplete.`;
+
 export const briefBlocks = (brief: StagedBrief): string => {
 	const workLines = [
 		`The user's goal: ${Str.trim(brief.goal)}`,
@@ -74,11 +77,13 @@ export const briefBlocks = (brief: StagedBrief): string => {
 	];
 
 	const ownerRules = brief.role === "owner" ? brief.ownerRules : Option.none();
+	const review = Option.fromUndefinedOr(brief.role === "leaf" ? brief.review : undefined);
 
 	const blocks = [
 		block("work", Arr.join(workLines, "\n")),
 		...Option.toArray(Option.map(brief.facts, (facts) => block("project-facts", facts))),
 		...Option.toArray(Option.map(ownerRules, (rules) => block("owner-rules", rules))),
+		...Option.toArray(Option.map(review, ({ pr, head }) => block("review", reviewText(pr, head)))),
 		...Option.toArray(Option.map(brief.instructions, (text) => block("instructions", text))),
 	];
 

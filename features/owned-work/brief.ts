@@ -13,6 +13,7 @@ import { lastFolder } from "../state-folder/index.ts";
 import type { Brief, ChildRole } from "./child.ts";
 import { type ModelCaller, modelChoices, modelDescription, modelNameOf, modelOf, type ModelTable } from "./models.ts";
 import { parseProfile } from "./profile.ts";
+import { reviewsParam } from "./review.ts";
 import { BadDelegate } from "./work.ts";
 
 export const roleUses =
@@ -72,6 +73,7 @@ export const delegateParams = ({
 		group: words(
 			"A few words for what the group's work has in common, such as `principles eval`. Delegates you start with the same `group` while that group runs join it, and it wakes you once with all their answers.",
 		),
+		reviews: Type.Optional(reviewsParam),
 	});
 };
 
@@ -216,11 +218,6 @@ const roleOf = (named: Option.Option<ChildRole>, roles: ReadonlyArray<ChildRole>
 		),
 	);
 
-interface Parsed {
-	readonly brief: Brief;
-	readonly cwd: Option.Option<string>;
-}
-
 export const parseCall = Effect.fn("parseCall")(function* (
 	ctx: Caller,
 	table: ModelTable,
@@ -267,7 +264,5 @@ export const parseCall = Effect.fn("parseCall")(function* (
 		instructions: Option.map(profile, ({ file, text }) => ({ file, text })),
 	};
 
-	const parsed: Parsed = { brief, cwd };
-
-	return parsed;
+	return { brief, cwd };
 });

@@ -67,8 +67,6 @@ Categorize every finding, using the same severity labels as `playbooks/code-revi
 ```markdown
 ## Review Summary
 
-**Verdict:** APPROVE | REQUEST CHANGES
-
 **Overview:** [1-2 sentences summarizing the change and overall assessment]
 
 ### Critical Issues
@@ -96,6 +94,8 @@ Categorize every finding, using the same severity labels as `playbooks/code-revi
 - Tests reviewed: [yes/no, observations]
 - Build verified: [yes/no]
 - Security checked: [yes/no, observations]
+
+VERDICT: PASS | PASS+NOTES | FAIL | INCOMPLETE
 ```
 
 ## Rules
@@ -103,7 +103,7 @@ Categorize every finding, using the same severity labels as `playbooks/code-revi
 1. Review the tests first — they reveal intent and coverage
 2. Read the spec or task description before reviewing code
 3. Every Critical and Required finding should include a specific fix recommendation
-4. Don't approve code with Critical issues
+4. End with one verdict as the last line of your answer: `VERDICT: FAIL` for any Critical or Required finding, `VERDICT: PASS+NOTES` when only Optional or Nit findings remain, `VERDICT: PASS` when none do, and `VERDICT: INCOMPLETE` when you could not check what the review needs. The parent's ledger records that line, and an answer without it records incomplete
 5. Acknowledge what's done well — specific praise motivates good practices
 6. If you're uncertain about something, say so and suggest investigation rather than guessing
 

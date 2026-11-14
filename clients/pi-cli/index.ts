@@ -23,6 +23,8 @@ export const Design = Schema.TaggedUnion({ Sketch: { path: Schema.String }, Your
 
 export type Design = typeof Design.Type;
 
+const StagedReview = Schema.Struct({ pr: Schema.String, head: Schema.String });
+
 export const StagedBrief = Schema.Union([
 	Schema.Struct({
 		role: Schema.Literal("owner"),
@@ -30,7 +32,11 @@ export const StagedBrief = Schema.Union([
 		ownerRules: Schema.OptionFromOptionalKey(Schema.String),
 		design: Design,
 	}),
-	Schema.Struct({ role: Schema.Literal("leaf"), ...briefFields }),
+	Schema.Struct({
+		role: Schema.Literal("leaf"),
+		...briefFields,
+		review: Schema.optionalKey(StagedReview),
+	}),
 ]);
 
 export type StagedBrief = typeof StagedBrief.Type;

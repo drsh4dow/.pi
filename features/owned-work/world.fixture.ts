@@ -278,7 +278,7 @@ const loadOf =
 		Effect.gen(function* () {
 			const own = yield* Scope.fork(scope);
 			const clients = Layer.mergeAll(piSessionsLayer, piCliLayer(["/entrypoint.ts"]));
-			const ledger = ledgerLayer({ self, cwd: sessionRoot, passEnv: {}, firstRef: 1, carried });
+			const ledger = ledgerLayer({ self, cwd: sessionRoot, passEnv: { HOME: sessionRoot }, firstRef: 1, carried });
 			const layer = Layer.provide(Layer.provideMerge(ledger, clients), Layer.succeedContext(kept));
 			const context = yield* Layer.buildWithScope(layer, own);
 

@@ -19,6 +19,8 @@ export type Act = Data.TaggedEnum<{
 		readonly heldThen?: HeldSpawn;
 		readonly group?: string;
 		readonly handle?: Readonly<Record<string, string | boolean>>;
+		/** The pull request, `o/r#<number>`, a verifier reviews at `head`. */
+		readonly reviews?: { readonly number: number; readonly head: string };
 	};
 	Launched: {
 		readonly terminal: string;
@@ -42,6 +44,10 @@ export type Act = Data.TaggedEnum<{
 	Wakes: { readonly expect: ReadonlyArray<string> };
 	Delivered: { readonly expect: (sessionIdOf: (terminal: string) => string) => ReadonlyArray<object> };
 	AnswerFiles: { readonly expect: ReadonlyArray<string> };
+	VerdictRecords: {
+		readonly pr: number;
+		readonly expect: (sessionIdOf: (terminal: string) => string) => ReadonlyArray<object>;
+	};
 	Killed: { readonly expect: ReadonlyArray<string> };
 	Settles: { readonly expect: ReadonlyArray<string> };
 	Leftovers: { readonly expect: ReadonlyArray<string> };

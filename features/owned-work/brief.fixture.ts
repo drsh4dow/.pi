@@ -11,6 +11,7 @@ import * as Option from "effect/Option";
 import * as Struct from "effect/Struct";
 import type { Static } from "typebox";
 
+import { Gh, GhError } from "../../clients/gh/index.ts";
 import type { Design } from "../../clients/pi-cli/index.ts";
 import type { DelegateParams } from "./brief.ts";
 import type { Brief, ChildRole } from "./child.ts";
@@ -91,7 +92,30 @@ const ledger = Layer.mock(Ledger)({
 
 const home = ConfigProvider.layer(ConfigProvider.fromUnknown({ HOME: fixtures }));
 
-export const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, ledger, home));
+export const pinned = { repo: "o/r", number: 7, head: "9c1e2a0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", patchId: "6499691" };
+
+const noPullRequest = (pr: string) =>
+	Effect.fail(GhError.make({ args: ["gh", "pr", "view", pr], why: "no pull requests found" }));
+
+const gh = Layer.succeed(
+	Gh,
+	Gh.of({
+		view: (pr) =>
+			pr === "7"
+				? Effect.succeed({
+						...pinned,
+						ref: "o/r#7",
+						reviewDecision: Option.none(),
+						reviews: [],
+						checks: "none",
+						state: "OPEN",
+					})
+				: noPullRequest(pr),
+		patchId: (pr) => (pr === "7" ? Effect.succeed(pinned.patchId) : noPullRequest(pr)),
+	}),
+);
+
+export const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, ledger, home, gh));
 
 export const delegateStarting = (roles: ReadonlyArray<ChildRole>) =>
 	Tools.delegate(runtime, roles, { cwd: "/", dir: "/d" }, table, Option.none());

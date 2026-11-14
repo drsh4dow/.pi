@@ -14,6 +14,7 @@ import * as Option from "effect/Option";
 import type * as Path from "effect/Path";
 import { type Static, Type } from "typebox";
 
+import { type Gh, ghLayer } from "../../clients/gh/index.ts";
 import { readStagedBrief } from "../../clients/pi-cli/index.ts";
 import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
 import { type Caller, type DelegateParams, delegateParams, parseCall } from "./brief.ts";
@@ -22,6 +23,7 @@ import { freshCall, parseContinuation } from "./continuation.ts";
 import { Ledger, type LedgerFailure } from "./ledger.ts";
 import { type ModelTable, modelTable } from "./models.ts";
 import { HandleOut, Out, ResultsOut } from "./out.ts";
+import { withReview } from "./review.ts";
 import { BadDelegate, StartRequest, WorkRef } from "./work.ts";
 
 const HandleRef = Type.Object({ ref: Type.String() });
@@ -86,11 +88,11 @@ const resultOf = (json: JsonValue, isError: boolean) =>
 		isError,
 	}));
 
-type Runtime = ManagedRuntime.ManagedRuntime<Ledger | FileSystem.FileSystem | Path.Path, never>;
+type Runtime = ManagedRuntime.ManagedRuntime<Ledger | Gh | FileSystem.FileSystem | Path.Path, never>;
 
 type Call<Reply> = (
 	ledger: (typeof Ledger)["Service"],
-) => Effect.Effect<Reply, LedgerFailure | BadDelegate, FileSystem.FileSystem | Path.Path>;
+) => Effect.Effect<Reply, LedgerFailure | BadDelegate, Gh | FileSystem.FileSystem | Path.Path>;
 
 const runTool =
 	(runtime: Runtime, signal: AbortSignal | undefined) =>
@@ -148,10 +150,11 @@ const delegateTool = (
 						const fresh = yield* freshCall(call);
 						const inherited = yield* ownBrief(ownSession);
 						const { brief, cwd } = yield* parseCall(ctx, table, roles, inherited, fresh);
+						const reviewed = yield* withReview(fresh.reviews)(brief);
 
 						return yield* ledger.start(
 							StartRequest.Delegate({
-								brief,
+								brief: reviewed,
 								childSession: { ...place, cwd: Option.getOrElse(cwd, () => place.cwd), id: uuidv7() },
 								group: Option.fromUndefinedOr(call.group),
 							}),
@@ -247,4 +250,7 @@ const register = (
 	}
 };
 
-export const Tools = { register, delegate: delegateTool };
+/** What the tools need beyond the ledger: \`gh\` pins the pull request a verifier reviews. */
+export type ToolServices = Gh;
+
+export const Tools = { register, delegate: delegateTool, layer: ghLayer };

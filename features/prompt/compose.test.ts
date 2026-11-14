@@ -93,6 +93,24 @@ const preambleRows: ReadonlyArray<{ name: string; shared: string; layers: Layers
 			"you are a coding agent.\n\n<role>\nleaf\n</role>\n\n<work>\nThe user's goal: Cap the retries.\n</work>\n\n<project-facts>\nBuild with make.\n</project-facts>\n\n<principles>\n…\n</principles>",
 	},
 	{
+		name: "a verifier reads the pull request and head it reviews, and the verdict line its answer ends with",
+		shared: "",
+		layers: {
+			...root,
+			role: "<role>\nleaf\n</role>",
+			brief: Option.some({
+				role: "leaf",
+				goal: "Cap the retries.",
+				state: Option.none(),
+				facts: Option.none(),
+				instructions: Option.none(),
+				review: { pr: "o/r#7", head: "9c1e2a0" },
+			}),
+		},
+		expect:
+			"<role>\nleaf\n</role>\n\n<work>\nThe user's goal: Cap the retries.\n</work>\n\n<review>\nYou verify pull request o/r#7 at head 9c1e2a0. Review that commit. End your answer with one of these as its last line: `VERDICT: PASS`, `VERDICT: PASS+NOTES`, `VERDICT: FAIL`, or `VERDICT: INCOMPLETE` when you could not finish. Your parent's ledger records it for that head, and an answer without it records incomplete.\n</review>",
+	},
+	{
 		name: "with no SYSTEM.md the role layer still comes first",
 		shared: "",
 		layers: root,
