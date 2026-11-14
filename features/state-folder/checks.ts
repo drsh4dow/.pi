@@ -24,10 +24,10 @@ export interface Place {
 	readonly folder: string;
 }
 
-/** A state file's check: its problems, in any order, and what to do about them. */
+/** A state file's check: the problems in the file's bytes as on disk, in any order, and what to do about them. */
 export interface Check {
 	readonly problems: (
-		text: string,
+		file: Uint8Array,
 		place: Place,
 	) => Effect.Effect<ReadonlyArray<FormatProblem>, never, FileSystem.FileSystem>;
 	readonly fix: string;
@@ -38,20 +38,20 @@ const newline = 10;
 
 const bytes = (count: number) => `${count.toLocaleString("en-US")} bytes`;
 
-/** Over the cap, one problem at the line holding the first byte past it. */
-const sizeProblems = (text: string): ReadonlyArray<FormatProblem> => {
-	const encoded = new TextEncoder().encode(text);
+const textOf = (file: Uint8Array) => new TextDecoder().decode(file);
 
-	if (encoded.length <= stateCap) {
+/** Over the cap, one problem at the line holding the first byte past it. */
+const sizeProblems = (file: Uint8Array): ReadonlyArray<FormatProblem> => {
+	if (file.length <= stateCap) {
 		return [];
 	}
 
-	const line = Arr.filter([...encoded.subarray(0, stateCap)], (byte) => byte === newline).length + 1;
+	const line = Arr.filter([...file.subarray(0, stateCap)], (byte) => byte === newline).length + 1;
 
 	return [
 		{
 			line,
-			message: `the file is ${bytes(encoded.length)}, over the cap of ${bytes(stateCap)}, and this line crosses it`,
+			message: `the file is ${bytes(file.length)}, over the cap of ${bytes(stateCap)}, and this line crosses it`,
 		},
 	];
 };
@@ -94,7 +94,13 @@ const datedHeadings = ({ type, depth = 0, text = "", tokens = [], items = [] }: 
  */
 const datedProblems = Effect.fn("datedProblems")(function* (text: string) {
 	const source = Str.replaceAll(/\r\n?/gu, "\n")(text);
-	const blocks = yield* Effect.orDie(decodeBlocks(marked.lexer(source)));
+	const parsed = yield* Effect.option(Effect.try({ try: () => marked.lexer(source), catch: String }));
+
+	if (Option.isNone(parsed)) {
+		return [{ line: 1, message: "Markdown cannot read the file, so its sections cannot be checked. Flatten it" }];
+	}
+
+	const blocks = yield* Effect.orDie(decodeBlocks(parsed.value));
 	const starts = Arr.scan(blocks, 0, (offset, { raw }) => offset + raw.length);
 
 	return Arr.flatMap(blocks, (block, index) =>
@@ -120,8 +126,9 @@ const resolvePath = (path: string, { home, folder }: Place) => {
 	return Str.startsWith("/")(path) ? path : `${folder}/${path}`;
 };
 
-const actionItemsProblems = Effect.fn("actionItemsProblems")(function* (text: string, place: Place) {
+const actionItemsProblems = Effect.fn("actionItemsProblems")(function* (file: Uint8Array, place: Place) {
 	const fs = yield* FileSystem.FileSystem;
+	const text = textOf(file);
 	const { problems, denials } = onlyYouReasons(text);
 
 	const missing = yield* Effect.forEach(denials, ({ line, path }) => {
@@ -145,7 +152,7 @@ export const checks = new Map<string, Check>([
 	[
 		"STATE.md",
 		{
-			problems: (text) => Effect.map(datedProblems(text), (dated) => [...sizeProblems(text), ...dated]),
+			problems: (file) => Effect.map(datedProblems(textOf(file)), (dated) => [...sizeProblems(file), ...dated]),
 			fix: `STATE.md holds at most ${bytes(stateCap)}, because you take the whole file back at every compaction. It keeps the destination, the human's standing instructions, the decisions in force, the status and the next step. Dated history and settled decisions go to the decision trail, decisions.tsv.`,
 		},
 	],

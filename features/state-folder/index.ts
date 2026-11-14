@@ -101,13 +101,13 @@ const reportOn = Effect.fn("reportOn")(function* (place: Place, name: string) {
 		return Option.none<string>();
 	}
 
-	const text = yield* Effect.option(fs.readFileString(path));
+	const file = yield* Effect.option(fs.readFile(path));
 
-	if (Option.isNone(text)) {
+	if (Option.isNone(file)) {
 		return Option.none<string>();
 	}
 
-	const problems = yield* check.problems(text.value, place);
+	const problems = yield* check.problems(file.value, place);
 
 	return Arr.match(Arr.sort(problems, byLine), {
 		onEmpty: () => Option.none<string>(),

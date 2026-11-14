@@ -24,10 +24,10 @@ await runTest(
 	}),
 );
 
-/** The problems a state file's check finds in this text: their lines, and their messages as one text. */
-const problemsOf = Effect.fn("problemsOf")(function* (name: string, text: string) {
+/** The problems a state file's check finds in these bytes: their lines, and their messages as one text. */
+const problemsIn = Effect.fn("problemsIn")(function* (name: string, file: Uint8Array) {
 	const check = yield* Effect.fromNullishOr(checks.get(name));
-	const problems = yield* check.problems(text, { home, folder });
+	const problems = yield* check.problems(file, { home, folder });
 
 	return {
 		lines: Arr.map(problems, ({ line }) => line),
@@ -37,6 +37,8 @@ const problemsOf = Effect.fn("problemsOf")(function* (name: string, text: string
 		),
 	};
 });
+
+const problemsOf = (name: string, text: string) => problemsIn(name, new TextEncoder().encode(text));
 
 const sixteenKib = Arr.join(Arr.replicate(Str.repeat(1023)("x"), 16), "\n");
 
@@ -71,6 +73,33 @@ test.each([
 		}),
 	),
 );
+
+test.each([
+	[
+		"16,383 bytes of text after a 3-byte BOM, crossing on line 16",
+		new Uint8Array([239, 187, 191, ...new TextEncoder().encode(sixteenKib)]),
+		[16],
+	],
+	["6,000 bytes that are not UTF-8", new Uint8Array(6000).fill(255), []],
+])("STATE.md of %s is measured as on disk", (_case, file, lines) =>
+	runTest(
+		Effect.gen(function* () {
+			const found = yield* problemsIn("STATE.md", file);
+
+			expect(found.lines).toEqual(lines);
+		}),
+	),
+);
+
+test("STATE.md nested deeper than Markdown can read still gets its size checked", () =>
+	runTest(
+		Effect.gen(function* () {
+			const { messages } = yield* problemsOf("STATE.md", `${Str.repeat(20_000)("> ")}## 2026-11-13\n`);
+
+			expect(messages).toContain("40,014 bytes");
+			expect(messages).toContain("Markdown cannot read the file");
+		}),
+	));
 
 test("STATE.md over the cap names its size and the cap", () =>
 	runTest(
