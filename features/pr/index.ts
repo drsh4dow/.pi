@@ -9,7 +9,7 @@ export { ghLayer, patchIdOf } from "../../clients/gh/index.ts";
 
 export { Authorization, gate } from "./gate.ts";
 
-export { MergeRequest, mergeRequestOf } from "./merge-request.ts";
+export { mergeRequestOf } from "./merge-request.ts";
 
 export {
 	pin,
