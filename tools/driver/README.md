@@ -36,7 +36,9 @@ evidence /tmp/pi-driver/leaf-wake-20260514-101010-4242
 Every outcome stops the root pi, its delegates and the run's terminal core, and keeps the run folder as evidence:
 `report.txt` (everything printed), `sessions/` (the root's and every delegate's session file), `probe/` (what each pi
 loaded and the payloads it built), `root.in.jsonl` and `root.out.jsonl` (every RPC record sent and received), `root.stderr`, `core.log`,
-and `home/` (the scratch HOME, including any state folder an agent made). The link to your `auth.json` is removed. A
+and `home/` (the scratch HOME, including any state folder an agent made). The link to your `auth.json` is removed.
+While it exists, a pi that refreshes an OAuth token rewrites your real `auth.json` through it, in place, so a run
+killed during that write can leave the file empty. A
 run killed outright cleans up the same way: the root pi exits when its stdin closes, and the shell that watches the
 terminal core stops it with its delegates and removes the link once the driver's pipe closes. That shell starts before
 the link exists, so a kill at any moment leaves only the run folder.
