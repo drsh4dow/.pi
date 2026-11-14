@@ -62,15 +62,17 @@ const delegateGuidelines = [
 	"Decide what goes to a delegate before you start, while your context is small. Work of a handful of tool calls, or that needs context a task message cannot carry, stays with you.",
 	"Reading of more than about 1,500 lines, or of three or more areas, goes to delegates, one per area in parallel, each asked for the facts you need with file, line, and quotes. This holds when the reading serves your own plan. Context spent on reading never comes back, so read yourself only what you will edit.",
 	"Run independent parts, where no two write the same file and none needs another's result, as delegates started in one turn with one `group` name.",
-	"Hand implementation to one owner per slice when a slice has written acceptance criteria or the work has two or more slices. Coupled code gets one owner.",
 	"Write each delegate task message as the delegate's whole world. Name the task, the inputs as file paths, what counts as done, and the shape of the answer.",
 	"Give each delegate that commits its own branch or worktree, and start it there with cwd.",
 	"A delegate's answer is a claim. Check what you will act on against the real artifact before you report it as done.",
 	"A delegate that reports something missing hands you a gap. Supply it in a fresh delegate's message. If only someone above you can settle it, it is your own open question now.",
 ];
 
-const nestingGuideline =
-	"An owner you start can start delegates of its own, so hand it its whole slice. A leaf cannot.";
+/** Only an agent that may start owners gets these. */
+const ownerGuidelines = [
+	"Hand implementation to one owner per slice when a slice has written acceptance criteria or the work has two or more slices. Coupled code gets one owner.",
+	"An owner you start can start delegates of its own, so hand it its whole slice. A leaf cannot.",
+];
 
 const lastLevelGuideline =
 	"Your delegates cannot start delegates of their own, so give each one work it can finish alone.";
@@ -126,7 +128,10 @@ const delegateTool = (
 		name: "delegate",
 		label: "delegate",
 		description: "Start a delegate on one task. It wakes you with its answer.",
-		promptGuidelines: [...delegateGuidelines, Arr.contains(roles, "owner") ? nestingGuideline : lastLevelGuideline],
+		promptGuidelines: [
+			...delegateGuidelines,
+			...(Arr.contains(roles, "owner") ? ownerGuidelines : [lastLevelGuideline]),
+		],
 		parameters,
 		outputSchema: HandleOut,
 		execute: (_id, call, signal, _update, ctx: Caller) =>

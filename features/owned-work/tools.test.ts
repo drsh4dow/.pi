@@ -40,27 +40,27 @@ const levelRows = [
 	{
 		name: "the root",
 		self: Self.Root({ role: "root", level: 1 }),
-		expect: { roles: ["owner", "leaf"], lastLevelLine: false },
+		expect: { roles: ["owner", "leaf"], lastLevelLine: false, ownerLine: true },
 	},
 	{
 		name: "a level-2 owner",
 		self: Self.Delegate({ role: "owner", level: 2, slice: "s" }),
-		expect: { roles: ["owner", "leaf"], lastLevelLine: false },
+		expect: { roles: ["owner", "leaf"], lastLevelLine: false, ownerLine: true },
 	},
 	{
 		name: "an owner at the last level, told its delegates cannot delegate,",
 		self: Self.Delegate({ role: "owner", level: 3, slice: "s" }),
-		expect: { roles: ["leaf"], lastLevelLine: true },
+		expect: { roles: ["leaf"], lastLevelLine: true, ownerLine: false },
 	},
 	{
 		name: "a level-2 leaf",
 		self: Self.Delegate({ role: "leaf", level: 2, slice: "s" }),
-		expect: { roles: undefined, lastLevelLine: false },
+		expect: { roles: undefined, lastLevelLine: false, ownerLine: false },
 	},
 	{
 		name: "a level-4 leaf",
 		self: Self.Delegate({ role: "leaf", level: 4, slice: "s" }),
-		expect: { roles: undefined, lastLevelLine: false },
+		expect: { roles: undefined, lastLevelLine: false, ownerLine: false },
 	},
 ];
 
@@ -81,14 +81,13 @@ for (const row of levelRows) {
 	test(`${row.name} starts ${row.expect.roles === undefined ? "no delegates" : Arr.join(row.expect.roles, " or ")}, and always gets the rest of the tools`, () => {
 		const tools = toolsOf(row.self);
 		const names = Arr.map(tools, ({ name }) => name);
+		const guidelines = Arr.flatMap(tools, ({ promptGuidelines }) => promptGuidelines ?? []);
 
 		expect({
 			rest: Arr.filter(names, (name) => name !== "delegate"),
 			roles: startableRoles(tools),
-			lastLevelLine: Arr.some(
-				Arr.flatMap(tools, ({ promptGuidelines }) => promptGuidelines ?? []),
-				Str.includes("cannot start delegates of their own"),
-			),
+			lastLevelLine: Arr.some(guidelines, Str.includes("cannot start delegates of their own")),
+			ownerLine: Arr.some(guidelines, Str.includes("one owner per slice")),
 		}).toEqual({ rest: ["serve", "watch", "group", "cancel"], ...row.expect });
 	});
 }
