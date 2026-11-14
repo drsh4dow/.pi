@@ -74,13 +74,15 @@ const extensionsFolder = `${import.meta.dirname}/../../agent/extensions`;
 
 /**
  * The entrypoints every delegate loads first: owned-work, so it can report back, prompt, which builds its system prompt,
- * web, so every agent can search and read pages, and claude-accounts, so a delegate can run on its parent's Claude account.
+ * web, so every agent can search and read pages, claude-accounts, so a delegate can run on its parent's Claude account,
+ * and compaction, so a delegate's compaction summary keeps its task message and a bounded narrative.
  */
 export const childExtensions: ReadonlyArray<string> = [
 	`${extensionsFolder}/owned-work/index.ts`,
 	`${extensionsFolder}/prompt/index.ts`,
 	`${extensionsFolder}/web/index.ts`,
 	`${extensionsFolder}/claude-accounts/index.ts`,
+	`${extensionsFolder}/compaction/index.ts`,
 ];
 
 export interface Brief extends Omit<ChildPi, "session"> {
