@@ -39,6 +39,19 @@ loaded and sent), `root.in.jsonl` and `root.out.jsonl` (every RPC record sent an
 and `home/` (the scratch HOME, including any state folder an agent made). The link to your `auth.json` is removed. A
 run killed outright is cleaned up by the next run.
 
+To prove a run left your sessions and state folders alone, trace it:
+
+```sh
+bun tools/driver/untouched.ts features/owned-work/leaf-wake.scenario.ts
+```
+
+It lists every file under `~/.pi/agent/sessions/` and `~/.local/state/` before and after, runs the scenario under
+`strace`, and prints each changed file as written by `run` or by `another process`, plus the writes that broke the
+rule. A path written through a link counts where the link leads, and a link the run made into `~/.pi/` or
+`~/.local/state/` counts as a write there. It exits 0 when the run wrote nothing there beyond the `auth.json` link and
+pi's lock on it, and reached no other terminal core, 1 when it did, and 2 when it cannot vouch (a write strace could not place, or a run session file the trace never saw
+written). The report also lands in the run's `untouched.txt`.
+
 ## Write one
 
 A scenario is a file named `<fact>.scenario.ts` beside the code whose runtime behavior it proves. It calls `scenario`
