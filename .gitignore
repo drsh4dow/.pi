@@ -1,4 +1,5 @@
 /agent/*
+!/agent/bin/
 !/agent/extensions/
 !/agent/instructions/
 !/agent/skills/

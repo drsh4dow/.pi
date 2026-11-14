@@ -134,6 +134,7 @@
 		{
 			// The user chose Effect platform (FileSystem, Path, Socket, ChildProcess) over Node built-ins, and Effect marks those modules `@stability unstable`: the Effect convention wins, per AGENTS.md
 			"files": [
+				"agent/bin/**",
 				"agent/extensions/**",
 				"features/**",
 				"clients/**",

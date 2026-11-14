@@ -1,0 +1,15 @@
+#!/bin/sh
+# First on every agent's PATH, so the merge gate can see each gh call. Until it lands, every call goes to the real gh.
+# It looks gh up as the shell does (no globbing, an empty entry is the current folder, only regular files), minus itself.
+self=$(readlink -f "$0")
+path="$PATH:"
+set -f
+IFS=:
+for dir in $path; do
+	candidate=${dir:-.}/gh
+	if [ -f "$candidate" ] && [ -x "$candidate" ] && [ "$(readlink -f "$candidate")" != "$self" ]; then
+		exec "$candidate" "$@"
+	fi
+done
+echo "gh: no gh on PATH but $self" >&2
+exit 127
