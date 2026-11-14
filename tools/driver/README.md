@@ -45,8 +45,11 @@ from the `bun` you started. Ctrl-C, SIGTERM or `kill -9` of that `bun` closes th
 as if interrupted, with the same cleanup. Once the driver in the service exits, however it exits, systemd kills every
 process left in the service. Delegates run in owned-work's own systemd scopes, which owned-work stops when the root pi
 exits. The run's `XDG_RUNTIME_DIR` is its own, with only a link to your `systemd/` in it, so an `hc` in the run that
-starts or restarts a core starts it as its own child, inside the run, not as a systemd service. No code of the driver
-signals a process.
+starts or restarts a core starts it as its own child, inside the run, not as a systemd service. The only signals the
+driver sends come from Effect's spawner, when the scope of a command the driver started closes while that command still
+runs, as when a run ends or a command times out: SIGTERM, then SIGKILL after a grace period, to that command, which is
+a direct child of the driver, and to the process group it leads if it leads one. A child that has not exited keeps its
+pid, so no other process can hold that pid or lead that group, and the spawner signals no child that has exited.
 
 A run whose driver in the service dies outright, by `kill -9` of that process or `systemctl --user stop` of its
 unit, leaves no process, but two things on disk: the run folder, with the link `home/.pi/agent/auth.json` to your
