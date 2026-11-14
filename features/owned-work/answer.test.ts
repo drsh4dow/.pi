@@ -47,3 +47,13 @@ test("a cut never splits a character outside the basic plane", () => {
 
 	expect(text.isWellFormed()).toBe(true);
 });
+
+test("a paragraph that ends exactly where the room ends is kept", () => {
+	const room = 6000 - 2 - `[The answer is cut at 6,000 of 20,000 characters. Read the whole answer in ${file}]`.length;
+	const kept = `a\n\n${Str.repeat(room - 3)("b")}`;
+	const { text } = answerOf(file)(`${kept}\n\n${Str.repeat(20_000 - room - 2)("c")}`);
+
+	expect(text).toBe(
+		`${kept}\n\n[The answer is cut at ${room.toLocaleString("en-US")} of 20,000 characters. Read the whole answer in ${file}]`,
+	);
+});

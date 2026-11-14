@@ -27,12 +27,16 @@ export const answerOf =
 		const room = answerCap - paragraphBreak.length - closingLine(answerCap, text.length, file).length;
 		const head = Str.replace(loneHighSurrogate, "")(Str.slice(0, room)(text));
 
-		const breaks = Arr.fromIterable(Str.matchAll(blankLine)(head));
+		const breaks = Arr.fromIterable(Str.matchAll(blankLine)(text));
+		const starts = Arr.getSomes(Arr.map(breaks, ({ index }) => Option.fromUndefinedOr(index)));
 
-		const kept = Option.match(Arr.last(breaks), {
-			onNone: () => head,
-			onSome: ({ index }) => Str.slice(0, index)(head),
-		});
+		const kept = Option.match(
+			Arr.findLast(starts, (at) => at <= room),
+			{
+				onNone: () => head,
+				onSome: (at) => Str.slice(0, at)(text),
+			},
+		);
 
 		return { text: `${kept}${paragraphBreak}${closingLine(kept.length, text.length, file)}`, cut: true, file };
 	};
