@@ -49,7 +49,7 @@ export const Probed = Schema.Union([
 export type Probed = typeof Probed.Type;
 
 /** Holds for every array, and every array in a JSON value is a JSON array. */
-const isJsonArray = (value: Schema.Json): value is Schema.JsonArray => Arr.isArray(value);
+export const isJsonArray = (value: Schema.Json): value is Schema.JsonArray => Arr.isArray(value);
 
 const leavesOf = (value: Schema.Json): ReadonlyArray<string> => {
 	if (Predicate.isString(value)) {

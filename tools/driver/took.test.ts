@@ -44,6 +44,30 @@ const rows: ReadonlyArray<{
 		expected: ["its settings key compaction is not the one set"],
 	},
 	{
+		name: "a settings key the record cannot confirm is refused, even when the record shows it",
+		asked: { setup: { settings: { compaction, contextWindow: 40_000 } } },
+		loaded: { settings: { compaction, contextWindow: 40_000 } },
+		expected: [
+			"the driver cannot confirm the setting contextWindow, only compaction.enabled, compaction.reserveTokens, compaction.keepRecentTokens",
+		],
+	},
+	{
+		name: "a compaction field pi does not read is refused",
+		asked: { setup: { settings: { compaction: { ...compaction, reserveTokns: 1 } } } },
+		loaded: { settings: { compaction: { ...compaction, reserveTokns: 1 } } },
+		expected: [
+			"the driver cannot confirm the setting compaction.reserveTokns, only compaction.enabled, compaction.reserveTokens, compaction.keepRecentTokens",
+		],
+	},
+	{
+		name: "a context window given only through models is refused",
+		asked: {
+			contextWindow: undefined,
+			models: { prov: { modelOverrides: { mod: { contextWindow: 40_000 } } } },
+		},
+		expected: ["models sets a context window, which the driver confirms only as contextWindow"],
+	},
+	{
 		name: "a root with no core socket misses the run's core",
 		loaded: { socket: Option.none() },
 		expected: [`it starts delegates in no core, not the run's ${socket}`],
