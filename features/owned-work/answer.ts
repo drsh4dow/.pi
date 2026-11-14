@@ -1,3 +1,4 @@
+import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
@@ -6,6 +7,10 @@ import type { Answer } from "./work.ts";
 export const answerCap = 6000;
 
 const paragraphBreak = "\n\n";
+
+const blankLine = /\r?\n[^\S\n]*\n/gu;
+
+const loneHighSurrogate = /[\uD800-\uDBFF]$/u;
 
 const count = (characters: number) => characters.toLocaleString("en-US");
 
@@ -20,11 +25,13 @@ export const answerOf =
 		}
 
 		const room = answerCap - paragraphBreak.length - closingLine(answerCap, text.length, file).length;
-		const head = Str.slice(0, room)(text);
+		const head = Str.replace(loneHighSurrogate, "")(Str.slice(0, room)(text));
 
-		const kept = Option.match(Str.lastIndexOf(paragraphBreak)(head), {
+		const breaks = Arr.fromIterable(Str.matchAll(blankLine)(head));
+
+		const kept = Option.match(Arr.last(breaks), {
 			onNone: () => head,
-			onSome: (at) => Str.slice(0, at)(head),
+			onSome: ({ index }) => Str.slice(0, index)(head),
 		});
 
 		return { text: `${kept}${paragraphBreak}${closingLine(kept.length, text.length, file)}`, cut: true, file };
