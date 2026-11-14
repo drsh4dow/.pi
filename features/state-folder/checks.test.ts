@@ -84,6 +84,7 @@ test.each([
 	["an unknown kind", "**Only you.** A preference. I like blue.\n", [9]],
 	["a kind that only starts with a known one", "**Only you.** Decisions all round.\n", [9]],
 	["access citing a missing file", "**Only you.** Access. `missing.log` records the 403.\n", [9]],
+	["access citing a folder", "**Only you.** Access. `.` records the 403.\n", [9]],
 	["access citing no file", "**Only you.** Access. The deploy key was refused.\n", [9]],
 ])("USER_ACTION_ITEMS.md with %s", (_case, onlyYou, lines) =>
 	runTest(

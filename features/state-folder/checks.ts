@@ -80,9 +80,12 @@ const actionItemsProblems = Effect.fn("actionItemsProblems")(function* (text: st
 		const resolved = resolvePath(path, place);
 
 		return Effect.map(
-			fs.exists(resolved).pipe(Effect.orElseSucceed(() => false)),
-			(exists): ReadonlyArray<FormatProblem> =>
-				exists ? [] : [{ line, message: `the cited file ${resolved} does not exist` }],
+			fs.stat(resolved).pipe(
+				Effect.map(({ type }) => type === "File"),
+				Effect.orElseSucceed(() => false),
+			),
+			(isFile): ReadonlyArray<FormatProblem> =>
+				isFile ? [] : [{ line, message: `the cited file ${resolved} does not exist or is not a file` }],
 		);
 	});
 
