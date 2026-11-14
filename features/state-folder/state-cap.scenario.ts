@@ -1,7 +1,3 @@
-/**
- * A root that writes a 17 KB `STATE.md` through a bash heredoc gets an error on that call, naming the state cap and
- * the decision trail, and the write stays on disk. A later read of the oversized file comes back as it was.
- */
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -48,7 +44,6 @@ const callsIn = (entry: SessionEntry) =>
 		? Arr.getSomes(Arr.map(entry.message.content, (part) => decodeCall(part)))
 		: [];
 
-/** Every bash call the root ran, with its result, oldest first. */
 const bashRuns = (entries: ReadonlyArray<SessionEntry>): ReadonlyArray<Ran> => {
 	const calls = Arr.flatMap(entries, callsIn);
 	const results = Arr.getSomes(Arr.map(entries, (entry) => decodeResult(entry)));
@@ -74,7 +69,6 @@ const ranCommand = (run: Run, what: string, marker: string) =>
 
 const describe = ({ command, isError, text }: Ran) => `${command}\nisError ${String(isError)}\n${text}`;
 
-/** Has the root write STATE.md past the cap, checks the call errs, and returns the file's size on disk. */
 const writeOversized = Effect.fn("writeOversized")(function* (run: Run) {
 	const fs = yield* FileSystem.FileSystem;
 

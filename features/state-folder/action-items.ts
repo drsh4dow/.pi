@@ -20,10 +20,6 @@ export const onlyYouLabel = "**Only you.**";
 
 export const onlyYouKinds = ["decision", "approval", "irreversible action", "access"] as const;
 
-/**
- * The texts between backticks on an access item's line, one of which must name the file that records the denied attempt.
- * Every text between two backticks is a candidate, so no escape, padding or nested span can hide the citation.
- */
 export interface Denial {
 	readonly line: number;
 	readonly paths: Arr.NonEmptyReadonlyArray<string>;
@@ -61,7 +57,7 @@ const closes = (fence: Fence, text: string) => {
 	return groups?.["info"] === "" && Str.startsWith(fence.marker)(groups["marker"] ?? "");
 };
 
-const linesOf = (file: string) => {
+export const linesOf = (file: string) => {
 	const [unclosedFence, lines] = Arr.mapAccum(
 		Str.split("\n")(file),
 		Option.none<Fence>(),
@@ -185,7 +181,7 @@ const reasonOf = ({ number, text }: Line): OnlyYou => {
 		return { problems: [], denials: [] };
 	}
 
-	const paths = Arr.filter(Arr.map(Str.split("`")(text).slice(1, -1), Str.trim), Str.isNonEmpty);
+	const paths = Str.split("`")(text).slice(1, -1);
 
 	if (!Arr.isReadonlyArrayNonEmpty(paths)) {
 		return noDenials(
@@ -209,11 +205,6 @@ const onlyYouOf = (item: Item): OnlyYou => {
 	);
 };
 
-/**
- * Each item's only-you problems: no `**Only you.**` line, a line that names no kind, an access line that cites no file
- * in backticks. And the files the access items cite, which the caller checks exist.
- * Kinds, after the label, case-insensitive, optional article: decision, approval, irreversible action, access.
- */
 export const onlyYouReasons = (file: string): OnlyYou => {
 	const found = Arr.map(sections(linesOf(file).lines).items, onlyYouOf);
 

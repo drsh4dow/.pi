@@ -39,7 +39,6 @@ const statePath = "/.local/state/pi-agent/";
 const segment = "[^/\\s\"'`$\\\\;|&<>()*?{}]+";
 const escaped = Str.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
 
-/** Every state folder, `~/.local/state/pi-agent/<project>/<work>`, that a tool call's input names, as an absolute path. */
 const foldersIn = ({ home, input }: { readonly home: string; readonly input: string }): ReadonlyArray<string> => {
 	const homes = Arr.join([escaped(home), "~", String.raw`\$HOME`, String.raw`\$\{HOME\}`], "|");
 	const pattern = new RegExp(`(?:${homes})${escaped(statePath)}(${segment}/${segment})`, "gu");
@@ -48,7 +47,6 @@ const foldersIn = ({ home, input }: { readonly home: string; readonly input: str
 	return Arr.dedupe(Arr.map(named, (folder) => `${home}${statePath}${folder}`));
 };
 
-/** Each of a folder's own entries by name, with its size and modification time, empty when the folder is missing. */
 type Fingerprint = ReadonlyMap<string, string>;
 
 const fingerprint = Effect.fn("fingerprint")(function* (folder: string) {
@@ -63,9 +61,7 @@ const fingerprint = Effect.fn("fingerprint")(function* (folder: string) {
 		),
 	);
 
-	const stamped: Fingerprint = new Map(stamps);
-
-	return stamped;
+	return new Map(stamps);
 });
 
 /** Each running tool call's named state folders, with each folder's fingerprint from before the call ran. */
@@ -85,26 +81,13 @@ export const watchCall = Effect.fn("watchCall")(function* (
 	}
 });
 
-/** The names of the entries a call added, changed or removed. */
 const changedNames = (before: Fingerprint, after: Fingerprint) =>
 	Arr.filter(Arr.dedupe([...before.keys(), ...after.keys()]), (name) => before.get(name) !== after.get(name));
 
 const byLine = Order.mapInput(Order.Number, ({ line }: FormatProblem) => line);
 
-/** A regular file's bytes, none for a missing file or a folder, or a FIFO or device, whose read would block the call. */
-const regularFile = Effect.fn("regularFile")(function* (path: string) {
-	const fs = yield* FileSystem.FileSystem;
-	const info = yield* Effect.option(fs.stat(path));
-
-	if (Option.isNone(info) || info.value.type !== "File") {
-		return Option.none<Uint8Array>();
-	}
-
-	return yield* Effect.option(fs.readFile(path));
-});
-
-/** The problems a changed state file's check finds, as a report, none when the file has no check or is gone. */
 const reportOn = Effect.fn("reportOn")(function* (place: Place, name: string) {
+	const fs = yield* FileSystem.FileSystem;
 	const path = `${place.folder}/${name}`;
 	const check = checks.get(name);
 
@@ -112,7 +95,7 @@ const reportOn = Effect.fn("reportOn")(function* (place: Place, name: string) {
 		return Option.none<string>();
 	}
 
-	const file = yield* regularFile(path);
+	const file = yield* Effect.option(fs.readFile(path));
 
 	if (Option.isNone(file)) {
 		return Option.none<string>();
@@ -136,12 +119,6 @@ const reportOn = Effect.fn("reportOn")(function* (place: Place, name: string) {
 	});
 });
 
-/**
- * Ends the watch on a tool call that ran. `wrote` is the state folder it wrote to: one it named whose fingerprint
- * changed while it ran, the last such when there are several. A call that only read a folder leaves it unchanged, so
- * reading another work never counts. `checked` is the call's result with the problems of each state file it changed
- * appended, as an error, none when those files have none.
- */
 export const finishCall = Effect.fn("finishCall")(function* (
 	watched: Watched,
 	{ home, result }: { readonly home: string; readonly result: Pick<ToolResultEvent, "toolCallId" | "content"> },
@@ -206,7 +183,6 @@ const watch = Effect.fn("watch")(function* (tracker: Tracker, { toolCallId, inpu
 	yield* watchCall(tracker.watched, { home, toolCallId, input: text });
 });
 
-/** Ends the watch on a tool call, records the state folder it wrote to, and returns its result with the problems it left. */
 const finish = Effect.fn("finish")(function* (
 	tracker: Tracker,
 	{ pi, result }: { readonly pi: Pick<ExtensionAPI, "appendEntry">; readonly result: ToolResultEvent },
@@ -234,8 +210,7 @@ const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.Fi
 /**
  * Keeps the `pi.state` label on this agent's hc terminal equal to the state folder its session last wrote to, found by
  * watching its own tool calls, and records each new folder in the session so `/resume`, `/reload` and `/tree` restore
- * it. No folder, no label. Outside herdr-core it only records. A tool call that changes a state file with a check, such
- * as `STATE.md` or `USER_ACTION_ITEMS.md`, gets the file's problems in its result as an error.
+ * it. No folder, no label. Outside herdr-core it only records.
  */
 export const stateFolder = (pi: Pick<ExtensionAPI, "on" | "appendEntry">) => {
 	const tracker: Tracker = { watched: new Map(), folder: Option.none(), published: "" };
@@ -250,7 +225,7 @@ export const stateFolder = (pi: Pick<ExtensionAPI, "on" | "appendEntry">) => {
 	pi.on("session_tree", (_event, ctx) => restore(ctx));
 	pi.on("tool_call", (event) => run(watch(tracker, event)));
 	pi.on("tool_result", (result) => run(finish(tracker, { pi, result })));
-	// A call another extension blocked never reaches tool_result, so its watch ends here.
+	// Pi skips tool_result for a blocked or aborted call, so its watch ends here.
 	pi.on("tool_execution_end", ({ toolCallId }) => {
 		tracker.watched.delete(toolCallId);
 	});

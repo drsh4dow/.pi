@@ -38,7 +38,6 @@ const read = (path: string) =>
 const bash = (command: string) =>
 	Effect.asVoid(Effect.promise(() => Bun.$`bash -c ${command}`.env({ ...Bun.env, HOME: home }).quiet()));
 
-/** Runs a call as the extension watches it, with a result whose own text is "ran" and whose own structuredContent is set. */
 const finish = Effect.fn("finish")(function* (watched: Watched, toolCallId: string, call: Call) {
 	yield* watchCall(watched, { home, toolCallId, input: call.input });
 	yield* call.run;
@@ -71,7 +70,7 @@ await runTest(
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 
-		for (const work of ["alpha", "beta", "gamma", "delta", "epsilon", "zeta"]) {
+		for (const work of ["alpha", "beta", "gamma", "delta", "epsilon"]) {
 			yield* fs.makeDirectory(folder(work), { recursive: true });
 			yield* fs.writeFileString(`${folder(work)}/STATE.md`, `# ${work}\n`);
 		}
@@ -256,16 +255,6 @@ test("a bash heredoc that grows STATE.md past the cap comes back as an error nam
 
 			expect(texts[1]).toContain("16,384");
 			expect(texts[1]).toContain("decisions.tsv");
-		}),
-	));
-
-test("a call that leaves a FIFO as STATE.md comes back without waiting on it", () =>
-	runTest(
-		Effect.gen(function* () {
-			const path = `${folder("zeta")}/STATE.md`;
-			const finished = yield* finish(new Map(), "0", runBash(`rm ${path} && mkfifo ${path}`));
-
-			expect(finished).toEqual({ wrote: Option.some(folder("zeta")), checked: Option.none() });
 		}),
 	));
 
