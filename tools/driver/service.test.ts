@@ -17,14 +17,14 @@ const isAlive = (pid: number) => {
 /** A run that prints the pids of a child in a session of its own and of an orphan, then exits 7 once its stdin ends. */
 const run = `["sh", "-c", "setsid sleep 600 & echo $!; sh -c 'sleep 600 & echo $!'; cat >/dev/null; exit 7"]`;
 
-const driverOf = (env: Record<string, string> = {}) =>
+const driverOf = () =>
 	Bun.spawn(
 		[
 			process.execPath,
 			"-e",
 			`import { runAsService } from "${import.meta.dirname}/service.ts"; runAsService({ name: "t", argv: ${run} });`,
 		],
-		{ stdout: "pipe", env: { ...Bun.env, ...env } },
+		{ stdout: "pipe" },
 	);
 
 const linesOf = (driver: ReturnType<typeof driverOf>) =>
@@ -68,14 +68,18 @@ test("Ctrl-C ends the run through its stdin and waits for it", () =>
 		}),
 	));
 
-test("a machine where systemd-run cannot start a service exits 2 and says so", () =>
+test("a scenario where systemd-run cannot start a service exits 2 and says so", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const driver = driverOf({ PATH: "/nonexistent" });
-			const output = yield* linesOf(driver).pipe(Stream.mkString);
-			const code = yield* Effect.promise(() => driver.exited);
+			const scenario = Bun.spawn([process.execPath, `${import.meta.dirname}/false-fact.scenario.ts`], {
+				stdout: "pipe",
+				env: { ...Bun.env, PATH: "/nonexistent" },
+			});
+
+			const output = yield* Effect.promise(() => scenario.stdout.text());
+			const code = yield* Effect.promise(() => scenario.exited);
 
 			expect(code).toBe(2);
-			expect(output).toContain("broken t: the driver runs a scenario as a systemd user service");
+			expect(output).toContain("broken false-fact: the driver runs a scenario as a systemd user service");
 		}),
 	));
