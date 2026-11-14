@@ -113,16 +113,10 @@ const stackMerge = (root: string, ceiling: string) =>
 		return decide(`merge gate: stack merge refused. It lands ${refs}.`, readings, []);
 	});
 
-const merge = (root: string, pr: string, via: "pr" | "api") =>
-	Effect.map(readingOf(root)(pr), (reading) => {
-		const { head } = reading.view;
-
-		return decide(
-			"merge gate: merge refused.",
-			[reading],
-			via === "pr" ? ["--match-head-commit", head] : ["-f", `sha=${head}`],
-		);
-	});
+const merge = (root: string, pr: string) =>
+	Effect.map(readingOf(root)(pr), (reading) =>
+		decide("merge gate: merge refused.", [reading], ["--match-head-commit", reading.view.head]),
+	);
 
 /** Reads the pull requests a merge lands and their verdicts under `root`, and refuses when any read fails. */
 export const gate =
@@ -130,7 +124,7 @@ export const gate =
 	(request: MergeRequest): Effect.Effect<Authorization, never, Gh | FileSystem.FileSystem> =>
 		MergeRequest.$match(request, {
 			Refuse: ({ why }) => Effect.succeed(Authorization.Refuse({ why })),
-			Merge: ({ pr, via }) => merge(root, pr, via),
+			Merge: ({ pr }) => merge(root, pr),
 			StackMerge: ({ ceiling }) => stackMerge(root, ceiling),
 		}).pipe(
 			Effect.catchTag("GhError", ({ args, why }) =>

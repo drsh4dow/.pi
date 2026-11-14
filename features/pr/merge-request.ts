@@ -3,9 +3,9 @@ import * as Data from "effect/Data";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-/** What a `gh` call asks to merge. `via` says how the real call takes the head pin. */
+/** What a `gh` call asks to merge. */
 export type MergeRequest = Data.TaggedEnum<{
-	Merge: { readonly pr: string; readonly via: "pr" | "api" };
+	Merge: { readonly pr: string };
 	StackMerge: { readonly ceiling: string };
 	Refuse: { readonly why: string };
 }>;
@@ -25,21 +25,6 @@ const valueFlags = new Set([
 	"--author-email",
 	"--match-head-commit",
 	"--merge-method",
-	"-X",
-	"--method",
-	"-H",
-	"--header",
-	"-f",
-	"--raw-field",
-	"--field",
-	"--input",
-	"-q",
-	"--jq",
-	"--template",
-	"--cache",
-	"-p",
-	"--preview",
-	"--hostname",
 ]);
 
 type Flag = readonly [name: string, value: string];
@@ -141,7 +126,7 @@ const prMergeOf = (target: string | undefined, values: Values): Option.Option<Me
 					"merge gate: with -R, name the pull request by number or URL, as in `gh pr merge <number> -R <owner/repo> --squash`.",
 					"The gate would read a branch name in this folder's repository, not the one -R names.",
 				]),
-			onSome: (pr) => MergeRequest.Merge({ pr, via: "pr" }),
+			onSome: (pr) => MergeRequest.Merge({ pr }),
 		}),
 	);
 };
@@ -154,45 +139,23 @@ const stackMergeOf = (target: string | undefined): MergeRequest =>
 				"The gate checks every pull request up to the one you name.",
 			]);
 
-const graphqlMergeOf = (values: Values): Option.Option<MergeRequest> => {
-	const query = Arr.join(values("-f", "--raw-field", "-F", "--field"), "\n");
+const restMerge = /pulls\/[^/]+\/merge/u;
 
-	if (/\benablePullRequestAutoMerge\b/u.test(query)) {
+/** A merge through `gh api` is refused by its text, because an endpoint has more spellings than the gate can read a pull request from. */
+const apiMergeOf = (argv: ReadonlyArray<string>): Option.Option<MergeRequest> => {
+	if (Arr.some(argv, Str.includes("enablePullRequestAutoMerge"))) {
 		return Option.some(deferred("<number>"));
 	}
 
-	return /\bmergePullRequest\b/u.test(query)
+	return Arr.some(argv, (arg) => restMerge.test(arg) || Str.includes("mergePullRequest")(arg))
 		? Option.some(
 				refuse([
-					"merge gate: a merge through `gh api graphql` is refused, because it names the pull request by node id, which the gate does not read.",
-					"Run `gh pr merge <number> --squash` instead.",
+					"merge gate: the gate does not merge through `gh api`.",
+					"Run `gh pr merge <number> --squash` instead. The gate pins it to the head it checked.",
+					"Read whether it merged with `gh pr view <number> --json state,mergedAt`.",
 				]),
 			)
 		: Option.none();
-};
-
-/** An endpoint reaches gh as a path, with or without a leading slash or query, or as an absolute API URL. */
-const pathOf = (endpoint: string) => Str.replaceAll(/^(?:https:\/\/api\.github\.com)?\/?|\?.*$/gu, "")(endpoint);
-
-const restMerge = /^repos\/(?<repo>[^/]+\/[^/]+)\/pulls\/(?<number>\d+)\/merge\/?$/u;
-
-const apiMergeOf = (endpoint: string, values: Values): Option.Option<MergeRequest> => {
-	const path = pathOf(endpoint);
-
-	if (path === "graphql") {
-		return graphqlMergeOf(values);
-	}
-
-	const method = Option.getOrElse(Arr.last(values("-X", "--method")), () => "GET");
-	const { repo, number } = restMerge.exec(path)?.groups ?? {};
-
-	if (Str.toUpperCase(method) !== "PUT" || repo === undefined || number === undefined) {
-		return Option.none();
-	}
-
-	const pr = Str.includes("{")(repo) ? number : prUrl(repo, number);
-
-	return Option.some(MergeRequest.Merge({ pr, via: "api" }));
 };
 
 /** None for a call that merges nothing: the wrapper hands it to the real gh unchanged. */
@@ -209,5 +172,5 @@ export const mergeRequestOf = (argv: ReadonlyArray<string>): Option.Option<Merge
 		return Option.some(stackMergeOf(target));
 	}
 
-	return command === "api" ? apiMergeOf(sub, values) : Option.none();
+	return command === "api" ? apiMergeOf(argv) : Option.none();
 };

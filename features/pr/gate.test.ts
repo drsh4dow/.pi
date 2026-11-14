@@ -124,12 +124,6 @@ const rows: ReadonlyArray<{
 		expect: { says: ["No verdict is recorded for it."] },
 	},
 	{
-		name: "pins a REST merge to the head it checked",
-		argv: ["api", "-X", "PUT", "repos/{owner}/{repo}/pulls/5/merge"],
-		world: { views: [pr5], verdicts: [verdict(5, "pass")] },
-		expect: { pin: ["-f", `sha=${pr5.head}`] },
-	},
-	{
 		name: "refuses --auto on a pull request with a pass at its head",
 		argv: ["pr", "merge", "5", "--auto", "--squash"],
 		world: { views: [pr5], verdicts: [verdict(5, "pass")] },

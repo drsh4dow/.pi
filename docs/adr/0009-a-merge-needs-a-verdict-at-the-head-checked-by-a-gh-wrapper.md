@@ -33,6 +33,6 @@ The gate covers every merge it sees, with no exemption list. That includes merge
 
 - The gate sees only the `gh` calls that reach it. An agent can still merge by calling the real `gh` by its full path, or through GitHub's API with another client such as `curl`. The gate stops ordinary merges, not a deliberate bypass.
 - `gh stack merge` cannot pin a head: it rejects `--match-head-commit` as an unknown flag. A push between the gate's check and a stack merge can still land a head that has no verdict.
-- A merge through `gh api graphql` names the pull request by node id, and pinning it would mean resolving that id and writing `expectedHeadOid` into the query, so the gate refuses it and names `gh pr merge` instead. A REST merge takes the pin as its `sha` field.
+- A merge through `gh api` is refused, REST or GraphQL, and the refusal names `gh pr merge`, the one way through the gate. The gate matches a pull request's merge endpoint or a merge mutation anywhere in the call's arguments. It does not read a pull request from an endpoint, because an endpoint has more spellings than a parser keeps up with: a host in any case, a port, a query, a fragment, the `repositories/<id>` alias. A merge whose body comes from a file or stdin still gets through.
 - pi puts its bin folder first on PATH only when PATH lacks it, so the wrapper's place on PATH is a fact to test in a root and in a delegate.
 - Step 3 of the Shipping playbook is the patch rule above, and its step 4 waits for the checks and merges with the head pinned instead of arming `--auto`.
