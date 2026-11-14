@@ -186,10 +186,12 @@ test("a fresh call with no name or no message is a tool error that names the fie
 test("a continuation that names a field of the brief it keeps is a tool error that names each, and continues nothing", () =>
 	runtime.runPromise(
 		Effect.map(
-			outcomeOf({ continues: "delegate-1", name: "renamed", goal: "Other goal.", model: "deep" }),
+			outcomeOf({ continues: "delegate-1", name: "renamed", goal: "Other goal.", model: "deep", reviews: "7" }),
 			(outcome) => {
 				expect(outcome).toEqual(
-					refusedWith("a continuation keeps the brief it started with: leave out `name`, `goal`, `model`"),
+					refusedWith(
+						"a continuation keeps the brief it started with: leave out `name`, `goal`, `model`, `reviews`",
+					),
 				);
 			},
 		),
