@@ -114,6 +114,15 @@ test("prompt returns the text pi has once it settles, not before", () =>
 		}),
 	));
 
+test("prompt returns none when pi has no assistant text", () =>
+	withRoot({}, (root) =>
+		Effect.gen(function* () {
+			const reply = yield* root.prompt("hi");
+
+			expect(reply).toEqual(Option.none());
+		}),
+	));
+
 for (const ignored of ["prompt", "get_last_assistant_text"]) {
 	test(`prompt fails within its deadline when pi never answers ${ignored}`, () =>
 		withRoot({ FAKE_IGNORES: ignored }, (root) =>

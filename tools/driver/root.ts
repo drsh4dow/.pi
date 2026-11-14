@@ -228,7 +228,8 @@ const asked = <Value>(wire: Wire, command: Command, schema: Schema.Decoder<Value
 
 const decodeDisposition = Schema.decodeUnknownEffect(Schema.Struct({ disposition: Schema.String }));
 
-const LastText = Schema.Struct({ text: Schema.NullOr(Schema.String) });
+/** With no assistant text, pi's RPC docs promise `null`, and pi 1.5.2 leaves the key out. */
+const LastText = Schema.Struct({ text: Schema.String.pipe(Schema.NullOr, Schema.optionalKey) });
 
 /** `within` bounds the whole prompt: pi's acknowledgement, the settle, and the final text. */
 const prompted =
@@ -249,7 +250,7 @@ const prompted =
 
 			yield* progress("prompt settled");
 
-			return Option.fromNullOr(text);
+			return Option.fromNullishOr(text);
 		}).pipe(
 			Effect.scoped,
 			Effect.catchTag("SchemaError", (error) => failed(`pi answered the prompt unexpectedly: ${error.message}`)),
