@@ -8,14 +8,17 @@ import * as Str from "effect/String";
 const oxlint = `${import.meta.dirname}/../../../node_modules/.bin/oxlint`;
 
 const flagged = [
+	"agent/bin/bad.ts:1:1: ../../features/demo/internal.ts reaches inside features/demo/. Import features/demo/index.ts, its public interface.",
+	"agent/bin/bad.ts:2:1: an entrypoint (agent/extensions/<name>/ or agent/bin/) may not import a client (clients/<system>/): ../../clients/demo/index.ts.",
 	"agent/extensions/bad/index.ts:1:1: ../../../features/demo/internal.ts reaches inside features/demo/. Import features/demo/index.ts, its public interface.",
-	"agent/extensions/bad/index.ts:2:1: an entrypoint (agent/extensions/<name>/) may not import a client (clients/<system>/): ../../../clients/demo/index.ts.",
+	"agent/extensions/bad/index.ts:2:1: an entrypoint (agent/extensions/<name>/ or agent/bin/) may not import a client (clients/<system>/): ../../../clients/demo/index.ts.",
 	"clients/bad/index.ts:1:1: a client (clients/<system>/) may not import a feature (features/<name>/): ../../features/demo/index.ts.",
 	"clients/demo/index.ts:2:1: ./wire.js must end in .ts, as AGENTS.md requires of relative imports.",
 	"clients/hash#1/index.ts:1:1: ../demo/wire.ts reaches inside clients/demo/. Import clients/demo/index.ts, its public interface.",
 	"clients/query?1/index.ts:1:1: ../demo/wire.ts reaches inside clients/demo/. Import clients/demo/index.ts, its public interface.",
 	"features/bad/index.ts:1:1: ../../clients/demo/wire.ts reaches inside clients/demo/. Import clients/demo/index.ts, its public interface.",
-	"features/bad/index.ts:2:1: a feature (features/<name>/) may not import an entrypoint (agent/extensions/<name>/): ../../agent/extensions/demo/index.ts.",
+	"features/bad/index.ts:2:1: a feature (features/<name>/) may not import an entrypoint (agent/extensions/<name>/ or agent/bin/): ../../agent/extensions/demo/index.ts.",
+	"features/bad/index.ts:3:1: a feature (features/<name>/) may not import an entrypoint (agent/extensions/<name>/ or agent/bin/): ../../agent/bin/good.ts.",
 	"features/demo/bad.scenario.ts:1:1: ../../tools/demo/world.ts reaches inside tools/demo/. Import tools/demo/index.ts, its public interface.",
 	"features/demo/uses.ts:1:1: a feature (features/<name>/) may not import a tool (tools/<name>/): ../../tools/demo/index.ts.",
 	"features/demo/uses.ts:2:1: ./good.scenario.ts is a scenario. Nothing imports a scenario; run it with bun <file>.",
