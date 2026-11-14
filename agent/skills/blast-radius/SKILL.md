@@ -1,6 +1,6 @@
 ---
 name: blast-radius
-description: Asked for a change's blast radius or what it could break beyond the diff, or reviewing a small diff you don't trust.
+description: What a change breaks beyond its diff, with the one fact it is safe because of proven by a run. Use before you open a PR that changes stored data, a schema, a wire format, or code another module calls; when asked for a blast radius; or reviewing a diff you don't trust.
 ---
 
 # Blast radius

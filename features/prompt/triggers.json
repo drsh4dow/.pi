@@ -146,6 +146,12 @@
 			},
 			{
 				"prompt": "What could this break beyond the diff?"
+			},
+			{
+				"prompt": "Before I open the PR: this changes stored data and the schema"
+			},
+			{
+				"prompt": "This changes a wire format that another module calls, get it ready to open as a PR"
 			}
 		],
 		"negative": [
@@ -563,6 +569,12 @@
 			},
 			{
 				"prompt": "Adversarial review of this design: try to break it"
+			},
+			{
+				"prompt": "Before shipping, check my change to the retry and concurrency logic"
+			},
+			{
+				"prompt": "A second review of the same PR fails again"
 			}
 		],
 		"negative": [
@@ -649,6 +661,19 @@
 			{
 				"prompt": "Refine my rough idea for the onboarding flow",
 				"owner": "idea-refine"
+			}
+		]
+	},
+	"no-comments": {
+		"positive": [
+			{
+				"prompt": "I am about to ask for review of my own diff"
+			}
+		],
+		"negative": [
+			{
+				"prompt": "Review this pull request before I merge it",
+				"owner": "code-review-and-quality"
 			}
 		]
 	},
