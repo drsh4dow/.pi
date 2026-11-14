@@ -16,6 +16,10 @@ const flagged = [
 	"clients/query?1/index.ts:1:1: ../demo/wire.ts reaches inside clients/demo/. Import clients/demo/index.ts, its public interface.",
 	"features/bad/index.ts:1:1: ../../clients/demo/wire.ts reaches inside clients/demo/. Import clients/demo/index.ts, its public interface.",
 	"features/bad/index.ts:2:1: a feature (features/<name>/) may not import an entrypoint (agent/extensions/<name>/): ../../agent/extensions/demo/index.ts.",
+	"features/demo/bad.scenario.ts:1:1: ../../tools/demo/world.ts reaches inside tools/demo/. Import tools/demo/index.ts, its public interface.",
+	"features/demo/uses.ts:1:1: a feature (features/<name>/) may not import a tool (tools/<name>/): ../../tools/demo/index.ts.",
+	"features/demo/uses.ts:2:1: ./good.scenario.ts is a scenario. Nothing imports a scenario; run it with bun <file>.",
+	"features/demo/uses.ts:4:27: ./good.scenario.ts is a scenario. Nothing imports a scenario; run it with bun <file>.",
 ];
 
 const rule = " [Error/harness(import-boundaries)]";

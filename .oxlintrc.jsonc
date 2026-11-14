@@ -139,6 +139,7 @@
 				"clients/**",
 				"tools/prompts/**",
 				"tools/loaded/**",
+				"tools/driver/**",
 				"tools/oxlint/fixtures/effect-pi-idioms.ts",
 			],
 			"rules": {
