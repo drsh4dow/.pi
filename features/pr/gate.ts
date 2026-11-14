@@ -87,11 +87,7 @@ const readingOf = (root: string) => (pr: string) =>
 		return reading;
 	});
 
-/**
- * A stack and a pull request share one number sequence, so a ceiling outside the stack's pull requests is the stack's
- * own number, and the whole stack lands.
- */
-const openUpTo = (members: ReadonlyArray<StackMember>, ceiling: string) => {
+const landedBy = (members: ReadonlyArray<StackMember>, ceiling: string) => {
 	const landing = Option.match(
 		Arr.findFirstIndex(members, ({ number }) => number === ceiling),
 		{ onNone: () => members, onSome: (index) => Arr.take(members, index + 1) },
@@ -105,7 +101,7 @@ const stackMerge = (root: string, ceiling: string) =>
 		const gh = yield* Gh;
 		const members = yield* gh.stackOf(ceiling);
 
-		const readings = yield* Effect.forEach(openUpTo(members, ceiling), readingOf(root), {
+		const readings = yield* Effect.forEach(landedBy(members, ceiling), readingOf(root), {
 			concurrency: "unbounded",
 		});
 

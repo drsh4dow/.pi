@@ -74,3 +74,9 @@ for (const row of rows) {
 		expect(summary(row.argv)).toBe(row.expect);
 	});
 }
+
+test("every call the parser does not pass through names merge, which is all the gh wrapper looks for", () => {
+	const gated = Arr.filter(rows, (row) => row.expect !== "passes through");
+
+	expect(Arr.filter(gated, (row) => !/merge/iu.test(Arr.join(row.argv, " ")))).toEqual([]);
+});
