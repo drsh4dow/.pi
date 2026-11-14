@@ -8,6 +8,8 @@ import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import type { Guides } from "./guides.ts";
+
 /** The file lists live here because pi drops a hook entry's file lists. */
 export const Details = Schema.Struct({
 	narrative: Schema.String,
@@ -36,6 +38,7 @@ export const Narrative = Data.taggedEnum<Narrative>();
 export interface Parts {
 	readonly narrative: Narrative;
 	readonly anchor: Option.Option<Anchor>;
+	readonly guides: Guides;
 	readonly files: Files;
 }
 
@@ -65,12 +68,36 @@ const anchorBlock = (anchor: Option.Option<Anchor>) =>
 const listBlock = (tag: string, paths: ReadonlyArray<string>) =>
 	Arr.isReadonlyArrayNonEmpty(paths) ? `<${tag}>\n${Arr.join(paths, "\n")}\n</${tag}>` : "";
 
-export const summaryOf = ({ narrative, anchor, files }: Parts) =>
+export const restoredNote =
+	"These guides were in your context before this compaction. Each is its file as it reads now. Follow them as before.";
+
+export const rereadNote =
+	"These guides were in your context before this compaction and did not fit in this summary. Read each again before you rely on it.";
+
+const restoredBlock = ({ restored }: Guides) =>
+	Arr.isReadonlyArrayNonEmpty(restored)
+		? Arr.join(
+				[
+					"<restored-guides>",
+					restoredNote,
+					...Arr.map(restored, ({ path, text }) => `<guide path="${path}">\n${Str.trimEnd(text)}\n</guide>`),
+					"</restored-guides>",
+				],
+				"\n",
+			)
+		: "";
+
+const rereadBlock = ({ listed }: Guides) =>
+	Arr.isReadonlyArrayNonEmpty(listed) ? listBlock("guides-to-reread", [rereadNote, ...listed]) : "";
+
+export const summaryOf = ({ narrative, anchor, guides, files }: Parts) =>
 	Arr.join(
 		Arr.filter(
 			[
 				narrativeBlock(narrative),
 				anchorBlock(anchor),
+				restoredBlock(guides),
+				rereadBlock(guides),
 				listBlock("read-files", files.readFiles),
 				listBlock("modified-files", files.modifiedFiles),
 			],

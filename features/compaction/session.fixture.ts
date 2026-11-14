@@ -7,6 +7,7 @@ import {
 	type SessionEntry,
 	SessionManager,
 	serializeConversation,
+	type SlashCommandInfo,
 } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
@@ -92,16 +93,34 @@ export const sessionWithTask = () => {
 	return session;
 };
 
+export const readResult = ({ session, text }: { readonly session: SessionManager; readonly text: string }) =>
+	session.appendMessage({
+		role: "toolResult",
+		toolCallId: "call",
+		toolName: "read",
+		content: [{ type: "text", text }],
+		isError: false,
+		timestamp: 0,
+	});
+
+/** `keptReads` are read results after the first entry pi keeps. */
 export const eventFor = ({
 	session,
 	fileOps,
 	reason = "threshold",
+	keptReads = [],
 }: {
 	readonly session: SessionManager;
 	readonly fileOps: FileOperations;
 	readonly reason?: SessionBeforeCompactEvent["reason"];
+	readonly keptReads?: ReadonlyArray<string>;
 }): SessionBeforeCompactEvent => {
 	const firstKeptEntryId = session.appendMessage({ role: "user", content: "Carry on.", timestamp: 0 });
+
+	for (const text of keptReads) {
+		readResult({ session, text });
+	}
+
 	const branchEntries = session.getBranch();
 
 	const preparation = {
@@ -131,10 +150,18 @@ export const eventFor = ({
 	};
 };
 
+const skillCommand = (path: string): SlashCommandInfo => ({
+	name: `skill:${path}`,
+	source: "skill",
+	sourceInfo: { path, source: "local", scope: "user", origin: "top-level" },
+});
+
+/** `skills` are the paths of the skill files pi could load. */
 export const compact = Effect.fn("compact")(function* (
 	env: Readonly<Record<string, string>>,
 	event: SessionBeforeCompactEvent,
 	ctx: Ctx,
+	skills: ReadonlyArray<string> = [],
 ) {
 	const handlers: Array<Handler> = [];
 
@@ -142,6 +169,7 @@ export const compact = Effect.fn("compact")(function* (
 		on: (_name, handler) => {
 			handlers.push(handler);
 		},
+		getCommands: () => Arr.map(skills, skillCommand),
 	});
 
 	const results = yield* Effect.forEach(handlers, (handler) => Effect.promise(() => handler(event, ctx)));
