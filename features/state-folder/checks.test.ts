@@ -43,6 +43,8 @@ const sixteenKib = Arr.join(Arr.replicate(Str.repeat(1023)("x"), 16), "\n");
 test.each([
 	["a dated level-2 heading", "# State\n\n## 2026-11-13 session\nDid things.\n", [3]],
 	["a dated level-3 heading", "# State\n\n## Status\n### Done 2026-11-13\n", [4]],
+	["a dated heading indented three spaces", "# State\n\n   ## Status 2026-11-14\n", [3]],
+	["a dated line indented four spaces, which is code", "# State\n\n    ## Status 2026-11-14\n", []],
 	["headings without a date", "# State\n\n## Destination\nShip it.\n## Next step\nTest.\n", []],
 	["a dated heading inside a code fence", "# State\n\n```\n## 2026-11-13\n```\n", []],
 	["exactly 16,384 bytes", `${sixteenKib}\n`, []],
