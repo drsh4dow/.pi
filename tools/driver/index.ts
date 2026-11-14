@@ -26,7 +26,8 @@ import { type Exited, startCore } from "./core.ts";
 import { ScenarioFailed, SetupFailed } from "./failed.ts";
 import { type Root, type RootProcess, startRoot } from "./root.ts";
 import { readSessions, type Sessions } from "./sessions.ts";
-import { type Layout, layoutOf, openWorld, type Setup } from "./world.ts";
+import type { Setup } from "./setup.ts";
+import { type Layout, layoutOf, openWorld } from "./world.ts";
 
 export type { ScenarioFailed } from "./failed.ts";
 

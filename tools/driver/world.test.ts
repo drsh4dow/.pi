@@ -2,7 +2,8 @@ import { expect, test } from "bun:test";
 
 import * as Option from "effect/Option";
 
-import { layoutOf, modelsOf, runEnv, settingsOf } from "./world.ts";
+import { modelsOf, settingsOf } from "./setup.ts";
+import { layoutOf, runEnv } from "./world.ts";
 
 const layout = layoutOf({ tmp: "/t", name: "smoke", stamp: "20260514-101010", pid: 42, tag: "0abc12" });
 
