@@ -93,7 +93,7 @@ const rows: ReadonlyArray<Row> = [
 			delegate,
 			delegate,
 			Leftovers({
-				expect: ["t1.instructions", "t1.message", "t2.instructions", "t2.message", "t3.instructions", "t3.message"],
+				expect: ["t1.brief.json", "t1.message", "t2.brief.json", "t2.message", "t3.brief.json", "t3.message"],
 			}),
 			Act.Slices({ expect: ["delegate-1", "delegate-2", "delegate-3"] }),
 			Answer({ terminal: "t1", text: "a", end: exit(0) }),
@@ -139,12 +139,23 @@ const parentEnv = inheritedEnv({
 	PI_OWNED_WORK_SLICE: "pi-ow-test-delegate1",
 });
 
-const brief = { name: "Review the retry cap, again!", message: "Do it.", model: "a/b", instructions: Option.none() };
+const brief = {
+	name: "Review the retry cap, again!",
+	message: "Do it.",
+	model: "a/b",
+	goal: "Cap the retries.",
+	state: Option.none(),
+	facts: Option.none(),
+	instructions: Option.none(),
+};
 
 const delegateLaunch = (role: ChildRole, level: number, thinking: Option.Option<string>, readOnly = false) =>
 	Effect.flatMap(PiCli, (pi) =>
 		launch(pi)({
-			brief: { ...brief, role, thinking, readOnly },
+			brief:
+				role === "owner"
+					? { ...brief, role, thinking, readOnly, ownerRules: Option.none() }
+					: { ...brief, role, thinking, readOnly },
 			level,
 			childSession: { id: "launched", cwd: sessionRoot, dir: `${sessionRoot}/delegates` },
 			passEnv: parentEnv,

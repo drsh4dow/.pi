@@ -6,9 +6,32 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import type * as PlatformError from "effect/PlatformError";
 import * as Rec from "effect/Record";
+import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import type { SessionAddress } from "../pi-sessions/index.ts";
+
+const briefFields = {
+	goal: Schema.String,
+	state: Schema.OptionFromOptionalKey(Schema.String),
+	facts: Schema.OptionFromOptionalKey(Schema.String),
+	instructions: Schema.OptionFromOptionalKey(Schema.String),
+};
+
+export const StagedBrief = Schema.Union([
+	Schema.Struct({
+		role: Schema.Literal("owner"),
+		...briefFields,
+		ownerRules: Schema.OptionFromOptionalKey(Schema.String),
+	}),
+	Schema.Struct({ role: Schema.Literal("leaf"), ...briefFields }),
+]);
+
+export type StagedBrief = typeof StagedBrief.Type;
+
+const BriefJson = Schema.fromJsonString(StagedBrief);
+
+const encodeBrief = (brief: StagedBrief) => Effect.orDie(Schema.encodeEffect(BriefJson)(brief));
 
 export interface ChildPi {
 	readonly session: SessionAddress;
@@ -17,7 +40,7 @@ export interface ChildPi {
 	readonly model: string;
 	readonly thinking: Option.Option<string>;
 	readonly readOnly: boolean;
-	readonly instructions: Option.Option<{ readonly text: string }>;
+	readonly brief: StagedBrief;
 }
 
 export class PiCli extends Context.Service<
@@ -27,26 +50,24 @@ export class PiCli extends Context.Service<
 			child: ChildPi,
 		) => Effect.Effect<readonly [string, ...Array<string>], PlatformError.PlatformError>;
 		readonly unstage: (session: SessionAddress) => Effect.Effect<void>;
-		/** Leaves every staged file on disk when this layer closes, because a running child reads its instructions each turn. */
+		/** Leaves every staged file on disk when this layer closes, because a running child reads its brief each turn. */
 		readonly release: Effect.Effect<void>;
 		/** Takes over the staged files of children that a released layer started, so closing this one removes them. */
 		readonly adopt: (sessions: ReadonlyArray<SessionAddress>) => Effect.Effect<void>;
 	}
 >()("pi-harness/clients/pi-cli/PiCli") {}
 
-export const instructionsFlag = "instructions";
-
-/** One argv word holds at most 128 KiB, so the message and the instructions go in files beside the child's session. */
+/** One argv word holds at most 128 KiB, so the message goes in a file beside the child's session. */
 const stagedFiles = ({ dir, id }: Pick<SessionAddress, "dir" | "id">) => ({
 	message: `${dir}/${id}.message`,
-	instructions: `${dir}/${id}.instructions`,
+	brief: `${dir}/${id}.brief.json`,
 });
 
 const ownerOnly = 0o600;
 
 const argvOf = (
 	childExtensions: ReadonlyArray<string>,
-	{ session, name, model, thinking, readOnly, instructions }: ChildPi,
+	{ session, name, model, thinking, readOnly }: ChildPi,
 	files: ReturnType<typeof stagedFiles>,
 ) =>
 	[
@@ -54,7 +75,6 @@ const argvOf = (
 		"--model",
 		model,
 		...Arr.flatMap(Option.toArray(thinking), (level) => ["--thinking", level]),
-		...(Option.isSome(instructions) ? [`--${instructionsFlag}`, files.instructions] : []),
 		"--session-id",
 		session.id,
 		"--session-dir",
@@ -95,9 +115,9 @@ export const piCliLayer = (childExtensions: ReadonlyArray<string>): Layer.Layer<
 					return Effect.all([
 						fs.makeDirectory(child.session.dir, { recursive: true, mode: 0o700 }),
 						fs.chmod(child.session.dir, 0o700),
-						Effect.sync(() => staged.add(files.message).add(files.instructions)),
+						Effect.sync(() => staged.add(files.message).add(files.brief)),
 						write(files.message, child.message),
-						...Option.toArray(Option.map(child.instructions, ({ text }) => write(files.instructions, text))),
+						Effect.flatMap(encodeBrief(child.brief), (json) => write(files.brief, json)),
 					]).pipe(Effect.as(argvOf(childExtensions, child, files)));
 				},
 				unstage: (session) => remove(Rec.values(stagedFiles(session))),
@@ -109,12 +129,30 @@ export const piCliLayer = (childExtensions: ReadonlyArray<string>): Layer.Layer<
 						for (const session of sessions) {
 							const files = stagedFiles(session);
 
-							staged.add(files.message).add(files.instructions);
+							staged.add(files.message).add(files.brief);
 						}
 					}),
 			});
 		}),
 	);
+
+export class BriefUnreadable extends Schema.TaggedError<BriefUnreadable, { readonly brand: unique symbol }>()(
+	"BriefUnreadable",
+	{ file: Schema.String, why: Schema.String },
+) {}
+
+export const readStagedBrief = Effect.fn("readStagedBrief")(function* (session: Pick<SessionAddress, "dir" | "id">) {
+	const fs = yield* FileSystem.FileSystem;
+	const file = stagedFiles(session).brief;
+
+	const json = yield* Effect.mapError(fs.readFileString(file), (error) =>
+		BriefUnreadable.make({ file, why: error.reason._tag }),
+	);
+
+	return yield* Effect.mapError(Schema.decodeEffect(BriefJson)(json), (error) =>
+		BriefUnreadable.make({ file, why: error.message }),
+	);
+});
 
 /** An `@file` argument reaches the prompt as `<file name="path">` text (pi's `cli/file-processor.js`), so this takes the message back out. */
 export const unwrapMessage =

@@ -20,10 +20,13 @@ import {
 	table,
 } from "./brief.fixture.ts";
 import { type DelegateParams, roleUses } from "./brief.ts";
+import type { Brief } from "./child.ts";
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${fixtures}`.quiet())));
 
 const Described = Schema.Struct({ description: Schema.String });
+
+const goal = "Cap the retries.";
 
 test("the model parameter tells the caller each alias with its model and its use, and the panel", () =>
 	runtime.runPromise(
@@ -215,7 +218,7 @@ for (const row of briefRows) {
 				const caller = { ...callerOf(), ...row.caller };
 
 				const { isError, details } = yield* Effect.promise(() =>
-					delegate.execute("call", row.call, undefined, undefined, caller),
+					delegate.execute("call", { goal, ...row.call }, undefined, undefined, caller),
 				);
 
 				const shown = Arr.map(started.splice(0), ({ brief, cwd }) => ({
@@ -248,7 +251,7 @@ for (const row of badFrontmatterRows) {
 	test(`an instructions file with ${row.name} is a tool error that names it, and starts nothing`, () =>
 		runtime.runPromise(
 			Effect.gen(function* () {
-				const call = { name: "m", message: "m", instructionsFile: row.file };
+				const call = { name: "m", message: "m", goal, instructionsFile: row.file };
 
 				const { isError, details } = yield* Effect.promise(() =>
 					delegate.execute("call", call, undefined, undefined, callerOf()),
@@ -264,3 +267,16 @@ for (const row of badFrontmatterRows) {
 			}),
 		));
 }
+
+type Assignable<From, To> = [From] extends [To] ? true : false;
+
+type LeafBrief = Extract<Brief, { readonly role: "leaf" }>;
+
+const leafWithOwnerRules: Assignable<
+	Omit<LeafBrief, "ownerRules"> & { readonly ownerRules: Option.Option<string> },
+	Brief
+> = false;
+
+test("a leaf's brief has no room for owner rules", () => {
+	expect(leafWithOwnerRules).toBe(false);
+});

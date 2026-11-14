@@ -1,12 +1,12 @@
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
-import type * as Option from "effect/Option";
+import * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 
 import { type RunSpec, terminalNameOf } from "../../clients/hc/index.ts";
-import type { ChildPi, PiCli } from "../../clients/pi-cli/index.ts";
+import type { ChildPi, PiCli, StagedBrief } from "../../clients/pi-cli/index.ts";
 import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
 
 /** How deep a chain of agents goes, counting the root as level 1. An agent at the last level has no `delegate` tool. */
@@ -83,11 +83,35 @@ export const childExtensions: ReadonlyArray<string> = [
 	`${extensionsFolder}/claude-accounts/index.ts`,
 ];
 
-export interface Brief extends Omit<ChildPi, "session"> {
-	readonly role: ChildRole;
+interface BriefCommon extends Omit<ChildPi, "session" | "brief"> {
+	readonly goal: string;
+	readonly state: Option.Option<string>;
+	readonly facts: Option.Option<string>;
 	/** The file the caller named and its text, read at the call. Only the text is staged, so a later edit never reaches the child. */
 	readonly instructions: Option.Option<{ readonly file: string; readonly text: string }>;
 }
+
+export type Brief =
+	| (BriefCommon & {
+			readonly role: "owner";
+			readonly ownerRules: Option.Option<string>;
+	  })
+	| (BriefCommon & { readonly role: "leaf"; readonly ownerRules?: never });
+
+export const stagedOf = (brief: Brief): StagedBrief => {
+	const common = {
+		goal: brief.goal,
+		state: brief.state,
+		facts: brief.facts,
+		instructions: Option.map(brief.instructions, ({ text }) => text),
+	};
+
+	if (brief.role === "owner") {
+		return { role: "owner", ...common, ownerRules: brief.ownerRules };
+	}
+
+	return { role: "leaf", ...common };
+};
 
 export interface LaunchRequest {
 	readonly brief: Brief;
@@ -100,7 +124,7 @@ export const launch = (cli: (typeof PiCli)["Service"]) => (request: LaunchReques
 	const { oomScoreAdj, env } = atLevel({ level: request.level, role: request.brief.role });
 
 	return Effect.map(
-		cli.launch({ ...request.brief, session: request.childSession }),
+		cli.launch({ ...request.brief, session: request.childSession, brief: stagedOf(request.brief) }),
 		(argv): Pick<RunSpec, "name" | "argv" | "env"> => ({
 			name: terminalNameOf(request.brief.name),
 			argv: ["choom", "-n", oomScoreAdj, "--", ...argv],

@@ -69,7 +69,11 @@ export interface Spawn {
 }
 
 export type Work = Data.TaggedEnum<{
-	Delegate: Common & { readonly childSession: ChildSession; readonly spawn: Option.Option<Spawn> };
+	Delegate: Common & {
+		readonly brief: Brief;
+		readonly childSession: ChildSession;
+		readonly spawn: Option.Option<Spawn>;
+	};
 	Watch: Common & {
 		readonly command: string;
 		readonly deadline: Option.Option<Duration.Duration>;

@@ -24,6 +24,8 @@ const captureExtension = `${import.meta.dirname}/capture.ts`;
 
 const message = "Capture run: reply with the single word ok.";
 
+const stateFolder = `${import.meta.dirname}/state`;
+
 type Env = Readonly<Record<string, string>>;
 
 interface Run {
@@ -148,7 +150,7 @@ const captureAll = Effect.fn("captureAll")(function* (harnessRoot: string, proje
 	yield* borrowUserState(agentDir);
 
 	const stockDir = yield* stockAgentDir(harnessRoot, `${workDir}/stock-agent`);
-	const staged = yield* stagedLaunches(project, `${workDir}/delegates`, message);
+	const staged = yield* stagedLaunches(project, `${workDir}/delegates`, message, stateFolder);
 
 	const run = (each: Run) => capture(each, project, workDir);
 

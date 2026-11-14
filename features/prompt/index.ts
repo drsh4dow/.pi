@@ -8,11 +8,10 @@ import {
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
-import * as Option from "effect/Option";
-import * as Schema from "effect/Schema";
+import type * as Option from "effect/Option";
 
-import { instructionsFlag } from "../../clients/pi-cli/index.ts";
-import { type Role, selfFromEnv } from "../owned-work/index.ts";
+import { readStagedBrief, type StagedBrief } from "../../clients/pi-cli/index.ts";
+import { type Role, Self, selfFromEnv } from "../owned-work/index.ts";
 import { compose } from "./compose.ts";
 import { entryIndex, type Kind, loadEntries } from "./kinds.ts";
 import { skillsFor } from "./skills.ts";
@@ -28,17 +27,11 @@ const indexOf = Effect.fn("indexOf")(function* (kind: Kind, agentDir: string, ro
 export const layersOf = Effect.fn("layersOf")(function* (
 	agentDir: string,
 	role: Role,
-	instructionsFile: Option.Option<string>,
+	brief: Option.Option<StagedBrief>,
 	loaded: ReadonlyArray<Skill>,
 ) {
 	const fs = yield* FileSystem.FileSystem;
 	const roleText = yield* fs.readFileString(`${agentDir}/roles/${role}.md`);
-
-	const instructions = yield* Option.match(instructionsFile, {
-		onNone: () => Effect.succeedNone,
-		onSome: (file) => Effect.asSome(fs.readFileString(file)),
-	});
-
 	const principles = yield* indexOf("principles", agentDir, role);
 	const playbooks = yield* indexOf("playbooks", agentDir, role);
 	const skills = yield* skillsFor({ role, skills: loaded });
@@ -46,7 +39,7 @@ export const layersOf = Effect.fn("layersOf")(function* (
 	return {
 		layers: {
 			role: roleText,
-			instructions,
+			brief,
 			principles: principles.index,
 			playbooks: playbooks.index,
 			skills: skills.skills,
@@ -55,27 +48,33 @@ export const layersOf = Effect.fn("layersOf")(function* (
 	};
 });
 
-export const prompt = (pi: ExtensionAPI) => {
-	pi.registerFlag(instructionsFlag, { description: "File with this delegate's instructions.", type: "string" });
+const briefOf = (self: Self, ctx: ExtensionContext) =>
+	Self.$is("Root")(self)
+		? Effect.succeedNone
+		: Effect.asSome(
+				readStagedBrief({ dir: ctx.sessionManager.getSessionDir(), id: ctx.sessionManager.getSessionId() }),
+			);
 
-	const run = Effect.fn("prompt")(function* (event: BeforeAgentStartEvent, ctx: ExtensionContext) {
-		const file = Schema.decodeUnknownOption(Schema.String)(pi.getFlag(instructionsFlag));
-		const { role } = yield* selfFromEnv(process.env);
-		const { layers, problems } = yield* layersOf(getAgentDir(), role, file, event.systemPromptOptions.skills);
+const run = Effect.fn("prompt")(function* (event: BeforeAgentStartEvent, ctx: ExtensionContext) {
+	const self = yield* selfFromEnv(process.env);
+	const brief = yield* briefOf(self, ctx);
+	const { layers, problems } = yield* layersOf(getAgentDir(), self.role, brief, event.systemPromptOptions.skills);
 
-		compose(layers)(event);
+	compose(layers)(event);
 
-		for (const { file: broken, why } of problems) {
-			const warning = `left out of the prompt, ${broken}: ${why}`;
+	for (const { file: broken, why } of problems) {
+		const warning = `left out of the prompt, ${broken}: ${why}`;
 
-			yield* ctx.hasUI
-				? Effect.sync(() => {
-						ctx.ui.notify(warning, "warning");
-					})
-				: Effect.logWarning(warning);
-		}
-	});
+		yield* ctx.hasUI
+			? Effect.sync(() => {
+					ctx.ui.notify(warning, "warning");
+				})
+			: Effect.logWarning(warning);
+	}
+});
 
-	return (event: BeforeAgentStartEvent, ctx: ExtensionContext) =>
-		Effect.runPromise(run(event, ctx).pipe(Effect.provide(NodeServices.layer)));
+export const prompt = (pi: Pick<ExtensionAPI, "on">) => {
+	pi.on("before_agent_start", (event, ctx) =>
+		Effect.runPromise(run(event, ctx).pipe(Effect.provide(NodeServices.layer))),
+	);
 };
