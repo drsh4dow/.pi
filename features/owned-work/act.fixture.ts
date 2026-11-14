@@ -19,7 +19,6 @@ export type Act = Data.TaggedEnum<{
 		readonly heldThen?: HeldSpawn;
 		readonly group?: string;
 		readonly handle?: Readonly<Record<string, string | boolean>>;
-		/** The pull request, `o/r#<number>`, a verifier reviews at `head`. */
 		readonly reviews?: { readonly number: number; readonly head: string };
 	};
 	Launched: {

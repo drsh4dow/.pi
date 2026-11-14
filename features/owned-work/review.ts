@@ -18,7 +18,6 @@ export const reviewsParam = Type.String({
 		"Leaves only: the pull request, as a number or URL, that this leaf verifies at its current head; your ledger records the `VERDICT:` line its answer ends with.",
 });
 
-/** Pins the pull request a verifier reviews into its brief. Only a leaf can verify, so an author never reviews itself. */
 export const withReview =
 	(reviews: string | undefined) =>
 	(brief: Brief): Effect.Effect<Brief, BadDelegate, Gh> => {
@@ -42,16 +41,14 @@ const verdictPattern = /^[\s*_`]*VERDICT:\s*(?<word>PASS\+NOTES|PASS|FAIL|INCOMP
 
 const decodeResult = Schema.decodeUnknownOption(VerdictResult);
 
-/** The verdict on the answer's last non-empty line. A `VERDICT:` line anywhere above it never counts. */
-export const verdictLine = (text: string): Option.Option<VerdictResult> => {
+export const lastLineVerdict = (text: string): Option.Option<VerdictResult> => {
 	const last = Arr.findLast(Str.split(text, "\n"), (line) => Str.isNonEmpty(Str.trim(line)));
 	const word = Option.flatMap(last, (line) => Option.fromNullishOr(verdictPattern.exec(line)?.groups?.["word"]));
 
 	return Option.flatMap(word, (found) => decodeResult(Str.toLowerCase(found)));
 };
 
-/** The wake line for the author's `fails`-th failed review of one pull request. */
-const nextOf = (fails: number, { repo, number, head }: ReviewTarget): Option.Option<string> => {
+const escalationOf = (fails: number, { repo, number, head }: ReviewTarget): Option.Option<string> => {
 	const pr = `${repo}#${String(number)}`;
 
 	if (fails === 2) {
@@ -79,10 +76,6 @@ const isFailOn =
 				: false,
 		);
 
-/**
- * The verdict of a verifier's answer, when its brief pinned a review target. The verifier's identity and the answer
- * file come from the ledger, never from the answer, and an answer with no verdict line is incomplete.
- */
 interface Reply {
 	readonly state: LedgerState;
 	readonly ref: WorkRef;
@@ -95,11 +88,11 @@ const reviewedOf = ({ state, ref, text, file }: Reply): Option.Option<Reviewed> 
 
 	return Option.flatMap(delegate, ({ brief, childSession }) =>
 		Option.map(Option.fromUndefinedOr(brief.review), (target) => {
-			const result = Option.getOrElse(verdictLine(text), (): VerdictResult => "incomplete");
+			const result = Option.getOrElse(lastLineVerdict(text), (): VerdictResult => "incomplete");
 			const verifier = { name: brief.name, session: childSession.id, model: brief.model };
 			const fails = result === "fail" ? Arr.filter([...state.work.values()], isFailOn(target)).length + 1 : 0;
 
-			return { record: { ...target, result, verifier, answer: file }, next: nextOf(fails, target) };
+			return { record: { ...target, result, verifier, answer: file }, escalation: escalationOf(fails, target) };
 		}),
 	);
 };

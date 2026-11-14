@@ -73,7 +73,6 @@ const openPullRequest = (run: Run, branch: string, base: string) =>
 		"patch-id scenario",
 	]);
 
-/** The command the gate runs, here from the root's project folder, which is no repository. */
 const patchIdOutside = (run: Run, pr: string) =>
 	Effect.map(mustRun(run, ["sh", "-c", `gh pr diff "$1" | git patch-id --verbatim`, "sh", pr]), (line) =>
 		Arr.headNonEmpty(Str.split(line, " ")),
@@ -132,7 +131,6 @@ const stackOf = (run: Run, { bottomBranch, topBranch }: Branches) =>
 		return stack;
 	});
 
-/** Closes what the run opened by branch name, so it also cleans up after a run that failed halfway. */
 const closed = (run: Run, { bottomBranch, topBranch }: Branches) =>
 	Effect.forEach([topBranch, bottomBranch], (branch) =>
 		Effect.all([
@@ -141,7 +139,6 @@ const closed = (run: Run, { bottomBranch, topBranch }: Branches) =>
 		]),
 	);
 
-/** Merges the bottom pull request, rebases the top one onto main, and waits until GitHub shows the new head. */
 const mergeAndRebase = (run: Run, { bottomBranch, topBranch, bottom, top }: Stack) =>
 	Effect.gen(function* () {
 		yield* mustRun(run, ["gh", "pr", "merge", bottom, "--squash"]);

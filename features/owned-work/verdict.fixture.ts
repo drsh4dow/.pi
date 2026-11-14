@@ -17,7 +17,6 @@ interface Expected {
 	readonly expected: ReadonlyArray<object>;
 }
 
-/** Every verdict record of the pull request `o/r#<pr>`, read the way a merge gate would, in path order. */
 export const recordsAre =
 	(fs: FileSystem.FileSystem) =>
 	({ pr, expected }: Expected) => {

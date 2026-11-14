@@ -36,7 +36,7 @@ const VerdictOut = Type.Object({
 	pr: Type.String(),
 	head: Type.String(),
 	result: Type.Enum([...VerdictResult.literals]),
-	next: Type.Optional(Type.String()),
+	escalation: Type.Optional(Type.String()),
 });
 
 const DoneOut = Type.Object({
@@ -93,7 +93,7 @@ type OutcomeJson =
 				readonly pr: string;
 				readonly head: string;
 				readonly result: string;
-				readonly next?: string;
+				readonly escalation?: string;
 			};
 	  }
 	| { readonly status: "fired"; readonly exit_code: number; readonly log?: string; readonly tail: string }
@@ -129,11 +129,11 @@ const reasonOut = (reason: FailReason): { readonly reason: string; readonly deta
 const logOut = (log: Option.Option<string>) =>
 	Option.match(log, { onNone: () => ({}), onSome: (path) => ({ log: path }) });
 
-const verdictOut = ({ record: { repo, number, head, result }, next }: Reviewed) => ({
+const verdictOut = ({ record: { repo, number, head, result }, escalation }: Reviewed) => ({
 	pr: `${repo}#${String(number)}`,
 	head,
 	result,
-	...Option.match(next, { onNone: () => ({}), onSome: (line) => ({ next: line }) }),
+	...Option.match(escalation, { onNone: () => ({}), onSome: (line) => ({ escalation: line }) }),
 });
 
 const outcomeOut = (outcome: Outcome, log: Option.Option<string>): OutcomeJson =>

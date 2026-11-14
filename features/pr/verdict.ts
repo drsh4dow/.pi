@@ -20,15 +20,12 @@ export const VerdictRecord = Schema.Struct({
 
 export type VerdictRecord = typeof VerdictRecord.Type;
 
-/** What a verifier reviews, pinned when its parent starts it, never taken from its answer. */
 export type ReviewTarget = Pick<VerdictRecord, "repo" | "number" | "head" | "patchId">;
 
-/** Every verdict on the machine sits under this folder, so a `gh` wrapper started anywhere finds a pull request's verdicts. */
 export const verdictsFolder = (home: string) => `${home}/.local/state/pi-agent/verdicts`;
 
 const encode = Schema.encodeEffect(Schema.fromJsonString(VerdictRecord));
 
-/** One file per verifier per head, so two verifiers never write the same file. */
 export const recordVerdict = (root: string) => (record: VerdictRecord) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;

@@ -42,10 +42,9 @@ export interface Answer {
 	readonly file: string;
 }
 
-/** What the ledger made of a verifier's answer: the record it writes, and the line repeated fails add to the wake. */
 export interface Reviewed {
 	readonly record: VerdictRecord;
-	readonly next: Option.Option<string>;
+	readonly escalation: Option.Option<string>;
 }
 
 export type Outcome = Data.TaggedEnum<{

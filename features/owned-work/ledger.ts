@@ -195,11 +195,14 @@ const run = (kit: Kit, command: Command): Effect.Effect<unknown> =>
 		RecordVerdict: ({ record }) => recordOf(kit, record),
 	});
 
-/** A failed write leaves no record, so the merge gate refuses as it does for a pull request with no verdict. */
 const recordOf = (kit: Kit, record: VerdictRecord) => {
 	const write = recordVerdict(verdictsFolder(kit.options.passEnv["HOME"] ?? ""))(record);
 
-	return Effect.ignore(Effect.provideService(write, FileSystem.FileSystem, kit.fs));
+	return Effect.provideService(write, FileSystem.FileSystem, kit.fs).pipe(
+		Effect.catchCause((cause) =>
+			Effect.logWarning(`no verdict record for ${record.repo}#${String(record.number)} at ${record.head}`, cause),
+		),
+	);
 };
 
 const runOutsideLock = (kit: Kit, command: Command): Effect.Effect<void> =>

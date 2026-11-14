@@ -22,7 +22,6 @@ export class Gh extends Context.Service<
 	{
 		/** `pr` is a number, a URL or a branch, as gh resolves it in the current directory. */
 		readonly view: (pr: string) => Effect.Effect<PrView, GhError>;
-		/** The patch identity of the pull request's diff, as `patchIdOf` computes it. */
 		readonly patchId: (pr: string) => Effect.Effect<string, GhError>;
 	}
 >()("pi-harness/clients/gh/Gh") {}

@@ -250,7 +250,6 @@ const register = (
 	}
 };
 
-/** What the tools need beyond the ledger: \`gh\` pins the pull request a verifier reviews. */
 export type ToolServices = Gh;
 
 export const Tools = { register, delegate: delegateTool, layer: ghLayer };

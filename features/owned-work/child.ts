@@ -128,7 +128,6 @@ export type Brief =
 	| (BriefCommon & {
 			readonly role: "leaf";
 			readonly ownerRules?: never;
-			/** Set by the call's `reviews`, so a verifier is always a leaf. */
 			readonly review?: ReviewTarget;
 	  });
 

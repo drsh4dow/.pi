@@ -6,7 +6,7 @@ import * as Option from "effect/Option";
 
 import type { VerdictResult } from "../pr/index.ts";
 import { callerOf, delegate, pinned, runtime, started } from "./brief.fixture.ts";
-import { verdictLine } from "./review.ts";
+import { lastLineVerdict } from "./review.ts";
 
 const lines: ReadonlyArray<readonly [string, string, Option.Option<VerdictResult>]> = [
 	["a pass", "Checked.\n\nVERDICT: PASS", Option.some("pass")],
@@ -23,7 +23,7 @@ const lines: ReadonlyArray<readonly [string, string, Option.Option<VerdictResult
 
 for (const [name, text, expected] of lines) {
 	test(`the verdict line of ${name}`, () => {
-		expect(verdictLine(text)).toEqual(expected);
+		expect(lastLineVerdict(text)).toEqual(expected);
 	});
 }
 
