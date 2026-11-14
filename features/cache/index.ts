@@ -9,10 +9,9 @@ import * as Schema from "effect/Schema";
 export const entryKind = "pi.cache-miss";
 
 /** The cache lifetime of Anthropic's default retention, which pi's own cache notices also assume. */
-const cacheTtlMs = 5 * 60 * 1000;
+export const cacheTtlMs = 5 * 60 * 1000;
 
-/** Fewer unread cached tokens make a small miss, not a full-price rewrite worth a record. */
-const minMissed = 50_000;
+const minMissedTokens = 50_000;
 
 export const Cause = Schema.TaggedUnion({
 	Idle: { ms: Schema.Finite },
@@ -35,7 +34,6 @@ export const Miss = Schema.Struct({
 
 export type Miss = typeof Miss.Type;
 
-/** A model call on the branch: a reply, or a cache-warm call. */
 interface Call {
 	readonly at: number;
 	readonly model: string;
@@ -46,15 +44,16 @@ const promptOf = (usage: Usage) => usage.input + usage.cacheRead + usage.cacheWr
 
 const usedCache = (usage: Usage) => usage.cacheRead + usage.cacheWrite > 0;
 
-/** A failed call reports no prompt, so it reached no cache. */
+const reachedModel = (usage: Usage) => promptOf(usage) > 0;
+
 const callOf = (entry: SessionEntry): Option.Option<Call> => {
-	if (entry.type === "message" && entry.message.role === "assistant" && promptOf(entry.message.usage) > 0) {
+	if (entry.type === "message" && entry.message.role === "assistant" && reachedModel(entry.message.usage)) {
 		const { timestamp, provider, model, usage } = entry.message;
 
 		return Option.some({ at: timestamp, model: `${provider}/${model}`, usage });
 	}
 
-	if (entry.type === "usage" && entry.kind === "cache_warm" && promptOf(entry.usage) > 0) {
+	if (entry.type === "usage" && entry.kind === "cache_warm" && reachedModel(entry.usage)) {
 		const { timestamp, provider, model, usage } = entry;
 
 		return Option.some({ at: Date.parse(timestamp), model: `${provider}/${model}`, usage });
@@ -63,7 +62,6 @@ const callOf = (entry: SessionEntry): Option.Option<Call> => {
 	return Option.none();
 };
 
-/** The last call on the branch, and the entries after it. */
 interface Last {
 	readonly call: Call;
 	readonly since: ReadonlyArray<SessionEntry>;
@@ -78,7 +76,7 @@ const lastCall = (branch: ReadonlyArray<SessionEntry>): Option.Option<Last> =>
  * The system messages pi saves for each change to the prompt sections or the declared tools. A change pi makes only in
  * the request, a `systemPrompt` a `before_agent_start` handler returns or a declaration `prepareLoadout` hides, saves
  * none, so its miss names no cause. A forced `systemPrompt` also hides the section changes pi saves, which still name
- * PromptChanged. This harness makes neither change.
+ * PromptChanged.
  */
 const systemMessages = (entries: ReadonlyArray<SessionEntry>): ReadonlyArray<SystemMessage> =>
 	Arr.getSomes(
@@ -93,7 +91,6 @@ const changesPrompt = ({ content, sections }: SystemMessage) =>
 const changesTools = ({ toolsAdded, toolsRemoved }: SystemMessage) =>
 	Arr.isReadonlyArrayNonEmpty(toolsAdded ?? []) || Arr.isReadonlyArrayNonEmpty(toolsRemoved ?? []);
 
-/** Every cause that held between the last call and the reply. */
 const causesOf = (reply: AssistantMessage, { call, since }: Last) => {
 	const idleMs = reply.timestamp - call.at;
 	const model = `${reply.provider}/${reply.model}`;
@@ -115,23 +112,18 @@ const causesOf = (reply: AssistantMessage, { call, since }: Last) => {
 	);
 };
 
-/**
- * A reply missed when it left at least 50,000 tokens unread that the last call had cached: the smaller of the two
- * prompts, less what the reply read. A cache shows only once a call on the branch, or the reply, reads or writes it,
- * since a provider without caching reports neither. A session's first call has nothing cached to miss.
- */
 const missOf = (branch: ReadonlyArray<SessionEntry>, reply: AssistantMessage): Option.Option<Miss> => {
 	const { cacheRead } = reply.usage;
 	const prompt = promptOf(reply.usage);
 
-	const cacheShown =
+	const providerCaches =
 		usedCache(reply.usage) ||
 		Arr.some(branch, (entry) => Option.exists(callOf(entry), ({ usage }) => usedCache(usage)));
 
 	return Option.flatMap(lastCall(branch), (last) => {
 		const missedTokens = Math.min(promptOf(last.call.usage), prompt) - cacheRead;
 
-		if (!cacheShown || missedTokens < minMissed) {
+		if (!providerCaches || missedTokens < minMissedTokens) {
 			return Option.none();
 		}
 
@@ -154,10 +146,7 @@ export const recordMisses =
 		}
 	};
 
-/**
- * Records why a reply paid full price to rewrite the prompt cache. pi works out a miss only for its TUI notice and keeps
- * none of it. This records nothing else and changes no cache setting.
- */
+/** Records why a reply paid full price to rewrite the prompt cache. */
 export const cache = (pi: Pick<ExtensionAPI, "on" | "appendEntry">) => {
 	pi.on("message_end", recordMisses(pi));
 };

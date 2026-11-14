@@ -1,9 +1,3 @@
-/**
- * A leaf idles past the 5-minute cache lifetime inside one run, in a `sleep` its bash tool waits on, and its next reply
- * rewrites its whole prompt. The cache feature records that miss with an idle cause. The leaf runs on Claude Haiku:
- * pi's cache warmer refreshes a cache only when that saves at least $0.05, which a Haiku prompt under 100,000 tokens
- * never does, so nothing refreshes the cache while the leaf sleeps.
- */
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -11,15 +5,13 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 import { scenario } from "../../tools/driver/index.ts";
-import { Cause, entryKind, Miss } from "./index.ts";
+import { Cause, cacheTtlMs, entryKind, Miss } from "./index.ts";
 
 const Recorded = Schema.Struct({ type: Schema.Literal("custom"), customType: Schema.Literal(entryKind), data: Miss });
 
 const decodeRecorded = Schema.decodeUnknownOption(Recorded);
 
 const missIn = (entries: ReadonlyArray<SessionEntry>) => Arr.findFirst(entries, (entry) => decodeRecorded(entry));
-
-const cacheLifetimeMs = 5 * 60 * 1000;
 
 scenario({
 	model: "ultra-a/claude-fable-5-2",
@@ -35,6 +27,8 @@ scenario({
 
 			yield* run.check(filler.code === 0, `the filler file was written (exit ${String(filler.code)})`);
 
+			// The leaf runs on Haiku because pi's cache warmer refreshes a cache only when that saves at least $0.05, and a
+			// Haiku prompt this size saves about $0.005, so nothing refreshes the leaf's cache while it sleeps.
 			yield* run.root.prompt(
 				Arr.join(
 					[
@@ -55,7 +49,7 @@ scenario({
 			const idle = Arr.findFirst(data.causes, Cause.guards.Idle);
 
 			yield* run.check(
-				Option.exists(idle, ({ ms }) => ms > cacheLifetimeMs) && data.missedTokens >= 50_000,
+				Option.exists(idle, ({ ms }) => ms > cacheTtlMs) && data.missedTokens >= 50_000,
 				`the leaf recorded an idle miss past 5 minutes of at least 50,000 tokens (it recorded ${String(data.missedTokens)} tokens, causes ${Arr.join(
 					Arr.map(data.causes, ({ _tag }) => _tag),
 					" ",
