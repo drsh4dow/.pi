@@ -27,7 +27,7 @@ import { type HerdrApp, herdrAppLayer } from "../../clients/herdr-app/index.ts";
 import { type PiCli, piCliLayer, unwrapMessage } from "../../clients/pi-cli/index.ts";
 import { type PiSessions, piSessionsLayer } from "../../clients/pi-sessions/index.ts";
 import { type Slices, slicesLayer } from "../../clients/systemd/index.ts";
-import { inheritedEnv, Self, selfFromEnv } from "./child.ts";
+import { inheritedEnv, Self, selfFromEnv, withAgentBin } from "./child.ts";
 import { forkInTab, restoreDraft } from "./fork.ts";
 import {
 	type Inheritance,
@@ -264,8 +264,8 @@ const end = (current: Current) => (event: SessionShutdownEvent) => {
 };
 
 /** `childExtensions` are the entrypoints each delegate loads: this feature's own, plus any the harness wants in every child. */
-export const ownedWork = (childExtensions: ReadonlyArray<string>) => (pi: ExtensionAPI) => {
-	const env = { ...process.env } satisfies Env;
+export const ownedWork = (childExtensions: ReadonlyArray<string>) => (agentDir: string) => (pi: ExtensionAPI) => {
+	const env = withAgentBin(agentDir)({ ...process.env });
 	const current: Current = { session: Option.none() };
 
 	const withLedger = <Reply>(

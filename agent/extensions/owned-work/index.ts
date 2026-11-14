@@ -1,9 +1,9 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { type ExtensionAPI, getAgentDir } from "@earendil-works/pi-coding-agent";
 
 import { childExtensions, ownedWork } from "../../../features/owned-work/index.ts";
 
 export default function (pi: ExtensionAPI) {
-	const work = ownedWork(childExtensions)(pi);
+	const work = ownedWork(childExtensions)(getAgentDir())(pi);
 
 	pi.on("session_start", work.sessionStart);
 	pi.on("input", work.input);
