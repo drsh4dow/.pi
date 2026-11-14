@@ -8,14 +8,6 @@ export const VerdictResult = Schema.Literals(["pass", "pass+notes", "fail", "inc
 
 export type VerdictResult = typeof VerdictResult.Type;
 
-/** What a verifier reviews, pinned when its parent starts it, never taken from its answer. */
-export interface ReviewTarget {
-	readonly repo: string;
-	readonly number: number;
-	readonly head: string;
-	readonly patchId: string;
-}
-
 export const VerdictRecord = Schema.Struct({
 	repo: Schema.String,
 	number: Schema.Finite,
@@ -27,6 +19,9 @@ export const VerdictRecord = Schema.Struct({
 });
 
 export type VerdictRecord = typeof VerdictRecord.Type;
+
+/** What a verifier reviews, pinned when its parent starts it, never taken from its answer. */
+export type ReviewTarget = Pick<VerdictRecord, "repo" | "number" | "head" | "patchId">;
 
 /** Every verdict on the machine sits under this folder, so a `gh` wrapper started anywhere finds a pull request's verdicts. */
 export const verdictsFolder = (home: string) => `${home}/.local/state/pi-agent/verdicts`;

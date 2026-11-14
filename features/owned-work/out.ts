@@ -8,6 +8,7 @@ import * as Schema from "effect/Schema";
 import { Type } from "typebox";
 
 import type { TerminalEnd } from "../../clients/hc/index.ts";
+import { VerdictResult } from "../pr/index.ts";
 import type { LedgerFailure } from "./ledger.ts";
 import {
 	type BadDelegate,
@@ -34,7 +35,7 @@ export const HandleOut = Type.Object({
 const VerdictOut = Type.Object({
 	pr: Type.String(),
 	head: Type.String(),
-	result: Type.Enum(["pass", "pass+notes", "fail", "incomplete"]),
+	result: Type.Enum([...VerdictResult.literals]),
 	next: Type.Optional(Type.String()),
 });
 
