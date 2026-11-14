@@ -98,8 +98,9 @@ const validated = (tool: Pick<ToolDefinition, "name" | "description" | "paramete
 	validateToolArguments(tool, { type: "toolCall", id: "c", name: tool.name, arguments: args });
 };
 
-test("pi refuses a delegate message of only spaces, tabs and newlines, and passes one with a word", () => {
+test("pi refuses a delegate name or message of only spaces, tabs and newlines, and passes them with a word", () => {
 	expect(validated(delegate, { name: "review", message: " \n\t " })).toThrow();
+	expect(validated(delegate, { name: " ", message: "Review it." })).toThrow();
 	expect(validated(delegate, { name: "review", message: "\n Review it. " })).not.toThrow();
 });
 
@@ -119,17 +120,11 @@ test("pi refuses an owner from a last-level owner's delegate tool", () => {
 
 const group = Arr.findFirst(toolsOf(Self.Root({ role: "root", level: 1 })), ({ name }) => name === "group");
 
-const nameRows = [
-	{ tool: "delegate", args: { message: "Review it." } },
-	{ tool: "group", args: { of: [{ ref: "delegate-1" }] } },
-];
+test("pi refuses a group call with no name or a blank one, and passes one with a name", () => {
+	const tool = Option.getOrThrow(group);
+	const args = { of: [{ ref: "delegate-1" }] };
 
-for (const row of nameRows) {
-	test(`pi refuses a ${row.tool} call with no name or a blank one, and passes one with a name`, () => {
-		const tool = row.tool === "delegate" ? delegate : Option.getOrThrow(group);
-
-		expect(validated(tool, row.args)).toThrow();
-		expect(validated(tool, { ...row.args, name: " " })).toThrow();
-		expect(validated(tool, { ...row.args, name: "review auth" })).not.toThrow();
-	});
-}
+	expect(validated(tool, args)).toThrow();
+	expect(validated(tool, { ...args, name: " " })).toThrow();
+	expect(validated(tool, { ...args, name: "review auth" })).not.toThrow();
+});

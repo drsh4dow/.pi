@@ -73,7 +73,11 @@ const add = (tally: Tally, line: Line): Tally => {
 	}
 
 	if (line.type === "custom") {
-		return { ...tally, started: [...tally.started, { id: line.data.child_session_id, name: line.data.name }] };
+		const { child_session_id: id, name } = line.data;
+
+		return Arr.some(tally.started, (started) => started.id === id)
+			? tally
+			: { ...tally, started: [...tally.started, { id, name }] };
 	}
 
 	const { usage } = line.type === "message" ? line.message : line;

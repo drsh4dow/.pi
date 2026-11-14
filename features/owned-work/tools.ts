@@ -18,6 +18,7 @@ import { readStagedBrief } from "../../clients/pi-cli/index.ts";
 import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
 import { type Caller, type DelegateParams, delegateParams, parseCall } from "./brief.ts";
 import { type ChildRole, type ChildSession, childRoles, Self } from "./child.ts";
+import { freshCall, parseContinuation } from "./continuation.ts";
 import { Ledger, type LedgerFailure } from "./ledger.ts";
 import { type ModelTable, modelTable } from "./models.ts";
 import { HandleOut, Out, ResultsOut } from "./out.ts";
@@ -138,8 +139,15 @@ const delegateTool = (
 			runTool(runtime, signal)(
 				(ledger) =>
 					Effect.gen(function* () {
+						if (call.continues !== undefined) {
+							const continuation = yield* parseContinuation(call.continues, call);
+
+							return yield* ledger.continue(continuation);
+						}
+
+						const fresh = yield* freshCall(call);
 						const inherited = yield* ownBrief(ownSession);
-						const { brief, cwd } = yield* parseCall(ctx, table, roles, inherited, call);
+						const { brief, cwd } = yield* parseCall(ctx, table, roles, inherited, fresh);
 
 						return yield* ledger.start(
 							StartRequest.Delegate({

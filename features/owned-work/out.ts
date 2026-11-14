@@ -9,16 +9,16 @@ import { Type } from "typebox";
 
 import type { TerminalEnd } from "../../clients/hc/index.ts";
 import type { LedgerFailure } from "./ledger.ts";
-import type {
-	BadDelegate,
+import {
+	type BadDelegate,
 	FailReason,
-	Handle,
-	Identity,
+	type Handle,
+	type Identity,
 	Outcome,
-	Settled,
-	WorkEntry,
-	WorkKind,
-	WorkRef,
+	type Settled,
+	type WorkEntry,
+	type WorkKind,
+	type WorkRef,
 } from "./work.ts";
 
 export const HandleOut = Type.Object({
@@ -64,13 +64,14 @@ const Result = Type.Object({
 	session: Type.Optional(Type.String()),
 	command: Type.Optional(Type.String()),
 	outcome: Type.Union([DoneOut, FiredOut, FailedOut, SettledOut]),
+	next: Type.Optional(Type.String()),
 });
 
 const ResultOut = Type.Cyclic({ Result }, "Result");
 
 export const ResultsOut = Type.Object({ results: Type.Array(ResultOut) });
 
-type ResultJson = Identity & { readonly ref: string; readonly outcome: OutcomeJson };
+type ResultJson = Identity & { readonly ref: string; readonly outcome: OutcomeJson; readonly next?: string };
 
 type OutcomeJson =
 	| { readonly status: "done"; readonly text: string; readonly cut: boolean; readonly answer: string }
@@ -115,11 +116,18 @@ const outcomeOut = (outcome: Outcome, log: Option.Option<string>): OutcomeJson =
 		Failed: ({ reason }): OutcomeJson => ({ status: "failed", ...reasonOut(reason), ...logOut(log) }),
 	});
 
-const resultOut = ({ ref, who, outcome, log }: Settled): ResultJson => ({
-	ref,
-	...who,
-	outcome: outcomeOut(outcome, log),
-});
+const diedOnProviderError = ({ who, outcome }: Settled) =>
+	who.kind === "delegate" && Outcome.$is("Failed")(outcome) && FailReason.$is("Errored")(outcome.reason);
+
+const resultOut = (settled: Settled): ResultJson => {
+	const result = { ref: settled.ref, ...settled.who, outcome: outcomeOut(settled.outcome, settled.log) };
+
+	if (!diedOnProviderError(settled)) {
+		return result;
+	}
+
+	return { ...result, next: `call delegate with continues "${settled.ref}" to run it again in its own session` };
+};
 
 /** How to wait for the work. A serve's end never wakes the agent, so its handle has none. */
 const nextOf = (kind: WorkKind, waker: WorkRef) =>
@@ -172,6 +180,7 @@ const errorText = (error: LedgerFailure | BadDelegate): string =>
 	Match.valueTags(error, {
 		BadDelegate: ({ why }) => why,
 		UnknownRef: ({ ref }) => `no work is called ${ref}`,
+		NotContinuable: ({ ref, why }) => `${ref} ${why}`,
 		NameTaken: ({ wanted, by }) =>
 			`${by} runs under the name "${wanted}"; pick another name, or wait for ${by} to settle`,
 		NotYours: ({ ref, why }) => `${ref}: ${why}`,
