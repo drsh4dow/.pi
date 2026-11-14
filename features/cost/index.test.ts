@@ -112,6 +112,21 @@ test("compactions and branch summaries count, since each one calls the model", (
 		}),
 	));
 
+test("a cache-warm call counts, since it calls the model", () =>
+	run(
+		Effect.gen(function* () {
+			const { dir, delegates } = sessionsDir();
+			const root = SessionManager.create("/work", dir);
+
+			reply(root, 1);
+			root.appendUsage("cache_warm", "ultra-a", "claude-opus-5-5", usageOf(0.125));
+
+			const label = yield* readerOf(root, delegates).read;
+
+			expect(label.own).toBe(1.125);
+		}),
+	));
+
 /** A session that spent $5 and started a delegate that spent $1, and returns the id of its last reply. */
 const sourceWithHistory = (dir: string, delegates: string) => {
 	const source = SessionManager.create("/work", dir);
