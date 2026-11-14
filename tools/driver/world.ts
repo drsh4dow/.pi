@@ -15,7 +15,7 @@ import type * as Scope from "effect/Scope";
 import * as Str from "effect/String";
 
 import { harnessEntries, withoutPackageBins } from "../harness.ts";
-import { type Argv, execIn, type Exited, ran } from "./core.ts";
+import { type Argv, execIn, type Exited, ran, startCore } from "./core.ts";
 import { type ScenarioFailed, SetupFailed } from "./failed.ts";
 import { modelsOf, type Setup, settingsOf } from "./setup.ts";
 
@@ -126,7 +126,7 @@ export const runEnv = ({
 	};
 };
 
-/** What the run is, once built. The scope that built it stops the core and unlinks the human's `auth.json`. */
+/** What the run is, once built. Closing its scope stops the core, whose guardian unlinks the human's `auth.json`. */
 export interface World {
 	readonly layout: Layout;
 	/** The worktree's `agent/`, the real folder the agent folder's links point into. */
@@ -143,16 +143,14 @@ const encodeJson = Schema.encodeEffect(Schema.fromJsonString(Schema.JsonObject, 
 
 const worktree = Str.replace(/\/tools\/driver$/u, "")(import.meta.dirname);
 
-/** Links the worktree's shipped entries, and the human's credentials until the scope closes. */
+/** Links the worktree's shipped entries and the human's credentials. The core's guardian removes the credentials link. */
 const linkAgent = Effect.fn("linkAgent")(function* (layout: Layout, humanAgent: string) {
 	const fs = yield* FileSystem.FileSystem;
 	const gitignore = yield* fs.readFileString(`${worktree}/.gitignore`);
 	const shipped = yield* Effect.filter(harnessEntries(gitignore), (entry) => fs.exists(`${worktree}/agent/${entry}`));
 
 	yield* Effect.forEach(shipped, (entry) => fs.symlink(`${worktree}/agent/${entry}`, `${layout.agent}/${entry}`));
-	yield* Effect.acquireRelease(fs.symlink(`${humanAgent}/auth.json`, `${layout.agent}/auth.json`), () =>
-		Effect.ignore(fs.remove(`${layout.agent}/auth.json`)),
-	);
+	yield* fs.symlink(`${humanAgent}/auth.json`, `${layout.agent}/auth.json`);
 
 	if (yield* fs.exists(`${humanAgent}/models-store.json`)) {
 		yield* fs.copyFile(`${humanAgent}/models-store.json`, `${layout.agent}/models-store.json`);
@@ -220,7 +218,8 @@ const envOf = Effect.fn("envOf")(function* (layout: Layout) {
 
 /**
  * Builds the world in order, each step's undo registered in the scope as it lands, so a failure at any step undoes
- * exactly the steps before it. Every failure is `SetupFailed`.
+ * exactly the steps before it. The core starts before the credentials link exists, so the guardian that removes the
+ * link outlives the driver from the moment there is one. Every failure is `SetupFailed`.
  */
 export const openWorld = (input: {
 	readonly layout: Layout;
@@ -237,6 +236,7 @@ export const openWorld = (input: {
 
 		const pi = yield* resolvePi(layout, env);
 
+		yield* startCore({ layout, env });
 		yield* linkAgent(layout, `${humanHome}/.pi/agent`);
 		yield* writeConfig(layout, input.setup, `${humanHome}/.pi/agent`);
 

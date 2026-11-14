@@ -38,7 +38,8 @@ Every outcome stops the root pi, its delegates and the run's terminal core, and 
 loaded and the payloads it built), `root.in.jsonl` and `root.out.jsonl` (every RPC record sent and received), `root.stderr`, `core.log`,
 and `home/` (the scratch HOME, including any state folder an agent made). The link to your `auth.json` is removed. A
 run killed outright cleans up the same way: the root pi exits when its stdin closes, and the shell that watches the
-terminal core stops it with its delegates and removes the link once the driver's pipe closes.
+terminal core stops it with its delegates and removes the link once the driver's pipe closes. That shell starts before
+the link exists, so a kill at any moment leaves only the run folder.
 
 To prove a run left your sessions and state folders alone, check it:
 

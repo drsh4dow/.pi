@@ -22,7 +22,7 @@ import type * as Runtime from "effect/Runtime";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { type Exited, startCore } from "./core.ts";
+import type { Exited } from "./core.ts";
 import { ScenarioFailed, SetupFailed } from "./failed.ts";
 import { type Root, type RootProcess, startRoot } from "./root.ts";
 import { readSessions, type Sessions } from "./sessions.ts";
@@ -185,7 +185,6 @@ const playIn = <Failure>({
 		const fs = yield* FileSystem.FileSystem;
 		const world = yield* openWorld({ layout, setup: setupOf(spec) });
 
-		yield* startCore({ layout, env: world.env });
 		yield* report.say(`pi ${world.pi.version} ${world.pi.path}`);
 		yield* report.say(`agent ${world.agentDir}`);
 
