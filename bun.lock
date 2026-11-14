@@ -9,6 +9,7 @@
         "defuddle": "0.19.6",
         "effect": "4.1.2",
         "linkedom": "0.18.15",
+        "marked": "18.0.11",
         "unpdf": "2.1.0",
       },
       "devDependencies": {
