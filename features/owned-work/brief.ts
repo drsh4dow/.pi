@@ -5,29 +5,15 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
-import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 import { type Static, Type } from "typebox";
 
 import type { StagedBrief } from "../../clients/pi-cli/index.ts";
 import { lastFolder } from "../state-folder/index.ts";
 import type { Brief, ChildRole } from "./child.ts";
-import { type Alias, ModelName, modelNameOf, type ModelTable } from "./models.ts";
+import { type ModelCaller, modelChoices, modelDescription, modelNameOf, modelOf, type ModelTable } from "./models.ts";
 import { parseProfile } from "./profile.ts";
 import { BadDelegate } from "./work.ts";
-
-const modelDescription = ({ aliases, panel }: ModelTable) => {
-	const entries = Rec.toEntries(aliases);
-	const named = Arr.map(entries, ([alias, { provider, id, use }]) => `\`${alias}\` (${provider}/${id}) for ${use}`);
-
-	const sentences = [
-		`\`provider/id\`, or an alias: ${Arr.join(named, "; ")}.`,
-		"It overrides the model an instructions file names, and is required when the file names none.",
-		`The panel, for work a skill runs once on each: ${Arr.join(panel, ", ")}.`,
-	];
-
-	return Arr.join(sentences, " ");
-};
 
 export const roleUses =
 	"`owner` for a slice to build, verify and commit, which may need a playbook or delegates of its own; `leaf` for one bounded task, such as a search, a review, a verification lane or a scoped edit";
@@ -92,50 +78,10 @@ export const delegateParams = ({
 
 export type DelegateParams = ReturnType<typeof delegateParams>;
 
-export type Caller = Pick<ExtensionContext, "cwd" | "model"> & {
-	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll">;
-	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;
-};
-
-/** `provider/id` of the alias's model on the caller's provider when that provider has it, so a delegate stays on its parent's account. */
-const aliasedModel = (ctx: Caller, { provider: home, id }: Alias) => {
-	const registry = ctx.modelRegistry.getAll();
-
-	const own = Option.filter(Option.fromUndefinedOr(ctx.model), ({ provider }) =>
-		Arr.some(registry, (model) => model.provider === provider && model.id === id),
-	);
-
-	const provider = Option.match(own, { onNone: () => home, onSome: (model) => model.provider });
-
-	return `${provider}/${id}`;
-};
-
-const modelChoices = ({ aliases }: ModelTable) => {
-	const named = Arr.map(Rec.keys(aliases), (alias) => `\`${alias}\``);
-
-	return `an alias (${Arr.join(named, ", ")}) or a \`provider/id\`, your own included`;
-};
-
-const modelOf = (ctx: Caller, table: ModelTable, name: ModelName) =>
-	Effect.flatMap(
-		ModelName.$match(name, {
-			Spelled: ({ key }) => Effect.succeed({ model: key, source: "" }),
-			Alias: ({ alias }) =>
-				Effect.fromOption(Rec.get(table.aliases, alias), () =>
-					BadDelegate.make({ why: `${alias} is not an alias: name ${modelChoices(table)}` }),
-				).pipe(
-					Effect.map((entry) => ({
-						model: aliasedModel(ctx, entry),
-						source: `, which the alias ${alias} names,`,
-					})),
-				),
-		}),
-		({ model, source }) =>
-			Effect.fromOption(
-				Arr.findFirst(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === model),
-				() => BadDelegate.make({ why: `model ${model}${source} is not in the model registry` }),
-			).pipe(Effect.as(model)),
-	);
+export type Caller = ModelCaller &
+	Pick<ExtensionContext, "cwd"> & {
+		readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;
+	};
 
 /** The thinking level a delegate starts at unless its instructions file names one. pi clamps it to what the model supports. */
 const delegateThinking = "high";
