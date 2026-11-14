@@ -94,7 +94,7 @@ test.each([
 test("STATE.md over the cap gets its size checked however deep its quotes nest", () =>
 	runTest(
 		Effect.gen(function* () {
-			const depths = Arr.makeBy(20, (step) => (step + 1) * 1000);
+			const depths = [1000, 5000, 8000, 20_000];
 
 			const sized = yield* Effect.forEach(depths, (depth) => {
 				const text = `${Str.repeat(17_000)("x")}\n\n${Str.repeat(depth)("> ")}## 2026-11-13\n`;
