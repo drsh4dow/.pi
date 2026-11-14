@@ -10,6 +10,7 @@ import * as Str from "effect/String";
 import { type RunSpec, terminalNameOf } from "../../clients/hc/index.ts";
 import type { ChildPi, Design, PiCli, StagedBrief } from "../../clients/pi-cli/index.ts";
 import type { SessionAddress } from "../../clients/pi-sessions/index.ts";
+import type { ReviewTarget } from "../pr/index.ts";
 
 /** How deep a chain of owners goes, counting the root as level 1. An owner at the last level starts leaves only, one level below it. */
 export const levels = 3;
@@ -122,8 +123,13 @@ export type Brief =
 			readonly role: "owner";
 			readonly ownerRules: Option.Option<string>;
 			readonly design: Design;
+			readonly review?: never;
 	  })
-	| (BriefCommon & { readonly role: "leaf"; readonly ownerRules?: never });
+	| (BriefCommon & {
+			readonly role: "leaf";
+			readonly ownerRules?: never;
+			readonly review?: ReviewTarget;
+	  });
 
 export const stagedOf = (brief: Brief): StagedBrief => {
 	const common = {
@@ -137,7 +143,13 @@ export const stagedOf = (brief: Brief): StagedBrief => {
 		return { role: "owner", ...common, ownerRules: brief.ownerRules, design: brief.design };
 	}
 
-	return { role: "leaf", ...common };
+	if (brief.review === undefined) {
+		return { role: "leaf", ...common };
+	}
+
+	const { repo, number, head } = brief.review;
+
+	return { role: "leaf", ...common, review: { pr: `${repo}#${String(number)}`, head } };
 };
 
 export interface LaunchRequest {

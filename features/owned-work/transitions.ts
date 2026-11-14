@@ -5,10 +5,10 @@ import * as Result from "effect/Result";
 
 import { TerminalEnd, type TerminalAddress, type TerminalSnapshot } from "../../clients/hc/index.ts";
 import type { ChildReply } from "../../clients/pi-sessions/index.ts";
-import { answerOf } from "./answer.ts";
 import type { Role } from "./child.ts";
 import { Groups } from "./groups.ts";
 import { carried, deadlineOf, nameTaken, running, waking } from "./lifetime.ts";
+import { doneOf } from "./review.ts";
 import { Command, Draft, type Job, type LedgerState, type Step, type Woke, Verdict } from "./step.ts";
 import {
 	FailReason,
@@ -184,7 +184,7 @@ const answered = (state: LedgerState, ref: WorkRef, end: TerminalEnd, reply: Opt
 		onNone: () => Draft.failure(end),
 		onSome: Match.valueTags({
 			Answered: ({ text, file }) =>
-				Draft.isCleanExit(end) ? Outcome.Done({ answer: answerOf(file)(text) }) : Draft.failure(end),
+				Draft.isCleanExit(end) ? doneOf({ state, ref, text, file }) : Draft.failure(end),
 			Errored: ({ why }) =>
 				Option.isSome(Draft.exitCode(end))
 					? Outcome.Failed({ reason: FailReason.Errored({ why }) })

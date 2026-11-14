@@ -15,7 +15,7 @@ import type { Static } from "typebox";
 
 import { Design, PiCli, piCliLayer, readStagedBrief } from "../../clients/pi-cli/index.ts";
 import { entryKind } from "../state-folder/index.ts";
-import { callerOf, delegate, runtime, started, table } from "./brief.fixture.ts";
+import { callerOf, delegate, pinned, runtime, started, table } from "./brief.fixture.ts";
 import type { DelegateParams } from "./brief.ts";
 import { type Brief, launch } from "./child.ts";
 import { Tools } from "./tools.ts";
@@ -199,6 +199,18 @@ test("an owner's staged brief carries the root's goal, state folder, owner rules
 					instructions: Option.none(),
 				},
 			]);
+		}),
+	));
+
+test("a verifier's staged brief names the pull request and the head its parent pinned", () =>
+	staging.runPromise(
+		Effect.gen(function* () {
+			const staged = yield* startedBy(delegate, { ...leafCall, goal, reviews: "7" }).pipe(
+				Effect.flatMap(stagedAs("verifier", 2)),
+				Effect.flatMap(readStagedBrief),
+			);
+
+			expect(staged).toMatchObject({ role: "leaf", review: { pr: "o/r#7", head: pinned.head } });
 		}),
 	));
 

@@ -7,6 +7,8 @@ import { Gh, type GhError, type PrView, type Review, type ReviewDecision } from 
 
 export { ghLayer } from "../../clients/gh/index.ts";
 
+export { pin, recordVerdict, type ReviewTarget, VerdictRecord, VerdictResult, verdictsFolder } from "./verdict.ts";
+
 const changed = (label: string, from: string, to: string) => (from === to ? [] : [`${label} ${from} -> ${to}`]);
 
 const shortSha = Str.slice(0, 7);

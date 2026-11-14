@@ -7,6 +7,7 @@ import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { TerminalEnd, type TerminalAddress } from "../../clients/hc/index.ts";
+import type { VerdictRecord } from "../pr/index.ts";
 import type { ChildSession, Role } from "./child.ts";
 import {
 	FailReason,
@@ -45,6 +46,7 @@ export type Command = Data.TaggedEnum<{
 	Wake: { readonly results: ReadonlyArray<Settled> };
 	Append: { readonly entry: WorkEntry };
 	Unstage: { readonly session: ChildSession };
+	RecordVerdict: { readonly record: VerdictRecord };
 }>;
 
 export const Command = Data.taggedEnum<Command>();
@@ -183,6 +185,12 @@ const woke = (draft: Draft): Woke => stepOf(draft, wake(draft));
 const recordEnd = (draft: Draft, work: Work, outcome: Outcome, end: Option.Option<TerminalEnd>): void => {
 	const durationMs = Number((draft.now - work.startedAt) / 1_000_000n);
 	const entry = WorkEntry.JobSettled({ handle: work.ref, outcome, log: logOf(work), end, durationMs });
+
+	if (Outcome.$is("Done")(outcome)) {
+		for (const { record } of Option.toArray(outcome.verdict)) {
+			draft.commands.push(Command.RecordVerdict({ record }));
+		}
+	}
 
 	draft.commands.push(Command.Append({ entry }));
 

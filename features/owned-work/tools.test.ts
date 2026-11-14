@@ -10,12 +10,13 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { Gh } from "../../clients/gh/index.ts";
 import { Self } from "./child.ts";
 import { Ledger } from "./ledger.ts";
 import { modelTable } from "./models.ts";
 import { Tools } from "./tools.ts";
 
-const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, Layer.mock(Ledger)({})));
+const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, Layer.mock(Ledger)({}), Layer.mock(Gh)({})));
 
 const toolsOf = (self: Self) => {
 	const tools: Array<Pick<ToolDefinition, "name" | "description" | "parameters" | "promptGuidelines" | "execute">> =

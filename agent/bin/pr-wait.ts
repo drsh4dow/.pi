@@ -20,9 +20,7 @@ const prs = process.argv.slice(2);
 const program = Arr.isReadonlyArrayNonEmpty(prs)
 	? prWait(prs).pipe(
 			Effect.flatMap((lines) => Console.log(Arr.join(lines, "\n"))),
-			Effect.catchTag("GhError", ({ args, why }) =>
-				reportFailure(`pr-wait: gh ${Arr.join(args, " ")} failed: ${why}`),
-			),
+			Effect.catchTag("GhError", ({ args, why }) => reportFailure(`pr-wait: ${Arr.join(args, " ")} failed: ${why}`)),
 		)
 	: reportFailure("usage: pr-wait <pull request>...");
 

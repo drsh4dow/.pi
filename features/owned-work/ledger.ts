@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as FiberMap from "effect/FiberMap";
 import * as FiberSet from "effect/FiberSet";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
@@ -17,6 +18,7 @@ import { Hc, type HcError, type RunSpec, terminalNameOf } from "../../clients/hc
 import { PiCli } from "../../clients/pi-cli/index.ts";
 import { PiSessions } from "../../clients/pi-sessions/index.ts";
 import { Slices } from "../../clients/systemd/index.ts";
+import { recordVerdict, type VerdictRecord, verdictsFolder } from "../pr/index.ts";
 import { atLevel, launch, levels, type Self } from "./child.ts";
 import { continuationOf } from "./continuation.ts";
 import { liveDelegates } from "./lifetime.ts";
@@ -84,6 +86,7 @@ interface Kit {
 	readonly slices: (typeof Slices)["Service"];
 	readonly sessions: (typeof PiSessions)["Service"];
 	readonly cli: (typeof PiCli)["Service"];
+	readonly fs: FileSystem.FileSystem;
 	readonly state: Ref.Ref<LedgerState>;
 	readonly lock: Semaphore.Semaphore;
 	readonly fibers: FiberSet.FiberSet;
@@ -151,7 +154,9 @@ const attempt = <Reply, Failure>(
 
 			yield* Ref.set(kit.state, step.state);
 			yield* Effect.forEach(step.commands, (command) =>
-				Command.$is("Append")(command) || Command.$is("ArmDeadline")(command)
+				Command.$is("Append")(command) ||
+				Command.$is("ArmDeadline")(command) ||
+				Command.$is("RecordVerdict")(command)
 					? run(kit, command)
 					: runOutsideLock(kit, command),
 			);
@@ -187,7 +192,14 @@ const run = (kit: Kit, command: Command): Effect.Effect<unknown> =>
 		Disarm: ({ ref }) => FiberMap.remove(kit.deadlines, ref),
 		Wake: ({ results }) => kit.host.wake(results),
 		Unstage: ({ session }) => kit.cli.unstage(session),
+		RecordVerdict: ({ record }) => recordOf(kit, record),
 	});
+
+const recordOf = (kit: Kit, record: VerdictRecord) =>
+	recordVerdict(verdictsFolder(kit.options.passEnv["HOME"] ?? ""))(record).pipe(
+		Effect.provideService(FileSystem.FileSystem, kit.fs),
+		Effect.catchCause((cause) => Effect.logWarning(`no verdict record at ${record.head}`, cause)),
+	);
 
 const runOutsideLock = (kit: Kit, command: Command): Effect.Effect<void> =>
 	Effect.asVoid(FiberSet.run(kit.fibers, run(kit, command)));
@@ -245,7 +257,7 @@ const follow = (kit: Kit): Effect.Effect<void> =>
 
 export const ledgerLayer = (
 	options: LedgerOptions,
-): Layer.Layer<Ledger, never, Hc | Host | Slices | PiSessions | PiCli> =>
+): Layer.Layer<Ledger, never, Hc | Host | Slices | PiSessions | PiCli | FileSystem.FileSystem> =>
 	Layer.effect(
 		Ledger,
 		Effect.gen(function* () {
@@ -258,6 +270,7 @@ export const ledgerLayer = (
 				slices: yield* Slices,
 				sessions: yield* PiSessions,
 				cli: yield* PiCli,
+				fs: yield* FileSystem.FileSystem,
 				state: yield* Ref.make(
 					Option.getOrElse(options.carried, () => Transitions.initial(options.self.role, options.firstRef, now)),
 				),

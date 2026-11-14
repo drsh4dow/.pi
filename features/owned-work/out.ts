@@ -8,6 +8,7 @@ import * as Schema from "effect/Schema";
 import { Type } from "typebox";
 
 import type { TerminalEnd } from "../../clients/hc/index.ts";
+import { VerdictResult } from "../pr/index.ts";
 import type { LedgerFailure } from "./ledger.ts";
 import {
 	type BadDelegate,
@@ -15,6 +16,7 @@ import {
 	type Handle,
 	type Identity,
 	Outcome,
+	type Reviewed,
 	type Settled,
 	type WorkEntry,
 	type WorkKind,
@@ -30,11 +32,19 @@ export const HandleOut = Type.Object({
 	next: Type.Optional(Type.String()),
 });
 
+const VerdictOut = Type.Object({
+	pr: Type.String(),
+	head: Type.String(),
+	result: Type.Enum([...VerdictResult.literals]),
+	escalation: Type.Optional(Type.String()),
+});
+
 const DoneOut = Type.Object({
 	status: Type.Literal("done"),
 	text: Type.String(),
 	cut: Type.Boolean(),
 	answer: Type.String(),
+	verdict: Type.Optional(VerdictOut),
 });
 
 const LogOut = Type.Optional(Type.String());
@@ -74,7 +84,18 @@ export const ResultsOut = Type.Object({ results: Type.Array(ResultOut) });
 type ResultJson = Identity & { readonly ref: string; readonly outcome: OutcomeJson; readonly next?: string };
 
 type OutcomeJson =
-	| { readonly status: "done"; readonly text: string; readonly cut: boolean; readonly answer: string }
+	| {
+			readonly status: "done";
+			readonly text: string;
+			readonly cut: boolean;
+			readonly answer: string;
+			readonly verdict?: {
+				readonly pr: string;
+				readonly head: string;
+				readonly result: string;
+				readonly escalation?: string;
+			};
+	  }
 	| { readonly status: "fired"; readonly exit_code: number; readonly log?: string; readonly tail: string }
 	| { readonly status: "failed"; readonly reason: string; readonly detail: string; readonly log?: string }
 	| {
@@ -108,9 +129,22 @@ const reasonOut = (reason: FailReason): { readonly reason: string; readonly deta
 const logOut = (log: Option.Option<string>) =>
 	Option.match(log, { onNone: () => ({}), onSome: (path) => ({ log: path }) });
 
+const verdictOut = ({ record: { repo, number, head, result }, escalation }: Reviewed) => ({
+	pr: `${repo}#${String(number)}`,
+	head,
+	result,
+	...Option.match(escalation, { onNone: () => ({}), onSome: (line) => ({ escalation: line }) }),
+});
+
 const outcomeOut = (outcome: Outcome, log: Option.Option<string>): OutcomeJson =>
 	Match.valueTags(outcome, {
-		Done: ({ answer: { text, cut, file } }): OutcomeJson => ({ status: "done", text, cut, answer: file }),
+		Done: ({ answer: { text, cut, file }, verdict }): OutcomeJson => ({
+			status: "done",
+			text,
+			cut,
+			answer: file,
+			...Option.match(verdict, { onNone: () => ({}), onSome: (reviewed) => ({ verdict: verdictOut(reviewed) }) }),
+		}),
 		Fired: ({ exitCode, tail }): OutcomeJson => ({ status: "fired", exit_code: exitCode, ...logOut(log), tail }),
 		Members: ({ results }): OutcomeJson => ({ status: "settled", members: Arr.map(results, resultOut) }),
 		Failed: ({ reason }): OutcomeJson => ({ status: "failed", ...reasonOut(reason), ...logOut(log) }),

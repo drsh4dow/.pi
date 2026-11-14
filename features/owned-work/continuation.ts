@@ -23,7 +23,17 @@ export const freshCall = (call: Static<DelegateParams>) =>
 		message,
 	}));
 
-const keptByContinuation = ["name", "goal", "state", "role", "design", "instructionsFile", "model", "cwd"] as const;
+const keptByContinuation = [
+	"name",
+	"goal",
+	"state",
+	"role",
+	"design",
+	"instructionsFile",
+	"model",
+	"cwd",
+	"reviews",
+] as const;
 
 export const parseContinuation = Effect.fn("parseContinuation")(function* (ref: string, call: Static<DelegateParams>) {
 	const named = Arr.filter(keptByContinuation, (field) => call[field] !== undefined);
