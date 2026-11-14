@@ -8,9 +8,9 @@ A green suite proves the code against its tests and fakes. Most bugs live where 
 
 1. **Drive it like a chaotic user.** Run the real app, CLI, or service with its real boundaries through the project's verification skill, a project-local skill such as `.pi/skills/verify-<app>/` that launches the app and drives its features. Cover every feature in its feature map that the change touches, then leave the happy path the way real users do. Try steps in the wrong order, a double submit, an interrupt or kill mid-operation, a restart, empty, huge, or malformed input, two sessions at once, and a slow or failing external service.
 2. **Triage each bug against the base.** Run the same drive steps on the commit the change started from.
-   - A bug the change caused gets fixed. Write the smallest test at a seam that reproduces it, run it red, fix the code, and run it green. When only the real boundary reproduces the bug, record the drive steps that do, and run them red before the fix and green after.
-   - A bug the base has too is outside the change. Report it with its drive steps as a follow-up, and fix it only when the owner of the work adds it to the scope.
-3. **Drive again after the fixes.** Dogfooding is done when a drive over the same features finds no new bug the change caused. When the time budget runs out first, stop and report each feature you did not reach as `not driven`. An inconclusive drive, or a drive of a surface the change does not reach, is not a pass.
+   - A bug the change caused gets fixed unless it is a known limit. Write the smallest test at a seam that reproduces it, run it red, fix the code, and run it green. When only the real boundary reproduces the bug, record the drive steps that do, and run them red before the fix and green after.
+   - A bug the base has too is outside the change. Report it with its drive steps as a known limit, and fix it only when the owner of the work adds it to the scope.
+3. **Drive again after the fixes.** Dogfooding is done when a drive over the same features finds no new bug the change caused, other than a known limit. When the time budget runs out first, stop and report each feature you did not reach as `not driven`. An inconclusive drive, or a drive of a surface the change does not reach, is not a pass.
 
 When two fixes fail the same drive, or a third bug turns up at the same boundary, stop fixing. The design of that boundary is the suspect premise. Before the next fix, write that premise down and make the observation that would come out differently if it were false. When the redesign the evidence points to would change an agreed seam, a contract other work builds on, or an ADR, report the evidence to the owner of the work and stop there.
 
@@ -29,7 +29,7 @@ When the behavior depends on the order of events, such as concurrency, retries, 
 Report the drive with the change:
 
 - The features you drove, the off-path cases you tried, and each feature `not driven`, with the reason.
-- Each bug the drive or a model check found, whether the base has it too, and its test, its drive steps, or its follow-up.
+- Each bug the drive or a model check found, whether the base has it too, and its test, its drive steps, or its known-limit line.
 - Each model check you ran, its bounds, and its result.
 - Each premise you attacked, and what the evidence showed.
 - Each verification or formal verification skill you recommended, and the gap it would close.

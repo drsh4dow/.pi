@@ -28,6 +28,8 @@ Write `area: symptom`, with no trailing period: the trigger and what the reader 
 
 - [ ]
 
+## Non-goals
+
 ## Suggested approach
 
 ## Context
@@ -59,6 +61,10 @@ Each item is one behavior, written so a developer reads what must be true and an
 - Repository gates such as `vp run verify` go last, and never stand alone.
 
 A ticket that still waits on a product call only a person can make is not ready. Ask that person before you file.
+
+### Non-goals
+
+One line for each thing a reader could expect the closing PR to cover that it leaves out. Once work starts, Done when and Non-goals stay as written.
 
 ### Suggested approach
 

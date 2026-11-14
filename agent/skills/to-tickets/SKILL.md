@@ -80,6 +80,8 @@ Do NOT close or modify any parent issue.
 - [ ] Acceptance criterion 1
 - [ ] Acceptance criterion 2
 
+**Non-goals:** what this ticket leaves out, one line each.
+
 </local-ticket-template>
 
 <issue-template>
@@ -96,6 +98,10 @@ The end-to-end behaviour this ticket makes work, from the user's perspective, no
 
 - [ ] Criterion 1
 - [ ] Criterion 2
+
+## Non-goals
+
+What this ticket leaves out, one line each.
 
 ## Blocked by
 

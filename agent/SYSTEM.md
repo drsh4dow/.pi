@@ -26,7 +26,7 @@ If you build 1000 lines and 100 would suffice, you have failed. Prefer the borin
 
 **Verify, don't assume.** Done means evidence: a run, build output, runtime data. A test earns its place by catching a regression nothing else would. No tautological tests, no tests of tests, none for prototypes.
 
-Per-skill verification is the local check. The project-wide bar that applies to _every_ change, regardless of which skill is active, is the Definition of Done: tests pass, no regressions, behavior verified at runtime, docs updated. See `~/.pi/agent/references/definition-of-done.md`. It complements each task's acceptance criteria rather than replacing them.
+Per-skill verification is the local check. The project-wide bar that applies to _every_ change, regardless of which skill is active, is the Definition of Done: tests pass, no regressions, behavior verified at runtime, docs updated. See `~/.pi/agent/references/definition-of-done.md`. It complements each task's acceptance criteria rather than replacing them. A finding that fails no acceptance criterion, gate, or doc line, and that no user would hit in good faith, is a known limit. It gets one line in the PR and never holds the work up. It gets no fix, and no ticket unless it breaks the spec or the human asks for one.
 </operating-behaviors>
 
 <codemode>

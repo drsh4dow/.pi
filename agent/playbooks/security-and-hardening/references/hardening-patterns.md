@@ -236,9 +236,9 @@ The native package-manager audit reports a vulnerability
 │       └── NO --> Check for workarounds, consider replacing the dependency, or add to allowlist with a review date
 ├── Severity: moderate
 │   ├── Reachable in production? --> Fix in the next release cycle
-│   └── Dev-only? --> Fix when convenient, track in backlog
+│   └── Dev-only? --> Fix during regular dependency updates
 └── Severity: low
-    └── Track and fix during regular dependency updates
+    └── Fix during regular dependency updates
 ```
 
 **Key questions:**
