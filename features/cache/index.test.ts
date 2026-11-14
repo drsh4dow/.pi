@@ -31,6 +31,7 @@ interface Call {
 	readonly at: number;
 	readonly input: number;
 	readonly cacheRead: number;
+	readonly cacheWrite?: number;
 	readonly model?: string;
 }
 
@@ -38,12 +39,12 @@ interface Call {
 const hit = { input: 1000, cacheRead: 99_000 };
 const full = { input: 100_000, cacheRead: 0 };
 
-const usageOf = ({ input, cacheRead }: Call) => ({
+const usageOf = ({ input, cacheRead, cacheWrite = 0 }: Call) => ({
 	input,
 	output: 100,
 	cacheRead,
-	cacheWrite: 0,
-	totalTokens: input + cacheRead + 100,
+	cacheWrite,
+	totalTokens: input + cacheRead + cacheWrite + 100,
 	cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 });
 
@@ -192,18 +193,40 @@ const cases: ReadonlyArray<readonly [string, (world: World) => void, ReadonlyArr
 		missed([]),
 	],
 	[
-		"nothing for a prompt under 50,000 tokens",
-		({ reply }) => {
-			reply({ at: start, input: 1000, cacheRead: 48_999 });
-			reply({ at: start + 6 * minute, input: 49_999, cacheRead: 0 });
-		},
-		[],
-	],
-	[
-		"nothing for a reply that read more than 1% of its prompt from the cache",
+		"a partial miss of 50,000 tokens",
 		({ reply }) => {
 			reply({ at: start, ...hit });
-			reply({ at: start + 6 * minute, input: 98_999, cacheRead: 1001 });
+			reply({ at: start + minute, input: 50_000, cacheRead: 50_000 });
+		},
+		[{ missedTokens: 50_000, cacheRead: 50_000, prompt: 100_000, causes: [] }],
+	],
+	[
+		"a full-price call that reports no cache use as the last call",
+		({ reply }) => {
+			reply({ at: start, ...hit });
+			reply({ at: start + 6 * minute, ...full });
+			reply({ at: start + 7 * minute, ...full });
+		},
+		[...missed([idle]), ...missed([])],
+	],
+	[
+		"no prompt change after /tree returns to a reply sent with the same prompt",
+		({ session, prefix, reply }) => {
+			const first = reply({ at: start, ...hit });
+
+			prefix.systemPrompt = "You are a reviewer.";
+			reply({ at: start + minute, ...hit });
+			session.branch(first);
+			prefix.systemPrompt = "You are a coding agent.";
+			reply({ at: start + 2 * minute, ...full });
+		},
+		missed([]),
+	],
+	[
+		"nothing when fewer than 50,000 cached tokens went unread",
+		({ reply }) => {
+			reply({ at: start, ...hit });
+			reply({ at: start + 6 * minute, input: 49_999, cacheRead: 50_001 });
 		},
 		[],
 	],
@@ -226,7 +249,7 @@ const cases: ReadonlyArray<readonly [string, (world: World) => void, ReadonlyArr
 	[
 		"nothing for a session's first reply, which has no cache to miss",
 		({ reply }) => {
-			reply({ at: start, ...full });
+			reply({ at: start, input: 0, cacheRead: 0, cacheWrite: 100_000 });
 		},
 		[],
 	],
