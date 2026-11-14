@@ -19,7 +19,6 @@ interface Before {
 	readonly firstKeptEntryId: string;
 }
 
-/** The guides in context before the compaction that the messages pi keeps do not hold, in the order they first entered it. */
 const lostGuides = ({ files, branch, firstKeptEntryId }: Before) => {
 	const index = indexOf(guidesOf(files));
 	const { entries } = buildSessionProjection([...branch]);

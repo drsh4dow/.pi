@@ -103,7 +103,6 @@ export const readResult = ({ session, text }: { readonly session: SessionManager
 		timestamp: 0,
 	});
 
-/** `keptReads` are read results after the first entry pi keeps. */
 export const eventFor = ({
 	session,
 	fileOps,
@@ -156,7 +155,6 @@ const skillCommand = (path: string): SlashCommandInfo => ({
 	sourceInfo: { path, source: "local", scope: "user", origin: "top-level" },
 });
 
-/** `skills` are the paths of the skill files pi could load. */
 export const compact = Effect.fn("compact")(function* (
 	env: Readonly<Record<string, string>>,
 	event: SessionBeforeCompactEvent,

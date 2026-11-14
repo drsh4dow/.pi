@@ -28,7 +28,6 @@ interface Skill {
 	readonly text: string;
 }
 
-/** A skill file of about `size` characters, every body line its own. */
 const skillText = (name: string, size: number) => {
 	const line = (at: number) => `Line ${String(at)} of the ${name} guide, long enough to mark it.`;
 	const lines = Arr.makeBy(Math.ceil(size / line(0).length), line);
