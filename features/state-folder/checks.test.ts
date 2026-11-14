@@ -19,13 +19,15 @@ await runTest(
 		const fs = yield* FileSystem.FileSystem;
 
 		yield* fs.makeDirectory(folder, { recursive: true });
+		yield* fs.writeFileString(`${folder}/ruleset.log`, "403\n");
+		yield* fs.writeFileString(`${home}/denied.log`, "403\n");
 	}),
 );
 
 /** The problems a state file's check finds in this text: their lines, and their messages as one text. */
 const problemsOf = Effect.fn("problemsOf")(function* (name: string, text: string) {
 	const check = yield* Effect.fromNullishOr(checks.get(name));
-	const problems = yield* check.problems(text);
+	const problems = yield* check.problems(text, { home, folder });
 
 	return {
 		lines: Arr.map(problems, ({ line }) => line),
@@ -64,5 +66,58 @@ test("STATE.md over the cap names its size and the cap", () =>
 			expect(messages).toContain("16,384 bytes");
 		}),
 	));
+
+const item = (onlyYou: string) =>
+	`# Needs\n\n## Merge PR 3\n**The call.** Merge it.\n**My pick.** Merge.\n**What it changes.** Ships.\n**Evidence.** Green.\n**Risk.** Low.\n${onlyYou}`;
+
+test.each([
+	["a decision", "**Only you.** A decision. Which plan to buy.\n", []],
+	["an approval", "**Only you.** An approval.\n", []],
+	["an irreversible action", "**Only you.** an Irreversible action. Deleting the bucket.\n", []],
+	["access citing a file in the state folder", "**Only you.** Access. `ruleset.log` records the 403.\n", []],
+	["access citing a file under ~/", "**Only you.** Access. `~/denied.log` records the 403.\n", []],
+	["access citing an absolute path", `**Only you.** Access. \`${home}/denied.log\` records the 403.\n`, []],
+	["no **Only you.** line", "", [3]],
+	["a listed **Only you.** line", "- **Only you.** A decision.\n", [9]],
+	["an unknown kind", "**Only you.** A preference. I like blue.\n", [9]],
+	["a kind that only starts with a known one", "**Only you.** Decisions all round.\n", [9]],
+	["access citing a missing file", "**Only you.** Access. `missing.log` records the 403.\n", [9]],
+	["access citing no file", "**Only you.** Access. The deploy key was refused.\n", [9]],
+])("USER_ACTION_ITEMS.md with %s", (_case, onlyYou, lines) =>
+	runTest(
+		Effect.gen(function* () {
+			const found = yield* problemsOf("USER_ACTION_ITEMS.md", item(onlyYou));
+
+			expect(found.lines).toEqual(lines);
+		}),
+	),
+);
+
+test("an unknown kind's problem names the four kinds", () =>
+	runTest(
+		Effect.gen(function* () {
+			const { messages } = yield* problemsOf("USER_ACTION_ITEMS.md", item("**Only you.** A preference.\n"));
+
+			for (const kind of ["decision", "approval", "irreversible action", "access"]) {
+				expect(messages).toContain(kind);
+			}
+		}),
+	));
+
+test.each([
+	["a relative path, in the state folder", "missing.log", `${folder}/missing.log`],
+	["a ~/ path, in home", "~/missing.log", `${home}/missing.log`],
+])("a missing cited file at %s shows where it was looked for", (_case, cited, resolved) =>
+	runTest(
+		Effect.gen(function* () {
+			const { messages } = yield* problemsOf(
+				"USER_ACTION_ITEMS.md",
+				item(`**Only you.** Access. \`${cited}\` shows it.\n`),
+			);
+
+			expect(messages).toContain(resolved);
+		}),
+	),
+);
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${home}`.quiet())));

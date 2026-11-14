@@ -45,7 +45,7 @@ const finish = Effect.fn("finish")(function* (watched: Watched, toolCallId: stri
 
 	const result = { toolCallId, content: [{ type: "text" as const, text: "ran" }], structuredContent: { ran: true } };
 
-	return yield* finishCall(watched, { result });
+	return yield* finishCall(watched, { home, result });
 });
 
 /** The state folder a session resolves to after these calls, as the extension watches them one by one. */
@@ -170,12 +170,14 @@ const writeActionItems = Effect.fn("writeActionItems")(function* (work: string, 
 	return checked;
 });
 
+const onlyYou = "**Only you.** A decision. Merge or wait.\n";
+
 test("a write of USER_ACTION_ITEMS.md with an item that bullets its labels comes back as an error naming each line", () =>
 	runTest(
 		Effect.gen(function* () {
 			const checked = yield* writeActionItems(
 				"alpha",
-				`# Needs\n\n## Merge PR 3\n- **The call.** Merge it.\n**My pick.** Merge.\n**What it changes.** Ships.\n**Evidence.** Green.\n**Risk.** Low.\n`,
+				`# Needs\n\n## Merge PR 3\n- **The call.** Merge it.\n**My pick.** Merge.\n**What it changes.** Ships.\n**Evidence.** Green.\n**Risk.** Low.\n${onlyYou}`,
 			);
 
 			const texts = textsOf(checked);
@@ -186,12 +188,27 @@ test("a write of USER_ACTION_ITEMS.md with an item that bullets its labels comes
 		}),
 	));
 
+test("a write of USER_ACTION_ITEMS.md with an item that has no **Only you.** line comes back as an error at the item", () =>
+	runTest(
+		Effect.gen(function* () {
+			const checked = yield* writeActionItems(
+				"gamma",
+				"# Needs\n\n## Merge PR 3\n**The call.** Merge it.\n**My pick.** Merge.\n**What it changes.** Ships.\n**Evidence.** Green.\n**Risk.** Low.\n",
+			);
+
+			const texts = textsOf(checked);
+
+			expect(texts[1]).toContain("line 3: ");
+			expect(texts[1]).toContain("**Only you.**");
+		}),
+	));
+
 test("a write of a valid USER_ACTION_ITEMS.md leaves the result as it was", () =>
 	runTest(
 		Effect.gen(function* () {
 			const checked = yield* writeActionItems(
 				"beta",
-				`# Needs\n\n## Merge PR 3\n**The call.** Merge it.\n**My pick.** Merge.\n**What it changes.** Ships.\n**Evidence.** Green.\n**Risk.** Low.\n`,
+				`# Needs\n\n## Merge PR 3\n**The call.** Merge it.\n**My pick.** Merge.\n**What it changes.** Ships.\n**Evidence.** Green.\n**Risk.** Low.\n${onlyYou}`,
 			);
 
 			expect(checked).toEqual(Option.none());
