@@ -93,7 +93,7 @@ const locate = Effect.fn("locate")(function* (located: Map<string, string>, dir:
  * Reads a root's session tree. A root's session file runs to tens of megabytes, so each read takes only the bytes
  * appended since the last one.
  */
-export const makeReader = (files: TreeFiles) => {
+export const treeReader = (files: TreeFiles) => {
 	const followed = new Map<string, Followed>();
 	const located = new Map<string, string>();
 
@@ -146,7 +146,7 @@ const ownTerminal = Effect.map(Effect.option(Config.String("HC_TERMINAL_ID")), O
  * removes the label when interrupted.
  */
 const publish = (files: TreeFiles, terminal: TerminalAddress) => {
-	const reader = makeReader(files);
+	const reader = treeReader(files);
 	let published = "";
 
 	const refresh = Effect.gen(function* () {

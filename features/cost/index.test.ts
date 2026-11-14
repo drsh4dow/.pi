@@ -7,7 +7,7 @@ import * as FileSystem from "effect/FileSystem";
 import type * as PlatformError from "effect/PlatformError";
 import * as Str from "effect/String";
 
-import { makeReader } from "./index.ts";
+import { treeReader } from "./index.ts";
 
 const scratch = await Effect.runPromise(
 	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.makeTempDirectory()).pipe(Effect.provide(NodeServices.layer)),
@@ -65,7 +65,7 @@ const startDelegate = (parent: SessionManager, child: SessionManager, name: stri
 	});
 
 const readerOf = (root: SessionManager, delegates: string) =>
-	makeReader({ root: root.getSessionFile() ?? "", delegates });
+	treeReader({ root: root.getSessionFile() ?? "", delegates });
 
 const run = <Value>(effect: Effect.Effect<Value, PlatformError.PlatformError, FileSystem.FileSystem>) =>
 	Effect.runPromise(Effect.provide(effect, NodeServices.layer));

@@ -78,7 +78,10 @@ const home = ConfigProvider.layer(ConfigProvider.fromUnknown({ HOME: fixtures })
 
 export const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, ledger, home));
 
-export const delegate = Tools.delegate(runtime, 2, { cwd: "/", dir: "/d" }, table, Option.none());
+export const delegateStarting = (roles: ReadonlyArray<ChildRole>) =>
+	Tools.delegate(runtime, roles, { cwd: "/", dir: "/d" }, table, Option.none());
+
+export const delegate = delegateStarting(["owner", "leaf"]);
 
 /** A real caller carries its own thinking level, which a delegate must never take. */
 export const callerOf = (): Parameters<typeof delegate.execute>[4] => {

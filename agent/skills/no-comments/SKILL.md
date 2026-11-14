@@ -1,6 +1,7 @@
 ---
 name: no-comments
-description: Before review, or asked to remove or audit code comments.
+description: Before you ask for review of your own diff, or asked to remove or audit code comments.
+for: [root, owner]
 ---
 
 # No comments

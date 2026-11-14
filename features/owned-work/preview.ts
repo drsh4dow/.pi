@@ -50,7 +50,6 @@ const bare = (name: string, role: ChildRole, level: number): Staged => ({
 	instructions: Option.none(),
 });
 
-/** An owner that can delegate, an owner at the last level that cannot, and a leaf. */
 const bareDelegates = [bare("owner", "owner", 2), bare("owner-last-level", "owner", levels), bare("leaf", "leaf", 2)];
 
 const onInstructionsFile = Effect.fn("onInstructionsFile")(function* (file: string) {

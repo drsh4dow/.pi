@@ -1,6 +1,7 @@
 ---
 name: interrogate
-description: Adversaries on several models try to break a change or design, and only findings proven by a run survive. Use for a contested design before shipping, when asked to interrogate a change, or for an adversarial review.
+description: Adversaries on several models try to break a change or design, and only findings proven by a run survive. Use before shipping a change to concurrency, retries, stored data or a state model; once a second review of the same PR fails; or when asked to interrogate a change.
+for: [root, owner]
 ---
 
 # Interrogate

@@ -108,7 +108,7 @@ const aboutOf = ({ role, level }: StagedLaunch) => {
 
 	return level < levels
 		? "A child pi the `delegate` tool started as an owner, on one slice. It can start delegates of its own."
-		: "A child pi started as an owner at the last level, so it has no `delegate` tool.";
+		: "A child pi started as an owner at the last level, so its `delegate` tool starts leaves only.";
 };
 
 /**

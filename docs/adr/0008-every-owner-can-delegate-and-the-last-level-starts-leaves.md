@@ -20,6 +20,6 @@ This supersedes two parts of ADR 0006: the sentence quoted above, and its conseq
 
 ## Consequences
 
-- Agents run at level 4 for the first time, so every check that bounds the level moves to 4. Process priority asks `choom` for 500 per level below the root, and level 3's 1000 is already the kernel maximum (inferred from the grounding, not run), so level 4 needs its own value.
+- Agents run at level 4 for the first time, so every check that bounds the level moves to 4. Process priority asked `choom` for 500 per level below the root, and level 3's 1000 was already the kernel maximum, so the scale now spreads from 0 at the root to 1000 at a level-4 leaf: 333, 667 and 1000 at levels 2, 3 and 4.
 - `arena`, `architect`, `interrogate`, `swarm`, `how` and `no-comments` name `root` and `owner` in their `for`, so every owner's skills section lists them and a leaf's leaves them out.
 - A level-3 owner's reviewers and arena runners are tracked delegates. Their spend reaches the cost label, and herdr-app shows them under their owner.

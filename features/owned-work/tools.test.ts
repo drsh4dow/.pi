@@ -7,6 +7,7 @@ import * as Arr from "effect/Array";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { Self } from "./child.ts";
@@ -36,46 +37,62 @@ const toolsOf = (self: Self) => {
 };
 
 const levelRows = [
-	{ name: "the root", self: Self.Root({ role: "root", level: 1 }), expect: { delegate: true, lastLevelLine: false } },
 	{
-		name: "a level-2 owner, told its delegates cannot delegate,",
-		self: Self.Delegate({ role: "owner", level: 2, slice: "s" }),
-		expect: { delegate: true, lastLevelLine: true },
+		name: "the root",
+		self: Self.Root({ role: "root", level: 1 }),
+		expect: { roles: ["owner", "leaf"], lastLevelLine: false, ownerLine: true },
 	},
 	{
-		name: "an owner at the last level",
+		name: "a level-2 owner",
+		self: Self.Delegate({ role: "owner", level: 2, slice: "s" }),
+		expect: { roles: ["owner", "leaf"], lastLevelLine: false, ownerLine: true },
+	},
+	{
+		name: "an owner at the last level, told its delegates cannot delegate,",
 		self: Self.Delegate({ role: "owner", level: 3, slice: "s" }),
-		expect: { delegate: false, lastLevelLine: false },
+		expect: { roles: ["leaf"], lastLevelLine: true, ownerLine: false },
 	},
 	{
 		name: "a level-2 leaf",
 		self: Self.Delegate({ role: "leaf", level: 2, slice: "s" }),
-		expect: { delegate: false, lastLevelLine: false },
+		expect: { roles: undefined, lastLevelLine: false, ownerLine: false },
 	},
 	{
-		name: "a leaf at the last level",
-		self: Self.Delegate({ role: "leaf", level: 3, slice: "s" }),
-		expect: { delegate: false, lastLevelLine: false },
+		name: "a level-4 leaf",
+		self: Self.Delegate({ role: "leaf", level: 4, slice: "s" }),
+		expect: { roles: undefined, lastLevelLine: false, ownerLine: false },
 	},
 ];
 
+const RoleParam = Schema.Struct({ enum: Schema.Array(Schema.String) });
+
+const RoleEnum = Schema.Struct({ properties: Schema.Struct({ role: RoleParam }) });
+
+const decodeRoleEnum = Schema.decodeUnknownOption(RoleEnum);
+
+const startableRoles = (tools: ReturnType<typeof toolsOf>) =>
+	Arr.findFirst(tools, ({ name }) => name === "delegate").pipe(
+		Option.flatMap(({ parameters }) => decodeRoleEnum(parameters)),
+		Option.map(({ properties }) => properties.role.enum),
+		Option.getOrUndefined,
+	);
+
 for (const row of levelRows) {
-	test(`${row.name} ${row.expect.delegate ? "gets" : "does not get"} the delegate tool, and always gets the rest`, () => {
+	test(`${row.name} starts ${row.expect.roles === undefined ? "no delegates" : Arr.join(row.expect.roles, " or ")}, and always gets the rest of the tools`, () => {
 		const tools = toolsOf(row.self);
 		const names = Arr.map(tools, ({ name }) => name);
+		const guidelines = Arr.flatMap(tools, ({ promptGuidelines }) => promptGuidelines ?? []);
 
 		expect({
 			rest: Arr.filter(names, (name) => name !== "delegate"),
-			delegate: Arr.contains(names, "delegate"),
-			lastLevelLine: Arr.some(
-				Arr.flatMap(tools, ({ promptGuidelines }) => promptGuidelines ?? []),
-				Str.includes("cannot start delegates of their own"),
-			),
+			roles: startableRoles(tools),
+			lastLevelLine: Arr.some(guidelines, Str.includes("cannot start delegates of their own")),
+			ownerLine: Arr.some(guidelines, Str.includes("one owner per slice")),
 		}).toEqual({ rest: ["serve", "watch", "group", "cancel"], ...row.expect });
 	});
 }
 
-const delegate = Tools.delegate(runtime, 2, { cwd: "/", dir: "/d" }, modelTable, Option.none());
+const delegate = Tools.delegate(runtime, ["owner", "leaf"], { cwd: "/", dir: "/d" }, modelTable, Option.none());
 
 const validated = (tool: Pick<ToolDefinition, "name" | "description" | "parameters">, args: JsonObject) => () => {
 	validateToolArguments(tool, { type: "toolCall", id: "c", name: tool.name, arguments: args });
@@ -91,6 +108,13 @@ test("pi refuses a delegate role other than owner or leaf", () => {
 	expect(validated(delegate, { name: "review", message: "Review it.", role: "root" })).toThrow();
 	expect(validated(delegate, { name: "review", message: "Review it.", role: "owner" })).not.toThrow();
 	expect(validated(delegate, { name: "review", message: "Review it.", role: "leaf" })).not.toThrow();
+});
+
+test("pi refuses an owner from a last-level owner's delegate tool", () => {
+	const lastLevel = Tools.delegate(runtime, ["leaf"], { cwd: "/", dir: "/d" }, modelTable, Option.none());
+
+	expect(validated(lastLevel, { name: "review", message: "Review it.", role: "owner" })).toThrow();
+	expect(validated(lastLevel, { name: "review", message: "Review it.", role: "leaf" })).not.toThrow();
 });
 
 const group = Arr.findFirst(toolsOf(Self.Root({ role: "root", level: 1 })), ({ name }) => name === "group");

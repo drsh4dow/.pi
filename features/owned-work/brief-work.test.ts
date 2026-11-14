@@ -142,7 +142,7 @@ test("each call reads the state folder's facts afresh, so an edit reaches the ne
 const delegatesFolder = `${root}/delegates`;
 
 const ownerTool = (own: { readonly dir: string; readonly id: string }) =>
-	Tools.delegate(runtime, 3, { cwd: "/", dir: "/d" }, table, Option.some(own));
+	Tools.delegate(runtime, ["owner", "leaf"], { cwd: "/", dir: "/d" }, table, Option.some(own));
 
 const stagedAs = (id: string, level: number) => (briefs: ReadonlyArray<Brief>) =>
 	Effect.gen(function* () {

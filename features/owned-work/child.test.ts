@@ -184,11 +184,11 @@ const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) =
 
 const launchRows = [
 	{
-		name: "a level-2 owner starts at OOM score adjustment 500 with codemode, its thinking level and its role",
+		name: "a level-2 owner starts at OOM score adjustment 333 with codemode, its thinking level and its role",
 		spec: delegateLaunch("owner", 2, Option.some("high")),
 		expect: {
 			name: "review-the-retry-cap-again",
-			argv: ["choom", "-n", "500", "--"],
+			argv: ["choom", "-n", "333", "--"],
 			tools: ["+codemode"],
 			excluded: [],
 			thinking: ["high"],
@@ -196,23 +196,23 @@ const launchRows = [
 		},
 	},
 	{
-		name: "a read-only leaf starts without the edit and write tools, and keeps codemode",
-		spec: delegateLaunch("leaf", 2, Option.none(), true),
-		expect: {
-			name: "review-the-retry-cap-again",
-			argv: ["choom", "-n", "500", "--"],
-			tools: ["+codemode"],
-			excluded: ["edit,write"],
-			thinking: [],
-			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "2", PI_OWNED_WORK_ROLE: "leaf" },
-		},
-	},
-	{
-		name: "a delegate at the last level starts at OOM score adjustment 1000, and with no thinking level passes none",
-		spec: delegateLaunch("owner", 3, Option.none()),
+		name: "a read-only leaf at level 4 starts at the kernel's highest OOM score adjustment, 1000, without the edit and write tools, and keeps codemode",
+		spec: delegateLaunch("leaf", 4, Option.none(), true),
 		expect: {
 			name: "review-the-retry-cap-again",
 			argv: ["choom", "-n", "1000", "--"],
+			tools: ["+codemode"],
+			excluded: ["edit,write"],
+			thinking: [],
+			env: { PATH: "/bin", PI_OWNED_WORK_LEVEL: "4", PI_OWNED_WORK_ROLE: "leaf" },
+		},
+	},
+	{
+		name: "an owner at the last level starts at OOM score adjustment 667, and with no thinking level passes none",
+		spec: delegateLaunch("owner", 3, Option.none()),
+		expect: {
+			name: "review-the-retry-cap-again",
+			argv: ["choom", "-n", "667", "--"],
 			tools: ["+codemode"],
 			excluded: [],
 			thinking: [],
@@ -224,7 +224,7 @@ const launchRows = [
 		spec: Effect.succeed(commandSpec({ cwd: "/", passEnv: parentEnv })(WorkRef("watch-1"), "pi --print hi")),
 		expect: {
 			name: "pi-print-hi",
-			argv: ["choom", "-n", "1000", "--"],
+			argv: ["choom", "-n", "667", "--"],
 			tools: [],
 			excluded: [],
 			thinking: [],
@@ -254,12 +254,13 @@ const envRows: ReadonlyArray<{
 		reads: { role: "owner", level: 2 },
 	},
 	{
-		name: "a leaf's env runs at its level as a leaf",
-		env: atLevel({ level: 3, role: "leaf" }).env,
-		reads: { role: "leaf", level: 3 },
+		name: "a leaf's env runs at its level as a leaf, down to level 4",
+		env: atLevel({ level: 4, role: "leaf" }).env,
+		reads: { role: "leaf", level: 4 },
 	},
 	{ name: "an env at level 1 is refused", env: atLevel({ level: 1, role: "owner" }).env, reads: undefined },
-	{ name: "an env past the last level is refused", env: atLevel({ level: 4, role: "leaf" }).env, reads: undefined },
+	{ name: "an owner's env at level 4 is refused", env: atLevel({ level: 4, role: "owner" }).env, reads: undefined },
+	{ name: "a leaf's env at level 5 is refused", env: atLevel({ level: 5, role: "leaf" }).env, reads: undefined },
 	{ name: "an env with a level and no role is refused", env: { PI_OWNED_WORK_LEVEL: "2" }, reads: undefined },
 	{
 		name: "an env with the root's role is refused",

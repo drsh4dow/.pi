@@ -1,13 +1,13 @@
 ---
 name: blast-radius
-description: Asked for a change's blast radius or what it could break beyond the diff, or reviewing a small diff you don't trust.
+description: What a change breaks beyond its diff, with the one fact it is safe because of proven by a run. Use before you open a PR that changes stored data, a schema, a wire format, or code another module calls; when asked for a blast radius; or reviewing a diff you don't trust.
 ---
 
 # Blast radius
 
 Find what a change breaks somewhere else, before it ships. Use for "blast radius of X", "what could this break", or reviewing a small diff you don't trust yet.
 
-Companion to `how` and `why`. `how` tells you what the code does. `why` tells you why it's shaped that way. Blast radius tells you what it breaks somewhere else.
+Companion to `why`, which tells you why the code is shaped the way it is. Blast radius tells you what it breaks somewhere else.
 
 Listing the callers is not the job. The agent can grep those in a second. The job is the breakage grep won't show you.
 
@@ -34,7 +34,7 @@ Step 4 is usually one small script that imports the same library the app ships a
 3. Look where grep stops. Read the source of the library you call, and check its pinned version and any local patch. Work out when things run: microtasks, unmount and teardown, Solid versus React. Follow what a symbol search misses: the JSON an API returns, a DB column, a wire format, another language reading the same bytes, a feature flag, code three hops downstream.
 4. Be honest about each risk. Give it a real chance of happening and a real cost if it does. Keep the risks you confirmed. List the ones you checked and cleared separately. Same rules as `why`. Cite a real `file:line`, a search that finds nothing is still an answer, and never make up a caller or an API.
 5. Prove the one fact. Write a script or test that runs the real code, run it, and paste what happened.
-6. For a big or wide change, run it as an `arena`. Ask more than one model the same question and merge the answers. Different models catch different real bugs.
+6. For a big or wide change, and when you can start delegates, ask more than one model the same question and merge the answers. Different models catch different real bugs.
 
 ## What to hand back
 
