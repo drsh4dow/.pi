@@ -159,7 +159,7 @@ const rows: ReadonlyArray<{
 		argv: ["stack", "merge", "7", "--yes", "--squash"],
 		world: {
 			views: [viewOf(6), viewOf(7), viewOf(8)],
-			verdicts: [verdict(7, "pass"), verdict(8, "pass")],
+			verdicts: [verdict(7, "pass")],
 			stack: [
 				{ number: "6", state: "merged" },
 				{ number: "7", state: "open" },
