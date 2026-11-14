@@ -10,7 +10,7 @@ A green suite proves the code against its tests and fakes. Most bugs live where 
 2. **Triage each bug against the base.** Run the same drive steps on the commit the change started from.
    - A bug the change caused gets fixed unless it is a known limit. Write the smallest test at a seam that reproduces it, run it red, fix the code, and run it green. When only the real boundary reproduces the bug, record the drive steps that do, and run them red before the fix and green after.
    - A bug the base has too is outside the change. Report it with its drive steps as a known limit, and fix it only when the owner of the work adds it to the scope.
-3. **Drive again after the fixes.** Dogfooding is done when a drive over the same features finds no new bug the change caused. When the time budget runs out first, stop and report each feature you did not reach as `not driven`. An inconclusive drive, or a drive of a surface the change does not reach, is not a pass.
+3. **Drive again after the fixes.** Dogfooding is done when a drive over the same features finds no new bug the change caused, other than a known limit. When the time budget runs out first, stop and report each feature you did not reach as `not driven`. An inconclusive drive, or a drive of a surface the change does not reach, is not a pass.
 
 When two fixes fail the same drive, or a third bug turns up at the same boundary, stop fixing. The design of that boundary is the suspect premise. Before the next fix, write that premise down and make the observation that would come out differently if it were false. When the redesign the evidence points to would change an agreed seam, a contract other work builds on, or an ADR, report the evidence to the owner of the work and stop there.
 
