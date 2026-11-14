@@ -13,6 +13,7 @@ So the state-folder extension (`features/state-folder/`) watches the session's o
 ## Consequences
 
 - A call that writes through a path held in a shell variable, such as `$DIR/STATE.md`, names no folder and does not move the label.
-- Another process writing a folder while a call that only reads it runs moves the label to that folder.
+- Another process or a parallel call writing a folder while a call that only reads it runs moves the label to that folder.
+- The state-file checks use the same fingerprints and run only on the files a call changed, so they share these limits: a read that runs during another write gets that write's problems.
 - Editing an existing file in a subfolder, such as `docs/plan.md`, changes no entry of the folder itself and does not count.
 - The Actions button reads `USER_ACTION_ITEMS.md` every three seconds, since the top bar is always on screen.

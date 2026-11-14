@@ -46,7 +46,8 @@ const closes = (fence: Fence, text: string) => {
 	return groups?.["info"] === "" && Str.startsWith(fence.marker)(groups["marker"] ?? "");
 };
 
-const linesOf = (file: string) => {
+/** The file's lines, each marked whether it sits inside a code fence, and the fence left open at the end, if any. */
+export const linesOf = (file: string) => {
 	const [unclosedFence, lines] = Arr.mapAccum(
 		Str.split("\n")(file),
 		Option.none<Fence>(),
