@@ -28,6 +28,7 @@ import { type Root, type RootProcess, startRoot } from "./root.ts";
 import { readSessions, type Sessions } from "./sessions.ts";
 import { type Setup, setupOf } from "./setup.ts";
 import { tookSetup } from "./took.ts";
+import { leftAlone } from "./tripwire.ts";
 import { type Layout, layoutOf, openWorld } from "./world.ts";
 
 export type { ScenarioFailed } from "./failed.ts";
@@ -237,7 +238,7 @@ const freshLayout = Effect.fn("freshLayout")(function* (name: string) {
 	});
 });
 
-/** Plays the scenario, and prints the verdict and `evidence <folder>` last, after every cleanup. */
+/** Plays the scenario, trips on anything it wrote under the human's folders, and prints the verdict and `evidence <folder>` last, after every cleanup. */
 const played = <Failure>({ name, spec }: { readonly name: string; readonly spec: Scenario<Failure> }) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
@@ -253,6 +254,8 @@ const played = <Failure>({ name, spec }: { readonly name: string; readonly spec:
 		yield* report.say(`scenario ${name}`);
 		yield* report.say(`run ${layout.folder}`);
 		yield* playIn({ spec, layout, report }).pipe(
+			Effect.exit,
+			Effect.flatMap((exit) => Effect.andThen(leftAlone(layout), exit)),
 			Effect.onExit((exit) =>
 				Effect.flatMap(report.elapsed, (seconds) =>
 					Effect.andThen(report.say(verdictOf(name, exit, seconds)), report.say(`evidence ${layout.folder}`)),

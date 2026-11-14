@@ -23,7 +23,9 @@ type Env = Readonly<Record<string, string>>;
 
 /** Where everything of one run lives. The one place that knows the layout; every other module asks it. */
 export interface Layout {
-	/** `<tmp>/pi-driver/<name>-<yyyymmdd-hhmmss>-<driver pid>`, kept as evidence after the run. */
+	/** `<name>-<yyyymmdd-hhmmss>-<driver pid>`, the run's own name. Every folder the run names outside its own holds it. */
+	readonly id: string;
+	/** `<tmp>/pi-driver/<id>`, kept as evidence after the run. */
 	readonly folder: string;
 	/** `HOME` for every process in the run, so `~/.pi/agent`, `~/.local/state` and `~/.config` are the run's. */
 	readonly home: string;
@@ -33,7 +35,7 @@ export interface Layout {
 	readonly bin: string;
 	/** `PI_DRIVER_PROBE`: one JSON lines file per pi process. */
 	readonly probe: string;
-	/** The root's cwd. Empty at the start. */
+	/** The root's cwd, `<folder>/<id>`, so a session or state folder named for it holds `id`. Empty at the start. */
 	readonly project: string;
 	/** `--session-dir` of the root. owned-work puts delegates' sessions in `delegates/` under it. */
 	readonly sessions: string;
@@ -56,17 +58,19 @@ export const layoutOf = (run: {
 	readonly pid: number;
 	readonly tag: string;
 }): Layout => {
-	const folder = `${run.tmp}/pi-driver/${run.name}-${run.stamp}-${String(run.pid)}`;
+	const id = `${run.name}-${run.stamp}-${String(run.pid)}`;
+	const folder = `${run.tmp}/pi-driver/${id}`;
 	const coreSession = `pi-driver-${String(run.pid)}-${run.tag}`;
 	const runtime = `${run.tmp}/pi-driver/${coreSession}`;
 
 	return {
+		id,
 		folder,
 		home: `${folder}/home`,
 		agent: `${folder}/home/.pi/agent`,
 		bin: `${folder}/bin`,
 		probe: `${folder}/probe`,
-		project: `${folder}/project`,
+		project: `${folder}/${id}`,
 		sessions: `${folder}/sessions`,
 		coreSession,
 		runtime,

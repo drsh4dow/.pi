@@ -2,8 +2,8 @@
 
 A scenario proves one fact about the pi that agents run on. It runs the real `pi` on your PATH (never this checkout's
 dev copy) on this worktree's own `agent/` folder, with your credentials, and with scratch HOME, agent, session and state
-folders and a private terminal core. Your own sessions and state folders stay untouched. It costs real model calls, so
-nothing runs it for you.
+folders and a private terminal core. A run that writes under your sessions or state folders fails. It costs real model
+calls, so nothing runs it for you.
 
 ## Run one
 
@@ -26,12 +26,12 @@ pass leaf-wake in 15 s
 evidence /tmp/pi-driver/leaf-wake-20260514-101010-4242
 ```
 
-| Exit | Meaning                                                                                                                                                                                           |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Every check passed.                                                                                                                                                                               |
-| 1    | The scenario failed: a `check`, a `waitFor` that timed out, a prompt that never settled, or the root pi dying. The line before `evidence` says which, as `fail <name>: <claim>`.                  |
-| 2    | The driver could not build the run (no `pi` on PATH, the terminal core never came up, the root pi never answered or does not run on what the scenario set). Nothing about the harness was tested. |
-| 130  | You pressed Ctrl-C.                                                                                                                                                                               |
+| Exit | Meaning                                                                                                                                                                                                                                |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Every check passed.                                                                                                                                                                                                                    |
+| 1    | The scenario failed: a `check`, a `waitFor` that timed out, a prompt that never settled, or the root pi dying. The line before `evidence` says which, as `fail <name>: <claim>`.                                                       |
+| 2    | The driver could not build the run (no `pi` on PATH, the terminal core never came up, the root pi never answered or does not run on what the scenario set), or the run wrote under your folders. Nothing about the harness was tested. |
+| 130  | You pressed Ctrl-C.                                                                                                                                                                                                                    |
 
 Every outcome stops the root pi, its delegates and the run's terminal core, and keeps the run folder as evidence:
 `report.txt` (everything printed), `sessions/` (the root's and every delegate's session file), `probe/` (what each pi
@@ -41,23 +41,10 @@ run killed outright cleans up the same way: the root pi exits when its stdin clo
 terminal core stops it with its delegates and removes the link once the driver's pipe closes. That shell starts before
 the link exists, so a kill at any moment leaves only the run folder.
 
-To prove a run left your sessions and state folders alone, check it:
-
-```sh
-bun tools/driver/untouched.ts features/owned-work/leaf-wake.scenario.ts
-```
-
-It lists every session file (`*.jsonl`) under `~/.pi/agent/sessions/` and every file under `~/.local/state/pi-agent/`
-before and after the run, with its size and change time, and prints each new, changed or deleted file. Your own sessions
-keep writing meanwhile, so a session file whose header names a session that no pi of the run ran, by the run's probe
-records, is cleared. Every other change counts against the run, however it was made. It exits 0 when nothing counts
-against the run, 1 when something does, and 2 when it cannot vouch (no `evidence` line, or a session of the run the
-probe never recorded). A change by one of your agents to its state folder during the run counts against the run too, so
-run it while they are quiet. The report also lands in the run's `untouched.txt`.
-
-It cannot see a file the run created and removed again before the second listing, a change to a session file of a
-session the probe did not record, the other files in the sessions folder (such as an agent's watch logs, which change
-whenever a watch prints), or anything outside those two folders.
+Isolation is by construction. After every run, a tripwire exits 2 listing each name under your `~/.pi/agent/sessions/`
+or `~/.local/state/` that holds the run's id or its core's session, which every folder the run names carries, so a
+broken redirect fails the run and another session writing meanwhile never does. It is not a sandbox: a hostile process,
+a write the run undoes, and a write that leaves no new name, such as an edit to an existing file, are out of its scope.
 
 ## Write one
 

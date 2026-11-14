@@ -51,7 +51,7 @@ const completeLines = (text: string) =>
 const decodeProbed = Schema.decodeUnknownOption(Schema.fromJsonString(Probed));
 
 /** Pure. Every complete probe record in a probe file's text. A line that is not a record is skipped. */
-export const probedIn = (text: string): ReadonlyArray<Probed> => {
+const probedIn = (text: string): ReadonlyArray<Probed> => {
 	const lines = Str.split(completeLines(text), "\n");
 
 	return Arr.getSomes(Arr.map(lines, (line) => decodeProbed(line)));
