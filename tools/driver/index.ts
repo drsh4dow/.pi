@@ -239,6 +239,7 @@ const played = <Failure>({ name, spec }: { readonly name: string; readonly spec:
 		const layout = yield* freshLayout(name).pipe(
 			Effect.tap((fresh) => fs.makeDirectory(fresh.folder, { recursive: true, mode: 0o700 })),
 			Effect.catchTag("PlatformError", (error) => Effect.fail(SetupFailed.make({ message: error.message }))),
+			Effect.tapError((error) => Console.log(`broken ${name}: ${error.message}`)),
 		);
 
 		const report = yield* reporter(layout.report);
