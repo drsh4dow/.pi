@@ -10,11 +10,9 @@ import * as Str from "effect/String";
 import type { StagedBrief } from "../../clients/pi-cli/index.ts";
 import { skillsSection } from "./skills.ts";
 
-/** What the harness adds after `SYSTEM.md`. The role, principles and playbooks arrive rendered. The brief arrives as data, and `compose` renders it. */
 export interface Layers {
 	/** The role file: its `<role>` and `<collaboration>` blocks. */
 	readonly role: string;
-	/** A delegate's brief, as its parent staged it. */
 	readonly brief: Option.Option<StagedBrief>;
 	/** The `<principles>` index. */
 	readonly principles: Option.Option<string>;
@@ -62,7 +60,6 @@ Playbooks, listed under \`<playbooks>\` as \`name: when\`, are the workflows for
 
 const block = (tag: string, body: string) => `<${tag}>\n${Str.trim(body)}\n</${tag}>`;
 
-/** The brief's blocks in prompt order, each only when its field is present. */
 export const briefBlocks = (brief: StagedBrief): string => {
 	const workLines = [
 		`The user's goal: ${Str.trim(brief.goal)}`,

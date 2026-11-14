@@ -24,7 +24,6 @@ const captureExtension = `${import.meta.dirname}/capture.ts`;
 
 const message = "Capture run: reply with the single word ok.";
 
-/** A checked-in state folder, so every staged delegate's prompt shows its project facts and each owner's its owner rules. */
 const stateFolder = `${import.meta.dirname}/state`;
 
 type Env = Readonly<Record<string, string>>;

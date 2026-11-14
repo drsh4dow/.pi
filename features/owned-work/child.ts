@@ -84,26 +84,20 @@ export const childExtensions: ReadonlyArray<string> = [
 ];
 
 interface BriefCommon extends Omit<ChildPi, "session" | "brief"> {
-	/** The user's goal: the call's, else the caller's own. */
 	readonly goal: string;
-	/** The work's state folder: the call's, else the caller's own, else the root's state label. */
 	readonly state: Option.Option<string>;
-	/** `facts.md` in the state folder, as read at the call. */
 	readonly facts: Option.Option<string>;
 	/** The file the caller named and its text, read at the call. Only the text is staged, so a later edit never reaches the child. */
 	readonly instructions: Option.Option<{ readonly file: string; readonly text: string }>;
 }
 
-/** A leaf's brief has no room for owner rules, so a leaf never receives them. */
 export type Brief =
 	| (BriefCommon & {
 			readonly role: "owner";
-			/** `owner.md` in the state folder, as read at the call. */
 			readonly ownerRules: Option.Option<string>;
 	  })
 	| (BriefCommon & { readonly role: "leaf"; readonly ownerRules?: never });
 
-/** What the child reads of its brief: the instructions' text without their file. */
 export const stagedOf = (brief: Brief): StagedBrief => {
 	const common = {
 		goal: brief.goal,

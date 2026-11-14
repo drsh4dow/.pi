@@ -1,8 +1,3 @@
-/**
- * A root that wrote to a state folder holding `facts.md` and `owner.md` starts an owner and a leaf with one goal. Each
- * delegate's system prompt carries the goal and the project facts, and only the owner's carries the owner rules. Each
- * delegate then quotes its goal line and the first line of its owner rules.
- */
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -51,7 +46,6 @@ const startedNamed = (entries: ReadonlyArray<SessionEntry>, name: string) =>
 const wakeOf = (entries: ReadonlyArray<SessionEntry>, ref: string) =>
 	Arr.findFirst(entries, (entry) => Option.filter(decodeWake(entry), ({ details }) => details.ref === ref));
 
-/** The delegate's answer and every request its pi built, once its wake reached the root. */
 const settled = (run: Run, name: string) =>
 	run.waitFor(`the wake of ${name}`, "5 minutes", ({ root, delegates }) =>
 		Option.flatMap(startedNamed(root.entries, name), ({ data }) =>
@@ -67,7 +61,6 @@ const sentAll = (requests: ReadonlyArray<string>, text: string) =>
 
 const sentAny = (requests: ReadonlyArray<string>, text: string) => Arr.some(requests, Str.includes(text));
 
-/** A state folder with project facts and owner rules, which the root then writes to, so it becomes the root's own. */
 const stateFolder = (run: Run) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;

@@ -78,7 +78,6 @@ const home = ConfigProvider.layer(ConfigProvider.fromUnknown({ HOME: fixtures })
 
 export const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, ledger, home));
 
-/** A root's tool: its caller has no brief of its own to inherit. */
 export const delegate = Tools.delegate(runtime, 2, { cwd: "/", dir: "/d" }, table, Option.none());
 
 /** A real caller carries its own thinking level, which a delegate must never take. */

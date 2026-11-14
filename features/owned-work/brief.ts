@@ -169,7 +169,6 @@ const folderOf = Effect.fn("folderOf")(function* (cwd: string, folder: string, r
 	return info.type === "Directory" ? real : yield* refusal("not a folder");
 });
 
-/** A missing file is none, since a state folder need not hold it. */
 const stateFile = (state: Option.Option<string>, name: string) =>
 	Option.match(state, {
 		onNone: () => Effect.succeedNone,
@@ -184,7 +183,6 @@ const stateFile = (state: Option.Option<string>, name: string) =>
 		},
 	});
 
-/** The state folder's `facts.md`, and its `owner.md` for an owner alone, read at each call so an edit reaches the next delegate. */
 export const stateFilesFor = Effect.fn("stateFilesFor")(function* (state: Option.Option<string>, role: ChildRole) {
 	const facts = yield* stateFile(state, "facts.md");
 
@@ -201,10 +199,8 @@ const goalMissing = BadDelegate.make({
 	why: "name a `goal`: the user's goal in one sentence. A root's call must name it, and every delegate below inherits it",
 });
 
-/** The caller's own staged brief, none for the root. */
 type Inherited = Option.Option<Pick<StagedBrief, "goal" | "state">>;
 
-/** The goal and state folder are the call's, else the caller's own. A root's state folder is the one its session last wrote to. */
 const workOf = Effect.fn("workOf")(function* (
 	ctx: Caller,
 	inherited: Inherited,

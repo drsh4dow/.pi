@@ -48,7 +48,6 @@ export const layersOf = Effect.fn("layersOf")(function* (
 	};
 });
 
-/** A delegate reads its brief on every run, from beside its own session; the root has none. */
 const briefOf = (self: Self, ctx: ExtensionContext) =>
 	Self.$is("Root")(self)
 		? Effect.succeedNone

@@ -141,11 +141,9 @@ test("each call reads the state folder's facts afresh, so an edit reaches the ne
 
 const delegatesFolder = `${root}/delegates`;
 
-/** An owner's tool, which reads its own brief from the session address `own`. */
 const ownerTool = (own: { readonly dir: string; readonly id: string }) =>
 	Tools.delegate(runtime, 3, { cwd: "/", dir: "/d" }, table, Option.some(own));
 
-/** Stages the one brief a call started, as the ledger would, and returns the session address the child reads it at. */
 const stagedAs = (id: string, level: number) => (briefs: ReadonlyArray<Brief>) =>
 	Effect.gen(function* () {
 		const pi = yield* PiCli;

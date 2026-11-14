@@ -35,7 +35,6 @@ const stagedModel = (name: ModelName) =>
 
 const goal = "Capture the system prompt each delegate gets.";
 
-/** A staged delegate's brief before its message and state folder, and its level. */
 interface Staged extends Pick<Brief, "name" | "model" | "thinking" | "readOnly" | "instructions"> {
 	readonly role: ChildRole;
 	readonly level: number;
@@ -54,7 +53,6 @@ const bare = (name: string, role: ChildRole, level: number): Staged => ({
 /** An owner that can delegate, an owner at the last level that cannot, and a leaf. */
 const bareDelegates = [bare("owner", "owner", 2), bare("owner-last-level", "owner", levels), bare("leaf", "leaf", 2)];
 
-/** A level-2 delegate on a harness instructions file, in the role and on the model its profile names. */
 const onInstructionsFile = Effect.fn("onInstructionsFile")(function* (file: string) {
 	const fs = yield* FileSystem.FileSystem;
 	const profile = yield* Effect.flatMap(fs.readFileString(`${instructionsFolder}/${file}`), parseProfile);
@@ -76,9 +74,8 @@ const onInstructionsFile = Effect.fn("onInstructionsFile")(function* (file: stri
 
 /**
  * Stages, on `message`, one level-2 delegate per harness instructions file, in the role its profile names, and the bare
- * delegates above, with the same `launch` the ledger uses, so a tool can run each and see exactly what it receives. Each
- * reads its project facts and owner rules from `state` as a call would. The staged files live in `dir` until the
- * caller's scope closes.
+ * delegates above, with the same `launch` the ledger uses, so a tool can run each and see exactly what it receives. The
+ * staged files live in `dir` until the caller's scope closes.
  */
 export const stagedLaunches = Effect.fn("stagedLaunches")(function* (
 	cwd: string,

@@ -104,22 +104,21 @@ const refsOf = (of: ReadonlyArray<Static<typeof HandleRef>>) => Arr.map(of, ({ r
 
 type OwnSession = Pick<SessionAddress, "dir" | "id">;
 
-const ownBrief = (own: Option.Option<OwnSession>) =>
+const ownBrief = (ownSession: Option.Option<OwnSession>) =>
 	Effect.transposeOption(
-		Option.map(own, (session) =>
+		Option.map(ownSession, (session) =>
 			Effect.mapError(readStagedBrief(session), ({ file, why }) =>
 				BadDelegate.make({ why: `cannot read your own brief ${file}: ${why}` }),
 			),
 		),
 	);
 
-/** `own` is the calling agent's own session address when it is a delegate, so its delegates inherit its goal and state folder. */
 const delegateTool = (
 	runtime: Runtime,
 	childLevel: number,
 	place: Omit<ChildSession, "id">,
 	table: ModelTable,
-	own: Option.Option<OwnSession>,
+	ownSession: Option.Option<OwnSession>,
 ) => {
 	const parameters = delegateParams(table);
 
@@ -134,7 +133,7 @@ const delegateTool = (
 			runTool(runtime, signal)(
 				(ledger) =>
 					Effect.gen(function* () {
-						const inherited = yield* ownBrief(own);
+						const inherited = yield* ownBrief(ownSession);
 						const { brief, cwd } = yield* parseCall(ctx, table, inherited, call);
 
 						return yield* ledger.start(
@@ -212,7 +211,6 @@ const cancelTool = (runtime: Runtime) =>
 			),
 	});
 
-/** `session` locates the agent's own staged brief, which only a delegate has. */
 const register = (
 	pi: Pick<ExtensionAPI, "registerTool">,
 	runtime: Runtime,
@@ -226,11 +224,11 @@ const register = (
 	pi.registerTool(cancelTool(runtime));
 
 	if (mayDelegate(self)) {
-		const own = Self.$is("Delegate")(self)
+		const ownSession = Self.$is("Delegate")(self)
 			? Option.some({ dir: session.getSessionDir(), id: session.getSessionId() })
 			: Option.none();
 
-		pi.registerTool(delegateTool(runtime, self.level + 1, place, modelTable, own));
+		pi.registerTool(delegateTool(runtime, self.level + 1, place, modelTable, ownSession));
 	}
 };
 

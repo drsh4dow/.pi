@@ -18,7 +18,6 @@ const briefFields = {
 	instructions: Schema.OptionFromOptionalKey(Schema.String),
 };
 
-/** What a delegate's prompt carries besides its role file, typed by role: only an owner's holds owner rules. */
 export const StagedBrief = Schema.Union([
 	Schema.Struct({
 		role: Schema.Literal("owner"),
@@ -32,7 +31,6 @@ export type StagedBrief = typeof StagedBrief.Type;
 
 const BriefJson = Schema.fromJsonString(StagedBrief);
 
-/** A typed brief always encodes, since every field is a string or an optional string. */
 const encodeBrief = (brief: StagedBrief) => Effect.orDie(Schema.encodeEffect(BriefJson)(brief));
 
 export interface ChildPi {
@@ -59,10 +57,7 @@ export class PiCli extends Context.Service<
 	}
 >()("pi-harness/clients/pi-cli/PiCli") {}
 
-/**
- * One argv word holds at most 128 KiB, so the message goes in a file beside the child's session. The brief goes beside
- * it with no flag, since the child finds both by its own session address.
- */
+/** One argv word holds at most 128 KiB, so the message goes in a file beside the child's session. */
 const stagedFiles = ({ dir, id }: Pick<SessionAddress, "dir" | "id">) => ({
 	message: `${dir}/${id}.message`,
 	brief: `${dir}/${id}.brief.json`,
@@ -146,7 +141,6 @@ export class BriefUnreadable extends Schema.TaggedError<BriefUnreadable, { reado
 	{ file: Schema.String, why: Schema.String },
 ) {}
 
-/** The brief a parent staged for the delegate at this session address. */
 export const readStagedBrief = Effect.fn("readStagedBrief")(function* (session: Pick<SessionAddress, "dir" | "id">) {
 	const fs = yield* FileSystem.FileSystem;
 	const file = stagedFiles(session).brief;
