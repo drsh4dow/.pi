@@ -43,7 +43,12 @@ export interface Layout {
 	readonly sessions: string;
 	/** `HC_SESSION` of the run's core, unique even when a pid is reused. */
 	readonly coreSession: string;
-	/** The core's `XDG_RUNTIME_DIR`, outside `folder` because a socket path holds at most 108 bytes. */
+	/**
+	 * `XDG_RUNTIME_DIR` of every process in the run, outside `folder` because a socket path holds at most 108 bytes. It
+	 * holds the core's socket and a link to your `systemd/`, but no `bus`. `systemd-run --user` reaches the user manager
+	 * through the link. Given this folder, hc and herdr-core start a core and its terminals as children of their caller,
+	 * not as systemd services of their own, so they stay in the run.
+	 */
 	readonly runtime: string;
 	readonly socket: string;
 	readonly report: string;
@@ -93,8 +98,7 @@ const followsHome = new Set(["XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME
  *
  * - Drops every `HC_*` and `PI_*` key: the driver may itself run inside a delegate, and owned-work reads any
  *   `PI_OWNED_WORK_LEVEL` as "I am a delegate".
- * - Drops the `XDG_*_HOME` overrides, so they follow the scratch HOME. Keeps `XDG_RUNTIME_DIR`: `systemd-run --user`
- *   reaches the user manager through it.
+ * - Drops the `XDG_*_HOME` overrides, so they follow the scratch HOME. `XDG_RUNTIME_DIR` is the run's own.
  * - PATH loses `node_modules/.bin` folders and every folder under `<human home>/.pi/` (the live harness's `agent/bin`),
  *   and starts with the run's `bin/`.
  * - `HC_SOCKET` (the `hc` CLI) and `HC_TERMINAL_SOCKET` (owned-work's client) name the run's core.
@@ -127,6 +131,7 @@ export const runEnv = ({
 		HOME: layout.home,
 		PI_CODING_AGENT_DIR: layout.agent,
 		PI_DRIVER_PROBE: layout.probe,
+		XDG_RUNTIME_DIR: layout.runtime,
 		HC_SESSION: layout.coreSession,
 		HC_SOCKET: layout.socket,
 		HC_TERMINAL_SOCKET: layout.socket,
@@ -224,12 +229,20 @@ exit 2
 
 type Needs = Scope.Scope | FileSystem.FileSystem | ChildProcessSpawner.ChildProcessSpawner;
 
-/** The run's environment from the driver's own, with the human's git and gh config when they exist. */
+/**
+ * The run's environment from the driver's own, with the human's git and gh config when they exist, and the run's
+ * runtime folder with its link to your `systemd/`. Closing the scope removes the folder.
+ */
 const envOf = Effect.fn("envOf")(function* (layout: Layout) {
 	const fs = yield* FileSystem.FileSystem;
 	const humanHome = yield* Config.String("HOME");
+	const humanRuntime = yield* Config.String("XDG_RUNTIME_DIR");
 	const borrowable = { GIT_CONFIG_GLOBAL: `${humanHome}/.gitconfig`, GH_CONFIG_DIR: `${humanHome}/.config/gh` };
 	const borrowed = yield* Effect.filter(Rec.toEntries(borrowable), ([, file]) => fs.exists(file));
+
+	yield* fs.makeDirectory(layout.runtime, { mode: 0o700 });
+	yield* Effect.addFinalizer(() => Effect.ignore(fs.remove(layout.runtime, { recursive: true })));
+	yield* fs.symlink(`${humanRuntime}/systemd`, `${layout.runtime}/systemd`);
 
 	return { humanHome, env: runEnv({ own: process.env, humanHome, layout, borrowed: Rec.fromEntries(borrowed) }) };
 });

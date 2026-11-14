@@ -43,7 +43,7 @@ const envRows = [
 	{ name: "the caller's slice is dropped", key: "PI_OWNED_WORK_SLICE", value: undefined },
 	{ name: "the state folder follows the scratch home", key: "XDG_STATE_HOME", value: undefined },
 	{ name: "the config folder follows the scratch home", key: "XDG_CONFIG_HOME", value: undefined },
-	{ name: "the runtime folder stays, for systemd", key: "XDG_RUNTIME_DIR", value: "/run/user/1000" },
+	{ name: "the runtime folder is the run's", key: "XDG_RUNTIME_DIR", value: layout.runtime },
 	{ name: "other keys stay", key: "LANG", value: "C.UTF-8" },
 	{ name: "borrowed config is added", key: "GIT_CONFIG_GLOBAL", value: "/h/.gitconfig" },
 	{ name: "an unset key stays unset", key: "UNSET", value: undefined },

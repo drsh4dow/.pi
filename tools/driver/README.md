@@ -44,12 +44,14 @@ killed during that write can leave the file empty.
 from the `bun` you started. Ctrl-C, SIGTERM or `kill -9` of that `bun` closes the pipe, and the driver ends the run
 as if interrupted, with the same cleanup. Once the driver in the service exits, however it exits, systemd kills every
 process left in the service. Delegates run in owned-work's own systemd scopes, which owned-work stops when the root pi
-exits. No code of the driver signals a process.
+exits. The run's `XDG_RUNTIME_DIR` is its own, with only a link to your `systemd/` in it, so an `hc` in the run that
+starts or restarts a core starts it as its own child, inside the run, not as a systemd service. No code of the driver
+signals a process.
 
 A run whose driver in the service dies outright, by `kill -9` of that process or `systemctl --user stop` of its
 unit, leaves no process, but two things on disk: the run folder, with the link `home/.pi/agent/auth.json` to your
-`auth.json`, and the core's folder `$TMPDIR/pi-driver/pi-driver-<pid>-<tag>`, which holds a dead socket. Both are
-safe to delete: removing the link leaves your `auth.json` as it is.
+`auth.json`, and the run's runtime folder `$TMPDIR/pi-driver/pi-driver-<pid>-<tag>`, which holds a dead socket and a
+link to your `systemd/`. Both are safe to delete: removing a link leaves what it points to as it is.
 
 Isolation is by construction. Every pi of the run starts through the run's `pi` wrapper, which refuses to start in
 any working folder outside the run folder, so every folder pi names for its working folder holds the run's id. After
