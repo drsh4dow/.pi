@@ -1,4 +1,4 @@
-import { type Usage, uuidv7 } from "@earendil-works/pi-ai";
+import { type Api, type Model, type Usage, uuidv7 } from "@earendil-works/pi-ai";
 import {
 	convertToLlm,
 	type ExtensionContext,
@@ -41,9 +41,15 @@ export { narrativeCap } from "./summary.ts";
 
 type Env = Readonly<Record<string, string | undefined>>;
 
-type Caller = Pick<ExtensionContext, "model"> & {
-	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "complete">;
-};
+type StreamSimple = ExtensionContext["modelRegistry"]["streamSimple"];
+
+/** `streamSimple`, unlike `complete`, routes a virtual model, as `direct`, so a PHI router sends the summary to its BAA account. */
+interface Caller {
+	readonly model: Model<Api> | undefined;
+	readonly modelRegistry: {
+		readonly streamSimple: (...args: Parameters<StreamSimple>) => Pick<ReturnType<StreamSimple>, "result">;
+	};
+}
 
 const anchorOf = Effect.fn("anchorOf")(
 	function* (env: Env, branch: ReadonlyArray<SessionEntry>) {
@@ -101,7 +107,7 @@ const attempt = Effect.fn("attempt")(function* ({
 	text,
 }: {
 	readonly ctx: Caller;
-	readonly model: NonNullable<Caller["model"]>;
+	readonly model: Model<Api>;
 	readonly signal: AbortSignal;
 	readonly text: string;
 }) {
@@ -109,11 +115,13 @@ const attempt = Effect.fn("attempt")(function* ({
 
 	const call = Effect.tryPromise({
 		try: () =>
-			ctx.modelRegistry.complete(
-				model,
-				{ systemPrompt, messages: [{ role: "user", content: [{ type: "text", text }], timestamp }] },
-				{ signal, cacheRetention: "none", sessionId: uuidv7() },
-			),
+			ctx.modelRegistry
+				.streamSimple(
+					model,
+					{ systemPrompt, messages: [{ role: "user", content: [{ type: "text", text }], timestamp }] },
+					{ signal, cacheRetention: "none", sessionId: uuidv7() },
+				)
+				.result(),
 		catch: (cause) => (cause instanceof Error ? cause.message : String(cause)),
 	});
 

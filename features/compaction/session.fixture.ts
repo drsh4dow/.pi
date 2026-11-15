@@ -61,13 +61,15 @@ export const reply = ({
 export const modelWith = (answers: ReadonlyArray<() => Promise<AssistantMessage>>) => {
 	const prompts: Array<string> = [];
 
-	const complete = (_model: Model<Api>, context: Context) => {
+	const streamSimple = (_model: Model<Api>, context: Context) => {
 		prompts.push(serializeConversation(context.messages));
 
-		return answers[prompts.length - 1]?.() ?? Promise.reject(new Error("the test gave no answer for this call"));
+		const answer = answers[prompts.length - 1];
+
+		return { result: () => answer?.() ?? Promise.reject(new Error("the test gave no answer for this call")) };
 	};
 
-	return { prompts, ctx: { model: getBuiltinModel("anthropic", "claude-opus-5-5"), modelRegistry: { complete } } };
+	return { prompts, ctx: { model: getBuiltinModel("anthropic", "claude-opus-5-5"), modelRegistry: { streamSimple } } };
 };
 
 export const answering = (...messages: ReadonlyArray<AssistantMessage>) =>
