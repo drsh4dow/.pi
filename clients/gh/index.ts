@@ -1,6 +1,7 @@
 import * as Arr from "effect/Array";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as ChildProcess from "effect/process/ChildProcess";
@@ -97,7 +98,44 @@ const view = (pr: string) =>
 		),
 	);
 
-const patchId = (pr: string) => Effect.flatMap(gh(["pr", "diff", pr]), patchIdOf);
+const mergeBaseAndHeadOf = (pr: string) =>
+	Effect.gen(function* () {
+		const { repo, url, head } = yield* view(pr);
+		const base = yield* Effect.map(gh(["pr", "view", pr, "--json", "baseRefOid", "--jq", ".baseRefOid"]), Str.trim);
+		const compare = `repos/${repo}/compare/${base}...${head}`;
+		const mergeBase = yield* Effect.map(gh(["api", compare, "--jq", ".merge_base_commit.sha"]), Str.trim);
+
+		return { remote: Str.replace(/\/pull\/\d+$/u, ".git")(url), mergeBase, head };
+	});
+
+const auth = ["-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential"];
+
+const fetchedDiff = (pr: string) =>
+	Effect.gen(function* () {
+		const { remote, mergeBase, head } = yield* mergeBaseAndHeadOf(pr);
+
+		const dir = yield* Effect.flatMap(FileSystem.FileSystem, (fs) =>
+			Effect.mapError(fs.makeTempDirectoryScoped(), ({ message }) =>
+				GhError.make({ args: ["mktemp"], why: message }),
+			),
+		);
+
+		const git = (args: ReadonlyArray<string>) => output("git", ["-C", dir, ...args]);
+
+		yield* git(["init", "-q", "--bare"]);
+		yield* git([...auth, "fetch", "-q", "--depth=1", "--no-tags", remote, mergeBase, head]);
+
+		// `--full-index` keeps a binary change, whose diff is only its blob ids, from sharing an id with another blob of the same abbreviation.
+		return yield* git(["diff-tree", "-p", "-M", "--full-index", mergeBase, head]);
+	}).pipe(Effect.scoped);
+
+const tooLarge = ({ why }: GhError) => Str.includes("PullRequest.diff too_large")(why);
+
+const patchId = (pr: string) =>
+	gh(["pr", "diff", pr]).pipe(
+		Effect.catchIf(tooLarge, () => fetchedDiff(pr)),
+		Effect.flatMap(patchIdOf),
+	);
 
 const stackOf = (ceiling: string) => {
 	const stacks = "repos/{owner}/{repo}/stacks";
@@ -109,7 +147,7 @@ const stackOf = (ceiling: string) => {
 	);
 };
 
-type Services = ChildProcessSpawner.ChildProcessSpawner;
+type Services = ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem;
 
 export const ghLayer: Layer.Layer<Gh, never, Services> = Layer.effect(
 	Gh,
