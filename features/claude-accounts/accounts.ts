@@ -16,14 +16,37 @@ type OAuthAuth = NonNullable<Provider["auth"]["oauth"]>;
 export type Login = "oauth" | "setup-token";
 
 export const accounts = [
-	{ id: "ultra-a", name: "Claude Ultra A", login: "oauth" },
-	{ id: "ultra-b", name: "Claude Ultra B", login: "setup-token" },
-	{ id: "ent", name: "Claude Enterprise", login: "oauth" },
-] as const satisfies ReadonlyArray<{ readonly id: string; readonly name: string; readonly login: Login }>;
+	{ id: "ultra-a", name: "Claude Ultra A", login: "oauth", baa: false },
+	{ id: "ultra-b", name: "Claude Ultra B", login: "setup-token", baa: false },
+	{ id: "ent", name: "Claude Enterprise", login: "oauth", baa: true },
+] as const satisfies ReadonlyArray<{
+	readonly id: string;
+	readonly name: string;
+	readonly login: Login;
+	readonly baa: boolean;
+}>;
 
 export type Account = (typeof accounts)[number];
 
+export type AccountId = Account["id"];
+
 export const accountOf = (id: string) => Arr.findFirst(accounts, (account) => account.id === id);
+
+export const isBaaAccount = (id: string) => Option.exists(accountOf(id), ({ baa }) => baa);
+
+/**
+ * Where a request that `from` cannot answer goes next: the other personal accounts, then the BAA accounts. A BAA account
+ * has nowhere to go, since what it holds may be PHI.
+ */
+export const fallbackChain = (from: AccountId): ReadonlyArray<Account> => {
+	if (isBaaAccount(from)) {
+		return [];
+	}
+
+	const others = Arr.filter(accounts, ({ id }) => id !== from);
+
+	return [...Arr.filter(others, ({ baa }) => !baa), ...Arr.filter(others, ({ baa }) => baa)];
+};
 
 export class NotASetupToken extends Schema.TaggedError<NotASetupToken, { readonly brand: unique symbol }>()(
 	"NotASetupToken",

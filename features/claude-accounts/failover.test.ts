@@ -21,9 +21,19 @@ const failovers = [
 		targets: ["ultra-b/claude-opus-5-5", "ent/claude-opus-5-5"],
 	},
 	{
-		name: "a session on ultra-b tries ent, then wraps to ultra-a",
+		name: "a session on ultra-b tries ultra-a, then ent",
 		request: { current: { ...opus, provider: "ultra-b" }, find },
-		targets: ["ent/claude-opus-5-5", "ultra-a/claude-opus-5-5"],
+		targets: ["ultra-a/claude-opus-5-5", "ent/claude-opus-5-5"],
+	},
+	{
+		name: "a session on ent never falls back to a personal account",
+		request: { current: { ...opus, provider: "ent" }, find },
+		targets: [],
+	},
+	{
+		name: "a phi/auto selection is the router's to move, not the failover's",
+		request: { current: { ...opus, provider: "phi" }, find },
+		targets: [],
 	},
 	{
 		name: "an account without the session's model is skipped",

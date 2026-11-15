@@ -8,7 +8,9 @@ import * as Str from "effect/String";
 import { accountOf, accountProvider, accounts, anthropicOf } from "./accounts.ts";
 import { endedOnRateLimit, failOver } from "./failover.ts";
 
-export { accounts, type Login } from "./accounts.ts";
+export { type AccountId, accountOf, accounts, fallbackChain, isBaaAccount, type Login } from "./accounts.ts";
+
+export { isRateLimited } from "./failover.ts";
 
 const accountIds = Arr.map(accounts, ({ id }) => id);
 
