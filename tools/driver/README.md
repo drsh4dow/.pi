@@ -93,7 +93,10 @@ The run's name is the file name without `.scenario.ts`.
 
 - `run.root.prompt(message, within?)` sends a prompt to the root and waits until pi settles: no retries, compaction
   or queued messages left. It returns the root's last assistant text, or none, as when pi aborted the run. A wake from a delegate arrives later as
-  a turn of its own, so wait for it with `waitFor`. Default `within` is 10 minutes.
+  a turn of its own, so wait for it with `waitFor`. Default `within` is 10 minutes. A message is a string, or
+  `{ text, images }` with pi's `{ type: "image", data, mimeType }` images, as a pasted screenshot arrives.
+- `run.root.steer(message)` queues a steering message while pi runs, as typing during a run does: pi delivers it
+  after the current tool calls, before its next model call. It fails when pi is idle, so send it while a prompt runs.
 - `run.root.compact` runs pi's manual compaction, as `/compact` does, and returns once pi answers. It fails when pi
   rejects it, as when there is nothing to compact.
 - `run.root.output` is the root pi's stderr so far.
@@ -114,6 +117,11 @@ The run's name is the file name without `.scenario.ts`.
   `${run.home}/.local/state/pi-agent/<project>/<work>`.
 - `run.check(condition, claim)` fails the scenario with `claim` when `condition` is false. Write the claim as the
   fact you expect, with the value you saw, as in `` `the leaf settled done (it settled ${status})` ``.
+- `run.spawn({ name, providers })` starts another fresh pi on the scenario's model, in a scope, for a scenario that
+  needs many clean sessions. It gets its own project, session and agent folders under `<run>/pis/<name>`, and
+  `providers` replaces the run's `models` entries of those names, so each pi can talk to its own mock endpoints. It
+  shares the run's HOME and terminal core. It returns a `Root` plus its `project` folder and `session`, and prints no
+  progress.
 - `play` may also use Effect's `FileSystem` and `Path`. It gets no process spawner, so `run.exec` is the only way to
   start a command.
 

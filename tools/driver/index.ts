@@ -6,7 +6,6 @@
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Cause from "effect/Cause";
-import * as Clock from "effect/Clock";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as DateTime from "effect/DateTime";
@@ -19,21 +18,28 @@ import type * as Path from "effect/Path";
 import * as Predicate from "effect/Predicate";
 import * as Random from "effect/Random";
 import * as Schema from "effect/Schema";
+import type * as Scope from "effect/Scope";
 import * as Str from "effect/String";
 
 import type { Exited } from "./core.ts";
 import { ScenarioFailed, SetupFailed } from "./failed.ts";
+import { type Reporter, reporter } from "./report.ts";
 import { type Root, type RootProcess, startRoot } from "./root.ts";
 import { inService, runAsService, stdinEnded } from "./service.ts";
 import { readSessions, type Sessions } from "./sessions.ts";
 import { type Setup, setupOf } from "./setup.ts";
+import { type SpawnRequest, type Spawned, spawnIn } from "./spawn.ts";
 import { tookSetup } from "./took.ts";
 import { leftAlone } from "./tripwire.ts";
 import { type Layout, layoutOf, openWorld } from "./world.ts";
 
 export type { ScenarioFailed } from "./failed.ts";
 
+export type { Image, Message } from "./message.ts";
+
 export type { Root } from "./root.ts";
+
+export type { SpawnRequest, Spawned } from "./spawn.ts";
 
 export type { Loaded, Session, Sessions } from "./sessions.ts";
 
@@ -90,6 +96,12 @@ export interface Run {
 	readonly say: (value: Schema.Json) => Effect.Effect<void>;
 	/** Fails the scenario with `claim` unless `condition` holds. State the claim as the expected fact plus what you saw. */
 	readonly check: (condition: boolean, claim: string) => Effect.Effect<void, ScenarioFailed>;
+	/**
+	 * Starts another pi on the scenario's `model`, fresh, in its own project, session and agent folders under
+	 * `<run>/pis/<name>`, with `providers` replacing the run's `models` entries of those names. It shares the run's HOME and
+	 * terminal core, prints no progress, and stops when the scope closes.
+	 */
+	readonly spawn: (request: SpawnRequest) => Effect.Effect<Spawned, ScenarioFailed, Scope.Scope>;
 }
 
 /** What `play` may use besides `run`. No process spawner: `run.exec` is the only way to start a command. */
@@ -126,29 +138,6 @@ const verdictOf = <Value, Failure>(name: string, exit: Exit.Exit<Value, Failure>
 		? `broken ${name}: ${messageOf(exit.cause)}`
 		: `fail ${name}: ${messageOf(exit.cause)}`;
 };
-
-const encodeLine = Schema.encodeEffect(Schema.fromJsonString(Schema.Json));
-
-/** Prints to stdout and appends to `report.txt`, and counts seconds from the run's start. */
-const reporter = Effect.fn("reporter")(function* (report: string) {
-	const fs = yield* FileSystem.FileSystem;
-	const started = yield* Clock.currentTimeMillis;
-	const elapsed = Effect.map(Clock.currentTimeMillis, (now) => Math.round((now - started) / 1000));
-
-	const say = (value: Schema.Json) =>
-		Effect.gen(function* () {
-			const line = Predicate.isString(value) ? value : yield* encodeLine(value);
-
-			yield* Console.log(line);
-			yield* fs.writeFileString(report, `${line}\n`, { flag: "a" });
-		}).pipe(Effect.orDie);
-
-	const progress = (what: string) => Effect.flatMap(elapsed, (seconds) => say(`  ${String(seconds)} s  ${what}`));
-
-	return { say, progress, elapsed };
-});
-
-type Reporter = Effect.Success<ReturnType<typeof reporter>>;
 
 /** `waitFor` over the run's session files, raced against the root's exit. */
 const waiting =
@@ -209,6 +198,7 @@ const playIn = <Failure>({
 			exec: world.exec,
 			say: report.say,
 			check,
+			spawn: yield* spawnIn(world, spec.model),
 		};
 
 		yield* Effect.raceFirst(spec.play(run), root.exited);
