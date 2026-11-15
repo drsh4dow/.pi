@@ -1,6 +1,6 @@
 # pi harness
 
-My own coding harness, built on [pi](https://github.com/earendil-works/pi). This folder is also pi's live config dir (`~/.pi`), so `.gitignore` is an allowlist: credentials (`agent/auth.json`) and session history (`agent/sessions/`) must never be committed.
+Next-gen coding harness, built on pi + Herdr-Core. This folder is also pi's live config dir (`~/.pi`), so `.gitignore` is an allowlist: credentials (`agent/auth.json`) and session history (`agent/sessions/`) must never be committed.
 
 ## Rules
 
@@ -16,6 +16,7 @@ My own coding harness, built on [pi](https://github.com/earendil-works/pi). This
 - Prove a fact about how the harness behaves in a running pi with a `*.scenario.ts` run by the runtime driver, as `tools/driver/README.md` describes, not with a unit test or a reading of the code.
 - `tools/oxlint/anti-slop/` is vendored. Update it with the `install-anti-slop` skill and record changes in its `UPSTREAM.md`.
 - The code inside skills (`making-videos/scripts/` and `templates/`, `writing-good-prs/scripts/`, `dumpfile/cli/`, `statechart/scripts/`) and playbooks (`scripts/`, `constraint-driven-development/scripts/`, `idea-refine/scripts/`) is vendored: oxfmt, oxlint and tsc skip it, and `bun test` still runs its tests.
+- Before modifying Herdr-App or Herdr-Core review its dedicated instructions at `~/.config/herdr-app/AGENTS.md`
 
 ## Agent skills
 
