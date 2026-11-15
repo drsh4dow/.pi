@@ -37,6 +37,8 @@ import {
 	totalUsage,
 } from "./summary.ts";
 
+export { narrativeCap } from "./summary.ts";
+
 type Env = Readonly<Record<string, string | undefined>>;
 
 type Caller = Pick<ExtensionContext, "model"> & {
