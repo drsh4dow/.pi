@@ -6,7 +6,15 @@ import type { Static } from "typebox";
 
 import type { DelegateParams } from "./brief.ts";
 import { Draft, type LedgerState, UnknownRef } from "./step.ts";
-import { BadDelegate, type ContinueRequest, NotContinuable, StartRequest, Work, WorkRef } from "./work.ts";
+import {
+	BadDelegate,
+	type ContinueRequest,
+	type DelegateStart,
+	NotContinuable,
+	StartRequest,
+	Work,
+	WorkRef,
+} from "./work.ts";
 
 export const continueMessage =
 	"You run again in your own session. If your last turn ended in a tool call, check what that call already did, such as the files it changed or the commands it started, before you run it again. Then finish your task.";
@@ -58,7 +66,7 @@ export const parseContinuation = Effect.fn("parseContinuation")(function* (ref: 
 
 export const continuationOf =
 	(state: LedgerState) =>
-	({ ref, message, group }: ContinueRequest): Result.Result<StartRequest, UnknownRef | NotContinuable> => {
+	({ ref, message, group }: ContinueRequest): Result.Result<DelegateStart, UnknownRef | NotContinuable> => {
 		const work = state.work.get(ref);
 
 		if (work === undefined) {

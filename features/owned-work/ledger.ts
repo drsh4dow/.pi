@@ -26,6 +26,7 @@ import { Command, Draft, type LedgerError, type LedgerState, type Step, type Ver
 import { Transitions } from "./transitions.ts";
 import {
 	type ContinueRequest,
+	type DelegateStart,
 	type GroupRequest,
 	type Handle,
 	MonotonicNanos,
@@ -56,7 +57,7 @@ export class Ledger extends Context.Service<
 	Ledger,
 	{
 		readonly start: (request: StartRequest) => Effect.Effect<Handle, StartError>;
-		readonly continue: (request: ContinueRequest) => Effect.Effect<Handle, LedgerFailure>;
+		readonly continuation: (request: ContinueRequest) => Effect.Effect<DelegateStart, LedgerError | NotContinuable>;
 		readonly group: (request: GroupRequest) => Effect.Effect<Handle, LedgerError>;
 		readonly cancel: (refs: ReadonlyArray<WorkRef>) => Effect.Effect<ReadonlyArray<Settled>, LedgerError>;
 		readonly runStarted: Effect.Effect<void>;
@@ -241,11 +242,6 @@ const start = (kit: Kit, request: StartRequest): Effect.Effect<Handle, StartErro
 		return yield* Fiber.join(detachedSpawn);
 	});
 
-const continued = (kit: Kit, request: ContinueRequest): Effect.Effect<Handle, LedgerFailure> =>
-	Effect.flatMap(Ref.get(kit.state), (state) =>
-		Effect.flatMap(Effect.fromResult(continuationOf(state)(request)), (delegate) => start(kit, delegate)),
-	);
-
 const follow = (kit: Kit): Effect.Effect<void> =>
 	Stream.runForEach(kit.hc.notices, (notice) =>
 		Match.valueTags(notice, {
@@ -286,7 +282,8 @@ export const ledgerLayer = (
 
 			return {
 				start: (request) => start(kit, request),
-				continue: (request) => continued(kit, request),
+				continuation: (request) =>
+					Effect.flatMap(Ref.get(kit.state), (state) => Effect.fromResult(continuationOf(state)(request))),
 				group: (request) => attempt(kit, (current) => Transitions.group(current, request)),
 				cancel: (refs) => attempt(kit, (current) => Transitions.cancel(current, refs)),
 				runStarted: Effect.asVoid(apply(kit, Transitions.runStarted)),

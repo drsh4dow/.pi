@@ -143,11 +143,11 @@ const outcomeOf = (call: Static<DelegateParams>) =>
 				message: Option.getOrUndefined(message),
 				group: Option.getOrUndefined(group),
 			})),
-			started: started.splice(0),
+			started: Arr.map(started.splice(0), ({ brief: { model, message } }) => ({ model, message })),
 		}),
 	);
 
-test("a continuation hands the ledger its ref, message and group, and starts no fresh delegate", () =>
+test("a continuation hands the ledger its ref, message and group, and starts the settled delegate it gets back", () =>
 	runtime.runPromise(
 		Effect.map(
 			outcomeOf({ continues: "delegate-1", message: "Also update the docs.", group: "review" }),
@@ -156,7 +156,7 @@ test("a continuation hands the ledger its ref, message and group, and starts no 
 					isError: false,
 					details: { ref: "delegate-1", kind: "delegate", next: "end your turn; delegate-1 wakes you" },
 					continued: [{ ref: "delegate-1", message: "Also update the docs.", group: "review" }],
-					started: [],
+					started: [{ model: "openai/gpt-6-luna", message: "Also update the docs." }],
 				});
 			},
 		),

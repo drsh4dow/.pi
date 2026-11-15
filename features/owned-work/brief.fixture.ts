@@ -15,7 +15,9 @@ import { Gh, GhError } from "../../clients/gh/index.ts";
 import type { Design } from "../../clients/pi-cli/index.ts";
 import type { DelegateParams } from "./brief.ts";
 import type { Brief, ChildRole } from "./child.ts";
+import { continueMessage } from "./continuation.ts";
 import { Ledger } from "./ledger.ts";
+import { UnknownRef } from "./step.ts";
 import { Tools } from "./tools.ts";
 import { type ContinueRequest, type Handle, StartRequest, WorkRef } from "./work.ts";
 
@@ -73,6 +75,12 @@ const handle: Handle = {
 	ready: Option.none(),
 };
 
+const settledOn = new Map([
+	["delegate-1", "openai/gpt-6-luna"],
+	["delegate-2", "ultra-a/claude-opus-5-5"],
+	["delegate-3", "openai/gpt-6.1-sol"],
+]);
+
 const ledger = Layer.mock(Ledger)({
 	start: (request) =>
 		Effect.sync(() => {
@@ -82,11 +90,29 @@ const ledger = Layer.mock(Ledger)({
 
 			return handle;
 		}),
-	continue: (request) =>
-		Effect.sync(() => {
-			continued.push(request);
+	continuation: (request) =>
+		Effect.mapBoth(Effect.fromNullishOr(settledOn.get(request.ref)), {
+			onFailure: () => UnknownRef.make({ ref: request.ref }),
+			onSuccess: (model) => {
+				continued.push(request);
 
-			return handle;
+				return StartRequest.Delegate({
+					brief: {
+						name: "scout",
+						role: "leaf",
+						model,
+						message: Option.getOrElse(request.message, () => continueMessage),
+						goal: "Cap the retries.",
+						readOnly: false,
+						thinking: Option.none(),
+						state: Option.none(),
+						facts: Option.none(),
+						instructions: Option.none(),
+					},
+					childSession: { id: request.ref, cwd: "/", dir: "/d" },
+					group: request.group,
+				});
+			},
 		}),
 });
 
