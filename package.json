@@ -7,9 +7,9 @@
 		"fmt": "oxfmt",
 		"lint": "oxlint",
 		"typecheck": "tsc -p .",
-		"test": "bun test",
+		"test": "bun test --parallel",
 		"prompts": "bun tools/prompts/index.ts",
-		"check": "oxfmt --check && oxlint && tsc -p . && bun test"
+		"check": "oxfmt --check && bun run --parallel lint typecheck test"
 	},
 	"dependencies": {
 		"@effect/platform-node": "4.1.2",
