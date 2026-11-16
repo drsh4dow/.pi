@@ -53,7 +53,7 @@ test("a clean conversation with a tool on its system turn goes personal", () =>
 	));
 
 for (const [index, { field, message }] of carriers.entries()) {
-	test(`PHI in ${field}, which Anthropic receives, latches the branch`, () =>
+	test(`PHI in ${field}, which Anthropic receives, sends the request to ent`, () =>
 		run(
 			Effect.gen(function* () {
 				const branch = branchOf({ world: yield* worldOf({ name: `serialized-${String(index)}` }) });

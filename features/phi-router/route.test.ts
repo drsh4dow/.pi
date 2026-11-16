@@ -42,17 +42,15 @@ test("a clean session stays on one personal account, its home, for every request
 		}),
 	));
 
-test("a tool result with PHI latches the branch to ent, and a later clean turn stays there", () =>
+test("a tool result with PHI sends the request to ent", () =>
 	run(
 		Effect.gen(function* () {
-			const branch = branchOf({ world: yield* worldOf({ name: "latch" }) });
+			const branch = branchOf({ world: yield* worldOf({ name: "phi-read" }) });
 			const home = yield* branch.send("user", opening);
-			const read = [...opening, ranCat(home), catOutput(syntheticChart)];
-			const afterRead = yield* branch.send("continuation", read);
-			const next = yield* branch.send("user", [...read, done("ent"), asked("Thanks, rename the parser.")]);
+			const afterRead = yield* branch.send("continuation", [...opening, ranCat(home), catOutput(syntheticChart)]);
 
 			expect(personal).toContain(home);
-			expect([afterRead, next]).toEqual(["ent", "ent"]);
+			expect(afterRead).toBe("ent");
 		}),
 	));
 
@@ -113,32 +111,12 @@ test("a retry after a failure on ent stays on ent, even when the content is clea
 		}),
 	));
 
-test("a fork from before the latch routes personal, while the latched branch stays on ent", () =>
-	run(
-		Effect.gen(function* () {
-			const world = yield* worldOf({ name: "fork" });
-			const branch = branchOf({ world });
-			const home = yield* branch.send("user", opening);
-			const fork = branchOf({ world, entries: branch.entries() });
-			const read = [...opening, ranCat(home), catOutput(syntheticChart)];
-
-			yield* branch.send("continuation", read);
-
-			const forked = fork.send("user", [...opening, done(home), asked("Rename the parser.")]);
-			const latched = branch.send("user", [...read, done("ent"), asked("Rename the parser.")]);
-
-			const routes = yield* Effect.all([forked, latched]);
-
-			expect(routes).toEqual([home, "ent"]);
-		}),
-	));
-
 const summaryOf = (text: string): Message =>
 	asked(
 		`The conversation history before this point was compacted into the following summary:\n<summary>\n${text}\n</summary>`,
 	);
 
-test("after a compaction the summary is scanned: a clean one stays personal, one carrying PHI latches", () =>
+test("after a compaction the summary is scanned: a clean one stays personal, one carrying PHI goes to ent", () =>
 	run(
 		Effect.gen(function* () {
 			const branch = branchOf({ world: yield* worldOf({ name: "compaction" }) });
@@ -149,23 +127,24 @@ test("after a compaction the summary is scanned: a clean one stays personal, one
 			const afterLeak = yield* branch.send("user", leaked);
 			const after = yield* branch.send("user", [...clean, done("ent"), asked("Ship it.")]);
 
-			expect([afterClean, afterLeak, after]).toEqual([home, "ent", "ent"]);
+			expect([afterClean, afterLeak, after]).toEqual([home, "ent", home]);
 		}),
 	));
 
-test("an image latches the branch, since pixels are never judged", () =>
+test("an image sends its request to ent, since pixels are never judged", () =>
 	run(
 		Effect.gen(function* () {
 			const branch = branchOf({ world: yield* worldOf({ name: "image" }) });
 			const withImage = yield* branch.send("user", [system, screenshot]);
 			const after = yield* branch.send("user", opening);
 
-			expect([withImage, after]).toEqual(["ent", "ent"]);
+			expect(withImage).toBe("ent");
+			expect(personal).toContain(after);
 		}),
 	));
 
 for (const verdict of ["error", "timeout"] as const) {
-	test(`a Decisions ${verdict} sends that request to ent without latching`, () =>
+	test(`a Decisions ${verdict} sends only that request to ent`, () =>
 		run(
 			Effect.gen(function* () {
 				const world = yield* worldOf({ name: `judge-${verdict}` });
@@ -187,32 +166,13 @@ for (const verdict of ["error", "timeout"] as const) {
 
 const garbled = { cursor: "Unscanned", home: "ultra-a", limited: [{ account: "ultra-b", at: "soon" }] };
 
-test("router state that no longer decodes latches the branch", () =>
+test("router state that no longer decodes is skipped, and the request routes as with none", () =>
 	run(
 		Effect.gen(function* () {
 			const world = yield* worldOf({ name: "malformed" });
-			const branch = branchOf({ world, entries: [stateEntry(phiState(garbled))] });
-			const sent = yield* branch.send("user", opening);
-			const after = yield* branch.send("user", [...opening, done("ent"), asked("Again.")]);
+			const sent = yield* branchOf({ world, entries: [stateEntry(phiState(garbled))] }).send("user", opening);
 
-			expect([sent, after]).toEqual(["ent", "ent"]);
-		}),
-	));
-
-test("a phi/auto state entry with no state, after a latch, keeps the branch latched", () =>
-	run(
-		Effect.gen(function* () {
-			const world = yield* worldOf({ name: "envelope" });
-			const latched = branchOf({ world });
-			const read = [...opening, ranCat("ultra-a"), catOutput(syntheticChart)];
-
-			yield* latched.send("continuation", read);
-
-			const entries = [...latched.entries(), stateEntry({ provider: "phi", modelId: "auto" })];
-			const compacted = [system, asked("Summary: we fixed the importer."), asked("Rename the parser.")];
-			const routed = yield* branchOf({ world, entries }).send("user", compacted);
-
-			expect(routed).toBe("ent");
+			expect(sent).toBe(homeOf(world.session));
 		}),
 	));
 

@@ -2,7 +2,6 @@ import { expect, test } from "bun:test";
 
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
-import { parseSessionEntries, type SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as ConfigProvider from "effect/ConfigProvider";
@@ -25,33 +24,13 @@ const registry = [
 	on("opencode-go", "glm-5.3-flash"),
 ];
 
-const latched = Arr.filter(
-	parseSessionEntries(
-		'{"type":"custom","customType":"pi.virtual-model-state","id":"e0000001","parentId":null,"timestamp":"2026-05-14T10:00:00.000Z","data":{"provider":"phi","modelId":"auto","state":{"cursor":{"_tag":"Tainted","taint":{"_tag":"Phi","detector":"judge"}},"home":"ultra-a","limited":[]}}}',
-	),
-	(entry): entry is SessionEntry => entry.type !== "session",
-);
-
 const home = Layer.merge(
 	NodeServices.layer,
 	ConfigProvider.layer(ConfigProvider.fromEnvRecord({ HOME: `${Bun.env["TMPDIR"] ?? "/tmp"}/no-phi-settings` })),
 );
 
-const delegateModel = ({
-	parent,
-	branch = [],
-	name,
-}: {
-	readonly parent: Model<Api>;
-	readonly branch?: ReadonlyArray<SessionEntry>;
-	readonly name: string;
-}) => {
-	const caller = {
-		model: parent,
-		cwd: "/",
-		modelRegistry: { getAll: () => registry },
-		sessionManager: { getBranch: () => [...branch] },
-	};
+const delegateModel = ({ parent, name }: { readonly parent: Model<Api>; readonly name: string }) => {
+	const caller = { model: parent, cwd: "/", modelRegistry: { getAll: () => registry } };
 
 	return Effect.runPromise(
 		modelOf(caller, modelTable, modelNameOf(name)).pipe(
@@ -64,71 +43,40 @@ const delegateModel = ({
 const phiAuto = on("phi", "auto");
 
 const rows = [
-	{ from: "a clean phi/auto parent", parent: phiAuto, branch: [], name: "judgment", runs: "phi/auto" },
-	{ from: "a clean phi/auto parent", parent: phiAuto, branch: [], name: "investigator", runs: "phi/auto" },
-	{ from: "a clean phi/auto parent", parent: phiAuto, branch: [], name: "ultra-b/claude-opus-5-5", runs: "phi/auto" },
-	{ from: "a clean phi/auto parent", parent: phiAuto, branch: [], name: "phi/auto", runs: "phi/auto" },
+	{ from: "a clean phi/auto parent", parent: phiAuto, name: "judgment", runs: "phi/auto" },
+	{ from: "a clean phi/auto parent", parent: phiAuto, name: "investigator", runs: "phi/auto" },
+	{ from: "a clean phi/auto parent", parent: phiAuto, name: "ultra-b/claude-opus-5-5", runs: "phi/auto" },
+	{ from: "a clean phi/auto parent", parent: phiAuto, name: "phi/auto", runs: "phi/auto" },
 	{
 		from: "a clean phi/auto parent",
 		parent: phiAuto,
-		branch: [],
 		name: "ent/claude-opus-5-5",
 		runs: "ent/claude-opus-5-5",
 	},
-	{ from: "a clean phi/auto parent", parent: phiAuto, branch: [], name: "openai/gpt-6.1-sol", runs: "refused" },
-	{
-		from: "a latched phi/auto parent",
-		parent: phiAuto,
-		branch: latched,
-		name: "judgment",
-		runs: "ent/claude-opus-5-5",
-	},
-	{
-		from: "a latched phi/auto parent",
-		parent: phiAuto,
-		branch: latched,
-		name: "divergent",
-		runs: "ent/claude-opus-5-5",
-	},
-	{
-		from: "a latched phi/auto parent",
-		parent: phiAuto,
-		branch: latched,
-		name: "phi/auto",
-		runs: "ent/claude-opus-5-5",
-	},
-	{
-		from: "a latched phi/auto parent",
-		parent: phiAuto,
-		branch: latched,
-		name: "ultra-a/claude-opus-5-5",
-		runs: "ent/claude-opus-5-5",
-	},
-	{ from: "an ent parent", parent: on("ent", opus.id), branch: [], name: "judgment", runs: "ent/claude-opus-5-5" },
-	{ from: "an ent parent", parent: on("ent", opus.id), branch: [], name: "investigator", runs: "ent/claude-opus-5-5" },
+	{ from: "a clean phi/auto parent", parent: phiAuto, name: "openai/gpt-6.1-sol", runs: "refused" },
+	{ from: "an ent parent", parent: on("ent", opus.id), name: "judgment", runs: "ent/claude-opus-5-5" },
+	{ from: "an ent parent", parent: on("ent", opus.id), name: "investigator", runs: "ent/claude-opus-5-5" },
 	{
 		from: "an ent parent",
 		parent: on("ent", opus.id),
-		branch: [],
 		name: "ent/claude-opus-5-5",
 		runs: "ent/claude-opus-5-5",
 	},
-	{ from: "an ent parent", parent: on("ent", opus.id), branch: [], name: "ultra-a/claude-opus-5-5", runs: "refused" },
-	{ from: "an ent parent", parent: on("ent", opus.id), branch: [], name: "phi/auto", runs: "refused" },
+	{ from: "an ent parent", parent: on("ent", opus.id), name: "ultra-a/claude-opus-5-5", runs: "refused" },
+	{ from: "an ent parent", parent: on("ent", opus.id), name: "phi/auto", runs: "refused" },
 	{
 		from: "an ultra-a parent",
 		parent: on("ultra-a", opus.id),
-		branch: [],
 		name: "investigator",
 		runs: "openai/gpt-6.1-sol",
 	},
 ];
 
-for (const { from, parent, branch, name, runs } of rows) {
+for (const { from, parent, name, runs } of rows) {
 	test(`a delegate of ${from} that names ${name} runs on ${runs}`, () =>
 		Effect.runPromise(
 			Effect.map(
-				Effect.promise(() => delegateModel({ parent, branch, name })),
+				Effect.promise(() => delegateModel({ parent, name })),
 				(model) => {
 					expect(model).toBe(runs);
 				},
@@ -136,13 +84,8 @@ for (const { from, parent, branch, name, runs } of rows) {
 		));
 }
 
-const continuedFrom = (parent: Model<Api>, branch: ReadonlyArray<SessionEntry>, ref: string) => {
-	const caller = {
-		...callerOf(),
-		model: parent,
-		modelRegistry: { getAll: () => registry },
-		sessionManager: { getBranch: () => [...branch] },
-	};
+const continuedFrom = (parent: Model<Api>, ref: string) => {
+	const caller = { ...callerOf(), model: parent, modelRegistry: { getAll: () => registry } };
 
 	const call = { continues: ref, message: "Recheck the synthetic chart of Jane Testpatient, MRN 000-SYNTH-0001." };
 
@@ -165,18 +108,10 @@ const relaunched = (model: string) => ({
 const refused = (why: string) => ({ isError: true, details: { error: "BadDelegate", message: why }, started: [] });
 
 const continuations = [
-	{ from: "a clean phi/auto parent", parent: phiAuto, branch: [], ref: "delegate-2", expect: relaunched("phi/auto") },
-	{
-		from: "a latched phi/auto parent",
-		parent: phiAuto,
-		branch: latched,
-		ref: "delegate-2",
-		expect: relaunched("ent/claude-opus-5-5"),
-	},
+	{ from: "a clean phi/auto parent", parent: phiAuto, ref: "delegate-2", expect: relaunched("phi/auto") },
 	{
 		from: "a clean phi/auto parent",
 		parent: phiAuto,
-		branch: [],
 		ref: "delegate-3",
 		expect: refused(
 			"a delegate of a phi/auto session runs on phi/auto or a BAA account, and openai/gpt-6.1-sol is neither",
@@ -185,7 +120,6 @@ const continuations = [
 	{
 		from: "an ent parent",
 		parent: on("ent", opus.id),
-		branch: [],
 		ref: "delegate-2",
 		expect: refused(
 			"a delegate of a session on the BAA account ent runs on a BAA account, and ultra-a/claude-opus-5-5 is not one",
@@ -194,18 +128,17 @@ const continuations = [
 	{
 		from: "an ultra-b parent",
 		parent: on("ultra-b", opus.id),
-		branch: [],
 		ref: "delegate-2",
 		expect: relaunched("ultra-a/claude-opus-5-5"),
 	},
 ];
 
-for (const { from, parent, branch, ref, expect: expected } of continuations) {
+for (const { from, parent, ref, expect: expected } of continuations) {
 	const outcome = expected.isError ? "is refused, and nothing starts" : `relaunches on ${String(expected.started[0])}`;
 
 	test(`continuing ${ref} from ${from} ${outcome}`, () =>
 		runtime.runPromise(
-			Effect.map(continuedFrom(parent, branch, ref), (got) => {
+			Effect.map(continuedFrom(parent, ref), (got) => {
 				expect(got).toEqual(expected);
 			}),
 		));

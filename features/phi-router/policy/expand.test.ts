@@ -18,7 +18,6 @@ const binary = (length: number) => Uint8Array.from(Arr.makeBy(length, (index) =>
 const tainted = (what: "binary" | "undecodable") =>
 	ScanResult.Tainted({
 		taint: Unscannable.make({ what }),
-		fresh: true,
 		stats: { newChars: 0, judgeCalls: 0, judgeMs: 0 },
 	});
 
@@ -125,7 +124,7 @@ test("decoded binary over 64 bytes taints as binary without a judge call", () =>
 		}),
 	));
 
-test("decoded bytes of 64 or less, such as a key or a digest, never latch: the judge decides", () =>
+test("decoded bytes of 64 or less, such as a key or a digest, never taint: the judge decides", () =>
 	run(
 		Effect.gen(function* () {
 			const key = `JWT_SECRET=${Encoding.Base64.encode(binary(32))}`;

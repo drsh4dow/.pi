@@ -1,29 +1,5 @@
 import * as Arr from "effect/Array";
-import * as Option from "effect/Option";
 import * as Str from "effect/String";
-
-const digitAt = (digits: string, index: number) => Number(Str.slice(index, index + 1)(digits));
-
-const vinLetters = "ABCDEFGHJKLMNPRSTUVWXYZ";
-const vinLetterValues = "12345678123457923456789";
-const vinWeights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
-
-const vinValue = (char: string) =>
-	Option.match(Str.indexOf(char)(vinLetters), {
-		onNone: () => Number(char),
-		onSome: (letter) => digitAt(vinLetterValues, letter),
-	});
-
-/** A VIN's ninth character is its check digit, `X` for 10. Its tenth, the model year, is never 0, U or Z. */
-export const isVin = (vin: string) => {
-	const values = Arr.map(Str.split("")(vin), vinValue);
-	const sum = Arr.reduce(Arr.zip(values, vinWeights), 0, (total, [value, weight]) => total + value * weight);
-	const check = sum % 11 === 10 ? "X" : String(sum % 11);
-
-	return (
-		/[A-Z]/u.test(vin) && /\d/u.test(vin) && Str.slice(8, 9)(vin) === check && !/[0UZ]/u.test(Str.slice(9, 10)(vin))
-	);
-};
 
 export const digitsOf = Str.replaceAll(/\D/gu, "");
 

@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import { JudgeFailed, Phi, ScanResult, TaintedCursor, Unscannable, type JudgeInput } from "./index.ts";
+import { JudgeFailed, Phi, ScanResult, Unscannable, type JudgeInput } from "./index.ts";
 import { assistant, clearedCursor, scanWith, system, user } from "./judge.fixture.ts";
 
 const prompt = system("You are a coding agent.");
@@ -90,26 +90,12 @@ test("a retry with nothing new returns Clean with the same cursor and no judge c
 		}),
 	));
 
-test("a tainted cursor stays tainted without a judge call", () =>
-	run(
-		Effect.gen(function* () {
-			const taint = Phi.make({ detector: "judge", category: "name" });
-			const cursor = TaintedCursor.make({ taint });
-			const { result, asked } = yield* scanWith({ transcript: [prompt, question], cursor });
-
-			expect(result).toEqual(ScanResult.Tainted({ taint, fresh: false, stats: none }));
-			expect(asked).toEqual([]);
-		}),
-	));
-
-test("an image taints the branch without a judge call", () =>
+test("an image taints the request without a judge call", () =>
 	run(
 		Effect.gen(function* () {
 			const { result, asked } = yield* scanWith({ transcript: [prompt, question, screenshot] });
 
-			expect(result).toEqual(
-				ScanResult.Tainted({ taint: Unscannable.make({ what: "image" }), fresh: true, stats: none }),
-			);
+			expect(result).toEqual(ScanResult.Tainted({ taint: Unscannable.make({ what: "image" }), stats: none }));
 			expect(asked).toEqual([]);
 		}),
 	));

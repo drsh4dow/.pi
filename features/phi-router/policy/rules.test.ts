@@ -7,14 +7,13 @@ import * as Encoding from "effect/encoding";
 import * as Str from "effect/String";
 
 import { Phi, ScanResult, type SafeHarbor } from "./index.ts";
-import { assistant, clearedCursor, scanWith, tool, user } from "./judge.fixture.ts";
+import { assistant, scanWith, tool, user } from "./judge.fixture.ts";
 
 const run = (body: Effect.Effect<void>) => Effect.runPromise(body);
 
 const ruleTaint = (rule: string, category: SafeHarbor) =>
 	ScanResult.Tainted({
 		taint: Phi.make({ detector: "rule", rule, category }),
-		fresh: true,
 		stats: { newChars: 0, judgeCalls: 0, judgeMs: 0 },
 	});
 
@@ -22,13 +21,10 @@ const hits: ReadonlyArray<readonly [rule: string, category: SafeHarbor, text: st
 	["ssn", "ssn", "Patient SSN 078-05-1120 on file"],
 	["labelled-ssn", "ssn", "INSERT INTO members (ssn) VALUES ('078051120');\n-- ssn=078051120"],
 	["mbi", "health-plan", "Medicare beneficiary 3WR7-KX2-PN45 was billed twice"],
-	["vin", "vehicle", "Accident report: vehicle 1M8GDM9AXKP042788"],
-	["npi", "other-id", "referring provider NPI: 1245319599"],
 	["labelled-mrn", "mrn", '{"patient_id": "00482913", "status": "admitted"}'],
 	["labelled-health-plan", "health-plan", "Member ID: XGH492817305"],
 	["labelled-account", "account", "Account #: 4482019375"],
 	["labelled-license", "license", "Driver's license number: D4829173"],
-	["dea", "license", "prescriber DEA# BM4829175"],
 	["labelled-date", "date", "DOB: 03/14/1962"],
 	[
 		"hl7-pid",
@@ -41,14 +37,6 @@ const hits: ReadonlyArray<readonly [rule: string, category: SafeHarbor, text: st
 		"name",
 		'{"resourceType": "Patient", "id": "8812", "name": [{"family": "Quintero", "given": ["Marisol"]}]}',
 	],
-	[
-		"fhir-subject",
-		"other-id",
-		'{"resourceType":"Observation","status":"final","subject":{"reference":"Patient/8812"}}',
-	],
-	["name-near-phone", "name", "patient_name: Marisol Quintero, phone: (312) 847-2210"],
-	["name-near-email", "name", '{"first_name": "Marisol", "email": "mquintero@example.com"}'],
-	["name-near-address", "name", "Patient: Marisol Quintero, 4821 Oak Ridge Rd, Springfield"],
 	["labelled-name", "name", "patient_name: Marisol Quintero"],
 	["labelled-geographic", "geographic", "homeAddress: 4821 Oak Ridge Rd"],
 	["labelled-phone", "phone", "Phone: (312) 847-2210"],
@@ -195,18 +183,6 @@ test("gzip written as hex of PHI text taints by rule", () =>
 			const { result } = yield* scanWith({ transcript: [tool(`blob ${Encoding.Hex.encode(compressed)}`)] });
 
 			expect(result).toEqual(ruleTaint("labelled-date", "date"));
-		}),
-	));
-
-test("the rules read the whole transcript, so a name cleared long ago and a phone that arrives later taint together", () =>
-	run(
-		Effect.gen(function* () {
-			const first = [user("Patient: Marisol Quintero")];
-			const cursor = yield* clearedCursor(first);
-			const later = [...first, assistant("Noted."), user("call her back on (312) 847-2210")];
-			const { result } = yield* scanWith({ transcript: later, cursor });
-
-			expect(result).toEqual(ruleTaint("name-near-phone", "name"));
 		}),
 	));
 

@@ -63,7 +63,6 @@ export const modelTable: ModelTable = { aliases, panel };
 
 export type ModelCaller = Pick<ExtensionContext, "model" | "cwd"> & {
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll">;
-	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;
 };
 
 export const modelDescription = (table: ModelTable) => {
@@ -127,7 +126,6 @@ export const modelOf = Effect.fn("modelOf")(function* (ctx: ModelCaller, table: 
 
 	const target = yield* delegateTargetOf({
 		parent: ctx.model,
-		branch: ctx.sessionManager.getBranch(),
 		cwd: ctx.cwd,
 		wanted: resolved.wanted,
 		has: isRegistered(ctx),

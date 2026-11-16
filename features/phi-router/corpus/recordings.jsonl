@@ -31,8 +31,10 @@
 {"digest":"10dcdc3bb23b0f1a7224d4be0e8de23e","pPhi":0,"category":null}
 {"digest":"10f6d5cfed835c119e4c403fc756408b","pPhi":0,"category":null}
 {"digest":"123c8d46907a96d433c4bd698e45a711","pPhi":0,"category":null}
+{"digest":"14078c863c729259e324e653468dc5a5","pPhi":1,"category":"vehicle"}
 {"digest":"147aa0bb49971d6c2380157ff5a4f22d","pPhi":0.87,"category":null}
 {"digest":"1485e72ab63de10a4a4abe64f9db7859","pPhi":1,"category":"biometric"}
+{"digest":"14c2f329bfb9391f0db5d5a0c6e7d2af","pPhi":1,"category":"vehicle"}
 {"digest":"14f48e778c06164b44df9a5e2cec02a3","pPhi":1,"category":"email"}
 {"digest":"164f8771624ac0431e28f0c68c3696c2","pPhi":1,"category":"account"}
 {"digest":"16c8e095c66a5af0c6e672cdd2f8bdb6","pPhi":1,"category":"health-plan"}
@@ -77,6 +79,7 @@
 {"digest":"275265c9a4335e91be6af2b47d8c04ea","pPhi":0.99,"category":"ssn"}
 {"digest":"282f16b192818750bd651f2cf0b14ee7","pPhi":0,"category":null}
 {"digest":"2840df4b6899e5ce286fc769efe790ff","pPhi":0,"category":null}
+{"digest":"28d03b7216fd74ebda3f38a2d2e25350","pPhi":1,"category":"vehicle"}
 {"digest":"28d09c490e87536a4314bb34539668f2","pPhi":0,"category":null}
 {"digest":"2affe5011a4898998fe9969bdc74938d","pPhi":1,"category":"device"}
 {"digest":"2c2dace2ca83c54d0160a0693ba05349","pPhi":0,"category":null}
@@ -126,6 +129,7 @@
 {"digest":"3c54a41f384324998729b3cf276e224b","pPhi":0,"category":null}
 {"digest":"3d47d30bee192a56af38848917c2bfa8","pPhi":1,"category":null}
 {"digest":"3d48a0630534d6d74f93fde4f0591e18","pPhi":0,"category":null}
+{"digest":"3d4a5a59808b3093acc0c61da09d051e","pPhi":1,"category":"vehicle"}
 {"digest":"3db8d51a968bb70cf04a31d273b16008","pPhi":1,"category":"url"}
 {"digest":"3f085aab12a1cd79b864aa777f1ce440","pPhi":0,"category":null}
 {"digest":"3f287c217decf034e7bfd569a5316dd9","pPhi":1,"category":"url"}
@@ -170,6 +174,7 @@
 {"digest":"54e617a2960293cf1f3b226b8ae1ba0f","pPhi":0,"category":null}
 {"digest":"5587d169a8c730cc7250eac87a0f38a9","pPhi":0,"category":null}
 {"digest":"55e54c02ce5eed6a393cfae31c272303","pPhi":0,"category":null}
+{"digest":"567cf1c595bb478e2581414feb859500","pPhi":1,"category":"vehicle"}
 {"digest":"56f3f3894a6f5765d51d1f4d9300e11c","pPhi":0.99,"category":null}
 {"digest":"579966c3240ea7ec947e5526fef7a9b5","pPhi":0.98,"category":null}
 {"digest":"58625751f7b34f2500745a6f4a9a93c7","pPhi":0.01,"category":null}
@@ -271,6 +276,7 @@
 {"digest":"83c500e766d934d382c77774deade3ac","pPhi":1,"category":"other-id"}
 {"digest":"84128f4c1eb23a66cbc1186e0293a139","pPhi":1,"category":"phone"}
 {"digest":"845afe0c0243ad532437347e2fdec065","pPhi":0,"category":null}
+{"digest":"84a3ab30ad5dae0624061d1eedd9eeb7","pPhi":1,"category":"vehicle"}
 {"digest":"84c4cde7624d69a5cf99e8806d80fc8f","pPhi":0,"category":null}
 {"digest":"84f03f6f01aa611191fb590fca8beafe","pPhi":0,"category":null}
 {"digest":"850b33274875342bf15d1b95bdb216f4","pPhi":0,"category":null}
@@ -305,6 +311,7 @@
 {"digest":"93d72be0abfdb20a125f25b9c1d89ca9","pPhi":0,"category":null}
 {"digest":"94131aa02ac62e2e1d139529f812e825","pPhi":0,"category":null}
 {"digest":"94460994c0718c04939fcfb818edca2d","pPhi":0,"category":null}
+{"digest":"94df3db31c1fea0e17105ce7f30343ff","pPhi":1,"category":null}
 {"digest":"94e4f964ff716672a7f3168a0e8d0033","pPhi":0,"category":null}
 {"digest":"94eb7198937182a26925a3d1afb0b9d9","pPhi":1,"category":"biometric"}
 {"digest":"94f732c44d659678818cf42ca89817d1","pPhi":1,"category":"ssn"}
@@ -330,6 +337,7 @@
 {"digest":"a144e87b3538241d1042547f401f546f","pPhi":0,"category":null}
 {"digest":"a14dab9198381dd9b96a1d4bf9a1ca5e","pPhi":0,"category":null}
 {"digest":"a18e8aa5402e9e8af44b3a2b80654765","pPhi":0,"category":null}
+{"digest":"a2285b2a422f7cfa4a591fa01cd8e761","pPhi":1,"category":"vehicle"}
 {"digest":"a2960c3dd619bbd1f2b40ad075f62f1d","pPhi":0,"category":null}
 {"digest":"a29b6b37d34e637851c0f84f40ee62bf","pPhi":1,"category":"account"}
 {"digest":"a35087cb0a7a59701d1c05ae65f427da","pPhi":1,"category":"ip"}
@@ -348,6 +356,7 @@
 {"digest":"a811e72ac870f9760a07f53743fb99ee","pPhi":1,"category":"other-id"}
 {"digest":"a86fc8f8b50e8f14f27f8163976e906c","pPhi":0,"category":null}
 {"digest":"a9b2ccadd6f43ed23ac4cb294bab7071","pPhi":0.98,"category":"name"}
+{"digest":"a9c13ed453ad2d37ee4c7efb3949b0c2","pPhi":1,"category":"vehicle"}
 {"digest":"aa0e3e144ed2c64c6906aa548aa75bb2","pPhi":1,"category":null}
 {"digest":"aa5bf45253d12b8c11d898ad7086e329","pPhi":1,"category":"name"}
 {"digest":"aac19fe7e548b1237d7f2ad0f7c48a62","pPhi":0,"category":null}
@@ -370,6 +379,7 @@
 {"digest":"b1e10371e8ef174d221063e2c7eafd7a","pPhi":0,"category":null}
 {"digest":"b63218c51eccff8643235b3375abe5e2","pPhi":0,"category":null}
 {"digest":"b63811d31cad223949f26f3240845f44","pPhi":1,"category":"url"}
+{"digest":"b66e40870ef5b871b4f248fc47952808","pPhi":1,"category":"vehicle"}
 {"digest":"b67368c20447b21239e0eeda298134cf","pPhi":0,"category":null}
 {"digest":"b69a12385191fea73037ce64329e68c3","pPhi":0.96,"category":null}
 {"digest":"b6a30c7d2f5498a8409962bb69b4e783","pPhi":0,"category":null}
@@ -390,6 +400,7 @@
 {"digest":"bd7c1ca5b6f9f4395c6c064a08c30922","pPhi":0.02,"category":null}
 {"digest":"bd96ebc734802c33042d2e08a2af5481","pPhi":0,"category":null}
 {"digest":"bd970dfacea6808f68167fdf76e983b9","pPhi":0,"category":null}
+{"digest":"bdc49cceab66385c139bcede2b837641","pPhi":1,"category":"vehicle"}
 {"digest":"bdf3748115ee46d668baa9a771663c3a","pPhi":0,"category":null}
 {"digest":"bf224b35477f5152e388e8504c139bb3","pPhi":0,"category":null}
 {"digest":"bf5e15a0cc65642f9a962e2b1fa97332","pPhi":1,"category":null}
@@ -414,6 +425,7 @@
 {"digest":"c90f956120a3ced90ea643b640337ea8","pPhi":0,"category":null}
 {"digest":"ca23a65f812db3999debc335eb3caca8","pPhi":0,"category":null}
 {"digest":"caddfddd96c3bc3d1d308893f5532382","pPhi":0,"category":null}
+{"digest":"cbae78289fb8dac5224fa4110a727f2b","pPhi":1,"category":"vehicle"}
 {"digest":"cbc66a87e1694ac1823c55d32b0a37d7","pPhi":0.01,"category":null}
 {"digest":"ce90c5bba7e28b31531722e6fbff6ad7","pPhi":0,"category":null}
 {"digest":"cf0a762c5c92e552ba7160026b5079ab","pPhi":0,"category":null}
@@ -461,6 +473,7 @@
 {"digest":"e230d9b713fd0bd1534aad22a906a290","pPhi":0.14,"category":null}
 {"digest":"e2b5bbce7fe6fbd9e3b24632741f2065","pPhi":1,"category":"mrn"}
 {"digest":"e404aa30187ef86509e58920b0c86d05","pPhi":0,"category":null}
+{"digest":"e470e7c41dd548c8bd2f728dc9eae928","pPhi":1,"category":"vehicle"}
 {"digest":"e50a571401cfa9419de9badc073a18a5","pPhi":0,"category":null}
 {"digest":"e646a191a4abea8061d71fabfb4c7929","pPhi":1,"category":"ip"}
 {"digest":"e69df689f9ab45b31363601dd4880547","pPhi":0,"category":null}
@@ -477,6 +490,7 @@
 {"digest":"ec2a79c314e8cf9db26ff38ba1cea772","pPhi":0,"category":null}
 {"digest":"ec98650fdcd64e1b8d027c93e49d6b0b","pPhi":0,"category":null}
 {"digest":"ecec3295a7ed8ef347da2713c00558a2","pPhi":1,"category":null}
+{"digest":"ecf6fddac37de2063c55655f904e2005","pPhi":0.96,"category":"vehicle"}
 {"digest":"ed380327b47f8c036efb1d7b27d825cd","pPhi":0.01,"category":null}
 {"digest":"ed4b568d44bfd34f7ac8120946c51dff","pPhi":0,"category":null}
 {"digest":"ed552803e98f8b1a64859aec20070e71","pPhi":0.96,"category":"name"}
@@ -500,6 +514,7 @@
 {"digest":"f4aee47e678356fc2c590a66ebc093fb","pPhi":0,"category":null}
 {"digest":"f4b385d19780482b05f4008ef2a7c013","pPhi":1,"category":"name"}
 {"digest":"f4bc1334d160787374bec3e81acc89e9","pPhi":1,"category":"mrn"}
+{"digest":"f514f82154fa5b8f0815577b795bcdf4","pPhi":1,"category":"vehicle"}
 {"digest":"f54563b733e75a006cf69efbfd8f394c","pPhi":0,"category":null}
 {"digest":"f5b96c8a3637ac1ca2d072f1d86ee4d8","pPhi":0,"category":null}
 {"digest":"f711169681818b8abdd73fd20d5c5980","pPhi":0,"category":null}

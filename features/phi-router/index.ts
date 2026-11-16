@@ -8,7 +8,6 @@ import {
 	SettingsManager,
 	type ModelRoute,
 	type ModelRouteRequest,
-	type SessionEntry,
 	type ToolCallEvent,
 } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -25,7 +24,7 @@ import { type Classify, decisionsJudge, decisionsModel } from "./decisions.ts";
 import { delegateTarget, isProtected, type ModelKey, type Target, unsafeReach, type Wanted } from "./gate.ts";
 import { appendLane } from "./lanes.ts";
 import { Fixtures } from "./policy/digest.ts";
-import { type Judge, TaintedCursor } from "./policy/index.ts";
+import type { Judge } from "./policy/index.ts";
 import { decide, type RouteRequest, RouterState } from "./route.ts";
 import { keepProtected, keepProtectedOnStart } from "./selection.ts";
 import { phiId, phiProvider, storedOnBranch, transcriptOf } from "./session.ts";
@@ -154,7 +153,6 @@ export const guardCodemode = ({
 
 interface DelegateCaller {
 	readonly parent: Pick<Model<Api>, "provider" | "id"> | undefined;
-	readonly branch: ReadonlyArray<SessionEntry>;
 	readonly cwd: string;
 	readonly wanted: Wanted;
 	readonly has: (key: ModelKey) => boolean;
@@ -166,13 +164,9 @@ export const delegateTargetOf = Effect.fn("delegateTargetOf")(function* (caller:
 	}
 
 	const settings = yield* readSettings(caller.cwd);
-	const stored = storedOnBranch(caller.branch);
 	const routes = settings.mode === "shadow" || settings.mode === "enforce";
 
-	const tainted =
-		stored.kind === "malformed" || (stored.kind === "found" && Schema.is(TaintedCursor)(stored.state.cursor));
-
-	return delegateTarget({ ...caller, mayHoldPhi: !routes || tainted, dispatchModel: settings.model });
+	return delegateTarget({ ...caller, mayHoldPhi: !routes, dispatchModel: settings.model });
 });
 
 /** `phi/auto`'s `route()`, on the given judge. It never throws: pi turns a throw into an error response, not a fallback. */

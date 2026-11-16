@@ -116,13 +116,12 @@ Terms from the loaded feature (`features/loaded/`) and herdr-app's Skills panel 
 Terms for sending each request to a personal account or the BAA account by what it holds. See ADR 0012.
 
 - **PHI.** Protected health information: health data tied to a person by any of the 18 HIPAA Safe Harbor identifiers. It may reach only the **BAA account**.
-- **BAA account.** A Claude account covered by the Anthropic business associate agreement, today `ent`. Content on it never moves to a personal account.
-- **`phi/auto`.** The model a session selects to be routed by content. Each request it sends goes to the session's **home account** while the branch is clean, and to the BAA account otherwise.
-- **Home account.** The personal account a `phi/auto` session uses while clean, picked from its session id. A 429 there moves the retry to the other personal account, then to the BAA account.
+- **BAA account.** A Claude account covered by the Anthropic business associate agreement, today `ent`.
+- **`phi/auto`.** The model a session selects to be routed by content. Each request it sends goes to the session's **home account** when it is clean, and to the BAA account otherwise.
+- **Home account.** The personal account a `phi/auto` session uses for clean requests, picked from its session id. A 429 there moves the retry to the other personal account, then to the BAA account.
 - **Protected session.** A session whose selected model is `phi/auto` or one on a BAA account. Its delegates, scripts and model switches stay inside the BAA boundary.
-- **Verdict.** What the policy engine says of a request: clean, phi, or uncertain. Phi and an uncertain request whose content the engine could not read latch the branch. An uncertain judge, such as a Decisions error, sends that one request to the BAA account and leaves the branch as it was.
-- **Latch.** The one-way move of a branch to the BAA account after a phi verdict. A later clean turn does not undo it. A fork from before it does not carry it.
-- **Cursor.** What the engine remembers of a branch: how much it has already cleared, or that the branch is latched. When it cannot tell what is new, the engine judges everything again.
+- **Verdict.** What the policy engine says of a request: clean, phi, or uncertain. Phi and uncertain send that one request to the BAA account.
+- **Cursor.** What the engine remembers of a branch: how much it has already cleared. When it cannot tell what is new, the engine judges everything again.
 - **Mode.** How the router acts, from `~/.pi/agent/phi-router.json`. `shadow` sends everything to the BAA account and logs the lane it would have picked. `enforce` routes. `force-baa` sends everything to the BAA account. `shadow` is the default.
 - **Fixture.** A turn part whose exact text has a SHA-256 listed under `fixtures` in `~/.pi/agent/phi-router.json`. The policy engine skips it, rules and judge alike. It is the only exemption the engine applies: no rule excuses an identifier for looking like a placeholder or for sitting near one.
 - **Patient-side label.** A field label whose first word is a patient-side person: `patient`, `pt`, `member`, `subscriber`, `beneficiary`, `insured` or `guarantor`, as in `patient_ref_no` or `subscriberGroupCode`. Any value with a digit after it taints as Safe Harbor's open-ended `other-id` class.

@@ -13,7 +13,7 @@ const AccountId = Schema.Literals(["ultra-a", "ultra-b", "ent"]);
  * One routing decision. Every field is a literal, a number or an id, so no record can hold message content.
  *
  * `verdict` is what the scan found: `skipped` when the mode or the reason sent the request to the BAA account unscanned.
- * `detector` names what tainted or what failed, `fresh` whether this request found the taint.
+ * `detector` names what tainted or what failed.
  */
 export const Lane = Schema.Struct({
 	time: Schema.Finite,
@@ -29,7 +29,6 @@ export const Lane = Schema.Struct({
 			"image",
 			"binary",
 			"undecodable",
-			"malformed-state",
 			"judge-error",
 			"judge-timeout",
 			"too-large",
@@ -37,7 +36,6 @@ export const Lane = Schema.Struct({
 		]),
 	),
 	category: Schema.optionalKey(SafeHarbor),
-	fresh: Schema.optionalKey(Schema.Boolean),
 	wouldBe: AccountId,
 	dispatched: AccountId,
 	chars: Schema.Finite,

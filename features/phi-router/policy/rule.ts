@@ -1,5 +1,3 @@
-import * as Str from "effect/String";
-
 import type { SafeHarbor } from "./index.ts";
 
 export interface Rule {
@@ -15,12 +13,3 @@ export const nameValue = String.raw`[a-z][a-z'-]*(?:,? [a-z][a-z'-]*){0,3}`;
 
 export const labelled = ({ label, value }: { readonly label: string; readonly value: string }) =>
 	new RegExp(String.raw`(?<![a-z])(?:${label})(?![a-z])[\s"'#:=]{1,4}${value}`, "giu");
-
-const nearby = 200;
-
-/** The text within `nearby` characters of a match, in the text it was matched in. */
-export const around = (match: RegExpMatchArray) => {
-	const start = match.index ?? 0;
-
-	return Str.slice(Math.max(0, start - nearby), start + match[0].length + nearby)(match.input ?? "");
-};

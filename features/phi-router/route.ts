@@ -9,16 +9,7 @@ import * as Schema from "effect/Schema";
 
 import { type AccountId, fallbackChain, isBaaAccount } from "../claude-accounts/index.ts";
 import type { Lane } from "./lanes.ts";
-import {
-	Cursor,
-	MalformedState,
-	scan,
-	ScanResult,
-	type Taint,
-	TaintedCursor,
-	type Transcript,
-	Unscanned,
-} from "./policy/index.ts";
+import { Cursor, scan, ScanResult, type Taint, type Transcript, Unscanned } from "./policy/index.ts";
 import type { Mode } from "./settings.ts";
 
 const Personal = Schema.Literals(["ultra-a", "ultra-b"]);
@@ -27,10 +18,7 @@ type Personal = typeof Personal.Type;
 
 const Stamp = Schema.Struct({ account: Personal, at: Schema.Finite });
 
-/**
- * What the router keeps on the session branch. The lane is not stored: a Tainted cursor is the BAA lane for good, any
- * other cursor routes by `home` and `limited`.
- */
+/** What the router keeps on the session branch. The lane is not stored: each request's scan decides it. */
 export const RouterState = Schema.Struct({
 	cursor: Cursor,
 	/** The personal account the session starts on, from a hash of its id, so sessions spread over both subscriptions. */
@@ -41,11 +29,6 @@ export const RouterState = Schema.Struct({
 export type RouterState = typeof RouterState.Type;
 
 const limitedForMs = 30 * 60 * 1000;
-
-export type Stored =
-	| { readonly kind: "missing" }
-	| { readonly kind: "malformed" }
-	| { readonly kind: "found"; readonly state: RouterState };
 
 export const homeOf = (session: string): Personal =>
 	Personal.literals[Math.abs(Hash.string(session)) % Personal.literals.length] ?? "ultra-a";
@@ -60,7 +43,8 @@ export interface RouteRequest {
 	readonly leaf: string | null;
 	readonly reason: ModelRouteReason;
 	readonly failed: Option.Option<Failure>;
-	readonly stored: Stored;
+	/** None when the branch has no state, or its latest state no longer decodes. */
+	readonly stored: Option.Option<RouterState>;
 	readonly transcript: Transcript;
 	readonly mode: Mode;
 	/** Whether the account has the dispatch model and a login, so the chain skips one that cannot answer. */
@@ -92,7 +76,6 @@ const detectorOf = (taint: Taint) =>
 	Match.valueTags(taint, {
 		Phi: ({ detector, category }) => (category === undefined ? { detector } : { detector, category }),
 		Unscannable: ({ what }) => ({ detector: what }),
-		MalformedState: () => ({ detector: "malformed-state" as const }),
 	});
 
 const noScan = { newChars: 0, judgeCalls: 0, judgeMs: 0 };
@@ -100,10 +83,10 @@ const noScan = { newChars: 0, judgeCalls: 0, judgeMs: 0 };
 const outcomeOf = (result: ScanResult, prior: Cursor) =>
 	ScanResult.$match(result, {
 		Clean: ({ cursor, stats }) => ({ cursor, personal: true, found: { verdict: "clean" as const }, stats }),
-		Tainted: ({ taint, fresh, stats }) => ({
-			cursor: TaintedCursor.make({ taint }),
+		Tainted: ({ taint, stats }) => ({
+			cursor: prior,
 			personal: false,
-			found: { verdict: "tainted" as const, ...detectorOf(taint), fresh },
+			found: { verdict: "tainted" as const, ...detectorOf(taint) },
 			stats,
 		}),
 		Unsure: ({ why, stats }) => ({
@@ -134,39 +117,19 @@ const stampedAfter = (limited: RouterState["limited"], failed: Option.Option<Fai
 		Option.map((account) => [...Arr.filter(limited, (stamp) => stamp.account !== account), { account, at: now }]),
 	);
 
-const priorOf = (stored: Stored, session: string): RouterState => {
-	switch (stored.kind) {
-		case "missing": {
-			return { cursor: Unscanned.make({}), home: homeOf(session), limited: [] };
-		}
-
-		case "malformed": {
-			return { cursor: TaintedCursor.make({ taint: MalformedState.make({}) }), home: homeOf(session), limited: [] };
-		}
-
-		case "found": {
-			return stored.state;
-		}
-
-		default: {
-			const unhandled: never = stored;
-
-			return unhandled;
-		}
-	}
-};
+const newState = (session: string): RouterState => ({ cursor: Unscanned.make({}), home: homeOf(session), limited: [] });
 
 const sameCursor = Schema.toEquivalence(Cursor);
 
 const routed = Effect.fn("routed")(function* (request: RouteRequest, now: number) {
 	const failed = request.mode === "shadow" ? Option.none() : request.failed;
-	const prior = priorOf(request.stored, request.session);
+	const prior = Option.getOrElse(request.stored, () => newState(request.session));
 	const stamped = stampedAfter(prior.limited, failed, now);
 	const result = yield* scan(request.transcript, prior.cursor);
 	const { cursor, personal, found, stats } = outcomeOf(result, prior.cursor);
 	const next = { ...prior, cursor, limited: Option.getOrElse(stamped, () => prior.limited) };
 	const failedOnBaa = Option.exists(failed, ({ account }) => isBaaAccount(account));
-	const changed = request.stored.kind !== "found" || Option.isSome(stamped) || !sameCursor(prior.cursor, cursor);
+	const changed = Option.isNone(request.stored) || Option.isSome(stamped) || !sameCursor(prior.cursor, cursor);
 
 	return {
 		wouldBe: personal && !failedOnBaa ? pick(next, now, request.usable) : "ent",

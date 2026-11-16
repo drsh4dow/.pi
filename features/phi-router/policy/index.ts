@@ -64,17 +64,15 @@ export const Unscannable = Schema.TaggedStruct("Unscannable", {
 	what: Schema.Literals(["image", "binary", "undecodable"]),
 });
 
-export const MalformedState = Schema.TaggedStruct("MalformedState", {});
-
-/** Why a branch can never go back to a personal account. Every variant is permanent for the branch. */
-export const Taint = Schema.Union([Phi, Unscannable, MalformedState]);
+/** Why a request goes to the BAA account. */
+export const Taint = Schema.Union([Phi, Unscannable]);
 
 export type Taint = typeof Taint.Type;
 
 /**
  * What has been cleared, as content digests rather than a bare index, because compaction, `/tree` and context edits
  * renumber messages. `turns` is trusted only while the chain digest over the first `turns` non-system turns of the new
- * transcript equals `chain`; a mismatch rescans the conversation. `Tainted` is terminal.
+ * transcript equals `chain`; a mismatch rescans the conversation.
  */
 export const Unscanned = Schema.TaggedStruct("Unscanned", {});
 
@@ -86,9 +84,7 @@ const Cleared = Schema.TaggedStruct("Cleared", {
 	chain: Digest,
 });
 
-export const TaintedCursor = Schema.TaggedStruct("Tainted", { taint: Taint });
-
-export const Cursor = Schema.Union([Unscanned, Cleared, TaintedCursor]);
+export const Cursor = Schema.Union([Unscanned, Cleared]);
 
 export type Cursor = typeof Cursor.Type;
 
@@ -98,11 +94,13 @@ interface ScanStats {
 	readonly judgeMs: number;
 }
 
-/** What a scan found. The cursor to store next is `cursor` when clean, a Tainted cursor when tainted, and the old one when unsure. */
+/**
+ * What a scan found. Tainted and Unsure send this request to the BAA account. The cursor to store next is `cursor`
+ * when clean and the old one otherwise, so the next request rescans.
+ */
 export type ScanResult = Data.TaggedEnum<{
 	Clean: { readonly cursor: Cursor; readonly stats: ScanStats };
-	/** `fresh` is true when this scan found the taint, false when the cursor already carried it. */
-	Tainted: { readonly taint: Taint; readonly fresh: boolean; readonly stats: ScanStats };
+	Tainted: { readonly taint: Taint; readonly stats: ScanStats };
 	/** Transient. This request goes to the BAA account and the cursor stays, so the next request rescans. */
 	Unsure: {
 		readonly why: "judge-error" | "judge-timeout" | "too-large" | "engine-defect";
@@ -185,20 +183,14 @@ const render = Effect.fn("render")(function* (transcript: Transcript) {
 });
 
 /** The conversation turns the cursor's chain still matches, and whether the system turns are the ones it cleared. */
-const vouchedBy = (
-	cursor: typeof Unscanned.Type | typeof Cleared.Type,
-	now: { readonly system: string; readonly chains: ReadonlyArray<string> },
-) => {
+const vouchedBy = (cursor: Cursor, now: { readonly system: string; readonly chains: ReadonlyArray<string> }) => {
 	const cleared = Schema.is(Cleared)(cursor);
 	const chainHolds = cleared && Option.contains(Arr.get(now.chains, cursor.turns), cursor.chain);
 
 	return { turns: chainHolds ? cursor.turns : 0, system: cleared && cursor.system === now.system };
 };
 
-const split = Effect.fn("split")(function* (
-	rendered: ReadonlyArray<Rendered>,
-	cursor: typeof Unscanned.Type | typeof Cleared.Type,
-) {
+const split = Effect.fn("split")(function* (rendered: ReadonlyArray<Rendered>, cursor: Cursor) {
 	const system = Arr.filter(rendered, ({ turn }) => isSystem(turn));
 	const conversation = Arr.filter(rendered, ({ turn }) => !isSystem(turn));
 
@@ -242,7 +234,7 @@ const judged = Effect.fn("judged")(function* (input: JudgeInput, cleared: typeof
 		onFailure: ({ why }) => ScanResult.Unsure({ why: why === "timeout" ? "judge-timeout" : "judge-error", stats }),
 		onSuccess: ({ pPhi, category }) =>
 			pPhi >= threshold
-				? ScanResult.Tainted({ taint: judgeTaint(category), fresh: true, stats })
+				? ScanResult.Tainted({ taint: judgeTaint(category), stats })
 				: ScanResult.Clean({ cursor: cleared, stats }),
 	});
 });
@@ -282,14 +274,10 @@ const certify = Effect.fn("certify")(function* (calls: ReadonlyArray<JudgeInput>
  */
 export const scan = Effect.fn("scan")(
 	function* (transcript: Transcript, cursor: Cursor) {
-		if (Schema.is(TaintedCursor)(cursor)) {
-			return ScanResult.Tainted({ taint: cursor.taint, fresh: false, stats: none });
-		}
-
 		const rendered = yield* Effect.result(Effect.flatMap(withoutFixtures(transcript), render));
 
 		if (Result.isFailure(rendered)) {
-			return ScanResult.Tainted({ taint: rendered.failure, fresh: true, stats: none });
+			return ScanResult.Tainted({ taint: rendered.failure, stats: none });
 		}
 
 		const { calls, cleared } = yield* split(rendered.success, cursor);

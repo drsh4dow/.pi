@@ -64,7 +64,7 @@ test("an unchanged system prompt is not judged again on later scans", () =>
 		}),
 	));
 
-test("a system call that taints latches the branch, though the conversation clears", () =>
+test("a tainting system call taints the request, though the conversation clears", () =>
 	run(
 		Effect.gen(function* () {
 			const { result } = yield* scanWith({
@@ -73,7 +73,6 @@ test("a system call that taints latches the branch, though the conversation clea
 			});
 
 			expect(ScanResult.$is("Tainted")(result) && result.taint).toEqual(Phi.make({ detector: "judge" }));
-			expect(ScanResult.$is("Tainted")(result) && result.fresh).toBe(true);
 		}),
 	));
 

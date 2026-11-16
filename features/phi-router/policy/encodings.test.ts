@@ -49,7 +49,7 @@ for (const [encoding, text, bytes] of [
 		));
 }
 
-test("long UTF-16LE text is judged, not latched as binary", () =>
+test("long UTF-16LE text is judged, not tainted as binary", () =>
 	run(
 		Effect.gen(function* () {
 			const text = "Discharge note: Marisol Quintero, admitted with pneumonia, discharged on day four.";

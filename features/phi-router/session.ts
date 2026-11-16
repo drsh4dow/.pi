@@ -8,7 +8,7 @@ import * as Rec from "effect/Record";
 import * as Schema from "effect/Schema";
 
 import type { Part, Transcript, Turn } from "./policy/index.ts";
-import { RouterState, type Stored } from "./route.ts";
+import { RouterState } from "./route.ts";
 
 export const phiProvider = "phi";
 
@@ -104,15 +104,11 @@ const isPhiStateEntry = Schema.is(
 
 const decodeStateEntry = Schema.decodeUnknownOption(Schema.Struct({ data: Schema.Struct({ state: RouterState }) }));
 
-const storedIn = (entry: SessionEntry) =>
-	Option.match(decodeStateEntry(entry), {
-		onNone: (): Stored => ({ kind: "malformed" }),
-		onSome: ({ data }): Stored => ({ kind: "found", state: data.state }),
-	});
-
-/** The router state the branch's next `phi/auto` request would get, read as pi reads it: the latest on the branch. */
-export const storedOnBranch = (branch: ReadonlyArray<SessionEntry>): Stored =>
-	Option.match(Arr.findLast(branch, isPhiStateEntry), {
-		onNone: (): Stored => ({ kind: "missing" }),
-		onSome: storedIn,
-	});
+/**
+ * The router state the branch's next `phi/auto` request would get, read as pi reads it: the latest on the branch. None
+ * when that one no longer decodes.
+ */
+export const storedOnBranch = (branch: ReadonlyArray<SessionEntry>) =>
+	Option.flatMap(Arr.findLast(branch, isPhiStateEntry), (entry) =>
+		Option.map(decodeStateEntry(entry), ({ data }) => data.state),
+	);
