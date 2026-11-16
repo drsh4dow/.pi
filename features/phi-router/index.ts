@@ -48,7 +48,7 @@ export const internalIdsOnly =
 	"Refer to patients and members only by internal ids, such as a patient_id or a row id, never by name, SSN, date of birth, address, phone, email, member number or record number.";
 
 /** The same section on both lanes, so neither account's cache breaks on a switch. */
-export const bridgeSection = {
+const bridgeSection = {
 	name: "phi-bridge",
 	text: `${internalIdsOnly} A message shown as ${stubs.sealed} was handled on the HIPAA account.`,
 } as const;

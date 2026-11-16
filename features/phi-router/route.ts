@@ -18,11 +18,11 @@ import type { Mode } from "./settings.ts";
 import type { VerdictBook, VerdictsEntry } from "./store.ts";
 
 /** Why a request runs on `ent` with nothing judged. The pin is the session's; the rest come from settings. */
-export type Hold = "pinned" | "force-baa" | "baa-repo" | "bad-settings";
+type Hold = "pinned" | "force-baa" | "baa-repo" | "bad-settings";
 
 export type Lane = "personal" | "ent";
 
-export interface DecideRequest {
+interface DecideRequest {
 	readonly messages: ReadonlyArray<Message>;
 	readonly reason: ModelRouteReason;
 	readonly book: VerdictBook;
@@ -223,7 +223,7 @@ export const stampedAfter = ({
 		Option.map((account) => [...Arr.filter(limited, (stamp) => stamp.account !== account), { account, at: now }]),
 	);
 
-export interface AccountChoice {
+interface AccountChoice {
 	readonly lane: Lane;
 	readonly home: Personal;
 	readonly limited: (account: AccountId) => boolean;

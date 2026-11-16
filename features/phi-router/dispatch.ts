@@ -49,7 +49,7 @@ export type Route = ModelRoute<typeof RouterState.Encoded>;
 export type Env = Readonly<Record<string, string | undefined>>;
 
 /** What `route()` reads of pi's context. */
-export type RouterContext = Pick<ExtensionContext, "cwd"> & {
+type RouterContext = Pick<ExtensionContext, "cwd"> & {
 	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getSessionId" | "getBranch">;
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "find" | "hasConfiguredAuth">;
 	readonly ui: Pick<ExtensionContext["ui"], "notify" | "setStatus">;

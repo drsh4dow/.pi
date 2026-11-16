@@ -40,7 +40,7 @@ const Sources = Schema.Struct({
 type Sources = typeof Sources.Type;
 
 /** One routed request. `wouldBe` is the account `enforce` would take; `dispatched` differs from it only in `shadow`. */
-export const RouteLine = Schema.Struct({
+const RouteLine = Schema.Struct({
 	type: Schema.Literal("route"),
 	time: Schema.Finite,
 	session: Id,
@@ -56,7 +56,7 @@ export const RouteLine = Schema.Struct({
 });
 
 /** What the border did to one request to a personal account. `stubbedUnknown` above zero means the keys drifted. */
-export const BorderLine = Schema.Struct({
+const BorderLine = Schema.Struct({
 	type: Schema.Literal("border"),
 	time: Schema.Finite,
 	session: Id,
@@ -66,9 +66,9 @@ export const BorderLine = Schema.Struct({
 	refused: Schema.Boolean,
 });
 
-export const LaneLine = Schema.Union([RouteLine, BorderLine]);
+const LaneLine = Schema.Union([RouteLine, BorderLine]);
 
-export type LaneLine = typeof LaneLine.Type;
+type LaneLine = typeof LaneLine.Type;
 
 export const LaneJson = Schema.fromJsonString(LaneLine);
 
