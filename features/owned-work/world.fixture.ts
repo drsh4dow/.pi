@@ -2,9 +2,7 @@ import type { StopReason } from "@earendil-works/pi-ai";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
-import type * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
-import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import type * as Fiber from "effect/Fiber";
@@ -27,12 +25,13 @@ import { type ChildSession, type Role, Self } from "./child.ts";
 import { Host, Ledger, ledgerLayer } from "./ledger.ts";
 import { Out } from "./out.ts";
 import { hcOf, slicesOf } from "./outside.fixture.ts";
+import { countingFiles, type Pacing } from "./settle.fixture.ts";
 import type { LedgerState, Verdict } from "./step.ts";
 import { type FailReason, Outcome, type Settled, WorkEntry } from "./work.ts";
 
 export type HeldSpawn = "succeeds" | "fails";
 
-export interface World {
+export interface World extends Pacing {
 	ledger: (typeof Ledger)["Service"];
 	/** Freezes this load's ledger and starts the next one from its state, as a pi reload does. */
 	readonly reload: Effect.Effect<void>;
@@ -58,7 +57,6 @@ export interface World {
 	readonly settles: Array<string>;
 	readonly settledRefs: Array<string>;
 	readonly fs: FileSystem.FileSystem;
-	readonly clock: { backMs: number; sleeping: number };
 	delegatesStarted: number;
 	dead: boolean;
 }
@@ -167,38 +165,11 @@ const hostOf = (world: Omit<World, "ledger" | "fs" | "reload">) => {
 
 export const node = Layer.provideMerge(piCliLayer(["/entrypoint.ts"]), NodeServices.layer);
 
-export const steppable =
-	(clock: World["clock"]) =>
-	(real: Clock.Clock): Clock.Clock => {
-		const millis = () => real.currentTimeMillisUnsafe() - clock.backMs;
-		const nanos = () => real.currentTimeNanosUnsafe() - BigInt(clock.backMs) * 1_000_000n;
-
-		const sleep = (duration: Duration.Duration) =>
-			Effect.suspend(() => {
-				clock.sleeping += 1;
-
-				return Effect.ensuring(
-					real.sleep(duration),
-					Effect.sync(() => {
-						clock.sleeping -= 1;
-					}),
-				);
-			});
-
-		return {
-			currentTimeMillisUnsafe: millis,
-			currentTimeMillis: Effect.sync(millis),
-			currentTimeNanosUnsafe: nanos,
-			currentTimeNanos: Effect.sync(nanos),
-			monotonicTimeNanosUnsafe: () => real.monotonicTimeNanosUnsafe(),
-			monotonicTimeNanos: real.monotonicTimeNanos,
-			sleep,
-		};
-	};
-
 type Outside = Omit<World, "ledger" | "fs" | "reload">;
 
-const blankWorld = (seed: Pick<Outside, "notices" | "listening" | "gate" | "scope" | "clock">): Outside => ({
+const blankWorld = (
+	seed: Pick<Outside, "notices" | "listening" | "gate" | "scope" | "clock" | "inFlight">,
+): Outside => ({
 	...seed,
 	spawns: [],
 	pending: [],
@@ -223,16 +194,27 @@ const blankWorld = (seed: Pick<Outside, "notices" | "listening" | "gate" | "scop
 const selfOf = (role: Role) =>
 	role === "root" ? Self.Root({ role, level: 1 }) : Self.Delegate({ role, level: 2, slice: "pi-ow" });
 
-export const worldOf = (clock: World["clock"]) => (role: Role) =>
+export const worldOf = (pacing: Pacing) => (role: Role) =>
 	Effect.gen(function* () {
-		const notices = yield* Queue.unbounded<HcNotice>();
-		const gate = yield* Semaphore.make(0);
 		const scope = yield* Scope.make();
 
-		const world = blankWorld({ notices, listening: yield* Latch.make(), gate, scope, clock });
+		const world = blankWorld({
+			notices: yield* Queue.unbounded<HcNotice>(),
+			listening: yield* Latch.make(),
+			gate: yield* Semaphore.make(0),
+			scope,
+			...pacing,
+		});
 
 		const outside = Layer.mergeAll(hcOf(world), hostOf(world), slicesOf(world), NodeServices.layer);
-		const kept = yield* Layer.buildWithScope(outside, scope);
+		const built = yield* Layer.buildWithScope(outside, scope);
+
+		const kept = Context.add(
+			built,
+			FileSystem.FileSystem,
+			countingFiles(pacing.inFlight)(Context.get(built, FileSystem.FileSystem)),
+		);
+
 		const load = loadOf(selfOf(role), kept, scope);
 		const loaded = { now: yield* load(Option.none()) };
 
