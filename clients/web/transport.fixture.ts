@@ -61,6 +61,16 @@ export const oddStatus = (status: number) => () => {
 	return response;
 };
 
+export const inTurn = ([first, then]: readonly [Reply, Reply]): Reply => {
+	const asked = { count: 0 };
+
+	return (body, headers) => {
+		asked.count += 1;
+
+		return (asked.count === 1 ? first : then)(body, headers);
+	};
+};
+
 export const redirect = (location: string) => () => new Response("", { status: 302, headers: { location } });
 
 export const prose = (topic: string) =>
