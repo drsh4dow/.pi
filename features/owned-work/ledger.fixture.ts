@@ -1,7 +1,6 @@
 import { expect } from "bun:test";
 
 import * as Arr from "effect/Array";
-import * as Clock from "effect/Clock";
 import type * as Data from "effect/Data";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -19,6 +18,7 @@ import { HcNotice, TerminalAddress, type TerminalEnd } from "../../clients/hc/in
 import { type Act, recordsAre, type Row } from "./act.fixture.ts";
 import type { LedgerFailure } from "./ledger.ts";
 import { Out } from "./out.ts";
+import { drained, settling } from "./settle.fixture.ts";
 import { Verdict } from "./step.ts";
 import { type Handle, MonotonicNanos, monotonicNow, Outcome, type Settled, StartRequest, WorkRef } from "./work.ts";
 import {
@@ -27,7 +27,6 @@ import {
 	sessionRoot,
 	showAll,
 	showVerdict,
-	steppable,
 	undelivered,
 	type World,
 	worldOf,
@@ -235,8 +234,6 @@ const staged = (world: World, terminal: string) => {
 const refsAre = (refs: Effect.Effect<ReadonlyArray<string>>, expected: ReadonlyArray<string>) =>
 	Effect.flatMap(refs, (got) => checked(() => got, expected));
 
-const breather = Effect.sleep(Duration.millis(20));
-
 const perform = (world: World, act: Act): Effect.Effect<void> =>
 	Match.valueTags(act, {
 		Hook: ({ event }) => hook(world, event),
@@ -270,8 +267,8 @@ const perform = (world: World, act: Act): Effect.Effect<void> =>
 			Effect.sync(() => {
 				world.clock.backMs += backMs;
 			}),
-		Pause: ({ ms }) => Effect.sleep(Duration.millis(ms)),
-	}).pipe(Effect.asVoid, Effect.andThen(breather));
+		Pause: ({ ms }) => world.clock.paused.adjust(Duration.millis(ms)),
+	}).pipe(Effect.asVoid, Effect.andThen(drained(world.inFlight)));
 
 const checkRules = (world: World): void => {
 	const refs = deliveredRefs(world);
@@ -285,16 +282,13 @@ const checkRules = (world: World): void => {
 	expect(Arr.filter(world.settledRefs, (ref) => world.slices.has(ref))).toEqual([]);
 };
 
-export const runRow = (row: Row) => {
-	const clock = { backMs: 0, sleeping: 0 };
+export const runRow = (row: Row) =>
+	settling((pacing) =>
+		Effect.gen(function* () {
+			const world: World = yield* worldOf(pacing)(row.role);
 
-	const play = Effect.gen(function* () {
-		const world: World = yield* worldOf(clock)(row.role);
-
-		yield* Effect.forEach(row.acts, (act) => perform(world, act), { discard: true });
-		yield* Scope.close(world.scope, Exit.void);
-		checkRules(world);
-	});
-
-	return Clock.clockWith((real) => Effect.provideService(play, Clock.Clock, steppable(clock)(real)));
-};
+			yield* Effect.forEach(row.acts, (act) => perform(world, act), { discard: true });
+			yield* Scope.close(world.scope, Exit.void);
+			checkRules(world);
+		}),
+	);
