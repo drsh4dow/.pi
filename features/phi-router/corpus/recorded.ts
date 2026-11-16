@@ -65,8 +65,6 @@ const keyOf = ({ policy, question, piece, context, images }: Omit<Recording, "an
 
 const usageOf = ({ inputTokens, cost }: Recording): Usage => ({ calls: 1, inputTokens, cost, ms: 0 });
 
-const refusedWith = (usage: Usage) => JudgeFailed.make({ why: "judge-refused", usage });
-
 /**
  * A judge that answers only from `contents`, a recordings file. A call it has no answer for, including every call
  * recorded under another policy version, fails as a judge error and counts in `unrecorded`.
@@ -87,7 +85,7 @@ export const recordedJudge = Effect.fn("recordedJudge")(function* (contents: str
 		}
 
 		return "refused" in found.answer
-			? Effect.fail(refusedWith(usageOf(found)))
+			? Effect.fail(JudgeFailed.make({ why: "judge-refused", usage: usageOf(found) }))
 			: Effect.succeed({ answer: found.answer, usage: usageOf(found) });
 	};
 
