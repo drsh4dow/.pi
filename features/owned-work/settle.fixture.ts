@@ -31,7 +31,14 @@ const sleepsOnPause =
 		const nanos = () =>
 			real.currentTimeNanosUnsafe() + paused.currentTimeNanosUnsafe() - BigInt(clock.backMs) * 1_000_000n;
 
-		const monotonic = () => real.monotonicTimeNanosUnsafe() + paused.monotonicTimeNanosUnsafe();
+		const readings = { count: 0n };
+
+		// Each reading is 1 ns past the last, so later acts happen later, yet only a Pause moves time enough to pass a deadline.
+		const monotonic = () => {
+			readings.count += 1n;
+
+			return paused.monotonicTimeNanosUnsafe() + readings.count;
+		};
 
 		const sleep = (duration: Duration.Duration) =>
 			Effect.suspend(() => {
