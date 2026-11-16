@@ -47,9 +47,9 @@ Cargo enforces the runtime boundary, and visibility enforces each feature's inne
 id: primitives-import-nothing-from-the-app
 language: Rust
 severity: error
-message: primitives/ knows no feature and no client. Take the value as an argument.
+message: primitives/ knows no feature, no client and no contract. Take the value as an argument.
 files: ["**/src/primitives/**"]
-rule: { any: [kind: use_declaration, kind: scoped_identifier], regex: '\b(features|client)\b' }
+rule: { any: [kind: use_declaration, kind: scoped_identifier], regex: '\b(features|client|shared)\b' }
 ---
 id: client-imports-no-feature
 language: Rust
@@ -92,7 +92,7 @@ Clippy config has no path scope. Exempt the owner with `#![expect(clippy::disall
 
 ## Comment check
 
-Set `language: Rust`. The kinds are `line_comment` and `block_comment`, and `kind: comment` fails to parse. A doc comment is one of those two kinds with a `doc_comment` child, so the rule lets `///`, `//!`, `/** */` and `/*! */` pass. rustc's `unused_doc_comments` rejects a doc comment on a statement or an expression. Rust tools take directives as attributes, so the only other exclusion is the license header:
+Set `language: Rust`. The kinds are `line_comment` and `block_comment`, and `kind: comment` fails to parse. A doc comment is one of those two kinds with a `doc_comment` child, so the rule lets `///`, `//!`, `/** */` and `/*! */` pass. rustc's `unused_doc_comments` rejects a doc comment on a statement or an expression. Rust tools take directives as attributes, so the only other exclusion is the license header at the top of the file:
 
 ```yaml
 rule:
@@ -102,8 +102,10 @@ rule:
    not:
       any:
          - has: { kind: doc_comment }
-         - regex: '^//\s*(Copyright|SPDX-License-Identifier)'
-         - regex: '^/\*[\s\S]*(Copyright|SPDX-License-Identifier)'
+         - all:
+              - regex: '^(//|/\*)[\s\S]*(Copyright|SPDX-License-Identifier)'
+              - inside: { kind: source_file }
+              - not: { follows: { not: { any: [kind: line_comment, kind: block_comment] }, stopBy: end } }
 ```
 
 ## Baseline

@@ -158,10 +158,14 @@ Write the rule file as two YAML documents split by `---`, the first with `langua
 - all:
      - regex: '^/\*\*[^*]'
      - not: { inside: { kind: statement_block } }
+     - precedes: { not: { any: [kind: expression_statement, kind: comment] }, stopBy: neighbor }
 - regex: '^(//|/\*)\s*(oxlint|oxfmt)-'
 - regex: '^//\s*@ts-expect-error'
 - regex: '^///\s*<reference '
-- regex: '^/\*[\s\S]*(Copyright|SPDX-License-Identifier)'
+- all:
+     - regex: '^(//|/\*)[\s\S]*(Copyright|SPDX-License-Identifier)'
+     - inside: { kind: program }
+     - not: { follows: { not: { any: [kind: comment, kind: hash_bang_line] }, stopBy: end } }
 ```
 
 ## Baseline

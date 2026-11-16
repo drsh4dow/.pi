@@ -111,10 +111,13 @@ rule:
       any:
          - regex: '^#\s*(noqa|ruff:|type:|pyright:|fmt:)'
          - regex: '^#(!|\s*(-\*-\s*)?(en)?coding[:=])'
-         - regex: "^#.*(Copyright|SPDX-License-Identifier)"
+         - all:
+              - regex: "^#.*(Copyright|SPDX-License-Identifier)"
+              - inside: { kind: module }
+              - not: { follows: { not: { kind: comment }, stopBy: end } }
 ```
 
-Python has one comment kind, `comment`, and each `#` line is its own node, so a license header keeps only its Copyright and SPDX lines. A docstring is a string statement and no comment node, so it passes. Add a second document after `---` that rejects a string statement anywhere else:
+Python has one comment kind, `comment`, and each `#` line is its own node, so a license header keeps only its Copyright and SPDX lines, at the top of the file. A docstring is a string statement and no comment node, so it passes. Add a second document after `---` that rejects a string statement anywhere else:
 
 ```yaml
 id: no-string-comments

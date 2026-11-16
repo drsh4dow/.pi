@@ -131,11 +131,15 @@ rule:
          - all:
               - regex: '^/\*\*[^*]'
               - not: { inside: { kind: statement_block } }
+              - precedes: { not: { any: [kind: expression_statement, kind: comment] }, stopBy: neighbor }
          - regex: '^(//|/\*)\s*(oxlint|oxfmt)-'
-         - regex: '^/\*[\s\S]*(Copyright|SPDX-License-Identifier)'
+         - all:
+              - regex: '^(//|/\*)[\s\S]*(Copyright|SPDX-License-Identifier)'
+              - inside: { kind: program }
+              - not: { follows: { not: { any: [kind: comment, kind: hash_bang_line] }, stopBy: end } }
 ```
 
-`ast-grep scan --rule <file> <source root>` exits 1 on a match. The first exclusion lets a doc comment pass anywhere but between the statements of a function body. The language reference gives the `language`, the comment kinds, the doc comment form and the directive patterns.
+`ast-grep scan --rule <file> <source root>` exits 1 on a match. The first exclusion lets a doc comment pass when it sits before a declaration and outside a function body. The last lets a license header pass only at the top of the file. The language reference gives the `language`, the comment kinds, the doc comment form and the directive patterns.
 
 Every message names the owner or the function to use. For each gate, write a fixture that breaks it and a test that expects the gate to fail on the fixture. Keep both, with the fixtures outside every path the check scans. Where a gate matches by path, the test copies the fixture into that path and removes it afterward.
 

@@ -110,4 +110,4 @@ The `effecttsgo` rules `global-*`, `process-env*`, `node-builtin-import` and `ne
 
 ## Check command
 
-The check reports Effect rules through oxlint, and the language service route stays off. Run plain `oxlint` and `tsc -p .`, both patched by `prepare`. Install with lifecycle scripts on in CI, so `prepare` runs before the check.
+`typescript.md` applies. The patched `oxlint` reports the Effect rules and the compiler errors in one run, so the check has no `tsc` step. Install with lifecycle scripts on in CI, so `prepare` runs before the check.
