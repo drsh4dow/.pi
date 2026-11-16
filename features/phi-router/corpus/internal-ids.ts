@@ -9,7 +9,7 @@ import type { TextCarrier } from "./manifest.ts";
 import type { Random } from "./random.ts";
 import { systemTime, uuid } from "./record.ts";
 
-const patientId = (rng: Random) => String(rng.between(1000, 99_999));
+export const patientId = (rng: Random) => String(rng.between(1000, 99_999));
 
 const clientCode = (rng: Random) => `NFH-${rng.digits(4)}`;
 

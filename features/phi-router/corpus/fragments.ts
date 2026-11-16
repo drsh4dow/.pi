@@ -1,11 +1,10 @@
 import * as Arr from "effect/Array";
 
 import type { Sample, Scene } from "./conversation.ts";
+import { patientId } from "./internal-ids.ts";
 import { drawName } from "./people.ts";
 import type { Random } from "./random.ts";
 import { systemTime, two } from "./record.ts";
-
-const patientId = (rng: Random) => String(rng.between(1000, 99_999));
 
 const identityScene: Scene = {
 	asks: [
