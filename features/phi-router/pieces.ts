@@ -6,7 +6,7 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import { blocksOf, type Slot, textsOf, unitsOf, writtenOnPersonal } from "./parts.ts";
+import { blocksOf, textsOf, unitsOf, writtenOnPersonal } from "./parts.ts";
 import type { ContentKey, Piece, PieceKind } from "./policy/engine.ts";
 import { window as policyWindow, seamChars, stubs } from "./policy/policy.ts";
 
@@ -84,8 +84,6 @@ const contextReader = (window: number) => {
 
 interface PieceAt {
 	readonly piece: Piece;
-	readonly message: number;
-	readonly slot: Slot;
 	/** In the request's own new content: the last assistant message and everything after it. */
 	readonly own: boolean;
 }
@@ -123,8 +121,8 @@ export const piecesOf = ({
 
 		const units = unitsOf(message);
 
-		for (const { key, slot, texts, images } of units) {
-			pieces.push({ piece: { ...piece, key, texts, images }, message: index, slot, own: index >= ownFrom });
+		for (const { key, texts, images } of units) {
+			pieces.push({ piece: { ...piece, key, texts, images }, own: index >= ownFrom });
 		}
 
 		reader.remember({ message, sealed: Arr.some(units, ({ key }) => sealed(key)) });
