@@ -127,8 +127,8 @@ export const modelOf = Effect.fn("modelOf")(function* (ctx: ModelCaller, table: 
 
 	const target = yield* delegateTargetOf({
 		parent: ctx.model,
-		cwd: ctx.cwd,
 		branch: ctx.sessionManager.getBranch(),
+		cwd: ctx.cwd,
 		wanted: resolved.wanted,
 		has: isRegistered(ctx),
 	});
