@@ -107,6 +107,14 @@ const ssnHit = sealedAs(Finding.Rule({ rule: "ssn", kind: "ssn" }));
 test("a rule hit seals without a judge call", () =>
 	run(expectJudged(pieceOf("Patient SSN 078-05-1120 on file"), sealing, { verdicts: ssnHit, questions: [] })));
 
+test("a piece is read after its seam, so an SSN cut across two messages hits the rule", () =>
+	run(
+		expectJudged({ ...pieceOf("23 on file"), seam: "Patient SSN 412-56-78" }, sealing, {
+			verdicts: ssnHit,
+			questions: [],
+		}),
+	));
+
 test("a personal reply is never judged, but a valid SSN in it still seals", () =>
 	run(
 		Effect.gen(function* () {

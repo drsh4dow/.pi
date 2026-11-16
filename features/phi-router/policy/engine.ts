@@ -46,6 +46,8 @@ export interface Piece {
 	readonly images: ReadonlyArray<Image>;
 	/** At most `window` preceding rendered items, already cleared, for the judge to read. */
 	readonly context: ReadonlyArray<string>;
+	/** The cleared end of the previous message of the same role, when this one goes on from it mid-word; else empty. */
+	readonly seam: string;
 }
 
 export type FailureWhy = "binary" | "undecodable" | "judge-error" | "judge-timeout" | "judge-refused" | "too-large";
@@ -210,19 +212,17 @@ const judged = Effect.fn("judged")(function* ({
 	return verdictOfLabel({ score, label, system });
 });
 
-const isBlank = (text: string) => Str.isEmpty(Str.trim(text));
-
 /** Settles a piece before the judge. Failing with a verdict ends the piece there. */
 const textOf = Effect.fn("textOf")(function* (piece: Piece, blank: (text: string) => string) {
 	const fixtures = yield* Fixtures;
 	const texts = Arr.filter(piece.texts, (text) => !fixtures.has(sha256(text)));
 
-	if (Arr.every(texts, isBlank) && piece.images.length === 0) {
+	if (Arr.every(texts, (text) => Str.trim(text) === "") && piece.images.length === 0) {
 		return yield* Effect.fail(Verdict.Cleared({ by: texts.length < piece.texts.length ? "fixture" : "empty" }));
 	}
 
 	const readings = yield* Effect.mapError(expand(Arr.map(texts, blank)), (why) => sealedBy(Finding.Failure({ why })));
-	const text = Arr.join(readings, "\n");
+	const text = blank(piece.seam) + Arr.join(readings, "\n");
 	const hit = firstHit(text);
 
 	if (Option.isSome(hit)) {

@@ -116,3 +116,23 @@ test("own content starts at the last assistant message, and replies are personal
 		[true, "tool-result"],
 	]);
 });
+
+test("a message that goes on mid-word from the last one of its role is judged with that one's end, and others are not", () => {
+	const cut = result("member 4471, ssn 412-56-78");
+	const sealedCut = result("member 9001, ssn 523-61-12", "toolu_3");
+	const sealedKeys = new Set(keyOf(sealedCut));
+
+	const messages = [
+		asked("Read the export."),
+		cut,
+		result("23, plan gold", "toolu_2"),
+		asked("thanks"),
+		result(" next page.\n", "toolu_4"),
+		sealedCut,
+		result("34, plan silver", "toolu_5"),
+	];
+
+	const pieces = piecesOf({ messages, sealed: (key) => sealedKeys.has(key), window: 1 });
+
+	expect(Arr.map(pieces, ({ piece }) => piece.seam)).toEqual(["", "", "member 4471, ssn 412-56-78", "", "", "", ""]);
+});

@@ -52,6 +52,7 @@ export const pieceOf = (text: string): Piece => ({
 	texts: [text],
 	images: [],
 	context: [],
+	seam: "",
 });
 
 export const judgeAll = ({
