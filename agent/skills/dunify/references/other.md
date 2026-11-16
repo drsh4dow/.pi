@@ -6,6 +6,8 @@ The dunify reference for a language that has no file of its own. Answer each que
 
 - Which directory do the language's build tools treat as the source root? Runtime directories go inside it.
 - Which file makes a folder importable as one unit, the way `index.ts` or `mod.rs` does? That is a feature's edge file.
+- Does the build split the code into modules that each have a source root? Then a runtime directory is a folder of modules, a feature is one module, and its edge is the module's public declarations.
+- Do imports name packages, not paths? Then a move renames the package in every importer, and the boundary gate checks module dependencies or package names.
 
 ## Ceiling
 
@@ -24,7 +26,7 @@ Prefer a tool that checks resolved import edges between directories. Where the l
 
 ## Bans
 
-Use the linter's banned-API setting when it carries a custom message. Otherwise write an ast-grep rule per ban, scoped to every path except the owner.
+Use the linter's banned-API setting when it carries a custom message. Otherwise write an ast-grep rule per ban, scoped to every path except the owner. Seed the list with the stack's raw transport, storage, timer, clock and lock APIs.
 
 ## Comment check
 

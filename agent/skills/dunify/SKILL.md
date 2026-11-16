@@ -75,11 +75,22 @@ For a new repo, ask the user for the language, the app kind, and any framework t
 
 Read the reference for each language the repo uses: [`references/typescript.md`](references/typescript.md), [`references/effect.md`](references/effect.md) when `effect` is a dependency, [`references/rust.md`](references/rust.md), [`references/python.md`](references/python.md), and [`references/other.md`](references/other.md) for any other language.
 
-For an existing repo, list with paths:
+For an existing repo, measure before you read. Get each of these from a command:
+
+- the lines of source per build module or top-level folder, without tests and generated code;
+- the edges between those modules that production code uses, from the build tool or an import graph;
+- the commits of the last 90 days per module;
+- the build and test commands CI runs, whether each passes on the untouched tree, and how long each takes.
+
+Stop and tell the user when the build or the tests fail or cannot run on this machine, since no move can be checked against a red tree. A green CI run of the same commit counts as a pass.
+
+Past about 20,000 lines of source, one agent cannot read the repo and one branch cannot carry the change. Read [`references/large-repo.md`](references/large-repo.md) now and follow it through every step.
+
+Then list with paths:
 
 - each place code runs;
 - each durable value, such as a store, a table, a cache or a file, and every place that writes it;
-- each registry, meaning a file that every new feature must edit;
+- each registry, meaning a file that every new feature of one kind must edit;
 - the check command, the CI config, the linter, type checker and formatter configs, and every rule already off.
 
 Done when the user has answered for a new repo, or every runtime, durable value, registry and gate config of an existing repo is named.
@@ -95,8 +106,8 @@ Give a row to each runtime directory, its entry file, each feature, each file in
 
 Under the map, list:
 
-- **The bans**, each with its API, its owner and its message. For an existing repo, seed them from mistakes that happened twice, found the way the **correct** skill finds mistake classes, and then from the language reference. For a new repo, seed them from the language reference. Propose a ban only for an API the code calls today or the first feature will call, so every owner has a caller.
-- **The hot spots**, one per registry. Where the stack discovers files in one line, such as a glob import, plan to replace the registry with it. Otherwise the registry stays and is named here.
+- **The bans**, each with its API, its owner and its message. For an existing repo, seed them from mistakes that happened twice, found the way the **correct** skill finds mistake classes, and then from the language reference. For a new repo, seed them from the language reference. Propose a ban only for an API the code calls today or the first feature will call, so every owner has a caller. A mistake that is a missing call is no ban. List it under the five rules as a gap.
+- **The hot spots**, one per registry. Where the stack discovers files in one line, such as a glob import, plan to replace the registry with it. A registry stays when the compiler rejects a missing entry, or when the stack has no such discovery, and is named here.
 - **The five rules**, each with the row or gate that upholds it. A rule with none is a gap, and you say so.
 
 Show all of it to the user and stop. Done when the user approves the map and the bans.
