@@ -35,7 +35,7 @@ afterAll(() =>
 	),
 );
 
-export const opus = getBuiltinModel("anthropic", "claude-opus-5-5");
+const opus = getBuiltinModel("anthropic", "claude-opus-5-5");
 
 export const phiAuto = { ...opus, provider: "phi", id: "auto" };
 
