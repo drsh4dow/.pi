@@ -8,7 +8,7 @@ import * as Str from "effect/String";
 import { Judge } from "../policy/engine.ts";
 import { stubs } from "../policy/policy.ts";
 import { evaluate, play } from "./evaluate.ts";
-import type { Case } from "./manifest.ts";
+import type { Case, Synthetic } from "./manifest.ts";
 import { missRateUpperBound } from "./report.ts";
 
 test("the leak-rate bound is the exact one-sided Clopper-Pearson 95% upper limit", () => {
@@ -157,7 +157,7 @@ test("the corpus's exact test identities reach the engine, so a case holding onl
 				messages: [{ role: "user", text: "Eligibility times out for member SEAL-QA-17." }],
 			};
 
-			const played = (synthetic: { exact: Array<string>; prefixes: Array<string> }) =>
+			const played = (synthetic: Synthetic) =>
 				Effect.map(evaluate({ cases: [listed], synthetic, window: 1 }), ({ lanes }) => lanes);
 
 			const exact = yield* played({ exact: ["SEAL-QA-17"], prefixes: [] });
