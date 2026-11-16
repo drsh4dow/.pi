@@ -9,7 +9,7 @@ import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-import { callerOf, continued, delegate, runtime, started } from "./brief.fixture.ts";
+import { callerOf, continued, delegate, fixtures, runtime, started } from "./brief.fixture.ts";
 import { modelNameOf, modelOf, modelTable } from "./models.ts";
 
 const opus = getBuiltinModel("anthropic", "claude-opus-5-5");
@@ -27,10 +27,16 @@ const registry = [
 
 const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/delegate-models-${String(process.pid)}`;
 
-/** HOMEs whose phi-router.json routes (`enforce`) or holds every request on ent (no file: `shadow`). */
+/** HOMEs whose phi-router.json routes (`enforce`) or holds every request on ent (`shadow`). */
 const homes = { enforce: `${scratch}/enforce`, shadow: `${scratch}/shadow` };
 
-beforeAll(() => Bun.write(`${homes.enforce}/.pi/agent/phi-router.json`, '{ "mode": "enforce" }'));
+beforeAll(() =>
+	Promise.all([
+		Bun.write(`${homes.enforce}/.pi/agent/phi-router.json`, '{ "mode": "enforce" }'),
+		Bun.write(`${homes.shadow}/.pi/agent/phi-router.json`, '{ "mode": "shadow" }'),
+		Bun.write(`${fixtures}/.pi/agent/phi-router.json`, '{ "mode": "shadow" }'),
+	]),
+);
 
 const pinned: SessionEntry = {
 	type: "custom",

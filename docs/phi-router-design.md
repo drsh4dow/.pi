@@ -16,7 +16,7 @@ Five measured facts shape it.
 
 ## Usage
 
-The developer selects `phi/auto` once. `~/.pi/agent/phi-router.json` keeps v1's shape (`mode`, `model`, `baaRepos`, `fixtures`). Without it the router runs in `shadow`.
+The developer selects `phi/auto` once. `~/.pi/agent/phi-router.json` keeps v1's shape (`mode`, `model`, `baaRepos`, `fixtures`). Without it, or without `mode`, the router runs in `enforce`. To make `phi/auto` the default model, set `defaultProvider: "phi"` and `defaultModel: "auto"` in your own `~/.pi/agent/settings.json`, and add `phi/auto` to `enabledModels` when that list is set, since pi starts on the first enabled model when the default is not among them.
 
 - The footer shows `phi → ultra-a` on most requests. A request that seals shows `phi → ent`. A notice says that one message held patient identifiers and was handled only on `ent`.
 - The `ultra` model sees `[withheld: holds patient identifiers, handled on the HIPAA account]` in place of a sealed message. `ent`'s reply follows, and it names patients by internal id.

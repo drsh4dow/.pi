@@ -158,10 +158,22 @@ test("a pinned session goes to ent with nothing judged, and after unpin the pinn
 		}),
 	));
 
-test("shadow, the default, dispatches ent and logs the account enforce would take, and no content", () =>
+test("enforce is the default, with no settings file or a file without a mode", () =>
 	run(
 		Effect.gen(function* () {
-			const world = yield* worldOf({ name: "shadow", settings: Option.none() });
+			const noFile = yield* worldOf({ name: "default-no-file", settings: Option.none() });
+			const noMode = yield* worldOf({ name: "default-no-mode", settings: Option.some("{}") });
+			const withNoFile = yield* (yield* branchOf({ world: noFile })).send("user", opening);
+			const withNoMode = yield* (yield* branchOf({ world: noMode })).send("user", opening);
+
+			expect([withNoFile, withNoMode]).toEqual([homeOf(noFile.session), homeOf(noMode.session)]);
+		}),
+	));
+
+test("shadow dispatches ent and logs the account enforce would take, and no content", () =>
+	run(
+		Effect.gen(function* () {
+			const world = yield* worldOf({ name: "shadow", settings: Option.some('{ "mode": "shadow" }') });
 			const branch = yield* branchOf({ world });
 			const sent = yield* branch.send("user", opening);
 			const { text, lanes } = yield* lanesOf(world);

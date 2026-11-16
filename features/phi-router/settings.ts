@@ -43,7 +43,7 @@ export interface Settings {
 
 const noSynthetic: SyntheticIdentities = { exact: [], prefixes: [] };
 
-const defaults: Settings = { mode: "shadow", model: defaultModel, fixtures: new Set(), synthetic: noSynthetic };
+const defaults: Settings = { mode: "enforce", model: defaultModel, fixtures: new Set(), synthetic: noSynthetic };
 
 const isUnder = (cwd: string) => (repo: string) => {
 	const root = Str.replace(/\/+$/u, "")(repo);
@@ -62,7 +62,13 @@ const settingsOf = ({ text, cwd }: { readonly text: Option.Option<string>; reado
 		return { ...defaults, mode: "bad-settings" };
 	}
 
-	const { mode = "shadow", model = defaultModel, baaRepos = [], fixtures = [], synthetic = noSynthetic } = file.value;
+	const {
+		mode = defaults.mode,
+		model = defaultModel,
+		baaRepos = [],
+		fixtures = [],
+		synthetic = noSynthetic,
+	} = file.value;
 
 	return {
 		mode: Arr.some(baaRepos, isUnder(cwd)) ? "baa-repo" : mode,
