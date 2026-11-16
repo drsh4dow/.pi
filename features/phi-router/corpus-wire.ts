@@ -96,17 +96,14 @@ const bytesOf = (message: Message) =>
 		? new TextEncoder().encode(message.text)
 		: Result.getOrElse(Encoding.Base64.decode(message.image.data), () => new Uint8Array());
 
-/** The case's messages but the system ones, each with the message before and after it. */
-const walk = (messages: ReadonlyArray<Message>) => {
-	const turns = Arr.filter(messages, (message) => message.role !== "system");
-
-	return Arr.map(turns, (message, index) => ({
+/** Each of the case's turns with the message before and after it. */
+const walk = (turns: ReadonlyArray<Message>) =>
+	Arr.map(turns, (message, index) => ({
 		message,
 		index,
 		before: Arr.get(turns, index - 1),
 		after: Arr.get(turns, index + 1),
 	}));
-};
 
 type At = ReturnType<typeof walk>[number];
 
@@ -249,15 +246,32 @@ const stepsOf =
 
 const textsOf = (messages: ReadonlyArray<Message>) => Arr.map(Arr.filter(messages, isText), ({ text }) => text);
 
+/** Only a prompt makes pi ask the mock, so a case whose first message is a tool result or a reply opens with this. */
+const neutralOpening = opened("Go on with the task.");
+
+/**
+ * A reply that opens a case was written before the case began, on `ent` for an `ent-reply` case. A personal account's
+ * reply skips the judge, so the mock plays it on `ent`, as the answer to the neutral opening in a pinned session.
+ */
+const pinnedReply = [opened("/phi pin"), neutralOpening, opened("/phi unpin")];
+
 export const planOf = (subject: Case): Plan => {
-	const walked = walk(subject.messages);
+	const turns = Arr.filter(subject.messages, (message) => message.role !== "system");
+	const leadingReply = Arr.filter(Arr.take(turns, 1), (message) => message.role === "assistant" && isText(message));
+	const walked = walk(Arr.drop(turns, leadingReply.length));
 	const tools = Arr.filter(walked, ({ message }) => message.role === "tool");
 	const systems = textsOf(Arr.filter(subject.messages, (message) => message.role === "system"));
+	const awaitsPrompt = Option.exists(Arr.head(walked), ({ message }) => message.role !== "user");
+
+	const opening = [...(leadingReply.length > 0 ? pinnedReply : []), ...(awaitsPrompt ? [neutralOpening] : [])];
 
 	return {
 		agents: Option.liftPredicate(Arr.join(systems, "\n\n"), Str.isNonEmpty),
 		files: Arr.map(tools, ({ message, index }) => ({ path: pathOf(message, index), bytes: bytesOf(message) })),
-		replies: Arr.flatMap(walked, replyOf(subject)),
-		steps: Arr.reduce(walked, Arr.empty<Step>(), stepsOf(subject)),
+		replies: [
+			...Arr.map(textsOf(leadingReply), (text) => Reply.Text({ text })),
+			...Arr.flatMap(walked, replyOf(subject)),
+		],
+		steps: Arr.reduce(walked, opening, stepsOf(subject)),
 	};
 };

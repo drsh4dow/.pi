@@ -61,6 +61,39 @@ test("a steering message is sent while the slow tool call of its turn runs, with
 	});
 });
 
+const opening = Step.Turn({ prompt: "Go on with the task.", steer: Option.none() });
+
+const pinned = [
+	Step.Turn({ prompt: "/phi pin", steer: Option.none() }),
+	opening,
+	Step.Turn({ prompt: "/phi unpin", steer: Option.none() }),
+];
+
+test("a case that opens with a tool result starts with a neutral prompt that the mock answers with the tool call", () => {
+	const plan = planOf(phiCase("tool-result", [{ role: "tool", text: record }]));
+
+	expect(plan.steps).toEqual([opening]);
+	expect(plan.replies).toEqual([
+		Reply.ToolUse({ before: Option.none(), name: "bash", input: { command: "cat files/0.txt" } }),
+	]);
+});
+
+test("a case that opens with a reply gets it from ent in a pinned stretch, then plays on unpinned", () => {
+	const plan = planOf(
+		phiCase("ent-reply", [
+			{ role: "assistant", text: record },
+			{ role: "tool", text: "FAIL mapper" },
+			{ role: "user", text: "Fix it." },
+		]),
+	);
+
+	expect(plan.steps).toEqual([...pinned, opening, Step.Turn({ prompt: "Fix it.", steer: Option.none() })]);
+	expect(plan.replies).toEqual([
+		Reply.Text({ text: record }),
+		Reply.ToolUse({ before: Option.none(), name: "read", input: { path: "files/0.txt" } }),
+	]);
+});
+
 test("a compaction summary comes back from the mock after two filler turns, and a new turn carries it", () => {
 	const summary = `## Goal\nFix the parser.\n${record}`;
 	const wrapped = `The conversation history before this point was compacted into the following summary:\n\n<summary>\n${summary}\n\n</summary>`;
