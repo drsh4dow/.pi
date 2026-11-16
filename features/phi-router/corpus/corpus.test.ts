@@ -38,11 +38,8 @@ test(
 	120_000,
 );
 
-/*
- * The release gate, kept strict and marked as failing: 24 of 220 in-policy cases of the v1-labelled corpus leak at
- * window 1, mostly unlabelled numbers in file names and split values. It turns red once they all stop leaking.
- */
-test.failing(
+/** The release gate: zero complete identifiers of in-policy cases in any personal view, at the policy's window. */
+test(
 	"no in-policy PHI in the default corpus reaches a personal account",
 	() =>
 		Effect.runPromise(

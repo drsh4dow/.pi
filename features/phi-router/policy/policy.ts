@@ -81,6 +81,7 @@ const countingRules = [
 	`${syntheticMark} marks a listed test identity that was removed; it identifies no one.`,
 	`Treat every other value as a real person's: a value that looks invented, a placeholder, an example domain or a reserved number range still counts.`,
 	"A name, phone, email, address, date of birth or record or member number that could belong to a patient or member counts, wherever it appears (a file name, a log, a table, a header). Clear it only when the text shows it belongs to staff, a vendor or a business.",
+	"In a path or file name that names a diagnosis or a patient's document, in any language, every number or code other than a leading internal id counts, whatever its spacing or mix of letters and digits: in `9921_KX4410927_asthma_referral.pdf` or `9921_AW20831C_asma_referral.pdf` the second value counts, while `9921_asthma_referral.pdf` holds only an internal id.",
 	"Encoded, minified, misspelled or buried values count.",
 	`Not direct identifiers: internal ids, health facts tied only to an internal id, code, schemas, logs and SQL, staff, vendor and business contacts, fragments, counts. For example: ${counterList}.`,
 ];
@@ -107,7 +108,7 @@ export const kindQuestion = {
 	instructions: Arr.join(
 		[
 			readingRules,
-			"Which direct identifier of a real patient or member does `piece` contain? Answer none only when it holds none.",
+			"Which direct identifier of a real patient or member does `piece` contain? Answer none only when it holds none. A number or code that counts in a document's file name is a record or member number when nothing says which.",
 			...countingRules,
 		],
 		" ",

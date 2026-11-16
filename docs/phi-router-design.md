@@ -65,6 +65,7 @@ Exact synthetic identities are blanked to `[synthetic-id]` before the rules and 
 ### The judge
 
 - **One question.** "Does `piece` contain a direct identifier of a real patient or member, as the policy lists them?" Its criteria list the kinds and the counter-examples (internal ids, health facts tied to an internal id, schema and SQL, staff and vendor contacts, fragments, counts). `context` is labelled as earlier content, already cleared, for reading only.
+- **File names.** A number or code in a file name that names a diagnosis or a patient's document counts, other than a leading internal id. The judge read such a value as a second internal id and cleared it (eight leaks on the v2 corpus). `countingRules` says so with two examples and one counter-example, and the kind question names a record or member number when nothing says which. Wording that asked for the record-or-member label in both questions closed the same leaks but sealed 15 more clean cases, screenshots and internal ids among them.
 - **New content only.** A piece is one message, or one system part, plus at most `policy.window` preceding items. For a tool result the first item is its own tool call. The cleared conversation is never sent. The engine eval sweeps the window size and records the misses each size costs.
 - **Images.** A piece's images go in `ClassifierContext.images`, up to 128 per call. An image is not PHI on sight.
 - **Rules first.** The judge runs only when no rule sealed the piece.
