@@ -11,7 +11,7 @@ import { sha256 } from "./digest.ts";
 import { rules } from "./rules.ts";
 
 /** The plan's PHI table. Each kind is a direct identifier of a real patient or member, as the judge reads it. */
-export const identifierKinds = {
+const identifierKinds = {
 	"patient-name": "a real patient's or member's name",
 	ssn: "a Social Security number",
 	"birth-date": "a full date of birth",
@@ -29,14 +29,14 @@ export const identifierKinds = {
 export type IdentifierKind = keyof typeof identifierKinds;
 
 /** The plan's defaults the human can change. Edit the sentence; the judge reads it as written. */
-export const defaults = [
+const defaults = [
 	"Insurance member numbers and a provider's medical record numbers count.",
 	"A real patient's or member's name counts even with no health facts.",
 	"Clinical dates other than a date of birth count only next to a direct identifier of the same person.",
 ] as const;
 
 /** Content the judge must clear. Short, because the list rides on every judge call. */
-export const counterExamples = [
+const counterExamples = [
 	{ text: "patient_id 4471, asthma, sync failed at step 3", why: "a health fact tied only to an internal id" },
 	{ text: "SELECT patient_id, dx_code FROM encounters WHERE client_code = 'C-102'", why: "schema and SQL" },
 	{ text: "row 88123, uuid 550e8400-e29b-41d4-a716-446655440000", why: "internal ids" },

@@ -59,9 +59,7 @@ export const rules = [
 
 export type RuleId = (typeof rules)[number]["id"];
 
-export const ruleIds: ReadonlyArray<RuleId> = Arr.map(rules, ({ id }) => id);
-
-export interface RuleHit {
+interface RuleHit {
 	readonly rule: RuleId;
 	readonly kind: IdentifierKind;
 }

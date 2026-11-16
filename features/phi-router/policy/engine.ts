@@ -50,7 +50,7 @@ export interface Piece {
 	readonly seam: string;
 }
 
-export type FailureWhy = "binary" | "undecodable" | "judge-error" | "judge-timeout" | "judge-refused" | "too-large";
+type FailureWhy = "binary" | "undecodable" | "judge-error" | "judge-timeout" | "judge-refused" | "too-large";
 
 export type Finding = Data.TaggedEnum<{
 	Rule: { readonly rule: RuleId; readonly kind: IdentifierKind };
