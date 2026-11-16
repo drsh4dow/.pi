@@ -128,8 +128,11 @@ export const quoteMinChars = 16;
 /** How much of the previous message of the same role a piece that goes on from it mid-word is judged with. */
 export const seamChars = 200;
 
-/** How many preceding rendered items the judge sees beside a piece. For a tool result the first is its own call. */
-export const window = 1;
+/**
+ * How many preceding rendered items the judge sees beside a piece. For a tool result the first is its own call. None:
+ * on the v2 corpus, context never caught a leak that no context missed, made a screenshot score lower, and cost more.
+ */
+export const window = 0;
 
 /** Decisions' limits: characters per call, images per call, and how long one call may take. */
 export const judgeLimits = { maxChars: 2_000_000, maxImages: 128, timeoutMs: 20_000 } as const;
