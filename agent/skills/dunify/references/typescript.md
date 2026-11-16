@@ -159,6 +159,10 @@ Write the rule file as two YAML documents split by `---`, the first with `langua
      - regex: '^/\*\*[^*]'
      - not: { inside: { kind: statement_block } }
      - precedes: { not: { any: [kind: expression_statement, kind: comment] }, stopBy: neighbor }
+     - not:
+          all:
+             - inside: { kind: program }
+             - precedes: { regex: '^(if|for|while|do|try|switch|throw)\b|^[{;]', stopBy: neighbor }
 - regex: '^(//|/\*)\s*(oxlint|oxfmt)-'
 - regex: '^//\s*@ts-expect-error'
 - regex: '^///\s*<reference '
