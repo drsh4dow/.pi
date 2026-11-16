@@ -1,12 +1,19 @@
 import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
-import type { ModelRouteReason, SessionEntry } from "@earendil-works/pi-coding-agent";
+import {
+	type CompactionEntry,
+	convertToLlm,
+	type ModelRouteReason,
+	type SessionEntry,
+	sessionEntryToContextMessages,
+} from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Hash from "effect/Hash";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { type AccountId, fallbackChain } from "../claude-accounts/index.ts";
+import { type AccountId, fallbackChain, isBaaAccount } from "../claude-accounts/index.ts";
+import { partsOf } from "./parts.ts";
 import { piecesOf } from "./pieces.ts";
 import { type ContentKey, Finding, type Piece, type Usage, Verdict, verdictsFor } from "./policy/engine.ts";
 import { quotingReplies } from "./policy/quotes.ts";
@@ -24,6 +31,8 @@ interface DecideRequest {
 	readonly hold: Option.Option<Hold>;
 	readonly producedOnPersonal?: (message: AssistantMessage) => boolean;
 	readonly window?: number;
+	/** Parts before the last reply that no model has received whole yet, such as a sealed compaction summary. */
+	readonly undelivered?: ReadonlyArray<ContentKey>;
 }
 
 interface Judged {
@@ -57,19 +66,23 @@ const stubbedIn = (pieces: Pieces, book: VerdictBook) =>
 
 /**
  * `ent` when a part of the request's own new content is sealed, by the book or by this request's verdicts, or when any
- * part sealed during this request. A repeated read of sealed content is sealed own content, and so is a retry.
+ * part sealed during this request. A repeated read of sealed content is sealed own content, and so is a retry. An
+ * undelivered part is own content wherever it sits.
  */
 const laneOf = ({
 	pieces,
 	found,
 	book,
+	undelivered,
 }: {
 	readonly pieces: Pieces;
 	readonly found: Judged["found"];
 	readonly book: VerdictBook;
+	readonly undelivered: ReadonlySet<ContentKey>;
 }) => {
 	const sealedNow = Arr.some(found, ([, verdict]) => isSealed(verdict));
-	const ownSealed = Arr.some(pieces, ({ piece, own }) => own && book.lookup(piece.key) === "sealed");
+	const isOwn = ({ piece, own }: Pieces[number]) => own || undelivered.has(piece.key);
+	const ownSealed = Arr.some(pieces, (at) => isOwn(at) && book.lookup(at.piece.key) === "sealed");
 
 	return sealedNow || ownSealed
 		? ({ lane: "ent", why: "sealed" } as const)
@@ -142,7 +155,7 @@ export const decide = Effect.fn("decide")(function* (request: DecideRequest) {
 		cached,
 		entry,
 		wouldStub: stubbedIn(pieces, book),
-		...laneOf({ pieces, found, book }),
+		...laneOf({ pieces, found, book, undelivered: new Set(request.undelivered) }),
 	} satisfies Decision;
 });
 
@@ -160,6 +173,30 @@ export const pinnedOn = (branch: ReadonlyArray<SessionEntry>) => {
 	const pins = Arr.getSomes(Arr.map(branch, pinOf));
 
 	return Option.exists(Arr.last(pins), ({ pinned }) => pinned);
+};
+
+export const compactionHead = (entry: CompactionEntry) => convertToLlm(sessionEntryToContextMessages(entry));
+
+const answeredOnBaa = (entry: SessionEntry) =>
+	entry.type === "message" && entry.message.role === "assistant" && isBaaAccount(entry.message.provider);
+
+/**
+ * The parts of the branch's latest compaction head while no `ent` reply follows it. A personal account receives a
+ * sealed summary only as a stub, so until `ent` answers after it no model has read it, and it is new content of each
+ * request, though it sits before every kept reply.
+ */
+export const undeliveredSummary = (branch: ReadonlyArray<SessionEntry>): ReadonlyArray<ContentKey> => {
+	for (const entry of Arr.reverse(branch)) {
+		if (answeredOnBaa(entry)) {
+			return [];
+		}
+
+		if (entry.type === "compaction") {
+			return Arr.flatMap(compactionHead(entry), (message) => Arr.map(partsOf(message), ({ key }) => key));
+		}
+	}
+
+	return [];
 };
 
 export const holdOf = ({ mode, pinned }: { readonly mode: Mode; readonly pinned: boolean }): Option.Option<Hold> => {

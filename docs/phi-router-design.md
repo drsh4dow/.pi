@@ -85,7 +85,7 @@ Exact synthetic identities are blanked to `[synthetic-id]` before the rules and 
 
 ### Sealing
 
-A request seals exactly the pieces that got `Sealed`. Its other new pieces clear on their own. `laneOf` sends `ent` when a part of the request's own new content (the last assistant message and everything after it) is sealed, or when a part sealed during this request. A repeated read of sealed content is sealed new content, so it goes to `ent`. A retry of a sealed request goes to `ent`. Every later request goes to `ultra`, and the border stubs the sealed parts. There is no session latch.
+A request seals exactly the pieces that got `Sealed`. Its other new pieces clear on their own. `laneOf` sends `ent` when a part of the request's own new content (the last assistant message and everything after it, and a sealed compaction summary no `ent` reply has followed) is sealed, or when a part sealed during this request. A repeated read of sealed content is sealed new content, so it goes to `ent`. A retry of a sealed request goes to `ent`. Every later request goes to `ultra`, and the border stubs the sealed parts. There is no session latch.
 
 ### The guarded lanes
 
@@ -113,7 +113,7 @@ In a `phi/auto` session the router adds a `phi-bridge` prompt section through `b
 ### Compaction
 
 - **The summary request** (`direct`, from the harness compaction or a `/tree` summary) carries the whole transcript serialized into one message that `route()` never sees, so `route()` sends every `direct` request to `ent`.
-- **The summary itself** is judged in the router's `session_compact` handler. pi awaits that handler before it sends the next request, including the send-time send after a threshold compaction (`agent-session.js` `_runAutoCompaction`). A clean summary reaches `ultra` on that same send. A sealed one is stubbed there, and the router suggests `/phi pin`. v1's `compactsBeforeSend` estimate is deleted.
+- **The summary itself** is judged in the router's `session_compact` handler. pi awaits that handler before it sends the next request, including the send-time send after a threshold compaction (`agent-session.js` `_runAutoCompaction`). A clean summary reaches `ultra` on that same send. A personal account receives a sealed one only as its stub, so no model has read it. It is therefore new content of each request, though it sits before every kept reply, until an `ent` reply follows the compaction on the branch. After `/compact` the next request goes to `ent`. After a threshold compaction pi keeps the route it chose before compacting, so that one send goes to `ultra` with the summary stubbed and the request after it goes to `ent`. The router suggests `/phi pin`. v1's `compactsBeforeSend` estimate is deleted.
 - **Price.** One `ent` summary per compaction, written uncached (`cacheRetention: "none"`) at $4 per million input tokens plus output. At pi's 300k-token threshold that is about $1.28 per compaction. Summaries were outside v1's replay base, so the savings replay reports them on their own line.
 
 ### Delegates, pin, modes, log, failover, switches, codemode
@@ -193,7 +193,7 @@ Rejected:
 
 - We accept that the border cannot rescue a judging error, in exchange for a border with no I/O, no await and no second writer.
 - We accept one uncached `ent` summary per compaction (about $1.28 at the threshold), in exchange for summaries that keep sealed content and a border that never judges.
-- We accept that a sealed summary leaves `ultra` without its history until the next compaction, with a pin suggestion, in exchange for no latch.
+- We accept that a sealed summary reaches only `ent`, on the first request routed after the compaction, and that `ultra` lacks that history until the next compaction, with a pin suggestion, in exchange for no latch. After a threshold compaction one send goes to `ultra` with the summary stubbed, because pi keeps the route it chose before compacting.
 - We accept a verdict keyed by content alone, so one tool result's verdict is reused after a different tool call, in exchange for one key function and a cache that catches repeated reads.
 - We accept a judge round trip before each request that brings a tool result, a user message or an `ent` reply. Personal replies skip it.
 - We accept that sessions that keep touching real patient records bounce between lanes and pay a cold `ent` write per bounce. `/phi pin` is the answer for them.

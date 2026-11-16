@@ -25,6 +25,7 @@ const verdict = (run: Run, providers: ReadonlyArray<string>) =>
 		const personal = [...mocks["ultra-a"].bodies(), ...mocks["ultra-b"].bodies()];
 		const ent = mocks.ent.bodies();
 		const summaries = Arr.filter(ent, Str.includes(compactionPrompt)).length;
+		const entTurns = Arr.filter(ent, (body) => !Str.includes(compactionPrompt)(body));
 
 		yield* run.say({ personal: personal.length, ent: ent.length, summaries, providers });
 		yield* run.check(
@@ -36,6 +37,10 @@ const verdict = (run: Run, providers: ReadonlyArray<string>) =>
 		yield* run.check(
 			Arr.some(personal, Str.includes(stubs.sealed)),
 			"the send after the compaction went to a personal mock with the summary withheld",
+		);
+		yield* run.check(
+			Arr.some(entTurns, Str.includes(summaryCanary)),
+			"the next request carried the sealed summary to ent",
 		);
 	});
 
@@ -50,6 +55,7 @@ scenario({
 			yield* fs.writeFileString(`${run.home}/.pi/agent/phi-router.json`, '{"mode":"enforce"}\n');
 			yield* run.root.prompt("Look at the parser.");
 			yield* run.root.prompt(`Here is the fixture:\n${paste}`);
+			yield* run.root.prompt("Go on.");
 
 			const providers = yield* run.waitFor("the root's answers", "10 seconds", ({ root }) =>
 				Option.some(providersOf(root.entries)),

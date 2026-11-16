@@ -1,17 +1,14 @@
 import { expect, test } from "bun:test";
 
 import { type Message } from "@earendil-works/pi-ai";
-import { type CompactionEntry, convertToLlm, SessionManager } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 
 import { guard, type Lookup } from "./border.ts";
-import { compactionHead } from "./dispatch.ts";
-import { Judge } from "./policy/engine.ts";
 import { stubs } from "./policy/policy.ts";
-import { accountFor, decide, homeOf } from "./route.ts";
+import { accountFor, homeOf } from "./route.ts";
 import {
 	asked,
 	branchOf,
@@ -23,7 +20,6 @@ import {
 	ranCat,
 	rateLimitedOn,
 	run,
-	scriptedJudge,
 	ssnRecord,
 	syntheticChart,
 	system,
@@ -255,40 +251,5 @@ test("verdicts survive a restart: the folded book routes as before, with no judg
 			expect([before, after]).toEqual([home, home]);
 			expect(world.judged.length).toBe(calls);
 			expect(viewOf(next, branch.book().lookup)[3]).toEqual({ ...catOutput(stubs.sealed) });
-		}),
-	));
-
-const compacted = () => {
-	const session = SessionManager.inMemory("/work");
-
-	session.appendMessage(system);
-	session.appendMessage(asked(question));
-	session.appendCompaction(`Debugged the import of: ${syntheticChart}`, session.appendMessage(done("ultra-a")), 1000);
-
-	const entry = Arr.findFirst(session.getEntries(), (found): found is CompactionEntry => found.type === "compaction");
-
-	return { session, entry };
-};
-
-test("the compaction judge keys the summary as the next request carries it", () =>
-	run(
-		Effect.gen(function* () {
-			const world = yield* worldOf({ name: "compaction" });
-			const book = (yield* branchOf({ world })).book();
-			const { session, entry } = compacted();
-			const compaction = yield* Effect.fromOption(entry);
-
-			const judged = yield* decide({
-				messages: compactionHead(compaction),
-				reason: "continuation",
-				book,
-				hold: Option.none(),
-			}).pipe(Effect.provideService(Judge, scriptedJudge(world)));
-
-			const next = convertToLlm(session.buildSessionProjection().messages);
-			const { report } = Result.getOrThrow(guard({ messages: next, lookup: book.lookup }));
-
-			expect(judged.why).toBe("sealed");
-			expect(report.stubbedSealed).toBe(1);
 		}),
 	));

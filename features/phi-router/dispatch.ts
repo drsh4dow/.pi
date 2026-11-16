@@ -1,12 +1,10 @@
 import type { Message } from "@earendil-works/pi-ai";
 import {
 	type CompactionEntry,
-	convertToLlm,
 	type ExtensionContext,
 	type ModelRoute,
 	type ModelRouteRequest,
 	type SessionEntry,
-	sessionEntryToContextMessages,
 } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
@@ -26,6 +24,7 @@ import { type Judge, Verdict } from "./policy/engine.ts";
 import { Synthetic } from "./policy/synthetic.ts";
 import {
 	accountFor,
+	compactionHead,
 	decide,
 	type Decision,
 	holdOf,
@@ -34,6 +33,7 @@ import {
 	pinnedOn,
 	RouterState,
 	stampedAfter,
+	undeliveredSummary,
 } from "./route.ts";
 import { defaultModel, readSettings, type Settings } from "./settings.ts";
 import type { VerdictBook, VerdictsEntry } from "./store.ts";
@@ -88,7 +88,9 @@ const decideIn = Effect.fn("decideIn")(function* ({
 	const settings = yield* readSettings(cwd);
 	const hold = holdOf({ mode: settings.mode, pinned: pinnedOn(branch) });
 
-	const decision = yield* decide({ messages, reason, book, hold }).pipe(
+	const undelivered = undeliveredSummary(branch);
+
+	const decision = yield* decide({ messages, reason, book, hold, undelivered }).pipe(
 		Effect.provideService(Fixtures, settings.fixtures),
 		Effect.provideService(Synthetic, settings.synthetic),
 	);
@@ -253,8 +255,6 @@ export const routeWith =
 			route({ request, ctx, session }).pipe(failClosed(request, ctx), Effect.provide(services)),
 		);
 	};
-
-export const compactionHead = (entry: CompactionEntry) => convertToLlm(sessionEntryToContextMessages(entry));
 
 /**
  * Judges a new compaction's head before pi sends again. pi awaits this handler before the send that follows a
