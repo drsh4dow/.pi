@@ -1,81 +1,74 @@
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Str from "effect/String";
 
-import { digitsOf, isSsn } from "./checks.ts";
-import { labelledRules } from "./labelled.ts";
-import type { Rule } from "./rule.ts";
+import type { IdentifierKind } from "./policy.ts";
 
-const groupOf = (match: RegExpMatchArray, name: string) => match.groups?.[name] ?? "";
+/** One HL7 v2 field: anything up to the next `|` or segment end, a literal `\r` or `\n` in serialized text included. */
+const hl7Field = String.raw`(?:[^|\r\n\\]|\\(?![rn]))*`;
 
-const hasValue = (field: string | undefined) => field !== undefined && /[a-z\d]/iu.test(field);
+/** An HL7 v2 field holding a letter or digit, not only component separators such as `^^`. */
+const hl7Filled = String.raw`[^|\r\n\\\p{L}\p{N}]*[\p{L}\p{N}]`;
 
-/** PID-3 (identifiers), PID-5 (name) or PID-7 (birth date) holds a value. */
-const pidHasValues = (match: RegExpMatchArray) => {
-	const [segment] = Str.split(/\\[rn]/u)(groupOf(match, "fields"));
-	const fields = Str.split("|")(segment);
+/** A FHIR identifier `system` naming an SSN, MBI or member-number system. */
+const memberSystem = String.raw`"system"\s*:\s*"[^"]*(?:ssn|mbi|medicare|member)[^"]*"`;
 
-	return hasValue(fields[2]) || hasValue(fields[4]) || hasValue(fields[6]);
-};
+const filledValue = String.raw`"value"\s*:\s*"[^"\s]`;
 
-const recordRules: ReadonlyArray<Rule> = [
-	{
-		id: "hl7-pid",
-		category: "mrn",
-		pattern: /MSH\|\^~\\&\|[\s\S]{0,4000}?(?:[^A-Za-z\d]|\\[rn])PID\|(?<fields>[^\r\n]*)/gu,
-		holds: pidHasValues,
-	},
-	{
-		id: "x12-claim",
-		category: "health-plan",
-		pattern: /ISA\*[\s\S]{0,4000}?(?:ST\*837\*|NM1\*(?:IL|QC)\*[12]\*[A-Za-z])/gu,
-		holds: () => true,
-	},
-	{
-		id: "fhir-patient",
-		category: "name",
-		pattern:
-			/"resourceType"\s*:\s*"Patient"[\s\S]{0,3000}?(?:"birthDate"\s*:\s*"\d{4}-\d\d-\d\d"|"family"\s*:\s*"[A-Za-z]|"given"\s*:\s*\[\s*"[A-Za-z]|"identifier"\s*:\s*\[[^\]]{0,500}?"value"\s*:\s*"[^"\s]{3,}")/gu,
-		holds: () => true,
-	},
-];
-
-const holdsSomewhere = (rule: Omit<Rule, "id" | "category">, text: string) => {
-	for (const match of Str.matchAll(rule.pattern)(text)) {
-		if (rule.holds(match, text)) {
-			return true;
-		}
-	}
-
-	return false;
-};
-
-const rules: ReadonlyArray<Rule> = [
+/**
+ * Rules for unambiguous direct identifiers only. A hit seals; rules never clear. Each rule is its pattern alone, so
+ * `policyVersion`, which hashes every pattern, changes whenever a rule does.
+ */
+export const rules = [
 	{
 		id: "ssn",
-		category: "ssn",
-		pattern: /(?<![\w-])\d{3}-\d{2}-\d{4}(?![\w-])/gu,
-		holds: ([ssn]) => isSsn(digitsOf(ssn)),
+		kind: "ssn",
+		// The SSA never issues area 000, 666 or 9xx, group 00 or serial 0000.
+		pattern: /(?<![\w-])(?!000|666|9\d\d)\d{3}-(?!00)\d\d-(?!0000)\d{4}(?![\w-])/u,
 	},
 	{
 		id: "mbi",
-		category: "health-plan",
+		kind: "medicare-medicaid-number",
 		pattern:
-			/(?<![\w-])[1-9][AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y\d]\d-?[AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y\d]\d-?[AC-HJKMNP-RT-Y]{2}\d\d(?![\w-])/gu,
-		holds: () => true,
+			/(?<![\w-])[1-9][AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y\d]\d-?[AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y\d]\d-?[AC-HJKMNP-RT-Y]{2}\d\d(?![\w-])/u,
 	},
-	...recordRules,
-];
+	{
+		id: "hl7-pid",
+		kind: "patient-name",
+		// A PID segment whose PID-5 (name) or PID-7 (birth date) is filled. PID-3 alone is often an internal handle.
+		pattern: new RegExp(
+			String.raw`MSH\|\^~\\&\|[\s\S]{0,4000}?(?:[^\p{L}\p{N}]|\\[rn])PID\|(?:${hl7Field}\|){4}(?:${hl7Filled}|${hl7Field}\|${hl7Field}\|${hl7Filled})`,
+			"u",
+		),
+	},
+	{
+		id: "fhir-patient",
+		kind: "patient-name",
+		// Within one Patient resource. A resource that only references `Patient/<id>` is not one.
+		pattern: new RegExp(
+			String.raw`"resourceType"\s*:\s*"Patient"(?:(?!"resourceType")[\s\S]){0,3000}?(?:"birthDate"\s*:\s*"\d{4}-\d\d-\d\d"|"family"\s*:\s*"\p{L}|"given"\s*:\s*\[\s*"\p{L}|${memberSystem}[^{}]*?${filledValue}|${filledValue}[^"]*"[^{}]*?${memberSystem})`,
+			"u",
+		),
+	},
+	{
+		id: "x12-member",
+		kind: "member-number",
+		// NM1 subscriber or patient with a filled last name (NM103) or member id (NM109), inside an ISA envelope.
+		pattern: /ISA\*[\s\S]{0,4000}?NM1\*(?:IL|QC)\*[12]\*(?:\p{L}|(?:[^*~\r\n]*\*){6}[\p{L}\p{N}])/u,
+	},
+] as const satisfies ReadonlyArray<{ readonly id: string; readonly kind: IdentifierKind; readonly pattern: RegExp }>;
 
-/**
- * The first rule that finds PHI in a transcript's rendered turns. The labelled rules read each turn on its own, so a
- * value cut off where a turn ends still counts.
- */
-export const firstHit = (turns: ReadonlyArray<string>) => {
-	const transcript = Arr.join(turns, "\n");
+export type RuleId = (typeof rules)[number]["id"];
 
-	return Option.orElse(
-		Arr.findFirst(rules, (rule) => holdsSomewhere(rule, transcript)),
-		() => Arr.findFirst(labelledRules, (rule) => Arr.some(turns, (turn) => holdsSomewhere(rule, turn))),
+export const ruleIds: ReadonlyArray<RuleId> = Arr.map(rules, ({ id }) => id);
+
+export interface RuleHit {
+	readonly rule: RuleId;
+	readonly kind: IdentifierKind;
+}
+
+/** The first rule that fires on `text`: a piece's text with its decoded readings, after synthetic blanking. */
+export const firstHit = (text: string): Option.Option<RuleHit> =>
+	Option.map(
+		Arr.findFirst(rules, ({ pattern }) => pattern.test(text)),
+		({ id, kind }) => ({ rule: id, kind }),
 	);
-};

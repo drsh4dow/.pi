@@ -6,6 +6,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import type { SyntheticIdentities } from "./policy/policy.ts";
+
 export const defaultModel = "claude-opus-5-5";
 
 const Sha256Hex = Schema.String.check(Schema.isPattern(/^[\da-f]{64}$/u));
@@ -17,6 +19,11 @@ const SettingsFile = Schema.Struct({
 	baaRepos: Schema.Array(Schema.String).pipe(Schema.optionalKey),
 	/** Lowercase hex SHA-256 digests of turn parts the scan skips: fixtures the user vouches hold no PHI. */
 	fixtures: Schema.Array(Sha256Hex).pipe(Schema.optionalKey),
+	/** Test identities added to the policy's list: exact values, and prefixes of tokens such as a staging client code. */
+	synthetic: Schema.Struct({
+		exact: Schema.Array(Schema.NonEmptyString),
+		prefixes: Schema.Array(Schema.NonEmptyString),
+	}).pipe(Schema.optionalKey),
 });
 
 const decodeSettingsFile = Schema.decodeUnknownOption(Schema.fromJsonString(SettingsFile));
@@ -31,9 +38,12 @@ interface Settings {
 	readonly mode: Mode;
 	readonly model: string;
 	readonly fixtures: ReadonlySet<string>;
+	readonly synthetic: SyntheticIdentities;
 }
 
-const defaults: Settings = { mode: "shadow", model: defaultModel, fixtures: new Set() };
+const noSynthetic: SyntheticIdentities = { exact: [], prefixes: [] };
+
+const defaults: Settings = { mode: "shadow", model: defaultModel, fixtures: new Set(), synthetic: noSynthetic };
 
 const isUnder = (cwd: string) => (repo: string) => {
 	const root = Str.replace(/\/+$/u, "")(repo);
@@ -52,9 +62,14 @@ const settingsOf = ({ text, cwd }: { readonly text: Option.Option<string>; reado
 		return { ...defaults, mode: "bad-settings" };
 	}
 
-	const { mode = "shadow", model = defaultModel, baaRepos = [], fixtures = [] } = file.value;
+	const { mode = "shadow", model = defaultModel, baaRepos = [], fixtures = [], synthetic = noSynthetic } = file.value;
 
-	return { mode: Arr.some(baaRepos, isUnder(cwd)) ? "baa-repo" : mode, model, fixtures: new Set(fixtures) };
+	return {
+		mode: Arr.some(baaRepos, isUnder(cwd)) ? "baa-repo" : mode,
+		model,
+		fixtures: new Set(fixtures),
+		synthetic,
+	};
 };
 
 /** Read on every request, so a change applies to the next one without a restart. A file that cannot be read fails closed. */

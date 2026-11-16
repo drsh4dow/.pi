@@ -57,7 +57,7 @@ test("a tool result with PHI sends the request to ent", () =>
 test("the same tool result stays personal when phi-router.json registers its digest as a fixture", () =>
 	run(
 		Effect.gen(function* () {
-			const digest = yield* sha256(syntheticChart);
+			const digest = sha256(syntheticChart);
 			const settings = Option.some(`{ "mode": "enforce", "fixtures": ["${digest}"] }`);
 			const branch = branchOf({ world: yield* worldOf({ name: "fixture", settings }) });
 			const home = yield* branch.send("user", opening);

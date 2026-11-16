@@ -21,9 +21,12 @@ const RecordingLine = Schema.fromJsonString(Recording);
 const prompt = Schema.encodeUnknownEffect(Schema.fromJsonString(Schema.Unknown))(questions).pipe(Effect.orDie);
 
 const digestOf = (input: JudgeInput) =>
-	Effect.flatMap(prompt, (questionsJson) =>
-		sha256(`${questionsJson.length}\n${questionsJson}${input.seen.length}\n${input.seen}${input.fresh}`),
-	).pipe(Effect.map(Str.slice(0, 32)));
+	Effect.map(prompt, (questionsJson) =>
+		Str.slice(
+			0,
+			32,
+		)(sha256(`${questionsJson.length}\n${questionsJson}${input.seen.length}\n${input.seen}${input.fresh}`)),
+	);
 
 /**
  * A judge that answers only from `contents`, a recordings file. An input it has no answer for fails the call and

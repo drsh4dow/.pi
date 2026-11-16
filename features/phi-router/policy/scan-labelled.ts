@@ -3,9 +3,9 @@ import * as Order from "effect/Order";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
-import { hasDigit, namesSomeone } from "./checks.ts";
 import type { SafeHarbor } from "./index.ts";
-import { labelled, nameValue, street, type Rule } from "./rule.ts";
+import { hasDigit, namesSomeone } from "./scan-checks.ts";
+import { labelled, nameValue, street, type Rule } from "./scan-rule.ts";
 
 const month = String.raw`(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?`;
 

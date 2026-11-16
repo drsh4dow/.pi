@@ -9,7 +9,7 @@ import * as Schema from "effect/Schema";
 
 import { digestsOf, withoutFixtures } from "./digest.ts";
 import { expand } from "./expand.ts";
-import { firstHit } from "./rules.ts";
+import { firstHit } from "./scan-rules.ts";
 
 export type Role = "system" | "user" | "assistant" | "tool";
 
@@ -190,14 +190,14 @@ const vouchedBy = (cursor: Cursor, now: { readonly system: string; readonly chai
 	return { turns: chainHolds ? cursor.turns : 0, system: cleared && cursor.system === now.system };
 };
 
-const split = Effect.fn("split")(function* (rendered: ReadonlyArray<Rendered>, cursor: Cursor) {
+const split = (rendered: ReadonlyArray<Rendered>, cursor: Cursor) => {
 	const system = Arr.filter(rendered, ({ turn }) => isSystem(turn));
 	const conversation = Arr.filter(rendered, ({ turn }) => !isSystem(turn));
 
-	const now = yield* digestsOf(
-		Arr.map(system, ({ turn }) => turn),
-		Arr.map(conversation, ({ turn }) => turn),
-	);
+	const now = digestsOf({
+		system: Arr.map(system, ({ turn }) => turn),
+		conversation: Arr.map(conversation, ({ turn }) => turn),
+	});
 
 	const vouched = vouchedBy(cursor, now);
 	const [seen, fresh] = Arr.splitAt(conversation, vouched.turns);
@@ -212,7 +212,7 @@ const split = Effect.fn("split")(function* (rendered: ReadonlyArray<Rendered>, c
 			chain: Digest.make(Arr.lastNonEmpty(now.chains)),
 		}),
 	};
-});
+};
 
 const judgeTaint = (category: Option.Option<SafeHarbor>) =>
 	Option.match(category, {
@@ -280,7 +280,7 @@ export const scan = Effect.fn("scan")(
 			return ScanResult.Tainted({ taint: rendered.failure, stats: none });
 		}
 
-		const { calls, cleared } = yield* split(rendered.success, cursor);
+		const { calls, cleared } = split(rendered.success, cursor);
 
 		return yield* certify(calls, cleared);
 	},

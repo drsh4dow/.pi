@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 
+import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
@@ -17,13 +18,12 @@ const tainting =
 	({ seen, fresh }: JudgeInput) =>
 		Effect.succeed({ pPhi: Str.includes(marker)(`${seen}${fresh}`) ? 0.9 : 0, category: Option.none() });
 
-const registering = (texts: ReadonlyArray<string>) =>
-	Effect.map(Effect.forEach(texts, sha256), (digests) => new Set(digests));
+const registering = (texts: ReadonlyArray<string>) => new Set(Arr.map(texts, sha256));
 
 test("a registered part is skipped by both the rules and the judge", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const fixtures = yield* registering([chart]);
+			const fixtures = registering([chart]);
 
 			const { result, asked } = yield* Effect.provideService(
 				scanWith({
@@ -42,7 +42,7 @@ test("a registered part is skipped by both the rules and the judge", () =>
 test("the same text with one character changed is judged", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const fixtures = yield* registering([note]);
+			const fixtures = registering([note]);
 
 			const { result } = yield* Effect.provideService(
 				scanWith({ transcript: [user(`${note}.`)], answer: tainting("Quintero") }),
