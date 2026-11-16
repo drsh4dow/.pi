@@ -1,7 +1,9 @@
 import { expect, test } from "bun:test";
 
 import * as Arr from "effect/Array";
+import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
 
 const isAlive = (pid: number) => {
@@ -13,6 +15,14 @@ const isAlive = (pid: number) => {
 		return false;
 	}
 };
+
+/** Waits until every pid is gone, for at most `bound`. */
+const goneWithin = (pids: ReadonlyArray<number>, bound: Duration.Input) =>
+	Effect.sync(() => Arr.some(pids, isAlive)).pipe(
+		Effect.repeat({ until: (alive) => !alive, schedule: Schedule.spaced("20 millis") }),
+		Effect.timeout(bound),
+		Effect.ignore,
+	);
 
 /** A run that prints the pids of a child in a session of its own and of an orphan, then exits 7 once its stdin ends. */
 const run = `["sh", "-c", "setsid sleep 600 & echo $!; sh -c 'sleep 600 & echo $!'; cat >/dev/null; exit 7"]`;
@@ -45,7 +55,7 @@ test("a driver killed outright takes every process of its run with it, and only 
 			const pids = yield* pidsOf(driver);
 
 			driver.kill("SIGKILL");
-			yield* Effect.sleep("2 seconds");
+			yield* goneWithin(pids, "2 seconds");
 
 			expect([Arr.map(pids, isAlive), isAlive(outsider.pid)]).toEqual([[false, false], true]);
 			outsider.kill();
@@ -62,7 +72,7 @@ test("Ctrl-C ends the run through its stdin and waits for it", () =>
 
 			const code = yield* Effect.promise(() => driver.exited);
 
-			yield* Effect.sleep("1 second");
+			yield* goneWithin(pids, "1 second");
 
 			expect([code, Arr.map(pids, isAlive)]).toEqual([130, [false, false]]);
 		}),
