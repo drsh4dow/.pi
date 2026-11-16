@@ -1,8 +1,9 @@
 /**
- * The strings whose presence in a request body shows that a corpus case's PHI reached it. A canary the case carries
- * whole is its own token. One it carries encoded is the encoded run around it, as pi sends it. One it splits across two
- * messages is the end of the first and the start of the second, each with some context so a short fragment cannot match
- * by chance. An image is its base64 data.
+ * What the corpus wire run looks for in request bodies to tell where a case's planted identifiers went. A complete
+ * canary is itself, or the base64 or hex run that carries it. A split canary is its parts, each with the text around it
+ * so a short part cannot match by chance. A fragment is itself. An image canary is a run of the image's base64 data.
+ * Each message that holds a complete canary also yields a distinctive 40-character piece clear of the canary, which no
+ * personal account may receive, so a router that redacts the identifier but sends the sealed message still fails.
  */
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -17,8 +18,19 @@ import * as Str from "effect/String";
 import { summaryOf } from "./corpus-wire.ts";
 import type { Case } from "./corpus/manifest.ts";
 
-export interface Tokens {
-	readonly tokens: ReadonlyArray<string>;
+/** A split canary and the tokens of its parts, in order. */
+export interface Split {
+	readonly canary: string;
+	readonly parts: ReadonlyArray<string>;
+}
+
+export interface Tracked {
+	/** Tokens that show a canary whole. */
+	readonly complete: ReadonlyArray<string>;
+	readonly splits: ReadonlyArray<Split>;
+	readonly fragments: ReadonlyArray<string>;
+	/** One distinctive piece of each message that holds a complete canary. */
+	readonly sealed: ReadonlyArray<string>;
 	/** Canaries no message carries in a form this module finds, so the run cannot vouch for them. */
 	readonly untracked: ReadonlyArray<string>;
 }
@@ -65,57 +77,24 @@ const encoded = (canary: string, texts: ReadonlyArray<string>) =>
 		Option.map(({ run }) => [run]),
 	);
 
-/** Where `head` ends a line of `text`, as the index just past it. */
-const lineEnd = (text: string, head: string) => {
-	if (Str.endsWith(head)(text)) {
-		return Option.some(text.length);
-	}
-
-	return Option.map(Str.indexOf(`${head}\n`)(text), (at) => at + head.length);
-};
-
-/** Where `rest` starts a line of `text`. */
-const lineStart = (text: string, rest: string) => {
-	if (Str.startsWith(rest)(text)) {
-		return Option.some(0);
-	}
-
-	return Option.map(Str.indexOf(`\n${rest}`)(text), (at) => at + 1);
-};
-
-/** The ways to cut a canary in two: as written, and without the whitespace at the cut, since compaction trims a summary. */
-const cutsOf = (canary: string) =>
-	Arr.flatMap(Arr.range(1, canary.length - 1), (cut) => {
-		const head = Str.slice(0, cut)(canary);
-		const rest = Str.slice(cut)(canary);
-		const trimmed = { head: Str.trimEnd(head), rest: Str.trimStart(rest) };
-
-		return Str.isEmpty(trimmed.head) || Str.isEmpty(trimmed.rest) ? [{ head, rest }] : [{ head, rest }, trimmed];
-	});
-
-/** The two messages a canary is split across: its head ends a line of one, and its rest starts a line of a later one. */
-const split = (canary: string, texts: ReadonlyArray<string>) =>
-	Arr.findFirst(cutsOf(canary), ({ head, rest }) => {
-		const first = Arr.findFirst(texts, (text, at) =>
-			Option.map(lineEnd(text, head), (end) => ({
-				at,
-				token: Str.slice(Math.max(0, end - head.length - context), end)(text),
-			})),
-		);
-
-		return Option.flatMap(first, ({ at, token }) => {
-			const second = Arr.findFirst(Arr.drop(texts, at + 1), (text) =>
-				Option.map(lineStart(text, rest), (start) => Str.slice(start, start + rest.length + context)(text)),
-			);
-
-			return Option.map(second, (next) => [token, next]);
-		});
-	});
-
-const tokensOfCanary = (canary: string, texts: ReadonlyArray<string>) =>
-	Effect.map(encoded(canary, texts), (found) =>
-		Option.firstSomeOf([whole(canary, texts), found, split(canary, texts)]),
+/** A part with up to `context` characters around it, from the first text that holds it. */
+const partToken = (part: string, texts: ReadonlyArray<string>) =>
+	Arr.findFirst(texts, (text) =>
+		Option.map(Str.indexOf(part)(text), (at) =>
+			Str.slice(Math.max(0, at - context), at + part.length + context)(text),
+		),
 	);
+
+/** The part tokens of a canary the case declares split, when every part is found. */
+const splitOf = (subject: Case, canary: string, texts: ReadonlyArray<string>): Option.Option<Split> => {
+	const declared = subject.expect === "phi" ? Option.fromUndefinedOr(subject.canaryParts?.[canary]) : Option.none();
+
+	return Option.flatMap(declared, (parts) => {
+		const tokens = Arr.getSomes(Arr.map(parts, (part) => partToken(part, texts)));
+
+		return Option.liftPredicate({ canary, parts: tokens }, () => tokens.length === parts.length);
+	});
+};
 
 /** The texts pi sends for the case's messages, with a compaction summary as the mock writes it back. */
 const sentTexts = ({ messages }: Case) =>
@@ -123,21 +102,68 @@ const sentTexts = ({ messages }: Case) =>
 		"text" in message ? [Option.getOrElse(summaryOf(message.text), () => message.text)] : [],
 	);
 
+const sealedWidth = 40;
+
+const windowsOf = (text: string) =>
+	Arr.map(Arr.range(0, Math.max(-1, text.length - sealedWidth)), (start) => ({
+		start,
+		window: Str.slice(start, start + sealedWidth)(text),
+	}));
+
+/**
+ * A 40-character window of `text` that no message without a complete canary holds. A window clear of every canary is
+ * preferred, so a message sent with its identifier redacted is still caught, and then one on a single line, since pi
+ * pages a long tool output at line breaks. A message that is all canary, such as one encoded run, falls back to a
+ * window inside it.
+ */
+const distinctive = (text: string, canaries: ReadonlyArray<string>, others: ReadonlyArray<string>) => {
+	const taken = Arr.flatMap(canaries, (canary) =>
+		Arr.map(
+			Arr.filter(Arr.range(0, text.length - canary.length), (at) => Str.startsWith(canary, at)(text)),
+			(at) => ({ from: at, to: at + canary.length }),
+		),
+	);
+
+	const unique = Arr.filter(windowsOf(text), ({ window }) => !Arr.some(others, Str.includes(window)));
+
+	const clear = Arr.filter(
+		unique,
+		({ start }) => !Arr.some(taken, ({ from, to }) => start < to && from < start + sealedWidth),
+	);
+
+	const oneLine = Arr.findFirst(clear, ({ window }) => !Str.includes("\n")(window));
+
+	return Option.map(Option.firstSomeOf([oneLine, Arr.head(clear), Arr.head(unique)]), ({ window }) => window);
+};
+
 export const tokensOf = Effect.fn("tokensOf")(function* (subject: Case) {
 	const texts = sentTexts(subject);
 	const images = Arr.flatMap(subject.messages, (message) => ("image" in message ? [message.image.data] : []));
+	const sent = [...texts, ...images];
 
 	const found = yield* Effect.forEach(subject.canaries, (canary) =>
-		Effect.map(tokensOfCanary(canary, texts), (tokens) => ({ canary, tokens })),
+		Effect.map(encoded(canary, texts), (run) => ({
+			canary,
+			complete: Option.orElse(whole(canary, sent), () => run),
+			split: splitOf(subject, canary, texts),
+		})),
 	);
 
+	const complete = Arr.flatMap(found, ({ complete: tokens }) => Option.getOrElse(tokens, () => []));
+	const holds = (text: string) => Arr.some(complete, (token) => Str.includes(token)(text));
+	const holding: ReadonlyArray<string> = Arr.filter(sent, holds);
+	const others = Arr.filter(sent, (text) => !holds(text));
+
 	return {
-		tokens: [...Arr.flatMap(found, ({ tokens }) => Option.getOrElse(tokens, () => [])), ...images],
+		complete,
+		splits: Arr.flatMap(found, ({ split: cut }) => Option.toArray(cut)),
+		fragments: subject.fragments,
+		sealed: Arr.flatMap(holding, (text) => Option.toArray(distinctive(text, complete, others))),
 		untracked: Arr.map(
-			Arr.filter(found, ({ tokens }) => Option.isNone(tokens)),
+			Arr.filter(found, ({ complete: tokens, split: cut }) => Option.isNone(tokens) && Option.isNone(cut)),
 			({ canary }) => canary,
 		),
-	} satisfies Tokens;
+	} satisfies Tracked;
 });
 
 const decodeJson = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Json));
@@ -163,4 +189,42 @@ export const foundIn = (input: { readonly bodies: ReadonlyArray<string>; readonl
 	const texts = Arr.flatMap(input.bodies, textsOf);
 
 	return Arr.filter(input.tokens, (token) => Arr.some(texts, Str.includes(token)));
+};
+
+/** Where a case's identifiers went, from the bodies each lane received over the whole run. */
+export interface Seen {
+	/** Complete canary tokens in a personal body, and split canaries whose every part reached one. */
+	readonly leaked: ReadonlyArray<string>;
+	/** Distinctive pieces of canary-holding messages in a personal body. */
+	readonly unsealed: ReadonlyArray<string>;
+	/** Fragments, and parts of a split canary that did not complete, in a personal body. Reported, never a leak. */
+	readonly fragments: ReadonlyArray<string>;
+	/** Tokens no `ent` body carried, and untracked canaries. */
+	readonly missing: ReadonlyArray<string>;
+}
+
+interface Bodies {
+	readonly tracked: Tracked;
+	/** Every body the personal mocks received over the run, and every body the `ent` mock received. */
+	readonly personal: ReadonlyArray<string>;
+	readonly ent: ReadonlyArray<string>;
+}
+
+export const seenOn = ({ tracked, personal, ent }: Bodies): Seen => {
+	const inPersonal = (tokens: ReadonlyArray<string>) => foundIn({ bodies: personal, tokens });
+
+	const rejoined = ({ canary, parts }: Split) =>
+		inPersonal([canary]).length > 0 || inPersonal(parts).length === parts.length;
+
+	const rejoinedSplits = Arr.filter(tracked.splits, rejoined);
+	const partialSplits = Arr.filter(tracked.splits, (split) => !rejoined(split));
+
+	const delivered = [...tracked.complete, ...Arr.flatMap(tracked.splits, ({ parts }) => parts), ...tracked.sealed];
+
+	return {
+		leaked: [...inPersonal(tracked.complete), ...Arr.map(rejoinedSplits, ({ canary }) => canary)],
+		unsealed: inPersonal(tracked.sealed),
+		fragments: inPersonal([...tracked.fragments, ...Arr.flatMap(partialSplits, ({ parts }) => parts)]),
+		missing: [...Arr.difference(delivered, foundIn({ bodies: ent, tokens: delivered })), ...tracked.untracked],
+	};
 };

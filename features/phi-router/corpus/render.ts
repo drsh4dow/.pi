@@ -106,7 +106,7 @@ const render = (report: Report) => {
 			overRoutingTable(report),
 			"",
 			`in-policy positive cases ${String(inPolicyCases(report))}: leaked ${String(report.leaks.length)}`,
-			`fragments: ${String(fragments.cases)} cases sent a split part to a personal account, ${String(fragments.allParts)} of them every part of one canary`,
+			`fragments: ${String(fragments.cases)} cases showed a personal account ${String(fragments.shown)} fragments or split parts, none a leak`,
 			`requests: personal ${String(lanes.personal)}, ent ${String(lanes.ent)}`,
 			`judge calls ${String(judge.calls)}, input tokens ${String(judge.inputTokens)}, cost ${dollars(judge.cost)}, pieces sealed by a judge failure ${String(judge.failures)}`,
 		],

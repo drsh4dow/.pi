@@ -2,9 +2,11 @@ import { expect, test } from "bun:test";
 
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import { Judge } from "../policy/engine.ts";
+import { stubs } from "../policy/policy.ts";
 import { evaluate, play } from "./evaluate.ts";
 import type { Case } from "./manifest.ts";
 import { missRateUpperBound } from "./report.ts";
@@ -17,6 +19,8 @@ test("the leak-rate bound is the exact one-sided Clopper-Pearson 95% upper limit
 });
 
 const usage = { calls: 1, inputTokens: 10, cost: 0.001, ms: 0 };
+
+const noSynthetic = { exact: [], prefixes: [] };
 
 /** Seals exactly the pieces that hold `SEAL`. */
 const judge = Judge.of({
@@ -66,10 +70,16 @@ test("a sealed tool result goes to ent, and play returns to personal without its
 		Effect.gen(function* () {
 			const { sent } = yield* play({ subject: sealed, window: 1 });
 
-			expect(Arr.map(sent, ({ lane, leaked }) => ({ lane, leaked }))).toEqual([
-				{ lane: "personal", leaked: [] },
-				{ lane: "ent", leaked: [] },
-				{ lane: "personal", leaked: [] },
+			const shown = Arr.map(sent, ({ lane, view }) => ({
+				lane,
+				canary: Option.exists(view, Str.includes("canary-sealed")),
+				stub: Option.exists(view, Str.includes(stubs.sealed)),
+			}));
+
+			expect(shown).toEqual([
+				{ lane: "personal", canary: false, stub: false },
+				{ lane: "ent", canary: false, stub: false },
+				{ lane: "personal", canary: false, stub: true },
 			]);
 		}),
 	));
@@ -79,7 +89,7 @@ test("a canary the judge clears is a leak at the request that first shows it, an
 		Effect.gen(function* () {
 			const report = yield* evaluate({
 				cases: [sealed, missed, clean],
-				synthetic: { exact: [], prefixes: [] },
+				synthetic: noSynthetic,
 				window: 1,
 			});
 
@@ -92,5 +102,72 @@ test("a canary the judge clears is a leak at the request that first shows it, an
 				onEnt: 0,
 			});
 			expect(report.lanes).toEqual({ personal: 7, ent: 1 });
+		}),
+	));
+
+/** A split canary whose two halves arrive in separate prompts, the second holding `second`. */
+const splitAcross = (id: string, second: string): Case => ({
+	id,
+	expect: "phi",
+	strata: { ...strata, transform: "split", entry: "user" },
+	canaries: [`canary-${id}-tail`],
+	canaryParts: { [`canary-${id}-tail`]: [`canary-${id}`, "-tail"] },
+	fragments: [],
+	messages: [
+		{ role: "user", text: `The id starts canary-${id}` },
+		{ role: "assistant", text: "Go on." },
+		{ role: "user", text: `${second} and it ends -tail` },
+	],
+});
+
+test("every part of a split canary on personal accounts is a leak, and one part alone is a fragment", () =>
+	run(
+		Effect.gen(function* () {
+			const report = yield* evaluate({
+				cases: [splitAcross("rejoined", "Then"), splitAcross("cut", "SEAL")],
+				synthetic: noSynthetic,
+				window: 1,
+			});
+
+			expect(Arr.map(report.leaks, ({ id, request }) => ({ id, request }))).toEqual([
+				{ id: "rejoined", request: 2 },
+			]);
+			expect(report.fragments).toEqual({ cases: 1, shown: 1 });
+		}),
+	));
+
+test("a planted fragment on a personal account is reported, never a leak", () =>
+	run(
+		Effect.gen(function* () {
+			const fragment: Case = { ...clean, strata: { negative: "fragment" }, fragments: ["512-83"] };
+			const withFragment: Case = { ...fragment, messages: [{ role: "user", text: "The SSN starts 512-83, why?" }] };
+			const report = yield* evaluate({ cases: [withFragment], synthetic: noSynthetic, window: 1 });
+
+			expect(report.leaks).toEqual([]);
+			expect(report.fragments).toEqual({ cases: 1, shown: 1 });
+		}),
+	));
+
+test("the corpus's exact test identities reach the engine, so a case holding only them stays personal", () =>
+	run(
+		Effect.gen(function* () {
+			const listed: Case = {
+				...clean,
+				strata: { negative: "synthetic-listed" },
+				messages: [{ role: "user", text: "Eligibility times out for member SEAL-QA-17." }],
+			};
+
+			const played = (synthetic: { exact: Array<string>; prefixes: Array<string> }) =>
+				Effect.map(evaluate({ cases: [listed], synthetic, window: 1 }), ({ lanes }) => lanes);
+
+			const exact = yield* played({ exact: ["SEAL-QA-17"], prefixes: [] });
+			const prefixed = yield* played({ exact: [], prefixes: ["SEAL-QA"] });
+			const unlisted = yield* played(noSynthetic);
+
+			expect([exact, prefixed, unlisted]).toEqual([
+				{ personal: 1, ent: 0 },
+				{ personal: 1, ent: 0 },
+				{ personal: 0, ent: 1 },
+			]);
 		}),
 	));

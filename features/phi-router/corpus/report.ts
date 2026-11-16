@@ -2,31 +2,24 @@
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 
+import { seenOn, type Tracked } from "../canary-tokens.ts";
 import type { Usage } from "../policy/engine.ts";
 import type { Lane } from "../route.ts";
 import { Carrier, type Case, Entry, Identifier, Negative, type PhiStrata, Transform } from "./manifest.ts";
 
-/** What shows one canary on the wire: `complete` strings hold all of it, `parts` the pieces of a split one. */
-export interface Tracked {
-	readonly canary: string;
-	readonly complete: ReadonlyArray<string>;
-	readonly parts: ReadonlyArray<string>;
-}
-
-/** One request's lane and, when it went to a personal account, which canaries and parts its guarded view showed. */
+/** One request's lane and, when it went to a personal account, the guarded body that account received. */
 export interface Sent {
 	readonly lane: Lane;
 	readonly usage: Usage;
 	/** Pieces this request sealed because the judge failed on them. */
 	readonly failures: number;
-	readonly leaked: ReadonlyArray<string>;
-	readonly parts: ReadonlyArray<string>;
+	readonly view: Option.Option<string>;
 }
 
 export interface Played {
 	readonly case: Case;
 	readonly sent: ReadonlyArray<Sent>;
-	readonly tracked: ReadonlyArray<Tracked>;
+	readonly tracked: Tracked;
 }
 
 const alpha = 0.05;
@@ -93,8 +86,8 @@ export interface Report {
 		readonly requests: number;
 		readonly onEnt: number;
 	}>;
-	/** Cases whose split parts reached a personal account, and of them, cases where every part of a canary did. */
-	readonly fragments: { readonly cases: number; readonly allParts: number };
+	/** Cases that showed a personal account a planted fragment or part of a split canary, and how many such tokens. */
+	readonly fragments: { readonly cases: number; readonly shown: number };
 	readonly lanes: Readonly<Record<Lane, number>>;
 	readonly judge: Usage & { readonly failures: number };
 }
@@ -103,26 +96,21 @@ type PhiPlayed = Played & { readonly case: Extract<Case, { readonly expect: "phi
 
 const isPhi = (played: Played): played is PhiPlayed => played.case.expect === "phi";
 
-/**
- * The first request, counted from 1, after which personal accounts had seen a complete canary, or every part of a split
- * one, which the v2 manifest also counts as a leak.
- */
-const leakAt = ({ sent, tracked }: Played) => {
-	const shown = new Set<string>();
+/** What the personal accounts received of the case's identifiers over its first `upTo` requests. */
+const seenOf = ({ sent, tracked }: Played, upTo: number) => {
+	const personal = Arr.getSomes(Arr.map(Arr.take(sent, upTo), ({ view }) => view));
 
-	for (const [index, request] of sent.entries()) {
-		for (const part of request.parts) {
-			shown.add(part);
-		}
+	return seenOn({ tracked, personal, ent: [] });
+};
 
-		const whole = Arr.some(tracked, ({ parts }) => parts.length > 0 && Arr.every(parts, (part) => shown.has(part)));
+/** The first request, counted from 1, after which personal accounts had seen a complete canary or a whole split one. */
+const leakAt = (played: Played) => {
+	const leakedBy = (upTo: number) => seenOf(played, upTo).leaked.length > 0;
 
-		if (request.leaked.length > 0 || whole) {
-			return Option.some(index + 1);
-		}
-	}
-
-	return Option.none();
+	return Option.map(
+		Arr.findFirstIndex(played.sent, (_sent, index) => leakedBy(index + 1)),
+		(index) => index + 1,
+	);
 };
 
 const leaked = (played: Played) => Option.isSome(leakAt(played));
@@ -160,13 +148,6 @@ const overRoutingOf = (clean: ReadonlyArray<Played>): Report["overRouting"] =>
 		};
 	});
 
-/** Every part of one split canary reached personal accounts, across all the case's requests. */
-const allPartsShown = ({ sent, tracked }: Played) => {
-	const shown = new Set(Arr.flatMap(sent, ({ parts }) => parts));
-
-	return Arr.some(tracked, ({ parts }) => parts.length > 0 && Arr.every(parts, (part) => shown.has(part)));
-};
-
 const judgeOf = (sent: ReadonlyArray<Sent>): Report["judge"] =>
 	Arr.reduce(sent, { calls: 0, inputTokens: 0, cost: 0, ms: 0, failures: 0 }, (total, { usage, failures }) => ({
 		calls: total.calls + usage.calls,
@@ -179,6 +160,7 @@ const judgeOf = (sent: ReadonlyArray<Sent>): Report["judge"] =>
 export const reportOf = ({ played, window }: { readonly played: ReadonlyArray<Played>; readonly window: number }) => {
 	const phi = Arr.filter(played, isPhi);
 	const sent = Arr.flatMap(played, (each) => each.sent);
+	const fragments = Arr.map(played, (each) => seenOf(each, each.sent.length).fragments.length);
 
 	const leaks = Arr.flatMap(phi, (each) =>
 		Option.toArray(Option.map(leakAt(each), (request) => ({ id: each.case.id, strata: each.case.strata, request }))),
@@ -190,8 +172,8 @@ export const reportOf = ({ played, window }: { readonly played: ReadonlyArray<Pl
 		leaks,
 		overRouting: overRoutingOf(Arr.filter(played, (each) => each.case.expect === "clean")),
 		fragments: {
-			cases: Arr.filter(played, (each) => Arr.some(each.sent, ({ parts }) => parts.length > 0)).length,
-			allParts: Arr.filter(played, allPartsShown).length,
+			cases: Arr.filter(fragments, (shown) => shown > 0).length,
+			shown: Arr.reduce(fragments, 0, (total, shown) => total + shown),
 		},
 		lanes: {
 			personal: Arr.filter(sent, ({ lane }) => lane === "personal").length,

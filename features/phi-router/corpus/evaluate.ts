@@ -1,7 +1,6 @@
 /**
- * The engine eval: plays each corpus case through the router core as pi would send it, request by request, and checks
- * what a personal account would receive. A complete canary in that view is a leak, and so is every part of a split one
- * across the case's personal requests. A part alone is a fragment.
+ * The engine eval: plays each corpus case through the router core as pi would send it, request by request, and keeps
+ * what a personal account would receive. The wire run's tracker judges those views, so both count a leak alike.
  */
 import type { Message } from "@earendil-works/pi-ai";
 import * as Arr from "effect/Array";
@@ -11,54 +10,28 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 
 import { guard } from "../border.ts";
-import { foundIn, tokensOf } from "../canary-tokens.ts";
+import { tokensOf } from "../canary-tokens.ts";
 import { Finding, type Judge, Verdict } from "../policy/engine.ts";
 import { Synthetic } from "../policy/synthetic.ts";
 import { decide } from "../route.ts";
 import { memoryBook, type VerdictBook } from "../store.ts";
 import type { Case, Synthetic as SyntheticList } from "./manifest.ts";
 import { requestMessagesOf } from "./messages.ts";
-import { type Played, type Report, reportOf, type Sent, type Tracked } from "./report.ts";
-
-/** Image bytes are left out: the corpus images are harmless pixels, not identifiers. */
-const trackedOf = Effect.fn("trackedOf")(function* (subject: Case) {
-	if (subject.expect === "clean") {
-		return [];
-	}
-
-	const images = new Set(Arr.flatMap(subject.messages, (message) => ("image" in message ? [message.image.data] : [])));
-
-	return yield* Effect.forEach(subject.canaries, (canary) =>
-		Effect.map(tokensOf({ ...subject, canaries: [canary] }), ({ tokens }): Tracked => {
-			const shown = Arr.filter(tokens, (token) => !images.has(token));
-			const split = shown.length > 1;
-
-			return { canary, complete: split ? [canary] : Arr.dedupe([canary, ...shown]), parts: split ? shown : [] };
-		}),
-	);
-});
+import { type Played, type Report, reportOf, type Sent } from "./report.ts";
 
 const encodeView = Schema.encodeUnknownOption(Schema.fromJsonString(Schema.Unknown));
 
-/** The guarded messages as one JSON body, so a canary counts raw, JSON-escaped or decoded from a string. */
+/** The messages as one JSON body, as the tracker reads a request a mock received. */
 const bodyOf = (messages: ReadonlyArray<Message>) => Option.getOrElse(encodeView(messages), () => "");
 
 /** What a personal account receives of `messages`: nothing when the border refuses the request. */
-const shownOf = ({ messages, book, tracked }: Pick<Turn, "messages" | "book" | "tracked">) => {
-	const view = Result.match(guard({ messages, lookup: book.lookup }), {
-		onFailure: () => [],
-		onSuccess: (guarded) => guarded.messages,
-	});
-
-	const bodies = [bodyOf(view)];
-
-	return {
-		leaked: Arr.flatMap(tracked, ({ canary, complete }) =>
-			Arr.isReadonlyArrayNonEmpty(foundIn({ bodies, tokens: complete })) ? [canary] : [],
-		),
-		parts: Arr.flatMap(tracked, ({ parts }) => foundIn({ bodies, tokens: parts })),
-	};
-};
+const guardedBody = ({ messages, book }: Pick<Turn, "messages" | "book">) =>
+	bodyOf(
+		Result.match(guard({ messages, lookup: book.lookup }), {
+			onFailure: () => [],
+			onSuccess: (guarded) => guarded.messages,
+		}),
+	);
 
 const isFailure = Verdict.$match({
 	Cleared: () => false,
@@ -68,7 +41,6 @@ const isFailure = Verdict.$match({
 interface Turn {
 	readonly messages: ReadonlyArray<Message>;
 	readonly book: VerdictBook;
-	readonly tracked: ReadonlyArray<Tracked>;
 	readonly window: number;
 }
 
@@ -79,9 +51,9 @@ const sentOf = Effect.fn("sentOf")(function* (turn: Turn) {
 	const hold = Option.none();
 	const decision = yield* decide({ messages, reason, book, hold, producedOnPersonal: () => false, window });
 	const failures = Arr.filter(decision.found, ([, verdict]) => isFailure(verdict)).length;
-	const shown = decision.lane === "personal" ? shownOf(turn) : { leaked: [], parts: [] };
+	const view = decision.lane === "personal" ? Option.some(guardedBody(turn)) : Option.none();
 
-	return { lane: decision.lane, usage: decision.usage, failures, ...shown } satisfies Sent;
+	return { lane: decision.lane, usage: decision.usage, failures, view } satisfies Sent;
 });
 
 /**
@@ -95,10 +67,10 @@ export const play = Effect.fn("play")(function* ({
 	readonly subject: Case;
 	readonly window: number;
 }) {
-	const tracked = yield* trackedOf(subject);
+	const tracked = yield* tokensOf(subject);
 	const requests = yield* requestMessagesOf(subject);
 	const book = memoryBook();
-	const sent = yield* Effect.forEach(requests, (messages) => sentOf({ messages, book, tracked, window }));
+	const sent = yield* Effect.forEach(requests, (messages) => sentOf({ messages, book, window }));
 
 	return { case: subject, sent, tracked } satisfies Played;
 });
