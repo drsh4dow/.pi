@@ -5,6 +5,7 @@ Next-gen coding harness, built on pi + Herdr-Core. This folder is also pi's live
 ## Rules
 
 - Run `bun run check` before every commit. It must exit clean.
+- `bun run test` and `bun run check` run test files at the same time in separate workers. A test waits on a condition, never a fixed sleep, and shares no fixed path, port, or process with another file.
 - Before you change the harness itself (an extension, `SYSTEM.md`, a role file, or a principle), read pi's docs: `node_modules/@earendil-works/pi-coding-agent/README.md`, and its `docs/` and `examples/`.
 - Use bun as the package manager. `bun install` runs `effect-tsgo patch --oxlint`, which swaps the TypeScript, oxlint, and tsgolint binaries for Effect's builds.
 - Fix the code, never the gate. Don't disable or downgrade lint rules, and don't add `oxlint-disable` or `@ts-expect-error` to get green.
