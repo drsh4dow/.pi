@@ -4,6 +4,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Order from "effect/Order";
 import * as Str from "effect/String";
 
 const harness = Bun.fileURLToPath(new URL("../..", import.meta.url));
@@ -58,7 +59,7 @@ const hitsUnder = Effect.fn("hitsUnder")(function* (root: string) {
 		}),
 	);
 
-	const hits = yield* Effect.forEach(Arr.flatten(listed), (file) =>
+	const hits = yield* Effect.forEach(Arr.sort(Arr.flatten(listed), Order.String), (file) =>
 		Effect.map(fs.readFileString(`${root}${file}`), (text) => hitsIn(file, text)),
 	);
 
