@@ -19,7 +19,7 @@ import { judgeLimits, thresholds, type IdentifierKind } from "./policy.ts";
 import { firstHit, type RuleId } from "./rules.ts";
 import { blankerOf, Synthetic } from "./synthetic.ts";
 
-/** SHA-256 over one part's role and content. A retry, a resend and a repeated file read share a key (`pieces.ts`). */
+/** SHA-256 over one part's role and content. A retry, a resend and a repeated file read share a key (`parts.ts`). */
 export const ContentKey = Schema.String.pipe(Schema.brand("ContentKey"));
 
 export type ContentKey = typeof ContentKey.Type;

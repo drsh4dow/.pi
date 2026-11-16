@@ -5,7 +5,8 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { partsOf, piecesOf } from "./pieces.ts";
+import { partsOf } from "./parts.ts";
+import { piecesOf } from "./pieces.ts";
 
 const zero = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 

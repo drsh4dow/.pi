@@ -19,7 +19,7 @@ import * as Result from "effect/Result";
 import * as Str from "effect/String";
 
 import { guard, guardedApi, type Lookup, type Scope, type Seal } from "./border.ts";
-import { partsOf, type Slot } from "./pieces.ts";
+import { partsOf, type Slot } from "./parts.ts";
 import type { ContentKey } from "./policy/engine.ts";
 import { stubs } from "./policy/policy.ts";
 

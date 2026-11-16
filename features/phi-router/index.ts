@@ -30,7 +30,7 @@ import {
 	type Wanted,
 } from "./gate.ts";
 import { appendLane } from "./lanes.ts";
-import { partsOf } from "./pieces.ts";
+import { partsOf } from "./parts.ts";
 import { stubs } from "./policy/policy.ts";
 import { holdOf, pinEntryType, pinnedOn, type RouterState } from "./route.ts";
 import { keepProtected, keepProtectedOnStart } from "./selection.ts";

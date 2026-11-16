@@ -26,7 +26,7 @@ import * as Result from "effect/Result";
 
 import type { AccountId } from "../claude-accounts/index.ts";
 import { phiId, phiProvider } from "./gate.ts";
-import { partsOf, type Slot, writtenOnPersonal } from "./pieces.ts";
+import { partsOf, type Slot, writtenOnPersonal } from "./parts.ts";
 import type { ContentKey } from "./policy/engine.ts";
 import { stubs } from "./policy/policy.ts";
 
