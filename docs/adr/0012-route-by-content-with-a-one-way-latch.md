@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: superseded by 0013
 ---
 
 # Route each request by its content, and latch a branch to the BAA account for good
