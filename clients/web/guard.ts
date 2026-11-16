@@ -158,10 +158,24 @@ const noAnswer = (url: string) => WebError.make({ kind: "unreachable", message: 
 
 const tooLarge = (url: string) => WebError.make({ kind: "too-large", message: `${url} is over 25 MB` });
 
-const failure = (request: HttpClientRequest.HttpClientRequest, error: WebError) =>
-	new HttpClientError.HttpClientError({
-		reason: new HttpClientError.TransportError({ request, cause: error, description: error.message }),
+const isWebError = Schema.is(WebError);
+
+/** Only the 30 s timeout is a TransportError, the reason `HttpClient.retryTransient` retries, since a refusal would come back the same. `guarding` reshapes the TransportError Node's transport reports when `lookupWith` refuses a private address. */
+const failure = (
+	request: HttpClientRequest.HttpClientRequest,
+	error: WebError,
+	response?: HttpClientResponse.HttpClientResponse,
+) => {
+	const fields = { request, cause: error, description: error.message };
+
+	const refusal = Predicate.isUndefined(response)
+		? new HttpClientError.InvalidUrlError(fields)
+		: new HttpClientError.DecodeError({ ...fields, response });
+
+	return new HttpClientError.HttpClientError({
+		reason: error.kind === "unreachable" ? new HttpClientError.TransportError(fields) : refusal,
 	});
+};
 
 const bodyOf = (response: HttpClientResponse.HttpClientResponse) =>
 	Stream.runFoldEffect(
@@ -172,7 +186,7 @@ const bodyOf = (response: HttpClientResponse.HttpClientResponse) =>
 			body.chunks.push(chunk);
 
 			return body.size > caps.maxBytes
-				? Effect.fail(failure(response.request, tooLarge(response.request.url)))
+				? Effect.fail(failure(response.request, tooLarge(response.request.url), response))
 				: Effect.succeed(body);
 		},
 	).pipe(Effect.map(({ chunks }) => Buffer.concat(chunks)));
@@ -183,7 +197,7 @@ const bufferedUnderCap = (response: HttpClientResponse.HttpClientResponse) => {
 	if (status < 200 || status > 599) {
 		const odd = WebError.make({ kind: "bad-answer", message: `${request.url} answered HTTP ${String(status)}` });
 
-		return Effect.fail(failure(request, odd));
+		return Effect.fail(failure(request, odd, response));
 	}
 
 	return Effect.map(bodyOf(response), (bytes) =>
@@ -196,7 +210,11 @@ const guarding = (client: HttpClient.HttpClient) =>
 		Option.match(problemOf(request.url), {
 			onSome: (why) => Effect.fail(failure(request, WebError.make({ kind: "blocked", message: why }))),
 			onNone: () =>
-				Effect.flatMap(response, bufferedUnderCap).pipe(
+				response.pipe(
+					Effect.mapError((error) =>
+						isWebError(error.reason.cause) ? failure(request, error.reason.cause) : error,
+					),
+					Effect.flatMap(bufferedUnderCap),
 					Effect.timeoutOrElse({
 						duration: caps.timeout,
 						orElse: () => Effect.fail(failure(request, noAnswer(request.url))),
@@ -254,8 +272,6 @@ const ok = (page: Fetched): Effect.Effect<Fetched, WebError> => {
 		WebError.make({ kind, message: `${page.finalUrl} answered HTTP ${String(page.status)}${check}` }),
 	);
 };
-
-const isWebError = Schema.is(WebError);
 
 const failWith = ({ reason, message }: HttpClientError.HttpClientError) =>
 	Effect.fail(isWebError(reason.cause) ? reason.cause : WebError.make({ kind: "unreachable", message }));

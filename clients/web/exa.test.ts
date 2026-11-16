@@ -4,37 +4,72 @@ import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
-import * as Schema from "effect/Schema";
+import * as Str from "effect/String";
 import * as TestClock from "effect/testing/TestClock";
 
-import { PublicUrl, Web } from "./index.ts";
 import { exaContents } from "./sites.ts";
-import { webFor } from "./web.fixture.ts";
+import { inTurn, plain, prose, type Reply } from "./transport.fixture.ts";
+import { readOutcome, readRows, webFor } from "./web.fixture.ts";
 
-const endless = webFor({
-	withExaKey: true,
-	routes: {
-		"GET https://docs.example/broken": () => new Response("", { status: 500 }),
-		"POST https://api.exa.ai/contents": () => new Response(new ReadableStream()),
-	},
+const broken = () => new Response("", { status: 500 });
+
+const exaCopy = () =>
+	Response.json({ results: [{ url: "https://docs.example/broken", title: "Exa", text: prose("Exa") }] });
+
+const brokenWithExa = (contents: Reply) =>
+	Layer.provideMerge(
+		webFor({
+			withExaKey: true,
+			routes: { "GET https://docs.example/broken": broken, "POST https://api.exa.ai/contents": contents },
+		}),
+		TestClock.layer(),
+	);
+
+const endless = brokenWithExa(() => new Response(new ReadableStream()));
+
+const busyOnce = brokenWithExa(inTurn([() => new Response("", { status: 503 }), exaCopy]));
+
+const readAfterTenMinutes = Effect.gen(function* () {
+	const reading = yield* Effect.forkChild(readOutcome("https://docs.example/broken"));
+
+	yield* TestClock.adjust("10 minutes");
+
+	return yield* Fiber.join(reading);
 });
-
-const endlessOnTestClock = Layer.provideMerge(endless, TestClock.layer());
 
 test("an Exa answer whose body never ends gives up after 30 s", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const target = yield* Schema.decodeEffect(PublicUrl)("https://docs.example/broken");
-			const web = yield* Web;
-			const reading = yield* web.read(target).pipe(Effect.flip, Effect.forkChild);
+			const got = yield* readAfterTenMinutes;
 
-			yield* TestClock.adjust("10 minutes");
-
-			const got = yield* Fiber.join(reading);
-
-			expect(got.message).toContain("https://api.exa.ai/contents: no answer in 30 s");
-		}).pipe(Effect.provide(endlessOnTestClock)),
+			expect(got).toContain("https://api.exa.ai/contents: no answer in 30 s");
+		}).pipe(Effect.provide(endless)),
 	));
+
+test("Exa is asked again after it answers 503", () =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const got = yield* readAfterTenMinutes;
+
+			expect(got).toContain("via exa");
+		}).pipe(Effect.provide(busyOnce)),
+	));
+
+const huge = plain(Str.repeat(26 * 1024 * 1024)("x"));
+
+readRows([
+	{
+		name: "an Exa answer over 25 MB is refused, and Exa is not asked again",
+		url: "https://docs.example/broken",
+		withExaKey: true,
+		routes: {
+			"GET https://docs.example/broken": broken,
+			"POST https://api.exa.ai/contents": inTurn([huge, exaCopy]),
+		},
+		expect: ["https://api.exa.ai/contents is over 25 MB"],
+		absent: ["via exa"],
+	},
+]);
 
 const exaClaimRows = [
 	["https://bun.sh/docs?q=bun", true],

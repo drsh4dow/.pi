@@ -261,16 +261,6 @@ const rows: ReadonlyArray<ReadRow> = [
 		absent: ["test-key", "via exa"],
 	},
 	{
-		name: "an Exa answer over 25 MB is refused",
-		url: "https://docs.example/broken",
-		withExaKey: true,
-		routes: {
-			"GET https://docs.example/broken": () => new Response("", { status: 500 }),
-			"POST https://api.exa.ai/contents": plain(Str.repeat(26 * 1024 * 1024)("x")),
-		},
-		expect: ["https://api.exa.ai/contents is over 25 MB"],
-	},
-	{
 		name: "a signed URL is never sent to Exa",
 		url: "https://bucket.example/report.pdf?X-Amz-Signature=abc&X-Amz-Expires=60",
 		withExaKey: true,
