@@ -30,6 +30,8 @@ import { keepProtected, keepProtectedOnStart } from "./selection.ts";
 import { phiId, phiProvider, storedOnBranch, transcriptOf } from "./session.ts";
 import { defaultModel, readSettings } from "./settings.ts";
 
+export { phiBorder } from "./border.ts";
+
 export type { Wanted } from "./gate.ts";
 
 export type Request = ModelRouteRequest<typeof RouterState.Encoded>;

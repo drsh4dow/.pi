@@ -1,4 +1,4 @@
-import type { Model } from "@earendil-works/pi-ai";
+import type { Model, ProviderStreams } from "@earendil-works/pi-ai";
 import { anthropicMessagesApi } from "@earendil-works/pi-ai/compat";
 import { createProvider, hasApi, type Provider } from "@earendil-works/pi-ai/models";
 import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
@@ -140,9 +140,18 @@ const authOf = (login: Login, { oauth }: Anthropic) => {
 
 /**
  * Anthropic's catalog and API under the account's id. Pi stores and reads the account's credential under that id, and
- * each model names it as its provider, so a session shows which account answered.
+ * each model names it as its provider, so a session shows which account answered. `wrap` goes around the api here, in
+ * the provider itself, so no later registration can drop it.
  */
-export const accountProvider = ({ anthropic, account }: { anthropic: Anthropic; account: Account }): Provider =>
+export const accountProvider = ({
+	anthropic,
+	account,
+	wrap,
+}: {
+	anthropic: Anthropic;
+	account: Account;
+	wrap: (api: ProviderStreams) => ProviderStreams;
+}): Provider =>
 	createProvider({
 		id: account.id,
 		name: account.name,
@@ -151,7 +160,8 @@ export const accountProvider = ({ anthropic, account }: { anthropic: Anthropic; 
 			...model,
 			provider: account.id,
 			// Pi turns message threads on by itself only for the provider named `anthropic`. Every account talks to the same endpoint.
-			compat: { ...model.compat, supportsMessageThreads: true },
+			// The BAA org answers a thread with HTTP 400.
+			compat: { ...model.compat, supportsMessageThreads: !account.baa },
 		})),
-		api: anthropicMessagesApi(),
+		api: wrap(anthropicMessagesApi()),
 	});

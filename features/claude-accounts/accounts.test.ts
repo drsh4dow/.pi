@@ -6,6 +6,7 @@ import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Function from "effect/Function";
+import * as Predicate from "effect/Predicate";
 import * as Rec from "effect/Record";
 
 import { type Account, accountProvider, accounts, anthropicOf } from "./accounts.ts";
@@ -58,7 +59,7 @@ const modelsWith = (credentials: Readonly<Record<string, Credential>>) => {
 	});
 
 	for (const account of accounts) {
-		models.setProvider(accountProvider({ anthropic, account }));
+		models.setProvider(accountProvider({ anthropic, account, wrap: Function.identity }));
 	}
 
 	return models;
@@ -96,6 +97,22 @@ for (const account of accounts) {
 			}),
 		));
 }
+
+/** The distinct `supportsMessageThreads` settings across an account's models. */
+const threadsOn = (id: string) =>
+	Arr.dedupe(
+		Arr.flatMap(modelsWith({}).getModels(id), (model) =>
+			Predicate.hasProperty(model.compat, "supportsMessageThreads") ? [model.compat.supportsMessageThreads] : [],
+		),
+	);
+
+test("only the personal accounts use Anthropic message threads, which the BAA org rejects", () => {
+	expect(Arr.map(accounts, ({ id }) => [id, threadsOn(id)])).toEqual([
+		["ultra-a", [true]],
+		["ultra-b", [true]],
+		["ent", [false]],
+	]);
+});
 
 test("an OAuth account sends its own access token, and no other account sees it", () =>
 	Effect.runPromise(
@@ -143,7 +160,7 @@ test("ultra-b refuses an API key at login and stores nothing", () =>
 
 test("the OAuth accounts log in through Anthropic's flow, and ultra-b only by pasting a token", () => {
 	const logins = Arr.map(accounts, (account) => {
-		const { auth } = accountProvider({ anthropic, account });
+		const { auth } = accountProvider({ anthropic, account, wrap: Function.identity });
 
 		return { id: account.id, oauth: auth.oauth?.name, apiKey: auth.apiKey?.name };
 	});

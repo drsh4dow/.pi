@@ -15,6 +15,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import type { Lookup, Seal } from "./border.ts";
 import { ContentKey, Finding, type Piece, Verdict } from "./policy/engine.ts";
 import { PolicyVersion, policyVersion } from "./policy/policy.ts";
 
@@ -32,11 +33,9 @@ export const VerdictsEntry = Schema.Struct({ policy: PolicyVersion, verdicts: Sc
 
 export type VerdictsEntry = typeof VerdictsEntry.Type;
 
-export type Seal = "cleared" | "sealed";
-
 export interface VerdictBook {
-	/** What the border reads. Synchronous, no I/O. `undefined` means never judged. */
-	readonly lookup: (key: ContentKey) => Seal | undefined;
+	/** What the border reads. Synchronous, no I/O. */
+	readonly lookup: Lookup;
 	/** What `verdictsFor` reads. */
 	readonly known: (key: ContentKey) => boolean;
 	/**

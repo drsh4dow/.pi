@@ -27,7 +27,7 @@ The engine eval, the wire run's border test and the savings replay call the same
 ```ts
 const decision = yield * decide({ messages, reason, book, hold }).pipe(Effect.provide(judge));
 // { lane: "personal" | "ent", why, found: [[key, verdict]], usage, wouldStub }
-const view = guard(messages, book.lookup); // exactly what a personal account receives
+const view = guard({ messages, lookup: book.lookup }); // exactly what a personal account receives
 ```
 
 ## Shape
@@ -86,7 +86,7 @@ A request seals exactly the pieces that got `Sealed`. Its other new pieces clear
 
 ### The guarded lanes
 
-`border.ts` holds a pure `guard(messages, lookup)` and `guardedApi`. claude-accounts wraps `ultra-a` and `ultra-b` with it in `accountProvider`, the module that registers them, so no later registration can drop it.
+`border.ts` holds a pure `guard({ messages, lookup })` and `guardedApi`. claude-accounts wraps `ultra-a` and `ultra-b` with it in `accountProvider`, the module that registers them, so no later registration can drop it. Its entrypoint passes `phiBorder(pi).wrap` to `claudeAccounts`, because a feature imports another only through its `index.ts` and phi-router already imports claude-accounts.
 
 | Part                           | Cleared                                                    | Sealed or unknown                                                   |
 | ------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------- |
