@@ -23,6 +23,7 @@ const LineFinding = Schema.Union([
 	Schema.Struct({ rule: Why }),
 	Schema.Struct({ kind: Why, score: Schema.Finite }),
 	Schema.Struct({ failure: Why }),
+	Schema.Struct({ quote: Schema.Literal("sealed-line") }),
 ]);
 
 /** Where each distinct part of the request got its verdict. `cache` is the book's; the rest are this request's. */
@@ -78,7 +79,7 @@ const clearedSources = {
 	empty: "empty",
 } as const satisfies Record<ClearedBy, keyof Sources>;
 
-const sealedSources = { Rule: "rule", Judge: "judge", Failure: "failure" } as const satisfies Record<
+const sealedSources = { Rule: "rule", Judge: "judge", Failure: "failure", Quote: "rule" } as const satisfies Record<
 	Finding["_tag"],
 	keyof Sources
 >;
@@ -92,6 +93,7 @@ const findingOf = Finding.$match({
 	Rule: ({ rule }) => ({ rule }),
 	Judge: ({ kind, score }) => ({ kind, score }),
 	Failure: ({ why }) => ({ failure: why }),
+	Quote: () => ({ quote: "sealed-line" as const }),
 });
 
 /** The parts of a route line that come from the decision. */

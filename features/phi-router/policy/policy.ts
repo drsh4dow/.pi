@@ -121,6 +121,9 @@ export const kindQuestion = {
  */
 export const thresholds = { clearBelow: 0.2, sealAtOrAbove: 0.5 } as const;
 
+/** The shortest line, trimmed, that counts as an \`ent\` reply repeating sealed content. */
+export const quoteMinChars = 16;
+
 /** How many preceding rendered items the judge sees beside a piece. For a tool result the first is its own call. */
 export const window = 1;
 
@@ -153,6 +156,7 @@ const everything = jsonOf({
 	identifierQuestion,
 	kindQuestion,
 	thresholds,
+	quoteMinChars,
 	window,
 	judgeLimits,
 	judgeModel,

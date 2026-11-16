@@ -12,7 +12,8 @@ import * as Schema from "effect/Schema";
 
 import { type AccountId, fallbackChain } from "../claude-accounts/index.ts";
 import { piecesOf } from "./pieces.ts";
-import { type ContentKey, type Usage, Verdict, verdictsFor } from "./policy/engine.ts";
+import { type ContentKey, Finding, type Piece, type Usage, Verdict, verdictsFor } from "./policy/engine.ts";
+import { quotingReplies } from "./policy/quotes.ts";
 import type { Mode } from "./settings.ts";
 import type { VerdictBook, VerdictsEntry } from "./store.ts";
 
@@ -98,6 +99,30 @@ const unjudged = ({
 	why,
 });
 
+/** A new `ent` reply that repeats a line of sealed content seals, whatever the judge said of it alone. */
+const withQuotes = ({
+	judged,
+	found,
+	book,
+}: {
+	readonly judged: ReadonlyArray<Piece>;
+	readonly found: Judged["found"];
+	readonly book: VerdictBook;
+}): Judged["found"] => {
+	const sealedNow = new Set(Arr.flatMap(found, ([key, verdict]) => (isSealed(verdict) ? [key] : [])));
+	const isSealedKey = (key: ContentKey) => sealedNow.has(key) || book.lookup(key) === "sealed";
+	const quoting = quotingReplies({ pieces: judged, isSealed: isSealedKey });
+
+	return Arr.map(found, ([key, verdict]) => {
+		const source = quoting.get(key);
+
+		return [
+			key,
+			source === undefined ? verdict : Verdict.Sealed({ finding: Finding.Quote({ of: source }) }),
+		] as const;
+	});
+};
+
 /**
  * The lane of one request. A hold and a `direct` request go to `ent` with nothing judged: a `direct` request carries the
  * whole transcript serialized into one message. Otherwise every part the book does not know is judged and recorded in
@@ -112,7 +137,12 @@ export const decide = Effect.fn("decide")(function* (request: DecideRequest) {
 	}
 
 	const judged = Arr.map(pieces, ({ piece }) => piece);
-	const { found, usage } = yield* verdictsFor(judged, book.known);
+
+	const { found, usage } = yield* Effect.map(verdictsFor(judged, book.known), (verdicts) => ({
+		...verdicts,
+		found: withQuotes({ judged, found: verdicts.found, book }),
+	}));
+
 	const entry = yield* book.record({ found, pieces: judged });
 	const cached = distinctKeys(pieces) - found.length;
 

@@ -56,6 +56,7 @@ const whyOf = Verdict.$match({
 			Rule: ({ rule }) => rule,
 			Judge: ({ kind }) => kind,
 			Failure: ({ why }) => why,
+			Quote: () => "quote",
 		}),
 });
 

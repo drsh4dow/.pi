@@ -7,6 +7,7 @@ import * as Context from "effect/Context";
 import * as Data from "effect/Data";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Function from "effect/Function";
 import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
 import * as Result from "effect/Result";
@@ -53,6 +54,7 @@ export type Finding = Data.TaggedEnum<{
 	Rule: { readonly rule: RuleId; readonly kind: IdentifierKind };
 	Judge: { readonly score: number; readonly kind: IdentifierKind | "unlabelled" };
 	Failure: { readonly why: FailureWhy };
+	Quote: { readonly of: ContentKey };
 }>;
 
 export const Finding = Data.taggedEnum<Finding>();
@@ -256,8 +258,6 @@ const judgedPiece = Effect.fn("judgedPiece")(function* ({
 	return clearedByJudge;
 });
 
-const settled = (verdict: Verdict) => verdict;
-
 const verdictOf = (piece: Piece, spent: Ref.Ref<Usage>) =>
 	Effect.gen(function* () {
 		const added = yield* Synthetic;
@@ -276,7 +276,7 @@ const verdictOf = (piece: Piece, spent: Ref.Ref<Usage>) =>
 		}
 
 		return yield* judgedPiece({ kind: piece.kind, input: { piece: text, context, images: piece.images }, spent });
-	}).pipe(Effect.match({ onFailure: settled, onSuccess: settled }));
+	}).pipe(Effect.match({ onFailure: Function.identity, onSuccess: Function.identity }));
 
 /**
  * Verdicts for the pieces whose keys `known` does not hold, each key judged once. Never fails: a judge error, timeout,

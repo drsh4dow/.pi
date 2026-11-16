@@ -104,6 +104,35 @@ test("an ent reply right after sealed content is judged beside its stub, so the 
 		}),
 	));
 
+const row = "4471,U2546280,E11.9,metformin";
+
+/** An `ent` reply quoting a row of a sealed chart, then a personal reply and a new prompt. */
+const quotedSession = Effect.gen(function* () {
+	const world = yield* worldOf({ name: "quote" });
+	const home = homeOf(world.session);
+	const read = [...opening, ranCat(home), catOutput(`${syntheticChart}\n${row}`)];
+	const quoted: Message = { ...done("ent"), content: [{ type: "text", text: `The failing row:\n${row}` }] };
+	const asking = [...read, quoted, asked("Fix it.")];
+
+	return { world, home, read, quoted, asking, later: [...asking, done(home), asked("Now add a test.")] };
+});
+
+test("an ent reply that repeats a line of sealed content goes to ent, though the judge clears it alone", () =>
+	run(
+		Effect.gen(function* () {
+			const { world, home, read, quoted, asking, later } = yield* quotedSession;
+			const branch = yield* branchOf({ world });
+			const lanes = [yield* branch.send("continuation", read), yield* branch.send("user", asking)];
+			const back = yield* branch.send("user", later);
+
+			expect([...lanes, back]).toEqual(["ent", "ent", home]);
+			expect(viewOf(later, branch.book().lookup)[4]).toEqual({
+				...quoted,
+				content: [{ type: "text", text: stubs.sealed }],
+			});
+		}),
+	));
+
 test("a direct request goes to ent with nothing judged", () =>
 	run(
 		Effect.gen(function* () {
