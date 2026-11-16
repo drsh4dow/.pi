@@ -29,6 +29,6 @@ test("the recorded Decisions answers cover every judge call of the default corpu
 	expect(played.unrecorded).toBe(0);
 });
 
-test("no in-policy PHI in the default corpus reaches a personal account", () => {
+test("no complete identifier in the default corpus reaches a personal account in one message", () => {
 	expect(played.report.leaks).toEqual([]);
 });

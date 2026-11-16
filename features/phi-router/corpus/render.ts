@@ -41,21 +41,30 @@ const overRouted = ({ overRouting }: Report) => ({
 	onEnt: Arr.reduce(overRouting, 0, (total, row) => total + row.onEnt),
 });
 
-const leakTable = ({ leaks }: Report) =>
-	leaks.length === 0
-		? "Leaked cases: none"
-		: table({
-				header: ["leaked case", "identifier", "carrier", "transform", "entry", "request"],
-				labels: 5,
-				rows: Arr.map(leaks, ({ id, strata, request }) => [
-					id,
-					strata.identifier,
-					strata.carrier,
-					strata.transform,
-					strata.entry,
-					String(request),
-				]),
-			});
+const casesTable = (title: string, cases: Report["leaks"]) => {
+	if (cases.length === 0) {
+		return `${title}: none`;
+	}
+
+	const rows = Arr.map(cases, ({ id, strata, request }) => [
+		id,
+		strata.identifier,
+		strata.carrier,
+		strata.transform,
+		strata.entry,
+		String(request),
+	]);
+
+	return Arr.join(
+		[title, table({ header: ["case", "identifier", "carrier", "transform", "entry", "request"], labels: 5, rows })],
+		"\n",
+	);
+};
+
+const leakTable = ({ leaks }: Report) => casesTable("Leaked cases", leaks);
+
+const splitTable = ({ splits }: Report) =>
+	casesTable("Identifiers split across messages, an accepted risk, reported and not gated", splits);
 
 const strataTable = ({ strata }: Report) =>
 	table({
@@ -100,6 +109,8 @@ const render = (report: Report) => {
 			strataTable(report),
 			"",
 			leakTable(report),
+			"",
+			splitTable(report),
 			"",
 			"Over-routing: clean cases with any request on ent, and clean requests on ent",
 			overRoutingTable(report),

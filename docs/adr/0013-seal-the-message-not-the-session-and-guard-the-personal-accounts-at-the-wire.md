@@ -22,6 +22,7 @@ Dropping the latch puts a sealed message in the history of requests bound for `u
 ## Consequences
 
 - The border's guarantee covers dispatch errors, never judge errors. A judge that clears PHI leaks, and only the corpus leak gate measures that.
+- Each message is judged alone, so an identifier split across a message boundary, each half a fragment, can reach a personal account in two messages. The human accepted this risk on 2026-11-16: "i accept that risk of cut messages, that is enough defensible legal argument". The leak gate reports such splits and does not fail on them. A complete identifier in any one message still fails it.
 - A session that keeps reading real patient records bounces between lanes, and each bounce pays a cold `ent` cache write. `/phi pin` keeps such a session on `ent`.
 - Every compaction in a `phi/auto` session runs on `ent`.
 - An edit by a `context` hook, or `blockImages`, makes the edited message unknown to the border, so it is stubbed on `ultra`. The lane log counts these.

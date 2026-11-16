@@ -4,7 +4,7 @@ The architect synthesis for `phi/auto` v2. The plan the human agreed is `docs/pl
 
 ## Problem
 
-Each Claude request goes to a flat-rate personal subscription (`ultra-a` or `ultra-b`) unless its own new content holds a direct identifier of a real patient or member, as the plan's PHI table lists them. Such a request goes to the BAA account `ent`, and the message that holds the identifier is sealed. Later requests return to `ultra` with that message replaced by a stub. The release gate is zero complete direct identifiers on the wire to `ultra`.
+Each Claude request goes to a flat-rate personal subscription (`ultra-a` or `ultra-b`) unless its own new content holds a direct identifier of a real patient or member, as the plan's PHI table lists them. Such a request goes to the BAA account `ent`, and the message that holds the identifier is sealed. Later requests return to `ultra` with that message replaced by a stub. The release gate is zero complete direct identifiers in any one message on the wire to `ultra`. An identifier split across a message boundary, each part a fragment, is an accepted risk: reported, not gated. The human ruled so on 2026-11-16: "i accept that risk of cut messages, that is enough defensible legal argument".
 
 Five measured facts shape it.
 
@@ -159,8 +159,8 @@ claude-accounts gains a `wrap` on `accountProvider` and `supportsMessageThreads:
 
 ## How the evaluations call it
 
-- **Engine eval.** Per case and per request from `requestsOf`, call `decide` with a per-case book, then `guard`. A complete canary in the guarded view of a personal request is a leak. A fragment is reported. Play continues after a seal. It reports per-stratum misses and over-routing, and sweeps the window.
-- **Wire run.** Real pi against three mocks. Zero complete canaries in personal bodies, and positives deliver their canaries to `ent`. Clean cases must reach `ultra`, and sealed content must not appear in any later personal body.
+- **Engine eval.** Per case and per request from `requestsOf`, call `decide` with a per-case book, then `guard`. A complete canary in one message of the guarded view of a personal request is a leak. A canary whose parts reached personal requests only in different messages is a split, reported in its own section and never gated (`splitReachOf` in `canary-tokens.ts`). A fragment is reported. Play continues after a seal. It reports per-stratum misses and over-routing, and sweeps the window.
+- **Wire run.** Real pi against three mocks. Zero complete canaries in any one personal message, splits across messages reported apart, and positives deliver their canaries to `ent`. Clean cases must reach `ultra`, and sealed content must not appear in any later personal body.
 - **Border test.** A scenario whose route forces `ultra-a` on every request, with the real store and border. No sealed or never-judged content may reach a personal mock.
 - **Savings replay.** Per session and per recorded request, `decide` with the live judge and a per-session book. Lanes feed the switch-cost model, cold after any compaction or stub that changes a prefix. It reports gross, judge calls, tokens and cost, net with a session bootstrap, the share of requests and cost on `ent`, the top seal triggers, and compaction summaries on their own line.
 
@@ -208,6 +208,7 @@ Rejected:
 ## Known limits
 
 - The border proves dispatch safety. Judge accuracy is proved only by the leak gate.
+- An identifier cut across two messages, such as a birth date `YYYY-` in one and `MM-DD` in the next, can reach `ultra` in both halves when the cut falls outside the seam rule. The human accepted that risk, and the gate reports such cases without failing.
 - Bash, MCP servers and other tools can send content anywhere. The router governs model requests only.
 - Two personal plans may not absorb the moved usage. Overflow fails over to `ent`, at `ent` prices.
 - A personal reply that combines cleared fragments into a complete identifier is checked by the rules only.

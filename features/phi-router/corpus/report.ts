@@ -1,7 +1,7 @@
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 
-import { seenOn, type Tracked } from "../canary-tokens.ts";
+import { type Seen, seenOn, type Tracked } from "../canary-tokens.ts";
 import type { Usage } from "../policy/engine.ts";
 import type { Lane } from "../route.ts";
 import { Carrier, type Case, Entry, Identifier, Negative, type PhiStrata, Transform } from "./manifest.ts";
@@ -65,6 +65,13 @@ export const missRateUpperBound = (tally: Tally) => {
 	return high;
 };
 
+interface CaseAt {
+	readonly id: string;
+	readonly strata: PhiStrata;
+	/** The first request that showed it. */
+	readonly request: number;
+}
+
 export interface Report {
 	readonly window: number;
 	readonly strata: ReadonlyArray<{
@@ -74,8 +81,10 @@ export interface Report {
 		readonly leaks: number;
 		readonly leakRateUpper95: number;
 	}>;
-	/** Positive cases that showed a complete canary, or all parts of a split one, to personal accounts. */
-	readonly leaks: ReadonlyArray<{ readonly id: string; readonly strata: PhiStrata; readonly request: number }>;
+	/** Positive cases that showed a complete canary in one message to personal accounts. */
+	readonly leaks: ReadonlyArray<CaseAt>;
+	/** Positive cases that showed personal accounts every part of a split canary, only in different messages, and no leak. */
+	readonly splits: ReadonlyArray<CaseAt>;
 	readonly overRouting: ReadonlyArray<{
 		readonly negative: typeof Negative.Type;
 		readonly cases: number;
@@ -98,16 +107,17 @@ const seenOf = ({ sent, tracked }: Played, upTo: number) => {
 	return seenOn({ tracked, personal, ent: [] });
 };
 
-const leakAt = (played: Played) => {
-	const leakedBy = (upTo: number) => seenOf(played, upTo).leaked.length > 0;
-
-	return Option.map(
-		Arr.findFirstIndex(played.sent, (_sent, index) => leakedBy(index + 1)),
+const firstAt = (played: Played, shown: (seen: Seen) => boolean) =>
+	Option.map(
+		Arr.findFirstIndex(played.sent, (_sent, index) => shown(seenOf(played, index + 1))),
 		(index) => index + 1,
 	);
-};
+
+const leakAt = (played: Played) => firstAt(played, ({ leaked: canaries }) => canaries.length > 0);
 
 const leaked = (played: Played) => Option.isSome(leakAt(played));
+
+const splitAt = (played: Played) => (leaked(played) ? Option.none() : firstAt(played, ({ split }) => split.length > 0));
 
 const axes = [
 	["identifier", Identifier.literals],
@@ -156,14 +166,16 @@ export const reportOf = ({ played, window }: { readonly played: ReadonlyArray<Pl
 	const sent = Arr.flatMap(played, (each) => each.sent);
 	const fragments = Arr.map(played, (each) => seenOf(each, each.sent.length).fragments.length);
 
-	const leaks = Arr.flatMap(phi, (each) =>
-		Option.toArray(Option.map(leakAt(each), (request) => ({ id: each.case.id, strata: each.case.strata, request }))),
-	);
+	const casesAt = (at: (played: PhiPlayed) => Option.Option<number>) =>
+		Arr.flatMap(phi, (each) =>
+			Option.toArray(Option.map(at(each), (request) => ({ id: each.case.id, strata: each.case.strata, request }))),
+		);
 
 	return {
 		window,
 		strata: strataOf(phi),
-		leaks,
+		leaks: casesAt(leakAt),
+		splits: casesAt(splitAt),
 		overRouting: overRoutingOf(Arr.filter(played, (each) => each.case.expect === "clean")),
 		fragments: {
 			cases: Arr.filter(fragments, (shown) => shown > 0).length,

@@ -192,10 +192,15 @@ const shown = Str.slice(0, 48);
 
 const report = Effect.fn("report")(function* (run: Run, outcomes: ReadonlyArray<Outcome>) {
 	const fragments = Arr.filter(outcomes, ({ fragments: found }) => found.length > 0);
+	const splits = Arr.filter(outcomes, ({ split }) => split.length > 0);
 
 	yield* run.say(tableOf(outcomes));
 	yield* run.say(Arr.join(cleanReachOf(outcomes).lines, "\n"));
 	yield* Effect.forEach(fragments, ({ id, fragments: found }) => run.say({ id, fragments: Arr.map(found, shown) }));
+	yield* run.say(
+		`identifiers split across messages on a personal mock, an accepted risk, reported and not gated: ${String(splits.length)} cases`,
+	);
+	yield* Effect.forEach(splits, ({ id, split }) => run.say({ id, split }));
 	yield* Effect.forEach(Arr.filter(outcomes, failed), ({ id, leaked, unsealed: pieces, missing, broken }) =>
 		run.say({
 			id,

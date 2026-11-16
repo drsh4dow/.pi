@@ -5,7 +5,7 @@
  * `--corpus` it plays the default generated corpus. `--sweep` runs once per judge window and prints one row per size.
  *
  * It exits non-zero on an unrecorded call in recorded mode, on a manifest line that does not decode, and, for one
- * window, on any leak among positive cases. A `--corpus` manifest needs its `synthetic.json` beside it. `--record`, with `live` only, rewrites `recordings.jsonl` with the
+ * window, on any leak among positive cases. An identifier split across messages is reported apart and never fails it. A `--corpus` manifest needs its `synthetic.json` beside it. `--record`, with `live` only, rewrites `recordings.jsonl` with the
  * run's answers.
  */
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";

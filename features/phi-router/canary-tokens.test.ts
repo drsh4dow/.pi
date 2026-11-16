@@ -37,6 +37,7 @@ const outcome: Outcome = {
 	personal: 0,
 	ent: 0,
 	leaked: [],
+	split: [],
 	unsealed: [],
 	fragments: [],
 	missing: [],
@@ -57,7 +58,7 @@ const seen = Effect.fn("seen")(function* (
 const textsOf = (subject: Case) =>
 	Arr.flatMap(subject.messages, (message) => ("text" in message ? [message.text] : []));
 
-const nothing = { leaked: [], unsealed: [], fragments: [], missing: [] };
+const nothing = { leaked: [], split: [], unsealed: [], fragments: [], missing: [] };
 
 test("a complete canary in a personal body is a leak, and the message that held it is unsealed", () =>
 	Effect.runPromise(
@@ -108,27 +109,83 @@ test("a canary carried in base64 or gzip hex leaks as the encoded run", () =>
 		}),
 	));
 
-test("one part of a split canary on a personal body is a fragment, and every part is a leak", () =>
+const cut = { first: `${Str.repeat(60)("a")}MRN 4417-`, second: `2290${Str.repeat(60)("b")}` };
+
+const splitCase: Case = {
+	...phiCase("user", [
+		{ role: "user", text: cut.first },
+		{ role: "user", text: cut.second },
+	]),
+	canaryParts: { [mrn]: ["MRN 4417-", "2290"] },
+};
+
+const resultOf = (content: string) => ({ type: "tool_result", tool_use_id: "t", content });
+
+/** One request body that carries each text as its own message. */
+const bodyOf = (texts: ReadonlyArray<string>) =>
+	encodeJson({ messages: Arr.map(texts, (content) => ({ role: "user", content })) });
+
+test("a split canary whose parts reached personal accounts in different messages is reported and passes", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const first = `${Str.repeat(60)("a")}MRN 4417-`;
-			const second = `2290${Str.repeat(60)("b")}`;
+			const tracked = yield* tokensOf(splitCase);
+			const apart = [yield* bodyOf([cut.first]), yield* bodyOf([cut.second])];
+			const together = [yield* bodyOf([cut.first, cut.second])];
 
-			const subject: Case = {
-				...phiCase("user", [
-					{ role: "user", text: first },
-					{ role: "user", text: second },
-				]),
-				canaryParts: { [mrn]: ["MRN 4417-", "2290"] },
-			};
+			const twoRequests = seenOn({ tracked, personal: apart, ent: together });
+			const oneRequest = seenOn({ tracked, personal: together, ent: [] });
 
-			const one = yield* seen(subject, { personal: [first], ent: [first, second] });
-			const both = yield* seen(subject, { personal: [first, second], ent: [first, second] });
+			expect([twoRequests.leaked, twoRequests.split]).toEqual([[], [mrn]]);
+			expect([oneRequest.leaked, oneRequest.split, oneRequest.missing]).toEqual([[], [mrn], []]);
+			expect(failed({ ...outcome, ...oneRequest })).toBe(false);
+		}),
+	));
 
-			expect(one.leaked).toEqual([]);
-			expect(one.fragments.length).toBe(1);
-			expect(failed({ ...outcome, ...one })).toBe(false);
-			expect(both.leaked).toEqual([mrn]);
+test("one part of a split canary on a personal body is a fragment and passes", () =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const tracked = yield* tokensOf(splitCase);
+			const first = yield* bodyOf([cut.first]);
+			const second = yield* bodyOf([cut.second]);
+			const halfOnEnt = seenOn({ tracked, personal: [first], ent: [second] });
+
+			expect([halfOnEnt.leaked, halfOnEnt.split, halfOnEnt.fragments.length]).toEqual([[], [], 1]);
+			expect(failed({ ...outcome, ...halfOnEnt })).toBe(false);
+		}),
+	));
+
+test("a split canary that one personal message held whole, or with every part, is a leak and fails", () =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const tracked = yield* tokensOf(splitCase);
+			const ent = [yield* bodyOf([cut.first, cut.second])];
+
+			const rejoined = seenOn({ tracked, personal: [yield* bodyOf([`The id is ${mrn}.`])], ent });
+			const pasted = seenOn({ tracked, personal: [yield* bodyOf([`${cut.first}\n${cut.second}`])], ent });
+
+			expect([rejoined.leaked, rejoined.split]).toEqual([[mrn], []]);
+			expect([pasted.leaked, pasted.split]).toEqual([[mrn], []]);
+			expect(failed({ ...outcome, ...rejoined })).toBe(true);
+		}),
+	));
+
+test("each tool result of an Anthropic turn is its own message, and the system prompt is another", () =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const tracked = yield* tokensOf(splitCase);
+			const ent = [yield* bodyOf([cut.first, cut.second])];
+
+			const turnOf = (content: ReadonlyArray<ReturnType<typeof resultOf>>) => ({
+				messages: [{ role: "user", content }],
+			});
+
+			const results = yield* encodeJson(turnOf([resultOf(cut.first), resultOf(cut.second)]));
+			const inOneResult = yield* encodeJson(turnOf([resultOf(`${cut.first}${cut.second}`)]));
+			const fromSystem = yield* encodeJson({ system: cut.first, messages: [{ role: "user", content: cut.second }] });
+
+			expect(seenOn({ tracked, personal: [results], ent }).split).toEqual([mrn]);
+			expect(seenOn({ tracked, personal: [fromSystem], ent }).split).toEqual([mrn]);
+			expect(seenOn({ tracked, personal: [inOneResult], ent }).leaked).toEqual([mrn]);
 		}),
 	));
 

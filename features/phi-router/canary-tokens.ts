@@ -180,14 +180,89 @@ export const foundIn = (input: { readonly bodies: ReadonlyArray<string>; readonl
 	return Arr.filter(input.tokens, (token) => Arr.some(texts, Str.includes(token)));
 };
 
+const isJsonObject = (json: Schema.Json): json is Schema.JsonObject =>
+	Predicate.isObjectKeyword(json) && !isJsonArray(json);
+
+const isToolResult = (block: Schema.Json) => isJsonObject(block) && block["type"] === "tool_result";
+
+/** Pi sends each tool result as its own message, and the Anthropic body groups consecutive ones in one turn. */
+const turnMessages = (turn: Schema.Json): ReadonlyArray<Schema.Json> => {
+	const content = isJsonObject(turn) ? turn["content"] : undefined;
+
+	if (content === undefined || !isJsonArray(content) || !Arr.some(content, isToolResult)) {
+		return [turn];
+	}
+
+	return [...Arr.filter(content, isToolResult), Arr.filter(content, (block) => !isToolResult(block))];
+};
+
+const messagesOfJson = (json: Schema.Json): ReadonlyArray<ReadonlyArray<string>> => {
+	if (isJsonArray(json)) {
+		return Arr.map(json, stringsOf);
+	}
+
+	if (!isJsonObject(json)) {
+		return [stringsOf(json)];
+	}
+
+	const { messages: turns = [], ...rest } = json;
+	const messages = isJsonArray(turns) ? Arr.flatMap(turns, turnMessages) : [turns];
+
+	return [...Arr.map(messages, stringsOf), stringsOf(rest)];
+};
+
+/**
+ * The strings of each message in a request body: each tool result and each other turn of an Anthropic body, with the
+ * rest of the body (system prompt, tools) as one more, or each element of the engine eval's message array. A body that
+ * is no JSON is one message.
+ */
+const messagesOf = (body: string) => Option.match(decodeJson(body), { onNone: () => [[body]], onSome: messagesOfJson });
+
+const holds = (message: ReadonlyArray<string>) => (token: string) => Arr.some(message, Str.includes(token));
+
+/**
+ * How a split canary reached personal accounts, judged by the message that carried each part. The human ruled: "an
+ * identifier split across a message boundary is an accepted risk; reported, not gated". So a canary is `split`, the
+ * accepted risk, only when every part reached a personal account and no one message held them all or held the canary
+ * whole. A message that holds the canary whole, or holds every part, makes it `whole`, a leak that fails the gate
+ * whatever the case's label. Some parts alone are `partial`: fragments, never a leak.
+ */
+export type SplitReach = "whole" | "split" | "partial" | "none";
+
+export const splitReachOf = ({
+	split,
+	received,
+}: {
+	readonly split: Split;
+	/** The strings of each message personal accounts received. */
+	readonly received: ReadonlyArray<ReadonlyArray<string>>;
+}): SplitReach => {
+	const holdsWhole = (message: ReadonlyArray<string>) =>
+		holds(message)(split.canary) || Arr.every(split.parts, holds(message));
+
+	if (Arr.some(received, holdsWhole)) {
+		return "whole";
+	}
+
+	const reached = Arr.filter(split.parts, (part) => Arr.some(received, (message) => holds(message)(part)));
+
+	if (reached.length === split.parts.length) {
+		return "split";
+	}
+
+	return reached.length > 0 ? "partial" : "none";
+};
+
 export interface Seen {
-	/** Complete canary tokens in a personal body, and split canaries whose every part reached one. */
+	/** Complete canary tokens in a personal body, and split canaries one personal message held whole. */
 	readonly leaked: ReadonlyArray<string>;
+	/** Split canaries whose parts reached personal accounts only in different messages. Reported, never a leak. */
+	readonly split: ReadonlyArray<string>;
 	/** Distinctive pieces of canary-holding messages in a personal body. */
 	readonly unsealed: ReadonlyArray<string>;
-	/** Fragments, and parts of a split canary that did not complete, in a personal body. Reported, never a leak. */
+	/** Fragments, and parts of a split canary that did not all arrive, in a personal body. Reported, never a leak. */
 	readonly fragments: ReadonlyArray<string>;
-	/** Tokens no `ent` body carried, and untracked canaries. */
+	/** Tokens no `ent` body carried, but for split parts a personal body carried, being fragments; untracked canaries. */
 	readonly missing: ReadonlyArray<string>;
 }
 
@@ -199,19 +274,20 @@ interface Bodies {
 
 export const seenOn = ({ tracked, personal, ent }: Bodies): Seen => {
 	const inPersonal = (tokens: ReadonlyArray<string>) => foundIn({ bodies: personal, tokens });
+	const received = Arr.flatMap(personal, messagesOf);
+	const reaches = Arr.map(tracked.splits, (split) => ({ split, reach: splitReachOf({ split, received }) }));
+	const reaching = (reach: SplitReach) => Arr.filter(reaches, (each) => each.reach === reach);
+	const canaries = (reach: SplitReach) => Arr.map(reaching(reach), ({ split }) => split.canary);
 
-	const rejoined = ({ canary, parts }: Split) =>
-		inPersonal([canary]).length > 0 || inPersonal(parts).length === parts.length;
-
-	const rejoinedSplits = Arr.filter(tracked.splits, rejoined);
-	const partialSplits = Arr.filter(tracked.splits, (split) => !rejoined(split));
-
-	const delivered = [...tracked.complete, ...Arr.flatMap(tracked.splits, ({ parts }) => parts), ...tracked.sealed];
+	const parts = Arr.flatMap(tracked.splits, (split) => split.parts);
+	const delivered = [...tracked.complete, ...parts, ...tracked.sealed];
+	const reached = [...foundIn({ bodies: ent, tokens: delivered }), ...inPersonal(parts)];
 
 	return {
-		leaked: [...inPersonal(tracked.complete), ...Arr.map(rejoinedSplits, ({ canary }) => canary)],
+		leaked: Arr.dedupe([...inPersonal(tracked.complete), ...canaries("whole")]),
+		split: canaries("split"),
 		unsealed: inPersonal(tracked.sealed),
-		fragments: inPersonal([...tracked.fragments, ...Arr.flatMap(partialSplits, ({ parts }) => parts)]),
-		missing: [...Arr.difference(delivered, foundIn({ bodies: ent, tokens: delivered })), ...tracked.untracked],
+		fragments: inPersonal([...tracked.fragments, ...Arr.flatMap(reaching("partial"), ({ split }) => split.parts)]),
+		missing: [...Arr.difference(delivered, reached), ...tracked.untracked],
 	};
 };

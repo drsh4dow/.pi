@@ -117,19 +117,30 @@ const splitAcross = (id: string, second: string): Case => ({
 	],
 });
 
-test("every part of a split canary on personal accounts is a leak, and one part alone is a fragment", () =>
+test("a split canary whose parts reached personal accounts in two messages is reported apart and is no leak", () =>
 	run(
 		Effect.gen(function* () {
 			const report = yield* evaluate({
-				cases: [splitAcross("rejoined", "Then"), splitAcross("cut", "SEAL")],
+				cases: [splitAcross("apart", "Then"), splitAcross("cut", "SEAL")],
 				synthetic: noSynthetic,
 				window: 1,
 			});
 
-			expect(Arr.map(report.leaks, ({ id, request }) => ({ id, request }))).toEqual([
-				{ id: "rejoined", request: 2 },
-			]);
+			expect(report.leaks).toEqual([]);
+			expect(Arr.map(report.splits, ({ id, request }) => ({ id, request }))).toEqual([{ id: "apart", request: 2 }]);
 			expect(report.fragments).toEqual({ cases: 1, shown: 1 });
+		}),
+	));
+
+test("a split canary that one message shows whole is a leak, not a split", () =>
+	run(
+		Effect.gen(function* () {
+			const cut = splitAcross("joined", "Then");
+			const joined: Case = { ...cut, messages: [...cut.messages, { role: "user", text: "So canary-joined-tail." }] };
+			const report = yield* evaluate({ cases: [joined], synthetic: noSynthetic, window: 1 });
+
+			expect(Arr.map(report.leaks, ({ id }) => id)).toEqual(["joined"]);
+			expect(report.splits).toEqual([]);
 		}),
 	));
 
