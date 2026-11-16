@@ -207,15 +207,16 @@ const route = Effect.fn("route")(function* ({
 	const now = yield* Clock.currentTimeMillis;
 	const { wouldBe, dispatched, state } = accountOf({ request, ctx, settings, decision, now });
 
-	const asked = {
+	yield* appendLane({
 		type: "route",
 		time: now,
 		session: ctx.sessionManager.getSessionId(),
 		reason,
 		mode: settings.mode,
-	} as const;
-
-	yield* appendLane({ ...asked, wouldBe, dispatched, ...judgedOf(decision) });
+		wouldBe,
+		dispatched,
+		...judgedOf(decision),
+	});
 
 	const model = yield* Effect.fromNullishOr(ctx.modelRegistry.find(dispatched, settings.model));
 

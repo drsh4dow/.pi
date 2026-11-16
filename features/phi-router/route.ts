@@ -137,18 +137,14 @@ export const decide = Effect.fn("decide")(function* (request: DecideRequest) {
 	}
 
 	const judged = Arr.map(pieces, ({ piece }) => piece);
-
-	const { found, usage } = yield* Effect.map(verdictsFor(judged, book.known), (verdicts) => ({
-		...verdicts,
-		found: withQuotes({ judged, found: verdicts.found, book }),
-	}));
-
+	const verdicts = yield* verdictsFor(judged, book.known);
+	const found = withQuotes({ judged, found: verdicts.found, book });
 	const entry = yield* book.record({ found, pieces: judged });
 	const cached = distinctKeys(pieces) - found.length;
 
 	return {
 		found,
-		usage,
+		usage: verdicts.usage,
 		cached,
 		entry,
 		wouldStub: stubbedIn(pieces, book),
