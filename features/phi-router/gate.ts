@@ -1,18 +1,24 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
+import type { ExtensionContext, ToolCallEvent } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { accountOf, isBaaAccount } from "../claude-accounts/index.ts";
-import { phiId, phiProvider } from "./session.ts";
+
+export const phiProvider = "phi";
+
+export const phiId = "auto";
 
 type Selection = Pick<Model<Api>, "provider" | "id">;
 
-const isPhi = (model: Selection) => model.provider === phiProvider && model.id === phiId;
+export const isPhi = (model: Selection | undefined) =>
+	model !== undefined && model.provider === phiProvider && model.id === phiId;
 
 /** A session that may hold PHI: one that routes by content, or one already on a BAA account. */
 export const isProtected = (model: Selection | undefined) =>
-	model !== undefined && (isPhi(model) || isBaaAccount(model.provider));
+	isPhi(model) || (model !== undefined && isBaaAccount(model.provider));
 
 export type Wanted =
 	| { readonly kind: "alias"; readonly id: string }
@@ -27,7 +33,8 @@ export type Target =
 
 interface DelegateRequest {
 	readonly parent: Selection | undefined;
-	readonly mayHoldPhi: boolean;
+	/** The parent runs wholly on the BAA account: pinned, `force-baa`, `baa-repo`, bad settings, or `shadow`. */
+	readonly held: boolean;
 	readonly wanted: Wanted;
 	readonly dispatchModel: string;
 	readonly has: (key: ModelKey) => boolean;
@@ -35,13 +42,13 @@ interface DelegateRequest {
 
 const isPersonal = (provider: string) => Option.exists(accountOf(provider), ({ baa }) => !baa);
 
-const fromPhi = ({ mayHoldPhi, wanted, dispatchModel }: DelegateRequest): Target => {
+const fromPhi = ({ held, wanted, dispatchModel }: DelegateRequest): Target => {
 	if (wanted.kind === "key" && isBaaAccount(wanted.provider)) {
 		return { kind: "run", key: `${wanted.provider}/${wanted.id}` };
 	}
 
 	if (wanted.kind === "alias" || wanted.provider === phiProvider || isPersonal(wanted.provider)) {
-		return { kind: "run", key: mayHoldPhi ? `ent/${dispatchModel}` : `${phiProvider}/${phiId}` };
+		return { kind: "run", key: held ? `ent/${dispatchModel}` : `${phiProvider}/${phiId}` };
 	}
 
 	return {
@@ -69,7 +76,7 @@ const fromBaa = (account: string, { wanted, dispatchModel, has }: DelegateReques
 
 /**
  * Where a delegate of a protected session runs. From `phi/auto`, every alias and personal or `phi` model runs on
- * `phi/auto`, or on the BAA account once the parent may hold PHI. From a BAA account, the delegate stays on a BAA
+ * `phi/auto`, where its own requests are judged, or on the BAA account when the parent is held there. From a BAA account, the delegate stays on a BAA
  * account. Nothing else is allowed, since an alias's home provider is outside the boundary.
  */
 export const delegateTarget = (request: DelegateRequest): Target => {
@@ -108,3 +115,31 @@ export const unsafeReach = (code: string) =>
 	Option.fromNullishOr(modelReach.exec(unescaped(code))?.groups).pipe(
 		Option.map(({ name, dynamic }) => name ?? `${dynamic ?? "import"}(`),
 	);
+
+const CodemodeInput = Schema.Struct({ code: Schema.String });
+
+const decodeCodemodeInput = Schema.decodeUnknownOption(CodemodeInput);
+
+const reachOf = (input: ToolCallEvent["input"]) =>
+	Option.match(decodeCodemodeInput(input), {
+		onNone: () => Option.some("an input without code"),
+		onSome: ({ code }) => unsafeReach(code),
+	});
+
+/** Blocks a codemode script that can reach classifier or image models, whose calls bypass the router, in a protected session. */
+export const guardCodemode = ({
+	event,
+	ctx,
+}: {
+	readonly event: ToolCallEvent;
+	readonly ctx: Pick<ExtensionContext, "model">;
+}) => {
+	const reach = event.toolName === "codemode" && isProtected(ctx.model) ? reachOf(event.input) : Option.none();
+
+	const blocked = Option.map(reach, (name) => ({
+		block: true,
+		reason: `This session may hold PHI, and a codemode script that names \`${name}\` can send it to a model outside the PHI router. Call the tools directly instead.`,
+	}));
+
+	return Promise.resolve(Option.getOrUndefined(blocked));
+};

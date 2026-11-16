@@ -25,9 +25,9 @@ import * as Predicate from "effect/Predicate";
 import * as Result from "effect/Result";
 
 import type { AccountId } from "../claude-accounts/index.ts";
+import { phiId, phiProvider } from "./gate.ts";
 import { partsOf, type Slot, writtenOnPersonal } from "./pieces.ts";
 import type { ContentKey } from "./policy/engine.ts";
-import { phiId, phiProvider } from "./session.ts";
 
 export type Seal = "cleared" | "sealed";
 

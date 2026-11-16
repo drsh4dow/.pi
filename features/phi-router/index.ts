@@ -1,194 +1,190 @@
-import type { Api, Model } from "@earendil-works/pi-ai";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import {
+	buildSessionContext,
+	convertToLlm,
 	type ExtensionAPI,
 	type ExtensionContext,
-	getAgentDir,
-	SettingsManager,
-	type ModelRoute,
-	type ModelRouteRequest,
-	type ToolCallEvent,
+	type ExtensionVirtualModel,
+	type SessionEntry,
 } from "@earendil-works/pi-coding-agent";
-import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
-import * as ConfigProvider from "effect/ConfigProvider";
+import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import * as Result from "effect/Result";
-import * as Schema from "effect/Schema";
+import * as Str from "effect/String";
 
-import { type AccountId, accounts, isRateLimited } from "../claude-accounts/index.ts";
-import { type Classify, decisionsJudge, decisionsModel } from "./decisions.ts";
-import { delegateTarget, isProtected, type ModelKey, type Target, unsafeReach, type Wanted } from "./gate.ts";
+import type { AccountId } from "../claude-accounts/index.ts";
+import { type BorderLink, type BorderReport, borderEvents, stubs } from "./border.ts";
+import { compactionJudged, decisionsOf, type Env, routeWith, type RouterSession, servicesOf } from "./dispatch.ts";
+import {
+	delegateTarget,
+	guardCodemode,
+	isPhi,
+	isProtected,
+	type ModelKey,
+	phiId,
+	phiProvider,
+	type Target,
+	type Wanted,
+} from "./gate.ts";
 import { appendLane } from "./lanes.ts";
-import { Fixtures } from "./policy/digest.ts";
-import type { Judge } from "./policy/index.ts";
-import { decide, type RouteRequest, RouterState } from "./route.ts";
+import { partsOf } from "./pieces.ts";
+import { holdOf, pinEntryType, pinnedOn, type RouterState } from "./route.ts";
 import { keepProtected, keepProtectedOnStart } from "./selection.ts";
-import { phiId, phiProvider, storedOnBranch, transcriptOf } from "./session.ts";
 import { defaultModel, readSettings } from "./settings.ts";
+import { bookOf, type VerdictBook, verdictsEntryType } from "./store.ts";
 
 export { phiBorder } from "./border.ts";
 
+export { isPhi as isPhiAuto } from "./gate.ts";
+
 export type { Wanted } from "./gate.ts";
 
-export type Request = ModelRouteRequest<typeof RouterState.Encoded>;
+/** The instruction both lanes and the compaction summarizer get in a `phi/auto` session. */
+export const internalIdsOnly =
+	"Refer to patients and members only by internal ids, such as a patient_id or a row id, never by name, SSN, date of birth, address, phone, email, member number or record number.";
 
-export type Route = ModelRoute<typeof RouterState.Encoded>;
-
-type RouterContext = Pick<ExtensionContext, "cwd"> & {
-	/** Where pi compacts a request it sends to a model with `window`. */
-	readonly compaction: (window: number) => RouteRequest["compaction"];
-	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getSessionId" | "getLeafId" | "getBranch">;
-	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "find" | "hasConfiguredAuth">;
-};
-
-type Env = Readonly<Record<string, string | undefined>>;
-
-const decisionsOf = (ctx: ExtensionContext, signal: AbortSignal | undefined) => {
-	const classifier = Option.fromUndefinedOr(ctx.modelRegistry.findOfType("classifier", "openai", decisionsModel));
-
-	const classify: Classify = (context, options) =>
-		Option.match(classifier, {
-			onNone: () => Promise.reject(new Error(`no classifier openai/${decisionsModel}`)),
-			onSome: (model) =>
-				ctx.modelRegistry.classify(model, context, signal === undefined ? options : { ...options, signal }),
-		});
-
-	return decisionsJudge(classify);
-};
-
-const encodeState = Schema.encodeEffect(RouterState);
-
-/** Where pi's `_exceedsCompactionThreshold` (agent-session.js) compacts a request routed to a model with `window`. */
-const compactionOf = (ctx: ExtensionContext, window: number) => {
-	const settings = SettingsManager.create(ctx.cwd, getAgentDir()).getCompactionSettings(ctx.model);
-
-	return {
-		at: settings.enabled ? Option.some(window - settings.reserveTokens) : Option.none(),
-		known: ctx.getContextUsage()?.tokens ?? 0,
-	};
-};
-
-const personalAccounts = Arr.filterMap(accounts, ({ id, baa }) => (baa ? Result.failVoid : Result.succeed(id)));
-
-/** Pi checks its compaction threshold against the model a request is dispatched to, so take the smallest window. */
-const smallestWindow = (virtual: Model<Api>, modelOn: (account: AccountId) => Option.Option<Model<Api>>) => {
-	const dispatched = Arr.getSomes(Arr.map(personalAccounts, modelOn));
-
-	return Arr.reduce(dispatched, virtual.contextWindow, (smallest, model) => Math.min(smallest, model.contextWindow));
-};
-
-const route = Effect.fn("route")(function* (request: Request, ctx: RouterContext) {
-	const settings = yield* readSettings(ctx.cwd);
-	const transcript = yield* transcriptOf(request.messages);
-	const modelOn = (account: AccountId) => Option.fromUndefinedOr(ctx.modelRegistry.find(account, settings.model));
-
-	const decision = yield* decide({
-		session: ctx.sessionManager.getSessionId(),
-		leaf: ctx.sessionManager.getLeafId(),
-		reason: request.reason,
-		failed: Option.map(Option.fromUndefinedOr(request.failed), ({ model, message }) => ({
-			account: model.provider,
-			rateLimited: isRateLimited(message),
-		})),
-		stored: storedOnBranch(ctx.sessionManager.getBranch()),
-		transcript,
-		mode: settings.mode,
-		compaction: ctx.compaction(smallestWindow(request.model, modelOn)),
-		usable: (account) => Option.exists(modelOn(account), (model) => ctx.modelRegistry.hasConfiguredAuth(model)),
-	}).pipe(Effect.provideService(Fixtures, settings.fixtures));
-
-	yield* appendLane(decision.lane);
-
-	const model = yield* Effect.fromOption(modelOn(decision.dispatch));
-	const routed: Route = { model, thinkingLevel: request.thinkingLevel };
-
-	if (Option.isNone(decision.state)) {
-		return routed;
-	}
-
-	return { ...routed, state: yield* encodeState(decision.state.value) };
-});
-
-const failClosed = (request: Request, ctx: RouterContext) =>
-	Effect.catchCause((cause) => {
-		const ent = Effect.fromNullishOr(ctx.modelRegistry.find("ent", defaultModel));
-
-		const routed = Effect.map(ent, (model): Route => ({
-			model,
-			thinkingLevel: request.thinkingLevel,
-		}));
-
-		return Effect.andThen(Effect.logWarning("phi-router failed, so this request goes to ent", cause), routed);
-	});
-
-const CodemodeInput = Schema.Struct({ code: Schema.String });
-
-const decodeCodemodeInput = Schema.decodeUnknownOption(CodemodeInput);
-
-const reachOf = (input: ToolCallEvent["input"]) =>
-	Option.match(decodeCodemodeInput(input), {
-		onNone: () => Option.some("an input without code"),
-		onSome: ({ code }) => unsafeReach(code),
-	});
-
-/** Blocks a codemode script that can reach classifier or image models, whose calls bypass the router, in a protected session. */
-export const guardCodemode = ({
-	event,
-	ctx,
-}: {
-	readonly event: ToolCallEvent;
-	readonly ctx: Pick<ExtensionContext, "model">;
-}) => {
-	const reach = event.toolName === "codemode" && isProtected(ctx.model) ? reachOf(event.input) : Option.none();
-
-	const blocked = Option.map(reach, (name) => ({
-		block: true,
-		reason: `This session may hold PHI, and a codemode script that names \`${name}\` can send it to a model outside the PHI router. Call the tools directly instead.`,
-	}));
-
-	return Promise.resolve(Option.getOrUndefined(blocked));
-};
+/** The same section on both lanes, so neither account's cache breaks on a switch. */
+export const bridgeSection = {
+	name: "phi-bridge",
+	text: `${internalIdsOnly} A message shown as ${stubs.sealed} was handled on the HIPAA account.`,
+} as const;
 
 interface DelegateCaller {
-	readonly parent: Pick<Model<Api>, "provider" | "id"> | undefined;
+	readonly parent: Parameters<typeof isProtected>[0];
 	readonly cwd: string;
+	readonly branch: ReadonlyArray<SessionEntry>;
 	readonly wanted: Wanted;
 	readonly has: (key: ModelKey) => boolean;
 }
 
+/** Where owned-work starts a delegate. A `phi/auto` parent is held when it runs wholly on `ent`, `shadow` included. */
 export const delegateTargetOf = Effect.fn("delegateTargetOf")(function* (caller: DelegateCaller) {
 	if (!isProtected(caller.parent)) {
 		return { kind: "open" } satisfies Target;
 	}
 
 	const settings = yield* readSettings(caller.cwd);
-	const routes = settings.mode === "shadow" || settings.mode === "enforce";
+	const hold = holdOf({ mode: settings.mode, pinned: pinnedOn(caller.branch) });
+	const held = Option.isSome(hold) || settings.mode === "shadow";
 
-	return delegateTarget({ ...caller, mayHoldPhi: !routes, dispatchModel: settings.model });
+	return delegateTarget({ ...caller, held, dispatchModel: settings.model });
 });
 
-/** `phi/auto`'s `route()`, on the given judge. It never throws: pi turns a throw into an error response, not a fallback. */
-export const routeWith =
-	({ env, judge }: { readonly env: Env; readonly judge: Layer.Layer<Judge> }) =>
-	(request: Request, ctx: RouterContext) => {
-		const services = Layer.mergeAll(
-			NodeServices.layer,
-			ConfigProvider.layer(ConfigProvider.fromEnvRecord(env)),
-			judge,
+const statusLine = Effect.fn("statusLine")(function* ({
+	ctx,
+	book,
+}: {
+	readonly ctx: ExtensionContext;
+	readonly book: Option.Option<VerdictBook>;
+}) {
+	const settings = yield* readSettings(ctx.cwd);
+	const branch = ctx.sessionManager.getBranch();
+	const parts = Arr.flatMap(convertToLlm(buildSessionContext([...branch]).messages), partsOf);
+
+	const seals = Arr.map(parts, ({ key }) =>
+		Option.isSome(book) ? (book.value.lookup(key) ?? "unjudged") : "unjudged",
+	);
+
+	const count = (seal: (typeof seals)[number]) => String(Arr.filter(seals, (found) => found === seal).length);
+	const pin = pinnedOn(branch) ? "pinned to ent" : "not pinned";
+
+	return `phi: mode ${settings.mode}, ${pin}. This branch's context has ${count("sealed")} sealed parts, ${count("cleared")} cleared and ${count("unjudged")} not judged yet.`;
+});
+
+const pinNotices = {
+	pin: "Pinned: this session runs wholly on ent, with nothing judged. `/phi unpin` routes it again.",
+	unpin: "Unpinned: requests are routed again, and the next one judges what the pinned stretch added.",
+} as const;
+
+type Services = ReturnType<typeof servicesOf>;
+
+/**
+ * The verdict book of the session pi runs now, folded at `session_start`, and the border's link to it, emitted on load,
+ * on every fold and whenever claude-accounts says hello, so load order does not matter.
+ */
+const sessionBook = (pi: Pick<ExtensionAPI, "appendEntry" | "events">, services: Services) => {
+	let folded = Option.none<{ readonly id: string; readonly book: VerdictBook }>();
+
+	const borderLogged = (report: BorderReport & { readonly account: AccountId }) =>
+		Effect.forEach(Option.toArray(folded), ({ id }) =>
+			Effect.flatMap(Clock.currentTimeMillis, (time) =>
+				appendLane({ type: "border", time, session: id, ...report }),
+			),
 		);
 
-		return Effect.runPromise(route(request, ctx).pipe(failClosed(request, ctx), Effect.provide(services)));
+	const link: BorderLink = {
+		lookup: (key) => (Option.isSome(folded) ? folded.value.book.lookup(key) : undefined),
+		report: (report) => {
+			Effect.runFork(borderLogged(report).pipe(Effect.ignore({ log: "Warn" }), Effect.provide(services)));
+		},
 	};
 
-/** Registers `phi/auto`, which sends each request with no PHI to a personal account and the rest to `ent`, and the codemode guard. */
-export const phiRouter = (env: Env) => (pi: ExtensionAPI) => {
+	const fold = Effect.fn("fold")(function* (ctx: ExtensionContext) {
+		const book = yield* bookOf({ sessionManager: ctx.sessionManager, pid: process.pid }).pipe(
+			Effect.asSome,
+			Effect.catchCause((cause) =>
+				Effect.as(
+					Effect.logWarning("phi-router: no verdict book, so personal accounts receive only stubs", cause),
+					Option.none<VerdictBook>(),
+				),
+			),
+		);
+
+		folded = Option.map(book, (found) => ({ id: ctx.sessionManager.getSessionId(), book: found }));
+		pi.events.emit(borderEvents.link, link);
+	});
+
+	const session = (): RouterSession => ({
+		book: Option.map(folded, ({ book }) => book),
+		appendVerdicts: (entry) => {
+			pi.appendEntry(verdictsEntryType, entry);
+		},
+	});
+
+	pi.events.on(borderEvents.hello, () => {
+		pi.events.emit(borderEvents.link, link);
+	});
+	pi.events.emit(borderEvents.link, link);
+
+	return { fold, session };
+};
+
+/** `/phi`: the status, or `pin` and `unpin`, a `phi-pin` entry on the branch. */
+const phiCommand = (
+	pi: Pick<ExtensionAPI, "appendEntry">,
+	services: Services,
+	book: () => Option.Option<VerdictBook>,
+): Parameters<ExtensionAPI["registerCommand"]>[1] => ({
+	description:
+		"Show the PHI router's mode, pin and verdicts. `/phi pin` keeps this session on ent; `/phi unpin` routes it again",
+	getArgumentCompletions: (prefix) =>
+		Arr.map(Arr.filter(["pin", "unpin"], Str.startsWith(prefix)), (word) => ({ value: word, label: word })),
+	handler: (args, ctx) => {
+		const word = Str.trim(args);
+
+		if (word === "pin" || word === "unpin") {
+			pi.appendEntry(pinEntryType, { pinned: word === "pin" });
+			ctx.ui.notify(pinNotices[word], "info");
+
+			return Promise.resolve();
+		}
+
+		const shown = Effect.map(statusLine({ ctx, book: book() }), (text) => {
+			ctx.ui.notify(text, "info");
+		});
+
+		return Effect.runPromise(shown.pipe(Effect.provide(services)));
+	},
+});
+
+/** `phi/auto`, with the thinking levels and limits of the default dispatch model. */
+const phiAuto = (env: Env, session: () => RouterSession): ExtensionVirtualModel<typeof RouterState.Encoded> => {
 	const dispatch = getBuiltinModel("anthropic", defaultModel);
 
-	pi.registerVirtualModel<typeof RouterState.Encoded>({
+	return {
 		provider: phiProvider,
 		id: phiId,
 		name: "PHI router",
@@ -196,15 +192,55 @@ export const phiRouter = (env: Env) => (pi: ExtensionAPI) => {
 		contextWindow: dispatch.contextWindow,
 		maxTokens: dispatch.maxTokens,
 		route: (request, ctx) =>
-			routeWith({ env, judge: decisionsOf(ctx, request.signal) })(request, {
-				cwd: ctx.cwd,
-				sessionManager: ctx.sessionManager,
-				modelRegistry: ctx.modelRegistry,
-				compaction: (window) => compactionOf(ctx, window),
-			}),
+			routeWith({
+				env,
+				judge: decisionsOf({ modelRegistry: ctx.modelRegistry, signal: request.signal }),
+				session: session(),
+			})(request, ctx),
+	};
+};
+
+/**
+ * Registers `phi/auto`, which sends each request to a personal account unless its own new content holds a patient's
+ * direct identifier, and hands the border the session's verdicts. Also the bridge section, `/phi`, the compaction
+ * judge, and the codemode and model-switch guards.
+ */
+export const phiRouter = (env: Env) => (pi: ExtensionAPI) => {
+	const services = servicesOf(env);
+	const { fold, session } = sessionBook(pi, services);
+	const setModel = (model: Parameters<ExtensionAPI["setModel"]>[0]) => pi.setModel(model);
+
+	pi.registerVirtualModel(phiAuto(env, session));
+
+	pi.on("session_start", (_event, ctx) => {
+		const started = Effect.andThen(
+			fold(ctx),
+			Effect.promise(() => keepProtectedOnStart({ ctx, setModel })),
+		);
+
+		return Effect.runPromise(started.pipe(Effect.provide(services)));
 	});
 
+	pi.on("session_compact", (event, ctx) => {
+		const judged = compactionJudged({ compaction: event.compactionEntry, ctx, session: session() }).pipe(
+			Effect.catchCause((cause) => Effect.logWarning("phi-router: the compaction summary was not judged", cause)),
+		);
+
+		const judge = Layer.merge(services, decisionsOf(ctx));
+
+		return Effect.runPromise(judged.pipe(Effect.provide(judge)));
+	});
+
+	pi.on("before_agent_start", (event, ctx) => {
+		if (isPhi(ctx.model)) {
+			event.systemPromptOptions.sections[bridgeSection.name] = bridgeSection.text;
+		}
+	});
+
+	pi.registerCommand(
+		"phi",
+		phiCommand(pi, services, () => session().book),
+	);
 	pi.on("tool_call", (event, ctx) => guardCodemode({ event, ctx }));
-	pi.on("model_select", (event, ctx) => keepProtected({ event, ctx, setModel: (model) => pi.setModel(model) }));
-	pi.on("session_start", (_event, ctx) => keepProtectedOnStart({ ctx, setModel: (model) => pi.setModel(model) }));
+	pi.on("model_select", (event, ctx) => keepProtected({ event, ctx, setModel }));
 };

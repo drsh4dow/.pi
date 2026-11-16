@@ -126,23 +126,24 @@ In a `phi/auto` session the router adds a `phi-bridge` prompt section through `b
 
 ## Module map
 
-| File                                      | Owns                                                                                                                                                          |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `policy/policy.ts`                        | Kinds, defaults, questions, counter-examples, synthetic list, thresholds, window, limits, `policyVersion`.                                                    |
-| `policy/rules.ts`                         | The five rules, each one pattern with its validation inside it, `firstHit`.                                                                                   |
-| `policy/synthetic.ts`                     | The caller's synthetic list (`Synthetic`) and blanking to `[synthetic-id]`.                                                                                   |
-| `policy/expand.ts`                        | Decoders, unchanged from v1.                                                                                                                                  |
-| `policy/engine.ts`                        | `ContentKey`, `Piece`, `Verdict`, `Judge`, `verdictsFor`, band logic, failure sealing, synthetic blanking, fixtures.                                          |
-| `pieces.ts`                               | `partsOf`, `piecesOf`, the key function, rendering and the window. pi-ai `Message` to domain.                                                                 |
-| `border.ts`                               | `guard`, stubs, `guardedApi`, `phiBorder` (scope and link).                                                                                                   |
-| `store.ts`                                | `VerdictBook`, the fold, the entry schema, the system cache file.                                                                                             |
-| `decisions.ts`                            | The `Judge` layer over OpenAI Decisions, with images and usage.                                                                                               |
-| `route.ts`                                | `decide`, `laneOf`, `accountFor`.                                                                                                                             |
-| `gate.ts`                                 | `delegateTarget` with `held`, codemode `unsafeReach`.                                                                                                         |
-| `selection.ts`, `settings.ts`, `lanes.ts` | Switch restore, settings, the log.                                                                                                                            |
-| `index.ts`                                | The virtual model, the `phi-bridge` section, `/phi`, the fold at `session_start`, the `session_compact` judge, the border link, codemode and selection hooks. |
+| File                                      | Owns                                                                                                                                      |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `policy/policy.ts`                        | Kinds, defaults, questions, counter-examples, synthetic list, thresholds, window, limits, `policyVersion`.                                |
+| `policy/rules.ts`                         | The five rules, each one pattern with its validation inside it, `firstHit`.                                                               |
+| `policy/synthetic.ts`                     | The caller's synthetic list (`Synthetic`) and blanking to `[synthetic-id]`.                                                               |
+| `policy/expand.ts`                        | Decoders, unchanged from v1.                                                                                                              |
+| `policy/engine.ts`                        | `ContentKey`, `Piece`, `Verdict`, `Judge`, `verdictsFor`, band logic, failure sealing, synthetic blanking, fixtures.                      |
+| `pieces.ts`                               | `partsOf`, `piecesOf`, the key function, rendering and the window. pi-ai `Message` to domain.                                             |
+| `border.ts`                               | `guard`, stubs, `guardedApi`, `phiBorder` (scope and link).                                                                               |
+| `store.ts`                                | `VerdictBook`, the fold, the entry schema, the system cache file.                                                                         |
+| `decisions.ts`                            | The `Judge` layer over OpenAI Decisions, with images and usage.                                                                           |
+| `route.ts`                                | `decide`, `laneOf`, `accountFor`.                                                                                                         |
+| `dispatch.ts`                             | pi's `route()` (`routeWith`), the account and router state, the fail-closed path, the `session_compact` judge, the Decisions judge layer. |
+| `gate.ts`                                 | `delegateTarget` with `held`, the codemode guard and `unsafeReach`.                                                                       |
+| `selection.ts`, `settings.ts`, `lanes.ts` | Switch restore, settings, the log.                                                                                                        |
+| `index.ts`                                | The virtual model, the `phi-bridge` section, `/phi`, the fold at `session_start`, the border link, `delegateTargetOf`, and the hooks.     |
 
-claude-accounts gains a `wrap` on `accountProvider` and `supportsMessageThreads: false` for BAA accounts. The compaction feature gains one sentence in a `phi/auto` session. A request flows from `index.ts` to `route.ts` to `policy/engine.ts`. The border flows from pi-ai to `border.ts`.
+claude-accounts gains a `wrap` on `accountProvider` and `supportsMessageThreads: false` for BAA accounts. The compaction feature gains one sentence in a `phi/auto` session. A request flows from `index.ts` to `dispatch.ts` to `route.ts` to `policy/engine.ts`. The border flows from pi-ai to `border.ts`.
 
 ## v1 subtraction
 

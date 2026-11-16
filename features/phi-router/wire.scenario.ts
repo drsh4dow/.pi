@@ -10,6 +10,7 @@ import * as Str from "effect/String";
 import { type Run, scenario } from "../../tools/driver/index.ts";
 import { entryKind } from "../owned-work/index.ts";
 import { type Asked, compactionPrompt, mockedModels, Reply, serveMock } from "./anthropic.fixture.ts";
+import { stubs } from "./border.ts";
 import { foundIn } from "./canary-tokens.ts";
 import { providersOf } from "./session.fixture.ts";
 
@@ -150,7 +151,7 @@ const isBlockedCodemode = (entry: SessionEntry) =>
 		Arr.some(message.content, ({ text }) => Str.includes("outside the PHI router")(text)),
 	);
 
-const latchedSteps = (run: Run) =>
+const stepsAfterSeal = (run: Run) =>
 	Effect.gen(function* () {
 		yield* run.root.prompt("STEP-AFTER. A clean question after the records were read.");
 		yield* run.root.prompt("STEP-DELEGATE. Start the delegate.");
@@ -171,7 +172,8 @@ const finalState = (run: Run) =>
 
 interface Seen {
 	readonly canaries: ReadonlyArray<string>;
-	readonly atLatch: Counts;
+	/** Request counts when the first request reached ent. */
+	readonly atSeal: Counts;
 	readonly atEnd: Counts;
 	readonly childProviders: ReadonlyArray<string>;
 	readonly blocked: boolean;
@@ -179,7 +181,7 @@ interface Seen {
 
 const personalCount = (counted: Counts) => counted["ultra-a"] + counted["ultra-b"];
 
-const noLeak = (run: Run, { canaries, atLatch }: Seen) =>
+const noLeak = (run: Run, { canaries, atSeal }: Seen) =>
 	Effect.gen(function* () {
 		const leaked = foundIn({ bodies: personalBodies(), tokens: canaries });
 		const missing = Arr.difference(canaries, foundIn({ bodies: mocks.ent.bodies(), tokens: canaries }));
@@ -191,39 +193,43 @@ const noLeak = (run: Run, { canaries, atLatch }: Seen) =>
 		yield* run.check(leaked.length === 0, `no canary reaches a personal mock (leaked: ${Arr.join(leaked, ", ")})`);
 		yield* run.check(missing.length === 0, `every canary reached the ent mock (missing: ${Arr.join(missing, ", ")})`);
 		yield* run.check(
-			personalCount(atLatch) >= 2,
-			`the clean turns reached a personal mock (${String(personalCount(atLatch))} requests)`,
+			personalCount(atSeal) >= 2,
+			`the clean turns reached a personal mock (${String(personalCount(atSeal))} requests)`,
 		);
 	});
 
-const allOnEnt = (run: Run, { atLatch, atEnd, childProviders, blocked }: Seen) =>
+const backOnPersonal = (run: Run, { atSeal, atEnd, childProviders, blocked }: Seen) =>
 	Effect.gen(function* () {
-		const entBodies = mocks.ent.bodies();
-		const childOnEnt = childProviders.length > 0 && Arr.every(childProviders, (provider) => provider === "ent");
+		const later = Arr.drop(personalBodies(), personalCount(atSeal));
+		const childOnPersonal = childProviders.length > 0 && Arr.every(childProviders, (provider) => provider !== "ent");
 
 		yield* run.check(
-			atEnd["ultra-a"] === atLatch["ultra-a"] && atEnd["ultra-b"] === atLatch["ultra-b"],
-			`no request after the latch reached a personal mock (${String(personalCount(atLatch))} at the latch, ${String(personalCount(atEnd))} at the end)`,
+			personalCount(atEnd) > personalCount(atSeal),
+			`requests after the seal returned to a personal mock (${String(personalCount(atSeal))} at the seal, ${String(personalCount(atEnd))} at the end)`,
 		);
 		yield* run.check(
-			childOnEnt && Arr.some(entBodies, Str.includes("CHILD-TASK")),
-			`the child started after the latch ran on ent (its answers came from ${Arr.join(childProviders, ", ")})`,
+			Arr.some(later, Str.includes(stubs.sealed)),
+			"a personal body after the seal carries the records withheld",
 		);
 		yield* run.check(
-			Arr.some(entBodies, Str.includes(compactionPrompt)),
-			"the compaction after the latch went to the ent mock",
+			childOnPersonal && Arr.some(personalBodies(), Str.includes("CHILD-TASK")),
+			`the child ran on phi/auto, which sent its clean brief to a personal mock (its answers came from ${Arr.join(childProviders, ", ")})`,
+		);
+		yield* run.check(
+			Arr.some(mocks.ent.bodies(), Str.includes(compactionPrompt)),
+			"the compaction went to the ent mock",
 		);
 		yield* run.check(blocked, "the codemode script that calls models was blocked by the PHI router's guard");
 	});
 
-const verdict = (run: Run, { canaries, atLatch }: Pick<Seen, "canaries" | "atLatch">) =>
+const verdict = (run: Run, { canaries, atSeal }: Pick<Seen, "canaries" | "atSeal">) =>
 	Effect.gen(function* () {
 		const { rootProviders, childProviders, blocked } = yield* finalState(run);
-		const seen = { canaries, atLatch, atEnd: counts(), childProviders, blocked };
+		const seen = { canaries, atSeal, atEnd: counts(), childProviders, blocked };
 
-		yield* run.say({ atLatch, atEnd: seen.atEnd, rootProviders, childProviders });
+		yield* run.say({ atSeal, atEnd: seen.atEnd, rootProviders, childProviders });
 		yield* noLeak(run, seen);
-		yield* allOnEnt(run, seen);
+		yield* backOnPersonal(run, seen);
 	});
 
 scenario({
@@ -237,9 +243,9 @@ scenario({
 			yield* run.root.prompt("STEP-CLEAN. Read the notes.");
 			yield* run.root.prompt("STEP-PHI. Read the records one at a time.");
 
-			const atLatch = Option.getOrElse(MutableRef.get(atFirstEnt), counts);
+			const atSeal = Option.getOrElse(MutableRef.get(atFirstEnt), counts);
 
-			yield* latchedSteps(run);
-			yield* verdict(run, { canaries, atLatch });
+			yield* stepsAfterSeal(run);
+			yield* verdict(run, { canaries, atSeal });
 		}),
 });

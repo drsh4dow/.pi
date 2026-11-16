@@ -5,17 +5,20 @@ import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import { type SessionEntry, VIRTUAL_MODEL_STATE_ENTRY } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
+import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Function from "effect/Function";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { type Request, type Route, routeWith } from "./index.ts";
-import { LaneLine } from "./lanes.ts";
-import { Judge, JudgeFailed } from "./policy/index.ts";
-import { RouterState } from "./route.ts";
+import { type Request, type Route, routeWith } from "./dispatch.ts";
+import { LaneJson } from "./lanes.ts";
+import { Judge, JudgeFailed } from "./policy/engine.ts";
+import { pinEntryType, RouterState } from "./route.ts";
+import { bookOf, type VerdictBook, type VerdictsEntry, verdictsEntryType } from "./store.ts";
 
 const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/phi-router-test-${String(process.pid)}`;
 
@@ -38,11 +41,12 @@ export const phiAuto = { ...opus, provider: "phi", id: "auto" };
 
 export const onAccount = (provider: string) => ({ ...opus, provider });
 
+/** Text the scripted judge scores as a patient's identifiers. */
 export const syntheticChart =
 	"Patient Jane Roe, DOB 1961-03-14, MRN 4471-0932-88, admitted with diabetic ketoacidosis.";
 
-/** Pi's default `compaction.reserveTokens`. */
-const reserveTokens = 16_384;
+/** Text the `ssn` rule seals before any judge call. */
+export const ssnRecord = "member_id 88213, ssn 078-05-1120, plan gold";
 
 const zero = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
@@ -76,15 +80,6 @@ export const catOutput = (text: string): Message => ({
 	timestamp: 0,
 });
 
-export const screenshot: Message = {
-	role: "user",
-	content: [
-		{ type: "text", text: "Why does this page render blank?" },
-		{ type: "image", mimeType: "image/png", data: "iVBORw0KGgo=" },
-	],
-	timestamp: 0,
-};
-
 const failedReply = (provider: string, errorMessage: string): AssistantMessage => ({
 	...done(provider),
 	stopReason: "error",
@@ -97,36 +92,38 @@ export const rateLimitedOn = (provider: string) =>
 export const overloadedOn = (provider: string) =>
 	failedReply(provider, '529 {"type":"error","error":{"type":"overloaded_error"}}');
 
-type Verdict = "judge" | "error" | "timeout";
-
-const scriptedJudge = (verdict: Verdict, calls: Array<string>) =>
-	Layer.succeed(Judge, {
-		maxChars: 400_000,
-		ask: ({ seen, fresh }) => {
-			calls.push(fresh);
-
-			if (verdict !== "judge") {
-				return Effect.fail(JudgeFailed.make({ why: verdict }));
-			}
-
-			const phi = Str.includes(syntheticChart)(`${seen}\n${fresh}`);
-
-			return Effect.succeed({
-				pPhi: phi ? 0.97 : 0.01,
-				category: phi ? Option.some("name" as const) : Option.none(),
-			});
-		},
-	});
+type JudgeBehavior = "answers" | "errors" | "dies";
 
 interface World {
 	readonly home: string;
 	readonly cwd: string;
 	readonly session: string;
-	readonly judgeCalls: Array<string>;
-	verdict: Verdict;
-	known: number;
-	accountWindow: number;
+	/** Every piece the judge was asked about, in order. */
+	readonly judged: Array<string>;
+	readonly notices: Array<string>;
+	judge: JudgeBehavior;
 }
+
+const usage = { calls: 1, inputTokens: 10, cost: 0.001, ms: 5 };
+
+/** Scores `syntheticChart` as a patient's name and everything else as clean. */
+export const scriptedJudge = (world: Pick<World, "judged" | "judge">) =>
+	Judge.of({
+		identifier: (input) => {
+			world.judged.push(input.piece);
+
+			if (world.judge === "dies") {
+				return Effect.die("the judge died");
+			}
+
+			if (world.judge === "errors") {
+				return Effect.fail(JudgeFailed.make({ why: "judge-error" }));
+			}
+
+			return Effect.succeed({ score: Str.includes(syntheticChart)(input.piece) ? 0.97 : 0.01, usage });
+		},
+		kind: () => Effect.succeed({ kind: "patient-name", usage }),
+	});
 
 export const worldOf = ({
 	name,
@@ -146,31 +143,13 @@ export const worldOf = ({
 			yield* fs.writeFileString(`${home}/.pi/agent/phi-router.json`, Str.replace("REPO", `${home}/repo`)(text));
 		}
 
-		const world: World = {
-			home,
-			cwd: `${home}/repo`,
-			session: name,
-			judgeCalls: [],
-			verdict: "judge",
-			known: 0,
-			accountWindow: opus.contextWindow,
-		};
+		const world: World = { home, cwd: `${home}/repo`, session: name, judged: [], notices: [], judge: "answers" };
 
 		return world;
 	});
 
-export const stateEntry = (data: Schema.JsonObject): SessionEntry => ({
-	type: "custom",
-	customType: VIRTUAL_MODEL_STATE_ENTRY,
-	id: "s0000001",
-	parentId: "",
-	timestamp: "2026-05-14T10:00:00.000Z",
-	data,
-});
-
-export const phiState = (state: Schema.Json) => ({ provider: "phi", modelId: "auto", state });
-
-const EncodedState = Schema.toEncoded(RouterState);
+/** The fields pi gives every custom entry. */
+const custom = { type: "custom", id: "c0000001", parentId: "", timestamp: "2026-05-14T10:00:00.000Z" } as const;
 
 const PiStateEntry = Schema.Struct({
 	type: Schema.Literal("custom"),
@@ -178,78 +157,110 @@ const PiStateEntry = Schema.Struct({
 	data: Schema.Struct({
 		provider: Schema.Literal("phi"),
 		modelId: Schema.Literal("auto"),
-		state: Schema.optionalKey(EncodedState),
+		state: Schema.toEncoded(RouterState),
 	}),
 });
 
 const decodePiStateEntry = Schema.decodeUnknownOption(PiStateEntry);
 
-/**
- * What pi's `getVirtualModelState` (virtual-models.js) hands the route as `request.state`: the latest phi/auto entry's
- * `state`, none when that entry has none. A state this fixture cannot type is left out; the router never reads it.
- */
+/** What pi hands the route as `request.state`: the latest phi/auto entry's `state`. */
 const piStateOf = (branch: ReadonlyArray<SessionEntry>) => {
-	const latest = Arr.last(Arr.getSomes(Arr.map(branch, (entry) => decodePiStateEntry(entry))));
+	const states = Arr.getSomes(Arr.map(branch, (entry) => decodePiStateEntry(entry)));
 
-	return Option.flatMap(latest, ({ data }) => Option.fromUndefinedOr(data.state));
+	return Option.map(Arr.last(states), ({ data }) => data.state);
 };
 
+/** The book as `session_start` folds it from the session's entries, with the system cache under the world's HOME. */
+const foldedBook = (world: World, branch: ReadonlyArray<SessionEntry>) => {
+	const home = ConfigProvider.fromEnvRecord({ HOME: world.home });
+
+	return bookOf({ sessionManager: { getEntries: () => [...branch] }, pid: process.pid }).pipe(
+		Effect.provideService(ConfigProvider.ConfigProvider, home),
+		Effect.orDie,
+	);
+};
+
+interface Sent {
+	readonly world: World;
+	readonly branch: Array<SessionEntry>;
+	readonly book: VerdictBook;
+	readonly reason: Request["reason"];
+	readonly messages: ReadonlyArray<Message>;
+	readonly failed: AssistantMessage | undefined;
+}
+
+/** One request through the real `route()`, with what pi and the router append landing on `branch`. */
+const sent = ({ world, branch, book, reason, messages, failed }: Sent) =>
+	Effect.promise(() => {
+		const session = {
+			book: Option.some(book),
+			appendVerdicts: (data: VerdictsEntry) => branch.push({ ...custom, customType: verdictsEntryType, data }),
+		};
+
+		const request: Request = { model: phiAuto, thinkingLevel: "high", reason, messages };
+
+		for (const state of Option.toArray(piStateOf(branch))) {
+			request.state = state;
+		}
+
+		if (failed !== undefined) {
+			request.failed = { model: onAccount(failed.provider), message: failed };
+		}
+
+		const ctx = {
+			cwd: world.cwd,
+			sessionManager: { getSessionId: () => world.session, getBranch: () => [...branch] },
+			modelRegistry: { find: (provider: string) => onAccount(provider), hasConfiguredAuth: () => true },
+			ui: { notify: (message: string) => world.notices.push(message), setStatus: Function.constVoid },
+		};
+
+		return routeWith({ env: { HOME: world.home }, judge: Layer.succeed(Judge, scriptedJudge(world)), session })(
+			request,
+			ctx,
+		);
+	}).pipe(
+		Effect.map((routed: Route) => {
+			if (routed.state !== undefined) {
+				const data = { provider: "phi", modelId: "auto", state: routed.state };
+
+				branch.push({ ...custom, customType: VIRTUAL_MODEL_STATE_ENTRY, data });
+			}
+
+			return routed.model.provider;
+		}),
+	);
+
+/** One session branch, its book folded as at `session_start`. */
 export const branchOf = ({
 	world,
 	entries = [],
 }: {
 	readonly world: World;
 	readonly entries?: ReadonlyArray<SessionEntry>;
-}) => {
-	const branch = [...entries];
+}) =>
+	Effect.gen(function* () {
+		const branch = [...entries];
+		let book = yield* foldedBook(world, branch);
 
-	const send = (reason: Request["reason"], messages: ReadonlyArray<Message>, failed?: AssistantMessage) =>
-		Effect.promise(() => {
-			const route = routeWith({ env: { HOME: world.home }, judge: scriptedJudge(world.verdict, world.judgeCalls) });
-			const request: Request = { model: phiAuto, thinkingLevel: "high", reason, messages };
+		const send = (reason: Request["reason"], messages: ReadonlyArray<Message>, failed?: AssistantMessage) =>
+			sent({ world, branch, book, reason, messages, failed });
 
-			for (const state of Option.toArray(piStateOf(branch))) {
-				request.state = state;
-			}
+		/** A new pi process on the same session file: the book folds again from the appended entries. */
+		const restart = Effect.map(foldedBook(world, branch), (folded) => {
+			book = folded;
+		});
 
-			if (failed !== undefined) {
-				request.failed = { model: onAccount(failed.provider), message: failed };
-			}
+		const pin = (pinned: boolean) => branch.push({ ...custom, customType: pinEntryType, data: { pinned } });
 
-			const ctx = {
-				cwd: world.cwd,
-				compaction: (window: number) => ({ at: Option.some(window - reserveTokens), known: world.known }),
-				sessionManager: {
-					getSessionId: () => world.session,
-					getLeafId: () => "e0000001",
-					getBranch: () => [...branch],
-				},
-				modelRegistry: {
-					find: (provider: string) => ({ ...onAccount(provider), contextWindow: world.accountWindow }),
-					hasConfiguredAuth: () => true,
-				},
-			};
-
-			return route(request, ctx);
-		}).pipe(
-			Effect.map((routed: Route) => {
-				if (routed.state !== undefined) {
-					branch.push(stateEntry(phiState(routed.state)));
-				}
-
-				return routed.model.provider;
-			}),
-		);
-
-	return { send, entries: () => [...branch] };
-};
+		return { send, restart, pin, book: () => book };
+	});
 
 export const lanesOf = (world: World) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 		const text = yield* fs.readFileString(`${world.home}/.local/state/pi-phi-router/lanes/${world.session}.jsonl`);
 		const lines = Arr.filter(Str.split(text, "\n"), Str.isNonEmpty);
-		const lanes = yield* Effect.forEach(lines, (line) => Schema.decodeEffect(LaneLine)(line));
+		const lanes = yield* Effect.forEach(lines, (line) => Schema.decodeEffect(LaneJson)(line));
 
 		return { text, lanes };
 	});

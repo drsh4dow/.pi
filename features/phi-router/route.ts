@@ -1,16 +1,154 @@
-import type { ModelRouteReason } from "@earendil-works/pi-coding-agent";
+/**
+ * The routing core: the lane a request takes, then the account that serves it. pi's `route()`, the corpus eval and the
+ * savings replay call `decide`, so the lane rule lives in one place.
+ */
+import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
+import type { ModelRouteReason, SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
-import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Hash from "effect/Hash";
-import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { type AccountId, fallbackChain, isBaaAccount } from "../claude-accounts/index.ts";
-import type { Lane } from "./lanes.ts";
-import { Cursor, scan, ScanResult, type Taint, type Transcript, Unscanned } from "./policy/index.ts";
+import { type AccountId, fallbackChain } from "../claude-accounts/index.ts";
+import { piecesOf } from "./pieces.ts";
+import { type ContentKey, type Usage, Verdict, verdictsFor } from "./policy/engine.ts";
 import type { Mode } from "./settings.ts";
+import type { VerdictBook, VerdictsEntry } from "./store.ts";
+
+/** Why a request runs on `ent` with nothing judged. The pin is the session's; the rest come from settings. */
+export type Hold = "pinned" | "force-baa" | "baa-repo" | "bad-settings";
+
+export type Lane = "personal" | "ent";
+
+export interface DecideRequest {
+	readonly messages: ReadonlyArray<Message>;
+	readonly reason: ModelRouteReason;
+	readonly book: VerdictBook;
+	readonly hold: Option.Option<Hold>;
+	readonly producedOnPersonal?: (message: AssistantMessage) => boolean;
+	readonly window?: number;
+}
+
+interface Judged {
+	/** This request's new verdicts, already in the book's memory. */
+	readonly found: ReadonlyArray<readonly [ContentKey, Verdict]>;
+	readonly usage: Usage;
+	/** Distinct parts the book already knew. */
+	readonly cached: number;
+	/** Parts a personal account would receive as a stub, after this request's verdicts. */
+	readonly wouldStub: number;
+	/** The `phi-verdicts` entry the caller appends to the session, none when nothing new was found. */
+	readonly entry: Option.Option<VerdictsEntry>;
+}
+
+export type Decision = Judged &
+	(
+		| { readonly lane: "personal"; readonly why: "cleared" }
+		| { readonly lane: "ent"; readonly why: "sealed" | "direct" | Hold }
+	);
+
+const isSealed = Verdict.$is("Sealed");
+
+const noUsage: Usage = { calls: 0, inputTokens: 0, cost: 0, ms: 0 };
+
+type Pieces = ReturnType<typeof piecesOf>;
+
+const distinctKeys = (pieces: Pieces) => new Set(Arr.map(pieces, ({ piece }) => piece.key)).size;
+
+const stubbedIn = (pieces: Pieces, book: VerdictBook) =>
+	Arr.filter(pieces, ({ piece }) => book.lookup(piece.key) !== "cleared").length;
+
+/**
+ * `ent` when a part of the request's own new content is sealed, by the book or by this request's verdicts, or when any
+ * part sealed during this request. A repeated read of sealed content is sealed own content, and so is a retry.
+ */
+const laneOf = ({
+	pieces,
+	found,
+	book,
+}: {
+	readonly pieces: Pieces;
+	readonly found: Judged["found"];
+	readonly book: VerdictBook;
+}) => {
+	const sealedNow = Arr.some(found, ([, verdict]) => isSealed(verdict));
+	const ownSealed = Arr.some(pieces, ({ piece, own }) => own && book.lookup(piece.key) === "sealed");
+
+	return sealedNow || ownSealed
+		? ({ lane: "ent", why: "sealed" } as const)
+		: ({ lane: "personal", why: "cleared" } as const);
+};
+
+const unjudged = ({
+	pieces,
+	book,
+	why,
+}: {
+	readonly pieces: Pieces;
+	readonly book: VerdictBook;
+	readonly why: Hold | "direct";
+}): Decision => ({
+	found: [],
+	usage: noUsage,
+	cached: distinctKeys(pieces),
+	entry: Option.none(),
+	wouldStub: stubbedIn(pieces, book),
+	lane: "ent",
+	why,
+});
+
+/**
+ * The lane of one request. A hold and a `direct` request go to `ent` with nothing judged: a `direct` request carries the
+ * whole transcript serialized into one message. Otherwise every part the book does not know is judged and recorded in
+ * the book's memory before the lane is chosen.
+ */
+export const decide = Effect.fn("decide")(function* (request: DecideRequest) {
+	const { book, hold } = request;
+	const pieces = piecesOf(request);
+
+	if (Option.isSome(hold) || request.reason === "direct") {
+		return unjudged({ pieces, book, why: Option.getOrElse(hold, () => "direct" as const) });
+	}
+
+	const judged = Arr.map(pieces, ({ piece }) => piece);
+	const { found, usage } = yield* verdictsFor(judged, book.known);
+	const entry = yield* book.record({ found, pieces: judged });
+	const cached = distinctKeys(pieces) - found.length;
+
+	return {
+		found,
+		usage,
+		cached,
+		entry,
+		wouldStub: stubbedIn(pieces, book),
+		...laneOf({ pieces, found, book }),
+	} satisfies Decision;
+});
+
+export const pinEntryType = "phi-pin";
+
+const PinData = Schema.Struct({ pinned: Schema.Boolean });
+
+const decodePin = Schema.decodeUnknownOption(PinData);
+
+const pinOf = (entry: SessionEntry) =>
+	entry.type === "custom" && entry.customType === pinEntryType ? decodePin(entry.data) : Option.none();
+
+/** The latest `phi-pin` entry on the branch decides. */
+export const pinnedOn = (branch: ReadonlyArray<SessionEntry>) => {
+	const pins = Arr.getSomes(Arr.map(branch, pinOf));
+
+	return Option.exists(Arr.last(pins), ({ pinned }) => pinned);
+};
+
+export const holdOf = ({ mode, pinned }: { readonly mode: Mode; readonly pinned: boolean }): Option.Option<Hold> => {
+	if (mode === "force-baa" || mode === "baa-repo" || mode === "bad-settings") {
+		return Option.some(mode);
+	}
+
+	return pinned ? Option.some("pinned") : Option.none();
+};
 
 const Personal = Schema.Literals(["ultra-a", "ultra-b"]);
 
@@ -18,158 +156,66 @@ type Personal = typeof Personal.Type;
 
 const Stamp = Schema.Struct({ account: Personal, at: Schema.Finite });
 
-/** What the router keeps on the session branch. The lane is not stored: each request's scan decides it. */
+/** What `phi/auto` keeps in pi's virtual-model state. Verdicts live in `phi-verdicts` entries, not here. */
 export const RouterState = Schema.Struct({
-	cursor: Cursor,
 	/** The personal account the session starts on, from a hash of its id, so sessions spread over both subscriptions. */
 	home: Personal,
+	/** When each personal account last answered 429. */
 	limited: Schema.Array(Stamp),
 });
 
 export type RouterState = typeof RouterState.Type;
 
-const limitedForMs = 30 * 60 * 1000;
-
 export const homeOf = (session: string): Personal =>
 	Personal.literals[Math.abs(Hash.string(session)) % Personal.literals.length] ?? "ultra-a";
 
-interface Failure {
-	readonly account: string;
-	readonly rateLimited: boolean;
-}
+const limitedForMs = 30 * 60 * 1000;
 
-export interface RouteRequest {
-	readonly session: string;
-	readonly leaf: string | null;
-	readonly reason: ModelRouteReason;
-	readonly failed: Option.Option<Failure>;
-	/** None when the branch has no state, or its latest state no longer decodes. */
-	readonly stored: Option.Option<RouterState>;
-	readonly transcript: Transcript;
-	readonly mode: Mode;
-	/** Whether the account has the dispatch model and a login, so the chain skips one that cannot answer. */
-	readonly usable: (account: AccountId) => boolean;
-	/**
-	 * Pi compacts a routed request whose context passes `at` tokens before sending it, and sends the summary to the
-	 * routed model unscanned. `known` is pi's own count, zero when it has none; the scan's characters bound it too.
-	 */
-	readonly compaction: { readonly at: Option.Option<number>; readonly known: number };
-}
+/** Whether an account answered 429 within the last 30 minutes. */
+export const limitedAt =
+	({ limited, now }: { readonly limited: RouterState["limited"]; readonly now: number }) =>
+	(account: AccountId) =>
+		Arr.some(limited, (stamp) => stamp.account === account && now - stamp.at < limitedForMs);
 
-interface Decision {
-	readonly dispatch: AccountId;
-	/** The state to store, only when it changed, since pi appends an entry for every new state object. */
-	readonly state: Option.Option<RouterState>;
-	readonly lane: Lane;
-}
-
-const charsOf = (transcript: Transcript) =>
-	Arr.reduce(transcript, 0, (sum, { parts }) =>
-		Arr.reduce(parts, sum, (inner, part) => inner + (part.kind === "text" ? part.text.length : 0)),
-	);
-
-/** Pi's estimate is a quarter token per character, so the larger of it and pi's count decides as pi would. */
-const compactsBeforeSend = ({ compaction, transcript }: RouteRequest) =>
-	Option.exists(compaction.at, (at) => Math.max(compaction.known, Math.ceil(charsOf(transcript) / 4)) > at);
-
-const detectorOf = (taint: Taint) =>
-	Match.valueTags(taint, {
-		Phi: ({ detector, category }) => (category === undefined ? { detector } : { detector, category }),
-		Unscannable: ({ what }) => ({ detector: what }),
-	});
-
-const noScan = { newChars: 0, judgeCalls: 0, judgeMs: 0 };
-
-const outcomeOf = (result: ScanResult, prior: Cursor) =>
-	ScanResult.$match(result, {
-		Clean: ({ cursor, stats }) => ({ cursor, personal: true, found: { verdict: "clean" as const }, stats }),
-		Tainted: ({ taint, stats }) => ({
-			cursor: prior,
-			personal: false,
-			found: { verdict: "tainted" as const, ...detectorOf(taint) },
-			stats,
-		}),
-		Unsure: ({ why, stats }) => ({
-			cursor: prior,
-			personal: false,
-			found: { verdict: "unsure" as const, detector: why },
-			stats,
-		}),
-	});
-
-const isLimited = (limited: RouterState["limited"], now: number) => (account: AccountId) =>
-	Arr.some(limited, (stamp) => stamp.account === account && now - stamp.at < limitedForMs);
-
-const pick = (state: RouterState, now: number, usable: RouteRequest["usable"]): AccountId => {
-	const chain = [state.home, ...Arr.map(fallbackChain(state.home), ({ id }) => id)];
-	const limited = isLimited(state.limited, now);
-
-	return Option.getOrElse(
-		Arr.findFirst(chain, (account) => usable(account) && !limited(account)),
-		(): AccountId => "ent",
-	);
-};
-
-const stampedAfter = (limited: RouterState["limited"], failed: Option.Option<Failure>, now: number) =>
+/** The stamps after a 429 on a personal account, none when the failure was anything else. */
+export const stampedAfter = ({
+	limited,
+	failed,
+	now,
+}: {
+	readonly limited: RouterState["limited"];
+	readonly failed: Option.Option<{ readonly account: string; readonly rateLimited: boolean }>;
+	readonly now: number;
+}) =>
 	Option.filter(failed, ({ rateLimited }) => rateLimited).pipe(
 		Option.map(({ account }) => account),
 		Option.filter(Schema.is(Personal)),
 		Option.map((account) => [...Arr.filter(limited, (stamp) => stamp.account !== account), { account, at: now }]),
 	);
 
-const newState = (session: string): RouterState => ({ cursor: Unscanned.make({}), home: homeOf(session), limited: [] });
-
-const sameCursor = Schema.toEquivalence(Cursor);
-
-const routed = Effect.fn("routed")(function* (request: RouteRequest, now: number) {
-	const failed = request.mode === "shadow" ? Option.none() : request.failed;
-	const prior = Option.getOrElse(request.stored, () => newState(request.session));
-	const stamped = stampedAfter(prior.limited, failed, now);
-	const result = yield* scan(request.transcript, prior.cursor);
-	const { cursor, personal, found, stats } = outcomeOf(result, prior.cursor);
-	const next = { ...prior, cursor, limited: Option.getOrElse(stamped, () => prior.limited) };
-	const failedOnBaa = Option.exists(failed, ({ account }) => isBaaAccount(account));
-	const changed = Option.isNone(request.stored) || Option.isSome(stamped) || !sameCursor(prior.cursor, cursor);
-
-	return {
-		wouldBe: personal && !failedOnBaa ? pick(next, now, request.usable) : "ent",
-		state: changed ? Option.some(next) : Option.none(),
-		found,
-		stats,
-	};
-});
+export interface AccountChoice {
+	readonly lane: Lane;
+	readonly home: Personal;
+	readonly limited: (account: AccountId) => boolean;
+	/** Whether the account has the dispatch model and a login. */
+	readonly usable: (account: AccountId) => boolean;
+	/** The request retries one that failed on `ent`. */
+	readonly failedOnBaa: boolean;
+}
 
 /**
- * Where one request goes. `direct` and every mode that forces the BAA account skip the scan. Otherwise the scan decides:
- * Clean picks a personal account from the chain, Tainted and Unsure send the request to the BAA account. `shadow`
- * decides all of it and stores the would-be state, but dispatches the BAA account.
+ * The account for a lane. `personal` takes home, then the other personal account, then `ent`, skipping a limited or
+ * unusable one. `ent` never fails over to a personal account, and a retry after a failure on `ent` stays there.
  */
-export const decide = Effect.fn("decide")(function* (request: RouteRequest) {
-	const now = yield* Clock.currentTimeMillis;
-
-	const lane = {
-		time: now,
-		session: request.session,
-		leaf: request.leaf,
-		reason: request.reason,
-		mode: request.mode,
-		chars: charsOf(request.transcript),
-	};
-
-	if (request.reason === "direct" || (request.mode !== "shadow" && request.mode !== "enforce")) {
-		return {
-			dispatch: "ent",
-			state: Option.none(),
-			lane: { ...lane, verdict: "skipped", wouldBe: "ent", dispatched: "ent", ...noScan },
-		} satisfies Decision;
+export const accountFor = ({ lane, home, limited, usable, failedOnBaa }: AccountChoice): AccountId => {
+	if (lane === "ent" || failedOnBaa) {
+		return "ent";
 	}
 
-	const { wouldBe, state, found, stats } = yield* routed(request, now);
-	const dispatched = request.mode === "shadow" || compactsBeforeSend(request) ? "ent" : wouldBe;
+	const chain = [home, ...Arr.map(fallbackChain(home), ({ id }) => id)];
 
-	return {
-		dispatch: dispatched,
-		state,
-		lane: { ...lane, ...found, ...stats, wouldBe, dispatched },
-	} satisfies Decision;
-});
+	return Option.getOrElse(
+		Arr.findFirst(chain, (account) => usable(account) && !limited(account)),
+		(): AccountId => "ent",
+	);
+};

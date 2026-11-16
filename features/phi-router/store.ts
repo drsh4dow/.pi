@@ -22,7 +22,7 @@ import { PolicyVersion, policyVersion } from "./policy/policy.ts";
 export const verdictsEntryType = "phi-verdicts";
 
 /** A rule id, identifier kind, failure reason or clearing source. It starts with a letter, so no bare number fits. */
-const Why = Schema.String.check(Schema.isPattern(/^[a-z][a-z\d-]{0,31}$/u));
+export const Why = Schema.String.check(Schema.isPattern(/^[a-z][a-z\d-]{0,31}$/u));
 
 const Stored = Schema.Tuple([ContentKey, Schema.Literals(["c", "s"]), Why]);
 

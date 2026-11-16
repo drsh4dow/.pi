@@ -6,6 +6,7 @@ import * as Str from "effect/String";
 
 import { type Run, scenario } from "../../tools/driver/index.ts";
 import { type Asked, compactionPrompt, mockedModels, Reply, serveMock } from "./anthropic.fixture.ts";
+import { stubs } from "./border.ts";
 import { providersOf } from "./session.fixture.ts";
 
 const summaryCanary = "Ottoline Varga-Pemberton, DOB 1947-06-02, MRN 55120-8873, metastatic breast cancer";
@@ -19,29 +20,23 @@ const reply = ({ body }: Asked) =>
 
 const mocks = { "ultra-a": serveMock(reply), "ultra-b": serveMock(reply), ent: serveMock(reply) };
 
-const carriesSummary = (body: string) => Str.includes(summaryCanary)(body) && !Str.includes(compactionPrompt)(body);
-
 const verdict = (run: Run, providers: ReadonlyArray<string>) =>
 	Effect.gen(function* () {
 		const personal = [...mocks["ultra-a"].bodies(), ...mocks["ultra-b"].bodies()];
 		const ent = mocks.ent.bodies();
 		const summaries = Arr.filter(ent, Str.includes(compactionPrompt)).length;
-		const carried = Arr.filter(ent, carriesSummary);
 
-		yield* run.say({
-			personal: personal.length,
-			ent: ent.length,
-			summaries,
-			carriedOnEnt: carried.length,
-			providers,
-		});
+		yield* run.say({ personal: personal.length, ent: ent.length, summaries, providers });
 		yield* run.check(
 			personal.length > 0,
 			`the opening reached a personal mock (${String(personal.length)} requests)`,
 		);
 		yield* run.check(summaries > 0, `pi compacted the session on ent (${String(summaries)} summary requests)`);
 		yield* run.check(!Arr.some(personal, Str.includes(summaryCanary)), "no personal mock received the summary's PHI");
-		yield* run.check(carried.length > 0, "the request carrying the summary's PHI reached the ent mock");
+		yield* run.check(
+			Arr.some(personal, Str.includes(stubs.sealed)),
+			"the send after the compaction went to a personal mock with the summary withheld",
+		);
 	});
 
 scenario({

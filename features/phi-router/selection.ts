@@ -9,8 +9,7 @@ import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 
-import { isProtected } from "./gate.ts";
-import { phiId, phiProvider } from "./session.ts";
+import { isProtected, phiId, phiProvider } from "./gate.ts";
 
 interface SelectionContext {
 	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;

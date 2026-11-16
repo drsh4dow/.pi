@@ -34,7 +34,7 @@ const decodeSettingsFile = Schema.decodeUnknownOption(Schema.fromJsonString(Sett
  */
 export type Mode = "shadow" | "enforce" | "force-baa" | "baa-repo" | "bad-settings";
 
-interface Settings {
+export interface Settings {
 	readonly mode: Mode;
 	readonly model: string;
 	readonly fixtures: ReadonlySet<string>;

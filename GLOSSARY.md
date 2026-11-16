@@ -113,19 +113,20 @@ Terms from the loaded feature (`features/loaded/`) and herdr-app's Skills panel 
 
 ## PHI routing
 
-Terms for sending each request to a personal account or the BAA account by what it holds. See ADR 0012.
+Terms for sending each request to a personal account or the BAA account by what it holds. See ADRs 0012 and 0013.
 
 - **PHI.** Protected health information: health data tied to a person by any of the 18 HIPAA Safe Harbor identifiers. It may reach only the **BAA account**.
 - **BAA account.** A Claude account covered by the Anthropic business associate agreement, today `ent`.
-- **`phi/auto`.** The model a session selects to be routed by content. Each request it sends goes to the session's **home account** when it is clean, and to the BAA account otherwise.
+- **`phi/auto`.** The model a session selects to be routed by content. A request goes to the BAA account when its own new content holds a **sealed** message, and to the session's **home account** otherwise. One sealed message does not keep the session on the BAA account.
 - **Home account.** The personal account a `phi/auto` session uses for clean requests, picked from its session id. A 429 there moves the retry to the other personal account, then to the BAA account.
 - **Protected session.** A session whose selected model is `phi/auto` or one on a BAA account. Its delegates, scripts and model switches stay inside the BAA boundary.
-- **Verdict.** What the policy engine says of a request: clean, phi, or uncertain. Phi and uncertain send that one request to the BAA account.
-- **Cursor.** What the engine remembers of a branch: how much it has already cleared. When it cannot tell what is new, the engine judges everything again.
-- **Mode.** How the router acts, from `~/.pi/agent/phi-router.json`. `shadow` sends everything to the BAA account and logs the lane it would have picked. `enforce` routes. `force-baa` sends everything to the BAA account. `shadow` is the default.
+- **Verdict.** What the router concluded about one message part, kept by its content hash in the session: **sealed**, it holds a complete direct identifier of a real patient or member, or cleared, it does not. A part is judged once.
+- **Stub.** The constant text a personal account sees in place of a part that is sealed or not yet judged.
+- **Border.** The check on every request bound for a personal account in a `phi/auto` process. It passes cleared parts, stubs the rest, and refuses a request whose tool list never cleared.
+- **Pin.** `/phi pin`: the session runs wholly on the BAA account, with nothing judged, until `/phi unpin`.
 - **Fixture.** A turn part whose exact text has a SHA-256 listed under `fixtures` in `~/.pi/agent/phi-router.json`. The policy engine skips it, rules and judge alike. It is the only exemption the engine applies: no rule excuses an identifier for looking like a placeholder or for sitting near one.
 - **Patient-side label.** A field label whose first word is a patient-side person: `patient`, `pt`, `member`, `subscriber`, `beneficiary`, `insured` or `guarantor`, as in `patient_ref_no` or `subscriberGroupCode`. Any value with a digit after it taints as Safe Harbor's open-ended `other-id` class.
-- **Lane log.** One line per routed request: verdict, detector, category, accounts and session id. It never holds content.
+- **Lane log.** One line per routed request, with its lane, accounts, counts of verdicts by source and the rules or kinds that sealed, and one line per border report. It never holds content.
 - **Canary.** A synthetic identifier planted in a test corpus, so a test can search request bodies for it. Never real PHI.
 
 ## Compaction

@@ -1,222 +1,254 @@
 import { expect, test } from "bun:test";
 
-import type { Message } from "@earendil-works/pi-ai";
+import { type Message } from "@earendil-works/pi-ai";
+import { type CompactionEntry, convertToLlm, SessionManager } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import * as Result from "effect/Result";
 
-import { sha256 } from "./policy/digest.ts";
-import { homeOf } from "./route.ts";
+import { guard, type Lookup, stubs } from "./border.ts";
+import { compactionHead } from "./dispatch.ts";
+import { Judge } from "./policy/engine.ts";
+import { accountFor, decide, homeOf } from "./route.ts";
 import {
 	asked,
 	branchOf,
 	catOutput,
-	syntheticChart,
 	done,
 	lanesOf,
 	overloadedOn,
 	personal,
-	phiState,
 	ranCat,
 	rateLimitedOn,
 	run,
-	screenshot,
-	stateEntry,
+	scriptedJudge,
+	ssnRecord,
+	syntheticChart,
 	system,
 	worldOf,
 } from "./router.fixture.ts";
 
-const opening = [system, asked("Why does the admissions import drop rows?")];
+const question = "Why does the admissions import drop rows?";
 
-test("a clean session stays on one personal account, its home, for every request", () =>
+const opening = [system, asked(question)];
+
+/** What a personal account receives of `messages`, message by message. */
+const viewOf = (messages: ReadonlyArray<Message>, lookup: Lookup) =>
+	Result.getOrThrow(guard({ messages, lookup })).messages;
+
+/** A session that read a record with a valid SSN, and the request after it. */
+const sealedSession = (name: string) =>
+	Effect.gen(function* () {
+		const world = yield* worldOf({ name });
+		const branch = yield* branchOf({ world });
+		const home = homeOf(world.session);
+		const read = [...opening, ranCat(home), catOutput(ssnRecord)];
+		const next = [...read, done("ent"), asked("Now add a test.")];
+		const lanes = [yield* branch.send("user", opening), yield* branch.send("continuation", read)];
+
+		return { world, branch, home, read, next, lanes };
+	});
+
+test("a tool result with a valid SSN goes to ent, and the next request goes home with that result stubbed", () =>
 	run(
 		Effect.gen(function* () {
-			const branch = branchOf({ world: yield* worldOf({ name: "clean" }) });
-			const home = yield* branch.send("user", opening);
-			const read = [...opening, ranCat(home), catOutput("export const parse = (text: string) => text;")];
-			const later = yield* branch.send("continuation", read);
-			const next = yield* branch.send("user", [...read, done(home), asked("Now add a test.")]);
+			const { world, branch, home, next, lanes } = yield* sealedSession("ssn");
+			const after = yield* branch.send("user", next);
+			const view = viewOf(next, branch.book().lookup);
 
-			expect(personal).toContain(home);
-			expect([later, next]).toEqual([home, home]);
+			expect([...lanes, after]).toEqual([home, "ent", home]);
+			expect(view[3]).toEqual({ ...catOutput(stubs.sealed) });
+			expect(view[1]).toEqual(next[1]);
+			expect(world.notices).toEqual(["One message held patient identifiers and was handled only on ent."]);
 		}),
 	));
 
-test("a tool result with PHI sends the request to ent", () =>
+test("a retry of a sealed request and a repeated read of the sealed content go to ent", () =>
 	run(
 		Effect.gen(function* () {
-			const branch = branchOf({ world: yield* worldOf({ name: "phi-read" }) });
-			const home = yield* branch.send("user", opening);
-			const afterRead = yield* branch.send("continuation", [...opening, ranCat(home), catOutput(syntheticChart)]);
+			const { branch, home, read, next } = yield* sealedSession("repeat");
+			const retried = yield* branch.send("retry", read);
+			const after = yield* branch.send("user", next);
+			const reread = yield* branch.send("continuation", [...next, ranCat(home), catOutput(ssnRecord)]);
 
-			expect(personal).toContain(home);
-			expect(afterRead).toBe("ent");
+			expect([retried, after, reread]).toEqual(["ent", home, "ent"]);
 		}),
 	));
 
-test("the same tool result stays personal when phi-router.json registers its digest as a fixture", () =>
+test("a tool result the judge flags goes to ent, and a clean one stays home", () =>
 	run(
 		Effect.gen(function* () {
-			const digest = sha256(syntheticChart);
-			const settings = Option.some(`{ "mode": "enforce", "fixtures": ["${digest}"] }`);
-			const branch = branchOf({ world: yield* worldOf({ name: "fixture", settings }) });
-			const home = yield* branch.send("user", opening);
-			const afterRead = yield* branch.send("continuation", [...opening, ranCat(home), catOutput(syntheticChart)]);
+			const world = yield* worldOf({ name: "judged" });
+			const branch = yield* branchOf({ world });
+			const home = homeOf(world.session);
+			const clean = yield* branch.send("continuation", [...opening, ranCat(home), catOutput("export const x = 1;")]);
+			const flagged = yield* branch.send("continuation", [...opening, ranCat(home), catOutput(syntheticChart)]);
 
-			expect(personal).toContain(home);
-			expect(afterRead).toBe(home);
+			expect([clean, flagged]).toEqual([home, "ent"]);
 		}),
 	));
 
-test("a direct request, such as a compaction summary, goes to ent unscanned", () =>
+test("a direct request goes to ent with nothing judged", () =>
 	run(
 		Effect.gen(function* () {
 			const world = yield* worldOf({ name: "direct" });
-			const sent = yield* branchOf({ world }).send("direct", opening);
+			const sent = yield* (yield* branchOf({ world })).send("direct", opening);
 
 			expect(sent).toBe("ent");
-			expect(world.judgeCalls).toEqual([]);
+			expect(world.judged).toEqual([]);
 		}),
 	));
 
-test("a 429 moves the retry to the other personal account, and a second 429 to ent", () =>
+test("a pinned session goes to ent with nothing judged, and after unpin the pinned stretch is judged", () =>
 	run(
 		Effect.gen(function* () {
-			const branch = branchOf({ world: yield* worldOf({ name: "rate-limit" }) });
-			const home = yield* branch.send("user", opening);
-			const other = yield* branch.send("retry", opening, rateLimitedOn(home));
-			const third = yield* branch.send("retry", opening, rateLimitedOn(other));
+			const world = yield* worldOf({ name: "pin" });
+			const branch = yield* branchOf({ world });
 
-			expect(personal).toContain(other);
-			expect(other).not.toBe(home);
-			expect(third).toBe("ent");
+			branch.pin(true);
+
+			const pinned = yield* branch.send("user", opening);
+			const judgedWhilePinned = world.judged.length;
+
+			branch.pin(false);
+
+			const unpinned = yield* branch.send("user", [...opening, done("ent"), asked("Go on.")]);
+
+			expect([pinned, unpinned]).toEqual(["ent", homeOf(world.session)]);
+			expect(judgedWhilePinned).toBe(0);
+			expect(world.judged).toContain(question);
 		}),
 	));
 
-test("a retry after a failure on ent stays on ent, even when the content is clean", () =>
-	run(
-		Effect.gen(function* () {
-			const world = yield* worldOf({ name: "ent-failure" });
-			const branch = branchOf({ world });
-
-			world.verdict = "error";
-
-			const unsure = yield* branch.send("user", opening);
-
-			world.verdict = "judge";
-
-			const retried = yield* branch.send("retry", opening, overloadedOn("ent"));
-
-			expect([unsure, retried]).toEqual(["ent", "ent"]);
-		}),
-	));
-
-const summaryOf = (text: string): Message =>
-	asked(
-		`The conversation history before this point was compacted into the following summary:\n<summary>\n${text}\n</summary>`,
-	);
-
-test("after a compaction the summary is scanned: a clean one stays personal, one carrying PHI goes to ent", () =>
-	run(
-		Effect.gen(function* () {
-			const branch = branchOf({ world: yield* worldOf({ name: "compaction" }) });
-			const home = yield* branch.send("user", [...opening, done("ultra-a"), asked("Add a test.")]);
-			const clean = [system, summaryOf("The parser was renamed."), asked("Now add docs.")];
-			const afterClean = yield* branch.send("user", clean);
-			const leaked = [system, summaryOf(`Debugged the import of: ${syntheticChart}`), asked("Now add docs.")];
-			const afterLeak = yield* branch.send("user", leaked);
-			const after = yield* branch.send("user", [...clean, done("ent"), asked("Ship it.")]);
-
-			expect([afterClean, afterLeak, after]).toEqual([home, "ent", home]);
-		}),
-	));
-
-test("an image sends its request to ent, since pixels are never judged", () =>
-	run(
-		Effect.gen(function* () {
-			const branch = branchOf({ world: yield* worldOf({ name: "image" }) });
-			const withImage = yield* branch.send("user", [system, screenshot]);
-			const after = yield* branch.send("user", opening);
-
-			expect(withImage).toBe("ent");
-			expect(personal).toContain(after);
-		}),
-	));
-
-for (const verdict of ["error", "timeout"] as const) {
-	test(`a Decisions ${verdict} sends only that request to ent`, () =>
-		run(
-			Effect.gen(function* () {
-				const world = yield* worldOf({ name: `judge-${verdict}` });
-				const branch = branchOf({ world });
-
-				world.verdict = verdict;
-
-				const failed = yield* branch.send("user", opening);
-
-				world.verdict = "judge";
-
-				const recovered = yield* branch.send("user", [...opening, done("ent"), asked("Thanks.")]);
-
-				expect(failed).toBe("ent");
-				expect(personal).toContain(recovered);
-			}),
-		));
-}
-
-const garbled = { cursor: "Unscanned", home: "ultra-a", limited: [{ account: "ultra-b", at: "soon" }] };
-
-test("router state that no longer decodes is skipped, and the request routes as with none", () =>
-	run(
-		Effect.gen(function* () {
-			const world = yield* worldOf({ name: "malformed" });
-			const sent = yield* branchOf({ world, entries: [stateEntry(phiState(garbled))] }).send("user", opening);
-
-			expect(sent).toBe(homeOf(world.session));
-		}),
-	));
-
-test("shadow, the default, dispatches ent and logs the personal account it would have taken, and no content", () =>
+test("shadow, the default, dispatches ent and logs the account enforce would take, and no content", () =>
 	run(
 		Effect.gen(function* () {
 			const world = yield* worldOf({ name: "shadow", settings: Option.none() });
-			const branch = branchOf({ world });
-			const clean = yield* branch.send("user", opening);
-			const tainted = yield* branch.send("continuation", [...opening, ranCat("ent"), catOutput(syntheticChart)]);
+			const branch = yield* branchOf({ world });
+			const sent = yield* branch.send("user", opening);
 			const { text, lanes } = yield* lanesOf(world);
 
-			const routes = Arr.map(lanes, ({ mode, verdict, wouldBe, dispatched }) => [
-				mode,
-				verdict,
-				wouldBe,
-				dispatched,
-			]);
-
-			expect([clean, tainted]).toEqual(["ent", "ent"]);
-			expect(routes).toEqual([
-				["shadow", "clean", homeOf(world.session), "ent"],
-				["shadow", "tainted", "ent", "ent"],
-			]);
-			expect(text).not.toContain("Jane Roe");
+			expect(sent).toBe("ent");
+			expect(
+				Arr.map(lanes, (line) => (line.type === "route" ? [line.mode, line.wouldBe, line.dispatched] : [])),
+			).toEqual([["shadow", homeOf(world.session), "ent"]]);
 			expect(text).not.toContain("admissions");
 		}),
 	));
 
-const forced = [
-	{ name: "force-baa", slug: "force-baa", settings: '{ "mode": "force-baa" }' },
-	{ name: "a baaRepos folder", slug: "baa-repo", settings: '{ "mode": "enforce", "baaRepos": ["REPO/"] }' },
-	{ name: "settings that do not parse", slug: "bad-settings", settings: '{ "mode": "enforce", ' },
-];
+test("a 429 moves the retry to the other personal account, and a failure on ent keeps the retry on ent", () =>
+	run(
+		Effect.gen(function* () {
+			const world = yield* worldOf({ name: "failover" });
+			const branch = yield* branchOf({ world });
+			const home = homeOf(world.session);
+			const other = yield* branch.send("retry", opening, rateLimitedOn(home));
+			const afterEnt = yield* branch.send("retry", opening, overloadedOn("ent"));
 
-for (const { name, slug, settings } of forced) {
-	test(`${name} dispatches ent without a scan`, () =>
-		run(
-			Effect.gen(function* () {
-				const world = yield* worldOf({ name: `forced-${slug}`, settings: Option.some(settings) });
-				const sent = yield* branchOf({ world }).send("user", opening);
+			expect(personal).toContain(other);
+			expect(other).not.toBe(home);
+			expect(afterEnt).toBe("ent");
+		}),
+	));
 
-				expect(sent).toBe("ent");
-				expect(world.judgeCalls).toEqual([]);
-			}),
-		));
-}
+test("the personal lane skips a limited or unusable account, and ent never fails over to one", () => {
+	const choice = {
+		lane: "personal" as const,
+		home: "ultra-a" as const,
+		limited: () => false,
+		usable: () => true,
+		failedOnBaa: false,
+	};
+
+	expect(accountFor(choice)).toBe("ultra-a");
+	expect(accountFor({ ...choice, limited: (account) => account === "ultra-a" })).toBe("ultra-b");
+	expect(accountFor({ ...choice, usable: (account) => account === "ent" })).toBe("ent");
+	expect(accountFor({ ...choice, failedOnBaa: true })).toBe("ent");
+	expect(accountFor({ ...choice, lane: "ent" })).toBe("ent");
+});
+
+test("a judge that dies sends the request to ent", () =>
+	run(
+		Effect.gen(function* () {
+			const world = yield* worldOf({ name: "judge-dies" });
+			const branch = yield* branchOf({ world });
+
+			world.judge = "dies";
+
+			const account = yield* branch.send("user", opening);
+
+			expect(account).toBe("ent");
+		}),
+	));
+
+test("a failed judgment seals only its piece: the request goes to ent and the next one home", () =>
+	run(
+		Effect.gen(function* () {
+			const world = yield* worldOf({ name: "judge-errors" });
+			const branch = yield* branchOf({ world });
+
+			world.judge = "errors";
+
+			const failed = yield* branch.send("user", opening);
+
+			world.judge = "answers";
+
+			const next = yield* branch.send("user", [...opening, done("ent"), asked("Thanks.")]);
+
+			expect([failed, next]).toEqual(["ent", homeOf(world.session)]);
+		}),
+	));
+
+test("verdicts survive a restart: the folded book routes as before, with no judge calls", () =>
+	run(
+		Effect.gen(function* () {
+			const { world, branch, home, next } = yield* sealedSession("restart");
+			const before = yield* branch.send("user", next);
+
+			yield* branch.restart;
+
+			const calls = world.judged.length;
+			const after = yield* branch.send("user", next);
+
+			expect([before, after]).toEqual([home, home]);
+			expect(world.judged.length).toBe(calls);
+			expect(viewOf(next, branch.book().lookup)[3]).toEqual({ ...catOutput(stubs.sealed) });
+		}),
+	));
+
+/** A session pi compacted into a summary that names a patient, and its compaction entry. */
+const compacted = () => {
+	const session = SessionManager.inMemory("/work");
+
+	session.appendMessage(system);
+	session.appendMessage(asked(question));
+	session.appendCompaction(`Debugged the import of: ${syntheticChart}`, session.appendMessage(done("ultra-a")), 1000);
+
+	const entry = Arr.findFirst(session.getEntries(), (found): found is CompactionEntry => found.type === "compaction");
+
+	return { session, entry };
+};
+
+test("the compaction judge keys the summary as the next request carries it", () =>
+	run(
+		Effect.gen(function* () {
+			const world = yield* worldOf({ name: "compaction" });
+			const book = (yield* branchOf({ world })).book();
+			const { session, entry } = compacted();
+			const compaction = yield* Effect.fromOption(entry);
+
+			const judged = yield* decide({
+				messages: compactionHead(compaction),
+				reason: "continuation",
+				book,
+				hold: Option.none(),
+			}).pipe(Effect.provideService(Judge, scriptedJudge(world)));
+
+			const next = convertToLlm(session.buildSessionProjection().messages);
+			const { report } = Result.getOrThrow(guard({ messages: next, lookup: book.lookup }));
+
+			expect(judged.why).toBe("sealed");
+			expect(report.stubbedSealed).toBe(1);
+		}),
+	));

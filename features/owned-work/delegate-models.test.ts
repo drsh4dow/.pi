@@ -1,7 +1,8 @@
-import { expect, test } from "bun:test";
+import { beforeAll, expect, test } from "bun:test";
 
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
+import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as ConfigProvider from "effect/ConfigProvider";
@@ -24,13 +25,43 @@ const registry = [
 	on("opencode-go", "glm-5.3-flash"),
 ];
 
-const home = Layer.merge(
-	NodeServices.layer,
-	ConfigProvider.layer(ConfigProvider.fromEnvRecord({ HOME: `${Bun.env["TMPDIR"] ?? "/tmp"}/no-phi-settings` })),
-);
+const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/delegate-models-${String(process.pid)}`;
 
-const delegateModel = ({ parent, name }: { readonly parent: Model<Api>; readonly name: string }) => {
-	const caller = { model: parent, cwd: "/", modelRegistry: { getAll: () => registry } };
+/** HOMEs whose phi-router.json routes (`enforce`) or holds every request on ent (no file: `shadow`). */
+const homes = { enforce: `${scratch}/enforce`, shadow: `${scratch}/shadow` };
+
+beforeAll(() => Bun.write(`${homes.enforce}/.pi/agent/phi-router.json`, '{ "mode": "enforce" }'));
+
+const pinned: SessionEntry = {
+	type: "custom",
+	customType: "phi-pin",
+	id: "p0000001",
+	parentId: "",
+	timestamp: "2026-05-14T10:00:00.000Z",
+	data: { pinned: true },
+};
+
+interface Row {
+	readonly from: string;
+	readonly parent: Model<Api>;
+	readonly name: string;
+	readonly runs: string;
+	readonly mode?: keyof typeof homes;
+	readonly branch?: ReadonlyArray<SessionEntry>;
+}
+
+const delegateModel = ({ parent, name, mode = "enforce", branch = [] }: Row) => {
+	const caller = {
+		model: parent,
+		cwd: "/",
+		modelRegistry: { getAll: () => registry },
+		sessionManager: { getBranch: () => [...branch] },
+	};
+
+	const home = Layer.merge(
+		NodeServices.layer,
+		ConfigProvider.layer(ConfigProvider.fromEnvRecord({ HOME: homes[mode] })),
+	);
 
 	return Effect.runPromise(
 		modelOf(caller, modelTable, modelNameOf(name)).pipe(
@@ -42,18 +73,27 @@ const delegateModel = ({ parent, name }: { readonly parent: Model<Api>; readonly
 
 const phiAuto = on("phi", "auto");
 
-const rows = [
-	{ from: "a clean phi/auto parent", parent: phiAuto, name: "judgment", runs: "phi/auto" },
-	{ from: "a clean phi/auto parent", parent: phiAuto, name: "investigator", runs: "phi/auto" },
-	{ from: "a clean phi/auto parent", parent: phiAuto, name: "ultra-b/claude-opus-5-5", runs: "phi/auto" },
-	{ from: "a clean phi/auto parent", parent: phiAuto, name: "phi/auto", runs: "phi/auto" },
+const rows: ReadonlyArray<Row> = [
+	{ from: "a routing phi/auto parent", parent: phiAuto, name: "judgment", runs: "phi/auto" },
+	{ from: "a routing phi/auto parent", parent: phiAuto, name: "investigator", runs: "phi/auto" },
+	{ from: "a routing phi/auto parent", parent: phiAuto, name: "ultra-b/claude-opus-5-5", runs: "phi/auto" },
+	{ from: "a routing phi/auto parent", parent: phiAuto, name: "phi/auto", runs: "phi/auto" },
 	{
-		from: "a clean phi/auto parent",
+		from: "a routing phi/auto parent",
 		parent: phiAuto,
 		name: "ent/claude-opus-5-5",
 		runs: "ent/claude-opus-5-5",
 	},
-	{ from: "a clean phi/auto parent", parent: phiAuto, name: "openai/gpt-6.1-sol", runs: "refused" },
+	{ from: "a routing phi/auto parent", parent: phiAuto, name: "openai/gpt-6.1-sol", runs: "refused" },
+	{
+		from: "a pinned phi/auto parent",
+		parent: phiAuto,
+		name: "judgment",
+		runs: "ent/claude-opus-5-5",
+		branch: [pinned],
+	},
+	{ from: "a shadow phi/auto parent", parent: phiAuto, name: "judgment", runs: "ent/claude-opus-5-5", mode: "shadow" },
+	{ from: "a shadow phi/auto parent", parent: phiAuto, name: "openai/gpt-6.1-sol", runs: "refused", mode: "shadow" },
 	{ from: "an ent parent", parent: on("ent", opus.id), name: "judgment", runs: "ent/claude-opus-5-5" },
 	{ from: "an ent parent", parent: on("ent", opus.id), name: "investigator", runs: "ent/claude-opus-5-5" },
 	{
@@ -72,13 +112,13 @@ const rows = [
 	},
 ];
 
-for (const { from, parent, name, runs } of rows) {
-	test(`a delegate of ${from} that names ${name} runs on ${runs}`, () =>
+for (const row of rows) {
+	test(`a delegate of ${row.from} that names ${row.name} runs on ${row.runs}`, () =>
 		Effect.runPromise(
 			Effect.map(
-				Effect.promise(() => delegateModel({ parent, name })),
+				Effect.promise(() => delegateModel(row)),
 				(model) => {
-					expect(model).toBe(runs);
+					expect(model).toBe(row.runs);
 				},
 			),
 		));
@@ -108,9 +148,9 @@ const relaunched = (model: string) => ({
 const refused = (why: string) => ({ isError: true, details: { error: "BadDelegate", message: why }, started: [] });
 
 const continuations = [
-	{ from: "a clean phi/auto parent", parent: phiAuto, ref: "delegate-2", expect: relaunched("phi/auto") },
+	{ from: "a shadow phi/auto parent", parent: phiAuto, ref: "delegate-2", expect: relaunched("ent/claude-opus-5-5") },
 	{
-		from: "a clean phi/auto parent",
+		from: "a shadow phi/auto parent",
 		parent: phiAuto,
 		ref: "delegate-3",
 		expect: refused(

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 
 import * as Effect from "effect/Effect";
 
-import { guardCodemode } from "./index.ts";
+import { guardCodemode } from "./gate.ts";
 import { onAccount, phiAuto } from "./router.fixture.ts";
 
 const codemode = (code: string) => ({
