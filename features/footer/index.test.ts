@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, setSystemTime, test } from "bun:test";
 
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import { type ContextUsage, SessionManager } from "@earendil-works/pi-coding-agent";
@@ -8,6 +8,16 @@ import * as Str from "effect/String";
 import { type FooterInputs, footerView } from "./index.ts";
 
 const opus = getBuiltinModel("anthropic", "claude-opus-5-5");
+
+const start = Date.parse("2025-01-01T09:00:00Z");
+
+beforeEach(() => {
+	setSystemTime(start);
+});
+
+afterEach(() => {
+	setSystemTime();
+});
 
 const sgr = { warning: 33, error: 31 } as const;
 
@@ -89,7 +99,7 @@ test("the stats line holds the cache hit rate, the cost, and the context use, an
 		autoCompact: () => true,
 	});
 
-	expect(render(80)[1]).toBe(padded("CH95.0% $0.750 (sub) 29.1%/1.0M (auto)", "claude-opus-5-5 • high", 80));
+	expect(render(80)[1]).toBe(padded("0s CH95.0% $0.750 (sub) 29.1%/1.0M (auto)", "claude-opus-5-5 • high", 80));
 });
 
 test("a session without cache use or cost on an API key shows only the context use", () => {
@@ -99,7 +109,7 @@ test("a session without cache use or cost on an API key shows only the context u
 
 	const render = view({ session, subscription: false, context: undefined, autoCompact: () => false });
 
-	expect(render(60)[1]).toBe(padded("?/1.0M", "claude-opus-5-5 • high", 60));
+	expect(render(60)[1]).toBe(padded("0s ?/1.0M", "claude-opus-5-5 • high", 60));
 });
 
 test("the context use turns to a warning above 70% and to an error above 90%", () => {
@@ -153,7 +163,7 @@ test("turning auto-compaction off shows once the session gains an entry", () => 
 
 	expect([before, render(60)[1]]).toEqual([
 		padded("0.0%/1.0M (auto)", "claude-opus-5-5 • high", 60),
-		padded("0.0%/1.0M", "claude-opus-5-5 • high", 60),
+		padded("0s 0.0%/1.0M", "claude-opus-5-5 • high", 60),
 	]);
 });
 
@@ -170,4 +180,40 @@ test("with several providers the model names its provider when the line has room
 		padded("0.0%/1.0M", "(anthropic) claude-opus-5-5 • high", 60),
 		padded("0.0%/1.0M", "claude-opus-5-5 • high", 40),
 	]);
+});
+
+const lineWith = (clock: string) => padded(`${clock}?/1.0M`, "claude-opus-5-5 • high", 60);
+
+test("the stats line opens with the time from the first message to the latest", () => {
+	const session = SessionManager.inMemory("/work");
+	const render = view({ session, subscription: false, context: undefined, autoCompact: () => false });
+
+	const lineAfter = (elapsed: number) => {
+		setSystemTime(start + elapsed);
+		respond(session, { input: 10, cacheRead: 0, cacheWrite: 0, cost: 0 });
+
+		return render(60)[1];
+	};
+
+	expect([render(60)[1], lineAfter(0), lineAfter(45_000), lineAfter(754_000), lineAfter(3_725_000)]).toEqual([
+		lineWith(""),
+		lineWith("0s "),
+		lineWith("45s "),
+		lineWith("12m34s "),
+		lineWith("1h02m "),
+	]);
+});
+
+test("entries after the latest message leave the clock where it was", () => {
+	const session = SessionManager.inMemory("/work");
+
+	respond(session, { input: 10, cacheRead: 0, cacheWrite: 0, cost: 0 });
+	setSystemTime(start + 30_000);
+	respond(session, { input: 10, cacheRead: 0, cacheWrite: 0, cost: 0 });
+	setSystemTime(start + 600_000);
+	session.appendThinkingLevelChange("low");
+
+	const render = view({ session, subscription: false, context: undefined, autoCompact: () => false });
+
+	expect(render(60)[1]).toBe(padded("30s ?/1.0M", "claude-opus-5-5 • high", 60));
 });

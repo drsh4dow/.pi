@@ -18,6 +18,8 @@ import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Str from "effect/String";
 
+import { formatDuration, sessionDuration } from "./duration.ts";
+
 export interface FooterContext {
 	readonly sessionManager: Pick<
 		ExtensionContext["sessionManager"],
@@ -44,6 +46,8 @@ export interface FooterInputs {
 
 /** What the stats line shows that only changes when the session gains an entry or the model changes. */
 interface SessionStats {
+	/** Milliseconds from the first message to the latest. None before the first message. */
+	readonly duration: Option.Option<number>;
 	readonly cost: number;
 	/** None when the session never read or wrote the cache, or the latest response sent no prompt tokens. */
 	readonly cacheHitRate: Option.Option<number>;
@@ -155,7 +159,7 @@ const statsLeft = (inputs: FooterInputs, stats: SessionStats) => {
 			? Option.some(`$${stats.cost.toFixed(3)}${subscription ? " (sub)" : ""}`)
 			: Option.none();
 
-	const parts = Arr.getSomes([cachePart, costPart]);
+	const parts = Arr.getSomes([Option.map(stats.duration, formatDuration), cachePart, costPart]);
 
 	return Arr.join([...parts, contextPart(inputs, stats)], " ");
 };
@@ -219,7 +223,7 @@ const statusLines = ({ data, theme }: FooterInputs, width: number) => {
 		: [];
 };
 
-/** Renders pi's footer with a stats line of cache hit rate, cost, and context use, and no token counters. */
+/** Renders pi's footer with a stats line of session time, cache hit rate, cost, and context use, and no token counters. */
 export const footerView = (inputs: FooterInputs) => {
 	const { ctx } = inputs;
 	let cached = Option.none<{ readonly key: string; readonly stats: SessionStats }>();
@@ -233,8 +237,11 @@ export const footerView = (inputs: FooterInputs) => {
 			return cached.value.stats;
 		}
 
+		const entries = session.getEntries();
+
 		const fresh = {
-			...sessionUsage(session.getEntries()),
+			duration: sessionDuration(entries),
+			...sessionUsage(entries),
 			context: ctx.getContextUsage(),
 			autoCompact: inputs.autoCompact(),
 		};
