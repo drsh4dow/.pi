@@ -72,10 +72,12 @@ export const judgeAll = ({
 	}));
 };
 
-const verdictOf = (piece: Piece, script: Script) =>
+/** One piece's verdicts, the questions the judge was asked, and the piece text each question carried. */
+export const judgedOne = ({ piece, script }: { readonly piece: Piece; readonly script: Script }) =>
 	Effect.map(judgeAll({ pieces: [piece], script }), ({ found, asked }) => ({
 		verdicts: Arr.map(found, ([, verdict]) => verdict),
 		questions: Arr.map(asked, ({ question }) => question),
+		fresh: Arr.map(asked, ({ input }) => input.piece),
 	}));
 
 export const run = (body: Effect.Effect<void>) => Effect.runPromise(body);
@@ -85,7 +87,7 @@ export const expectJudged = Effect.fn("expectJudged")(function* (
 	script: Script,
 	expected: { readonly verdicts: ReadonlyArray<Verdict>; readonly questions: ReadonlyArray<Question> },
 ) {
-	const judged = yield* verdictOf(piece, script);
+	const { verdicts, questions } = yield* judgedOne({ piece, script });
 
-	expect(judged).toEqual({ verdicts: [...expected.verdicts], questions: [...expected.questions] });
+	expect({ verdicts, questions }).toEqual({ verdicts: [...expected.verdicts], questions: [...expected.questions] });
 });

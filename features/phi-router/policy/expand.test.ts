@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Encoding from "effect/encoding";
 import * as Str from "effect/String";
 
-import { judgeAll, pieceOf } from "./engine.fixture.ts";
+import { judgedOne, pieceOf, run } from "./engine.fixture.ts";
 import { Finding, type Piece, Verdict } from "./engine.ts";
 
 const gzip = (text: string) =>
@@ -17,16 +17,9 @@ const binary = (length: number) => Uint8Array.from(Arr.makeBy(length, (index) =>
 
 const sealed = (why: "binary" | "undecodable") => [Verdict.Sealed({ finding: Finding.Failure({ why }) })];
 
-/** The piece's verdicts, and the text the judge was shown for it. */
-const judgedPiece = (piece: Piece) =>
-	Effect.map(judgeAll({ pieces: [piece], script: { score: () => 0 } }), ({ found, asked }) => ({
-		verdicts: Arr.map(found, ([, verdict]) => verdict),
-		fresh: Arr.map(asked, ({ input }) => input.piece),
-	}));
+const judgedPiece = (piece: Piece) => judgedOne({ piece, script: { score: () => 0 } });
 
 const judgedText = (text: string) => judgedPiece(pieceOf(text));
-
-const run = (body: Effect.Effect<void>) => Effect.runPromise(body);
 
 const note = "Patient Marisol Quintero";
 

@@ -5,14 +5,10 @@ import * as Effect from "effect/Effect";
 import * as Encoding from "effect/encoding";
 import * as Str from "effect/String";
 
-import { judgeAll, pieceOf, run, type Script } from "./engine.fixture.ts";
-import { Finding, type JudgeInput, Verdict } from "./engine.ts";
+import { judgedOne, pieceOf, run, type Script } from "./engine.fixture.ts";
+import { Finding, Verdict } from "./engine.ts";
 
-const judged = (text: string, script: Script) =>
-	Effect.map(judgeAll({ pieces: [pieceOf(text)], script }), ({ found, asked }) => ({
-		verdicts: Arr.map(found, ([, verdict]) => verdict),
-		fresh: Arr.map(asked, ({ input }) => input.piece),
-	}));
+const judged = (text: string, script: Script) => judgedOne({ piece: pieceOf(text), script });
 
 const codePoints = (text: string) => Arr.getSomes(Arr.map(Arr.fromIterable(text), Str.codePointAt(0)));
 
@@ -66,7 +62,7 @@ const percentEncoded = (bytes: Uint8Array) =>
 
 /** Seals only on the plain note, so a piece seals exactly when the judge was shown a correct reading. */
 const seesNote = (plain: string): Script => ({
-	score: (input: JudgeInput) => (Str.includes(plain)(input.piece) ? 0.9 : 0),
+	score: ({ piece }) => (Str.includes(plain)(piece) ? 0.9 : 0),
 	kind: () => "patient-name",
 });
 
