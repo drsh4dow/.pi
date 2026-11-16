@@ -1,7 +1,3 @@
-/**
- * The routing core: the lane a request takes, then the account that serves it. pi's `route()`, the corpus eval and the
- * savings replay call `decide`, so the lane rule lives in one place.
- */
 import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import type { ModelRouteReason, SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
@@ -17,7 +13,6 @@ import { quotingReplies } from "./policy/quotes.ts";
 import type { Mode } from "./settings.ts";
 import type { VerdictBook, VerdictsEntry } from "./store.ts";
 
-/** Why a request runs on `ent` with nothing judged. The pin is the session's; the rest come from settings. */
 type Hold = "pinned" | "force-baa" | "baa-repo" | "bad-settings";
 
 export type Lane = "personal" | "ent";
@@ -99,7 +94,6 @@ const unjudged = ({
 	why,
 });
 
-/** A new `ent` reply that repeats a line of sealed content seals, whatever the judge said of it alone. */
 const withQuotes = ({
 	judged,
 	found,
@@ -182,7 +176,6 @@ type Personal = typeof Personal.Type;
 
 const Stamp = Schema.Struct({ account: Personal, at: Schema.Finite });
 
-/** What `phi/auto` keeps in pi's virtual-model state. Verdicts live in `phi-verdicts` entries, not here. */
 export const RouterState = Schema.Struct({
 	/** The personal account the session starts on, from a hash of its id, so sessions spread over both subscriptions. */
 	home: Personal,

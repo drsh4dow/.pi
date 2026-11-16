@@ -26,7 +26,6 @@ const answered = <Value>(answer: Answer<Value>) => {
 	return Effect.succeed(answer);
 };
 
-/** A judge that answers from `script` and records every question it is asked. */
 const scripted = ({ score, kind = () => "none" }: Script) => {
 	const asked: Array<{ readonly question: Question; readonly input: JudgeInput }> = [];
 
@@ -72,7 +71,6 @@ export const judgeAll = ({
 	}));
 };
 
-/** One piece's verdicts, the questions the judge was asked, and the piece text each question carried. */
 export const judgedOne = ({ piece, script }: { readonly piece: Piece; readonly script: Script }) =>
 	Effect.map(judgeAll({ pieces: [piece], script }), ({ found, asked }) => ({
 		verdicts: Arr.map(found, ([, verdict]) => verdict),

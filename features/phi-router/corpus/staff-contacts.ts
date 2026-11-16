@@ -151,7 +151,6 @@ const submitter = (rng: Random): Sample => {
 	};
 };
 
-/** Staff, vendor and business contacts: names, work emails and business phones of people who are not patients. */
 export const staffContacts: Arr.NonEmptyReadonlyArray<(rng: Random) => Sample> = [
 	onCall,
 	vendorEmail,

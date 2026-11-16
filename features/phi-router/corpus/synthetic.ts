@@ -17,7 +17,6 @@ const personas: Arr.NonEmptyReadonlyArray<{ readonly name: PersonName; readonly 
 
 const clientCodePrefix = "STGQA-";
 
-/** Every form a carrier writes a persona's name in, and each member id. */
 export const synthetic: Synthetic = {
 	exact: Arr.dedupe(
 		Arr.flatMap(personas, ({ name, member }) => [
@@ -64,7 +63,6 @@ const stagingLog = (rng: Random): Sample => {
 	};
 };
 
-/** Cases whose only identities are the QA test members on the exact list, in every carrier, plus staging client codes. */
 export const syntheticListed: Arr.NonEmptyReadonlyArray<(rng: Random) => Sample> = [
 	stagingLog,
 	...Arr.map(TextCarrier.literals, recordSample),

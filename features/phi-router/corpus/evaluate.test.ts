@@ -22,7 +22,6 @@ const usage = { calls: 1, inputTokens: 10, cost: 0.001, ms: 0 };
 
 const noSynthetic = { exact: [], prefixes: [] };
 
-/** Seals exactly the pieces that hold `SEAL`. */
 const judge = Judge.of({
 	identifier: ({ piece }) => Effect.succeed({ score: Str.includes("SEAL")(piece) ? 0.9 : 0, usage }),
 	kind: () => Effect.succeed({ kind: "ssn", usage }),
@@ -30,7 +29,6 @@ const judge = Judge.of({
 
 const strata = { identifier: "ssn", carrier: "log-line", transform: "plain", entry: "tool-result" } as const;
 
-/** A prompt, a tool result holding `record`, and a second prompt after the reply. */
 const readRecord = (id: string, record: string): Case => ({
 	id,
 	expect: "phi",
@@ -105,7 +103,6 @@ test("a canary the judge clears is a leak at the request that first shows it, an
 		}),
 	));
 
-/** A split canary whose two halves arrive in separate prompts, the second holding `second`. */
 const splitAcross = (id: string, second: string): Case => ({
 	id,
 	expect: "phi",

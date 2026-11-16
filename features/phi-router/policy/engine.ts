@@ -1,7 +1,3 @@
-/**
- * The pi-free engine: from pieces of new content to verdicts. A harness adapter supplies the pieces and a `Judge`.
- * Owns the order (fixtures, synthetic blanking, decoding, rules, judge), the borderline band and failure sealing.
- */
 import * as Arr from "effect/Array";
 import * as Context from "effect/Context";
 import * as Data from "effect/Data";
@@ -64,7 +60,6 @@ export const Finding = Data.taggedEnum<Finding>();
 /** `empty` is a piece with no text and no image left to judge. */
 export type ClearedBy = "judge" | "rules-only" | "fixture" | "empty";
 
-/** A fact about content under one policy version. */
 export type Verdict = Data.TaggedEnum<{
 	Cleared: { readonly by: ClearedBy };
 	Sealed: { readonly finding: Finding };
@@ -72,7 +67,6 @@ export type Verdict = Data.TaggedEnum<{
 
 export const Verdict = Data.taggedEnum<Verdict>();
 
-/** What judge calls cost, summed for the lane log and the replay. */
 export const Usage = Schema.Struct({
 	calls: Schema.Finite,
 	inputTokens: Schema.Finite,

@@ -1,4 +1,3 @@
-/** The engine eval's report as text: one window in full, or a sweep as one row per window. */
 import * as Arr from "effect/Array";
 import * as Str from "effect/String";
 
@@ -133,7 +132,6 @@ const sweepTable = (reports: ReadonlyArray<Report>) =>
 		}),
 	});
 
-/** The sweep table and the leak list of each size that leaked, or the full report of one window. */
 export const outputOf = (reports: ReadonlyArray<Report>) => {
 	if (reports.length === 1) {
 		return Arr.join(Arr.map(reports, render), "\n\n");

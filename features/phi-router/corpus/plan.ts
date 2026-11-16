@@ -4,7 +4,6 @@ import * as Option from "effect/Option";
 import { Entry, type PhiStrata, TextCarrier, TextIdentifier, Transform } from "./manifest.ts";
 import type { Random } from "./random.ts";
 
-/** The strata of a case whose identifiers are text. */
 export interface TextStrata extends PhiStrata {
 	readonly identifier: TextIdentifier;
 	readonly carrier: TextCarrier;

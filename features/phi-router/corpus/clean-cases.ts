@@ -27,7 +27,6 @@ const samplers = {
 	count: counts,
 } satisfies Record<TextNegative, Arr.NonEmptyReadonlyArray<(rng: Random) => Sample>>;
 
-/** The negative classes whose content is text. `images.ts` makes the clean screenshots. */
 type TextNegative = Exclude<typeof Negative.Type, "clean-screenshot">;
 
 const perNegative = 32;

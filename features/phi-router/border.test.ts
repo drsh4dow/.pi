@@ -124,7 +124,6 @@ const prompt: SystemMessage = {
 	timestamp: 0,
 };
 
-/** Every part of the prompt cleared but the ones `held` picks, which stay never judged. */
 const promptLookup = (held: (slot: Slot) => boolean) =>
 	lookupOf(Arr.flatMap(partsOf(prompt), ({ key, slot }) => (held(slot) ? [] : [[key, "cleared"] as const])));
 

@@ -15,7 +15,6 @@ export interface DrawContext {
 const letters = "ABCDEFGHJKLMNPRSTUVWXYZ";
 const alphanumerics = `${letters}0123456789`;
 
-/** A person's name as the carrier's format writes it. */
 export const nameIn = (carrier: typeof Carrier.Type) => (name: PersonName) => {
 	if (carrier === "hl7v2") {
 		return `${name.family}^${name.given}`;

@@ -24,7 +24,6 @@ const npi = (nine: string) => {
 	return `${nine}${String((10 - (sum % 10)) % 10)}`;
 };
 
-/** A date of service in 2022 to 2024, as the DTP segment writes it. */
 const drawServiceDate = (rng: Random) =>
 	`${String(rng.between(2022, 2024))}${two(rng.between(1, 12))}${two(rng.between(1, 28))}`;
 

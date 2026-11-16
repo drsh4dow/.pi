@@ -27,7 +27,6 @@ const Answer = Schema.Union([
 
 type Answer = typeof Answer.Type;
 
-/** One judge call: what it was asked, as digests, and what it answered and cost. */
 const Recording = Schema.Struct({
 	policy: Schema.String,
 	question: Question,
@@ -51,7 +50,6 @@ const lengthPrefixed = (fields: ReadonlyArray<string>) =>
 
 const digestOf = (fields: ReadonlyArray<string>) => Str.slice(0, 32)(sha256(lengthPrefixed(fields)));
 
-/** The policy version, the question, and digests of the piece, of its context items and of each image. */
 const askedOf = (question: Question, input: JudgeInput) => ({
 	policy: Str.slice(0, 32)(policyVersion),
 	question,
@@ -107,7 +105,6 @@ export const recordedJudge = Effect.fn("recordedJudge")(function* (contents: str
 	return { judge, unrecorded: Ref.get(unrecorded) };
 });
 
-/** `live`, keeping every answer and refusal, and `contents`: them as a recordings file, one line per call, sorted. */
 export const recording = (live: Judge["Service"]) => {
 	const kept = new Map<string, Recording>();
 

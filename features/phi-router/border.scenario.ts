@@ -41,7 +41,6 @@ const reply = () => Reply.Text({ text: "done" });
 
 const mocks = { "ultra-a": serveMock(reply), "ultra-b": serveMock(reply), ent: serveMock(reply) };
 
-/** Each mock's bodies, one per line, under the run's HOME, so the run folder keeps what the wire carried. */
 const keepBodies = (run: Run) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
@@ -60,7 +59,6 @@ const base64Run = /[A-Za-z0-9+/]{16,}={0,2}/gu;
 
 const textDecoder = new TextDecoder();
 
-/** Each base64 run of a body, decoded, so a marker sent encoded still matches. */
 const decodedRuns = (body: string) =>
 	Arr.flatMap(Arr.fromIterable(Str.matchAll(base64Run)(body)), ([run]) =>
 		Result.match(Encoding.Base64.decode(run), {
@@ -69,7 +67,6 @@ const decodedRuns = (body: string) =>
 		}),
 	);
 
-/** The markers the bodies carry raw, JSON-escaped or base64-encoded. */
 const leakedIn = (bodies: ReadonlyArray<string>, markers: ReadonlyArray<string>) =>
 	foundIn({ bodies: [...bodies, ...Arr.flatMap(bodies, decodedRuns)], tokens: markers });
 
@@ -104,11 +101,9 @@ const AssistantLine = Schema.Struct({
 	message: Schema.Struct({ role: Schema.Literal("assistant"), provider: Schema.String }),
 });
 
-/** The lines of a JSONL text that decode as `schema`. */
 const linesAs = <Value>(schema: Schema.Codec<Value, string>, text: string) =>
 	Arr.getSomes(Arr.map(Str.split(text, "\n"), (line) => Schema.decodeOption(schema)(line)));
 
-/** Every `.jsonl` file under a folder, as one text. */
 const jsonlUnder = Effect.fn("jsonlUnder")(function* (folder: string) {
 	const fs = yield* FileSystem.FileSystem;
 	const files = yield* fs.readDirectory(folder, { recursive: true });
@@ -120,7 +115,6 @@ const jsonlUnder = Effect.fn("jsonlUnder")(function* (folder: string) {
 	return Arr.join(texts, "\n");
 });
 
-/** One pi on the fixture router, claude-accounts with its border, and nothing else of the harness, sending every prompt. */
 const sent = (run: Run) =>
 	Effect.gen(function* () {
 		const pwd = yield* run.exec(["pwd"]);
@@ -154,7 +148,6 @@ const sent = (run: Run) =>
 
 type Sent = Effect.Success<ReturnType<typeof sent>>;
 
-/** The planted content was on its way: typed into the session, in the context before the border, and sealed. */
 const onTheWay = (run: Run, { session }: Sent) =>
 	Effect.gen(function* () {
 		const seen = Arr.map(linesAs(Schema.fromJsonString(SeenEntry), session), ({ data }) => data);
@@ -176,7 +169,6 @@ const onTheWay = (run: Run, { session }: Sent) =>
 		);
 	});
 
-/** The router chose `ent` where it should, and the fixture sent every request to the forced account anyway. */
 const misrouted = (run: Run, { session, lanes }: Sent) =>
 	Effect.gen(function* () {
 		const providers = Arr.map(
@@ -204,7 +196,6 @@ const misrouted = (run: Run, { session, lanes }: Sent) =>
 		);
 	});
 
-/** The last message of the body that carried the named prompt, as the mock read it. */
 const lastSentFor = (name: (typeof order)[number]) => {
 	const body = Arr.get(forcedBodies(), order.indexOf(name));
 

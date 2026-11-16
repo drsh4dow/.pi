@@ -34,11 +34,9 @@ const question = "Why does the admissions import drop rows?";
 
 const opening = [system, asked(question)];
 
-/** What a personal account receives of `messages`, message by message. */
 const viewOf = (messages: ReadonlyArray<Message>, lookup: Lookup) =>
 	Result.getOrThrow(guard({ messages, lookup })).messages;
 
-/** A session that read a record with a valid SSN, and the request after it. */
 const sealedSession = (name: string) =>
 	Effect.gen(function* () {
 		const world = yield* worldOf({ name });
@@ -106,7 +104,6 @@ test("an ent reply right after sealed content is judged beside its stub, so the 
 
 const row = "4471,U2546280,E11.9,metformin";
 
-/** An `ent` reply quoting a row of a sealed chart, then a personal reply and a new prompt. */
 const quotedSession = Effect.gen(function* () {
 	const world = yield* worldOf({ name: "quote" });
 	const home = homeOf(world.session);
@@ -261,7 +258,6 @@ test("verdicts survive a restart: the folded book routes as before, with no judg
 		}),
 	));
 
-/** A session pi compacted into a summary that names a patient, and its compaction entry. */
 const compacted = () => {
 	const session = SessionManager.inMemory("/work");
 

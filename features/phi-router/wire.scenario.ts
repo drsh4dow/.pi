@@ -172,7 +172,6 @@ const finalState = (run: Run) =>
 
 interface Seen {
 	readonly canaries: ReadonlyArray<string>;
-	/** Request counts when the first request reached ent. */
 	readonly atSeal: Counts;
 	readonly atEnd: Counts;
 	readonly childProviders: ReadonlyArray<string>;

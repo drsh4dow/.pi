@@ -74,7 +74,6 @@ const pidSegment = ({ fields, rowId }: PhiRecord, rng: Random) => {
 	});
 };
 
-/** An HL7 v2.5.1 ADT message. */
 export const hl7v2 = ({ record, rng, minified }: RenderInput) => {
 	const { lang, diagnosis } = record;
 	const type = rng.pick(["ADT^A01^ADT_A01", "ADT^A04^ADT_A01", "ADT^A08^ADT_A01"]);

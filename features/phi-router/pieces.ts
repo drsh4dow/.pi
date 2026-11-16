@@ -1,6 +1,3 @@
-/**
- * From pi-ai messages to the engine's pieces: each part with its kind and the context the judge reads beside it.
- */
 import type { AssistantMessage, Message, SystemMessage } from "@earendil-works/pi-ai";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
@@ -24,7 +21,6 @@ const labels = { user: "user", assistant: "assistant", toolResult: "tool result"
 
 const textOf = (message: Exclude<Message, SystemMessage>) => Arr.join(textsOf(blocksOf(message.content)), "\n");
 
-/** How a message reads as context: its role, then its texts. */
 const itemOf = (message: Exclude<Message, SystemMessage>) => `[${labels[message.role]}] ${textOf(message)}`;
 
 const callsOf = (message: AssistantMessage) =>

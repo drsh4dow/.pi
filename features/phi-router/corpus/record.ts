@@ -14,7 +14,6 @@ export interface Field {
 	readonly value: string;
 }
 
-/** A patient's record as a carrier renders it. */
 export interface PhiRecord {
 	readonly lang: Lang;
 	/**

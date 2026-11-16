@@ -97,13 +97,8 @@ const switchAccount = (pi: ExtensionAPI) => (args: string, ctx: ExtensionCommand
 		}),
 	);
 
-/** Goes around a personal account's api where the account is registered, such as the PHI border. */
 type GuardPersonal = (account: AccountId) => (api: ProviderStreams) => ProviderStreams;
 
-/**
- * Registers one provider per Claude account and the `/account` command that moves the session between them. Each
- * personal account's api goes through `guardPersonal`.
- */
 export const claudeAccounts = (guardPersonal: GuardPersonal) => (pi: ExtensionAPI) => {
 	const anthropic = anthropicOf();
 

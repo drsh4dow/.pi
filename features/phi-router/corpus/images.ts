@@ -9,13 +9,11 @@ import { converse, type Image, type Scene } from "./conversation.ts";
 import type { CleanCase, Entry, PhiCase } from "./manifest.ts";
 import { type Random, unique } from "./random.ts";
 
-/** The committed JPEG fixtures in `images/`, which `images/render.sh` documents. */
 export interface Images {
 	/** A StyleGAN portrait of nobody. */
 	readonly face: Uint8Array;
 	/** A claims screen showing a synthetic patient's full name and date of birth. */
 	readonly claimScreenshot: Uint8Array;
-	/** The same screen with counts and internal claim ids only. */
 	readonly cleanScreenshot: Uint8Array;
 }
 
@@ -31,7 +29,6 @@ export const loadImages = Effect.gen(function* () {
 	} satisfies Images;
 });
 
-/** The entries that can carry an image: a user attachment or a tool's output. */
 const imageEntries: Arr.NonEmptyReadonlyArray<typeof Entry.Type> = ["user", "tool-result", "file-read", "steering"];
 
 const stampLength = 30;

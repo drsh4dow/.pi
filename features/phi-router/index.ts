@@ -42,7 +42,6 @@ export { isPhi as isPhiAuto } from "./gate.ts";
 
 export type { Wanted } from "./gate.ts";
 
-/** The instruction both lanes and the compaction summarizer get in a `phi/auto` session. */
 export const internalIdsOnly =
 	"Refer to patients and members only by internal ids, such as a patient_id or a row id, never by name, SSN, date of birth, address, phone, email, member number or record number.";
 
@@ -149,7 +148,6 @@ const sessionBook = (pi: Pick<ExtensionAPI, "appendEntry" | "events">, services:
 	return { fold, session };
 };
 
-/** `/phi`: the status, or `pin` and `unpin`, a `phi-pin` entry on the branch. */
 const phiCommand = (
 	pi: Pick<ExtensionAPI, "appendEntry">,
 	services: Services,
@@ -177,7 +175,6 @@ const phiCommand = (
 	},
 });
 
-/** `phi/auto`, with the thinking levels and limits of the default dispatch model. */
 const phiAuto = (env: Env, session: () => RouterSession): ExtensionVirtualModel<typeof RouterState.Encoded> => {
 	const dispatch = getBuiltinModel("anthropic", defaultModel);
 
@@ -197,11 +194,6 @@ const phiAuto = (env: Env, session: () => RouterSession): ExtensionVirtualModel<
 	};
 };
 
-/**
- * Registers `phi/auto`, which sends each request to a personal account unless its own new content holds a patient's
- * direct identifier, and hands the border the session's verdicts. Also the bridge section, `/phi`, the compaction
- * judge, and the codemode and model-switch guards.
- */
 export const phiRouter = (env: Env) => (pi: ExtensionAPI) => {
 	const services = servicesOf(env);
 	const { fold, session } = sessionBook(pi, services);

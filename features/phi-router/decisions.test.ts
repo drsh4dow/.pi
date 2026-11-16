@@ -32,7 +32,6 @@ const billed = (input: number, cost: number): NonNullable<ClassifierResult["usag
 
 type Reply = Pick<ClassifierResult, "answers" | "stopReason" | "errorMessage" | "usage">;
 
-/** Decisions as a script: one reply per question name, and every context it was sent. */
 const replying = (replies: Readonly<Record<"identifier" | "kind", Reply>>) => {
 	const sent: Array<ClassifierContext> = [];
 

@@ -88,7 +88,6 @@ const importSummary = (rng: Random): Sample => {
 	};
 };
 
-/** Counts and totals over patients, with no one in them. */
 export const counts: Arr.NonEmptyReadonlyArray<(rng: Random) => Sample> = [
 	byDiagnosis,
 	monthlyTotals,

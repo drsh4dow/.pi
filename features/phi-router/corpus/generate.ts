@@ -20,10 +20,6 @@ export const defaultSeed = 1729;
 
 const caseId = (index: number) => `h-${Str.padStart(4, "0")(String(index + 1))}`;
 
-/**
- * The whole corpus for `seed`: the same seed and images always give the same cases, in the same order. Its exact test
- * identities are `synthetic`.
- */
 export const generate = ({ seed, images }: { readonly seed: number; readonly images: Images }): ReadonlyArray<Case> => {
 	const rng = seeded(seed);
 	const used = new Set<string>();
@@ -82,7 +78,6 @@ const argsOf = Effect.fn("argsOf")(function* (argv: ReadonlyArray<string>) {
 	return { out, seed };
 });
 
-/** Writes \`synthetic.json\` beside the manifest at \`out\`, and returns its path. */
 const writeSynthetic = Effect.fn("writeSynthetic")(function* (out: string) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;

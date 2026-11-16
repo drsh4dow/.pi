@@ -61,7 +61,6 @@ const decodeWindows = Schema.decodeUnknownEffect(Schema.NonEmptyArray(Window));
 
 const valued = new Set(["--corpus", "--judge", "--window", "--sweep"]);
 
-/** `--record` alone, every other flag with its value. None for an unknown flag or a missing value. */
 const flagsOf = (
 	[flag, ...rest]: ReadonlyArray<string>,
 	flags: Readonly<Record<string, string | boolean>> = {},
@@ -106,7 +105,6 @@ type Args = Effect.Success<ReturnType<typeof argsOf>>;
 
 const decodeSynthetic = Schema.decodeUnknownEffect(Schema.fromJsonString(Synthetic));
 
-/** The corpus's cases and its exact test identities, from `synthetic.json` beside the manifest. */
 const corpusOf = Effect.fn("corpusOf")(function* (corpus: Args["corpus"]) {
 	if (Option.isNone(corpus)) {
 		const images = yield* loadImages;
@@ -123,7 +121,6 @@ const corpusOf = Effect.fn("corpusOf")(function* (corpus: Args["corpus"]) {
 	return { cases, synthetic: yield* decodeSynthetic(listed) };
 });
 
-/** The judge for the run, and what it leaves to check or write once every window has run. */
 const judgeFor = Effect.fn("judgeFor")(function* (args: Args) {
 	const fs = yield* FileSystem.FileSystem;
 

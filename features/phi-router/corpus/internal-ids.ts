@@ -104,7 +104,6 @@ const migration = (rng: Random): Sample => {
 	};
 };
 
-/** Internal ids with no health facts: patient ids, client codes, UUIDs and row ids. */
 export const internalIds: Arr.NonEmptyReadonlyArray<(rng: Random) => Sample> = [
 	syncQueue,
 	apiPayload,
@@ -126,7 +125,6 @@ const internalOnly: Arr.NonEmptyReadonlyArray<TextCarrier> = [
 	"file-name",
 ];
 
-/** A patient's diagnosis and medication keyed only by the internal id, in every carrier that can hold it so. */
 export const internalIdHealth = Arr.map(internalOnly, (carrier) => (rng: Random): Sample => {
 	const record = { lang: "en", fields: [], diagnosis: rng.pick(diagnoses), rowId: rng.between(1000, 99_999) } as const;
 	const payload = carriers[carrier].render({ record, rng, minified: rng.chance(0.2) });

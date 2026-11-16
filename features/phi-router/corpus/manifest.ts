@@ -1,7 +1,6 @@
 import * as Arr from "effect/Array";
 import * as Schema from "effect/Schema";
 
-/** The direct identifiers a case carries as text. */
 export const TextIdentifier = Schema.Literals([
 	"patient-name",
 	"ssn",
@@ -18,10 +17,8 @@ export const TextIdentifier = Schema.Literals([
 
 export type TextIdentifier = typeof TextIdentifier.Type;
 
-/** The complete direct identifiers of a real patient or member, as the v2 policy lists them. */
 export const Identifier = Schema.Literals([...TextIdentifier.literals, "face-photo"]);
 
-/** The carriers that hold their content as text. */
 export const TextCarrier = Schema.Literals([
 	"sql-dump",
 	"csv",
@@ -38,7 +35,6 @@ export const TextCarrier = Schema.Literals([
 
 export type TextCarrier = typeof TextCarrier.Type;
 
-/** What the content arrives in. A `screenshot` is an image. */
 export const Carrier = Schema.Literals([...TextCarrier.literals, "screenshot"]);
 
 export const Transform = Schema.Literals([
@@ -119,17 +115,14 @@ export type Case = typeof Case.Type;
 
 export const CaseFromJsonLine = Schema.fromJsonString(Case);
 
-/** `synthetic.json`: the corpus's exact test identities, which the router hands to the policy as settings. */
 export const Synthetic = Schema.Struct({ exact: Schema.Array(Schema.String), prefixes: Schema.Array(Schema.String) });
 
 export type Synthetic = typeof Synthetic.Type;
 
 export type Part =
 	| { readonly kind: "text"; readonly text: string }
-	/** `data` is the base64 payload. */
 	| { readonly kind: "image"; readonly mimeType: string; readonly data: string };
 
-/** A message as the request builder plays it: pi's tool calls and results are text parts until `messages.ts`. */
 export interface Turn {
 	readonly role: Message["role"];
 	readonly parts: ReadonlyArray<Part>;

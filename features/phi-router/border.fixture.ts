@@ -28,7 +28,6 @@ export const forcedAccount = "ultra-a";
 
 export const fixtureEntryType = "border-fixture";
 
-/** How many user messages of one request's context held each marker, before the border. */
 export const ContextSeen = Schema.Struct({
 	messages: Schema.Finite,
 	ssn: Schema.Finite,
@@ -36,7 +35,6 @@ export const ContextSeen = Schema.Struct({
 	cleared: Schema.Finite,
 });
 
-/** The text of a user message, none for any other. Every planted marker is in a user prompt. */
 const userText = (message: AgentMessage) => {
 	if (message.role !== "user") {
 		return "";

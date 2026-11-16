@@ -1,4 +1,3 @@
-/** Scoring the engine eval: what each played case showed a personal account, summed per stratum, class and lane. */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 
@@ -7,7 +6,6 @@ import type { Usage } from "../policy/engine.ts";
 import type { Lane } from "../route.ts";
 import { Carrier, type Case, Entry, Identifier, Negative, type PhiStrata, Transform } from "./manifest.ts";
 
-/** One request's lane and, when it went to a personal account, the guarded body that account received. */
 export interface Sent {
 	readonly lane: Lane;
 	readonly usage: Usage;
@@ -69,7 +67,6 @@ export const missRateUpperBound = (tally: Tally) => {
 
 export interface Report {
 	readonly window: number;
-	/** Positive cases. Every value of every axis, including values no case covers. */
 	readonly strata: ReadonlyArray<{
 		readonly axis: keyof PhiStrata;
 		readonly value: string;
@@ -86,7 +83,6 @@ export interface Report {
 		readonly requests: number;
 		readonly onEnt: number;
 	}>;
-	/** Cases that showed a personal account a planted fragment or part of a split canary, and how many such tokens. */
 	readonly fragments: { readonly cases: number; readonly shown: number };
 	readonly lanes: Readonly<Record<Lane, number>>;
 	readonly judge: Usage & { readonly failures: number };
@@ -96,14 +92,12 @@ type PhiPlayed = Played & { readonly case: Extract<Case, { readonly expect: "phi
 
 const isPhi = (played: Played): played is PhiPlayed => played.case.expect === "phi";
 
-/** What the personal accounts received of the case's identifiers over its first `upTo` requests. */
 const seenOf = ({ sent, tracked }: Played, upTo: number) => {
 	const personal = Arr.getSomes(Arr.map(Arr.take(sent, upTo), ({ view }) => view));
 
 	return seenOn({ tracked, personal, ent: [] });
 };
 
-/** The first request, counted from 1, after which personal accounts had seen a complete canary or a whole split one. */
 const leakAt = (played: Played) => {
 	const leakedBy = (upTo: number) => seenOf(played, upTo).leaked.length > 0;
 

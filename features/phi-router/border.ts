@@ -79,7 +79,6 @@ const stubbedSlot = (message: SystemMessage, { slot, standing }: Checked): Syste
 	});
 };
 
-/** Only the role and the ids that pair a tool call with its result survive. */
 const stubbedMessage = (message: Exclude<Message, SystemMessage>, stub: string): Message => {
 	switch (message.role) {
 		case "user": {
@@ -179,7 +178,6 @@ export type Scope =
 
 const noCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
-/** Ends the request before it reaches the network, with the error pi records for it. */
 const refusedStream = (model: Model<Api>, refusal: Refusal) => {
 	const stream = createAssistantMessageEventStream();
 

@@ -98,7 +98,6 @@ for (const account of accounts) {
 		));
 }
 
-/** The distinct `supportsMessageThreads` settings across an account's models. */
 const threadsOn = (id: string) =>
 	Arr.dedupe(
 		Arr.flatMap(modelsWith({}).getModels(id), (model) =>

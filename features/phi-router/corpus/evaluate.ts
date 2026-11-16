@@ -1,7 +1,3 @@
-/**
- * The engine eval: plays each corpus case through the router core as pi would send it, request by request, and keeps
- * what a personal account would receive. The wire run's tracker judges those views, so both count a leak alike.
- */
 import type { Message } from "@earendil-works/pi-ai";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -24,7 +20,6 @@ const encodeView = Schema.encodeUnknownOption(Schema.fromJsonString(Schema.Unkno
 /** The messages as one JSON body, as the tracker reads a request a mock received. */
 const bodyOf = (messages: ReadonlyArray<Message>) => Option.getOrElse(encodeView(messages), () => "");
 
-/** What a personal account receives of `messages`: nothing when the border refuses the request. */
 const guardedBody = ({ messages, book }: Pick<Turn, "messages" | "book">) =>
 	bodyOf(
 		Result.match(guard({ messages, lookup: book.lookup }), {
@@ -44,7 +39,6 @@ interface Turn {
 	readonly window: number;
 }
 
-/** One request through `decide`, which records its verdicts in the book, and through `guard` when it stays personal. */
 const sentOf = Effect.fn("sentOf")(function* (turn: Turn) {
 	const { messages, book, window } = turn;
 	const reason = Option.exists(Arr.last(messages), ({ role }) => role === "toolResult") ? "continuation" : "user";
@@ -75,7 +69,6 @@ export const play = Effect.fn("play")(function* ({
 	return { case: subject, sent, tracked } satisfies Played;
 });
 
-/** The engine eval over `cases`, whose exact test identities are `synthetic`, with a judge window of `window` items. */
 export const evaluate = Effect.fn("evaluate")(function* ({
 	cases,
 	synthetic,

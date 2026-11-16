@@ -15,7 +15,6 @@ const syntheticRecord = `Discharge summary. Patient: ${patient}, DOB 1953-02-27,
 
 const isPersonal = (provider: string) => provider === "ultra-a" || provider === "ultra-b";
 
-/** The provider of the first answer after the record's tool result: the request that carried the record. */
 const afterRecord = (entries: ReadonlyArray<SessionEntry>) =>
 	Option.flatMap(
 		Arr.findFirstIndex(entries, (entry) => entry.type === "message" && entry.message.role === "toolResult"),

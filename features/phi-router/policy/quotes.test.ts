@@ -15,7 +15,6 @@ const pieceOf = (key: string, kind: Piece["kind"], text: string) => ({
 
 const sealedRecord = pieceOf("record", "tool-result", record);
 
-/** Each quoting reply's key and the key of the sealed piece it repeats, as plain strings. */
 const quotingOf = (pieces: ReadonlyArray<ReturnType<typeof pieceOf>>) =>
 	Arr.map(
 		Arr.fromIterable(quotingReplies({ pieces, isSealed: (key) => key === sealedRecord.key })),

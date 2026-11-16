@@ -86,10 +86,6 @@ export const asGzipHex = (rng: Random) => (payload: string) => {
 	return rng.pick(envelopes)();
 };
 
-/**
- * Cuts the payload in two through the middle of `canary`, so neither half holds it whole. Returns the halves and the
- * canary's two parts, in order.
- */
 export const splitPayload = ({ payload, canary }: { readonly payload: string; readonly canary: string }) => {
 	const start = Option.getOrElse(Str.indexOf(canary)(payload), () => 0);
 	const at = start + Math.floor(canary.length / 2);

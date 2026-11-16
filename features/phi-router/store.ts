@@ -148,7 +148,6 @@ const mergeInto =
 		}
 	};
 
-/** A book over `verdicts` in memory. `keepSystem` persists the system verdicts each `record` finds. */
 const bookWith = ({
 	verdicts,
 	keepSystem,

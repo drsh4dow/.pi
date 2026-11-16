@@ -1,7 +1,3 @@
-/**
- * From pi-ai messages to their stub-able parts and keys. The one key function lives here, so `route()` and the lane
- * border key every part alike, except where pi itself changes a message between them.
- */
 import type {
 	AssistantMessage,
 	ImageContent,
@@ -28,10 +24,8 @@ const SystemContent = Schema.TaggedStruct("SystemContent", {});
 
 const SystemSection = Schema.TaggedStruct("SystemSection", { name: Schema.String });
 
-/** Tool declarations. Stubbing one would break tool pairing, so an uncleared one refuses the request. */
 const SystemTools = Schema.TaggedStruct("SystemTools", {});
 
-/** Where a part sits in its message, and so how the border stubs it. */
 const Slot = Schema.Union([MessageSlot, SystemContent, SystemSection, SystemTools]);
 
 export type Slot = typeof Slot.Type;
@@ -43,7 +37,6 @@ interface Part {
 
 const field = (value: string) => `${String(value.length)}:${value}`;
 
-/** SHA-256 over length-prefixed fields, the first naming the role or system slot. */
 const contentKey = (fields: ReadonlyArray<string>) => {
 	const encoded = Arr.join(Arr.map(fields, field), "");
 
@@ -99,7 +92,6 @@ export const textsOf = (blocks: ReadonlyArray<Block>) =>
 const imagesOf = (blocks: ReadonlyArray<Block>): ReadonlyArray<Image> =>
 	Arr.flatMap(blocks, (block) => (block.type === "image" ? [{ mimeType: block.mimeType, data: block.data }] : []));
 
-/** A part with what the judge reads of it. */
 interface Unit extends Part {
 	readonly texts: ReadonlyArray<string>;
 	readonly images: ReadonlyArray<Image>;
@@ -138,7 +130,6 @@ const toolsUnit = ({ toolsAdded = [], toolsRemoved = [] }: SystemMessage): Reado
 	];
 };
 
-/** A content part, one part per section still present, and one tools part when tools change. */
 const systemUnits = (message: SystemMessage): ReadonlyArray<Unit> => {
 	const content = unitOf({
 		fields: ["system-content"],
@@ -196,6 +187,5 @@ export const unitsOf = (message: Message): ReadonlyArray<Unit> => {
 export const partsOf = (message: Message): ReadonlyArray<Part> =>
 	Arr.map(unitsOf(message), ({ key, slot }) => ({ key, slot }));
 
-/** Whether a personal Claude account wrote this reply, read from its provider. */
 export const writtenOnPersonal = (message: AssistantMessage) =>
 	Option.exists(accountOf(message.provider), ({ baa }) => !baa);

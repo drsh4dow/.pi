@@ -60,7 +60,6 @@ const placements = {
 	}),
 } satisfies Record<TextIdentifier, Place>;
 
-/** A FHIR R4 Bundle: a Patient holding or pointing at the record's identifiers, its Condition, and its medication. */
 export const fhirJson = ({ record, rng, minified }: RenderInput) => {
 	const { lang, diagnosis } = record;
 	const patientId = uuid(rng);

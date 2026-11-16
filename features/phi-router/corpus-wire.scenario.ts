@@ -178,7 +178,6 @@ const encodeSettings = Schema.encodeEffect(Schema.fromJsonString(Settings));
 
 const decodeSynthetic = Schema.decodeEffect(Schema.fromJsonString(Synthetic));
 
-/** The router settings for the run: enforce, and the corpus's test identities from `synthetic.json` beside the manifest. */
 const syntheticOf = Effect.fn("syntheticOf")(function* (manifest: string) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
@@ -191,7 +190,6 @@ const syntheticOf = Effect.fn("syntheticOf")(function* (manifest: string) {
 /** A token as the report shows it: an encoded run is hundreds of characters, and its start names it. */
 const shown = Str.slice(0, 48);
 
-/** The table, each clean case's lane, the fragments that reached a personal mock, and each failed case. */
 const report = Effect.fn("report")(function* (run: Run, outcomes: ReadonlyArray<Outcome>) {
 	const fragments = Arr.filter(outcomes, ({ fragments: found }) => found.length > 0);
 

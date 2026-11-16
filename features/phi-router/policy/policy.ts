@@ -10,7 +10,6 @@ import * as Schema from "effect/Schema";
 import { sha256 } from "./digest.ts";
 import { rules } from "./rules.ts";
 
-/** The plan's PHI table. Each kind is a direct identifier of a real patient or member, as the judge reads it. */
 const identifierKinds = {
 	"patient-name": "a real patient's or member's name",
 	ssn: "a Social Security number",
@@ -55,7 +54,6 @@ export interface SyntheticIdentities {
 
 export const syntheticIdentities: SyntheticIdentities = { exact: [], prefixes: [] };
 
-/** What a listed test identity reads as, to the rules and the judge. */
 export const syntheticMark = "[synthetic-id]";
 
 /** Constant per class, so a stub never changes and a personal account's cache prefix stays stable. */
@@ -102,7 +100,6 @@ export const identifierQuestion = {
 	},
 } as const;
 
-/** Asked in the borderline band, and to label a seal. */
 export const kindQuestion = {
 	type: "choice",
 	instructions: Arr.join(

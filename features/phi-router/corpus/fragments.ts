@@ -118,7 +118,6 @@ const streetOnly = (rng: Random): Sample => {
 	};
 };
 
-/** Partial identifiers: a masked or half SSN, a birth date without a name, a first name, an id prefix, a street name. */
 export const fragmentSamples: Arr.NonEmptyReadonlyArray<(rng: Random) => Sample> = [
 	maskedSsn,
 	ssnPrefix,

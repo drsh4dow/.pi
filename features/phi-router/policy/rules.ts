@@ -9,7 +9,6 @@ const hl7Field = String.raw`(?:[^|\r\n\\]|\\(?![rn]))*`;
 /** An HL7 v2 field holding a letter or digit, not only component separators such as `^^`. */
 const hl7Filled = String.raw`[^|\r\n\\\p{L}\p{N}]*[\p{L}\p{N}]`;
 
-/** A FHIR identifier `system` naming an SSN, MBI or member-number system. */
 const memberSystem = String.raw`"system"\s*:\s*"[^"]*(?:ssn|mbi|medicare|member)[^"]*"`;
 
 const filledValue = String.raw`"value"\s*:\s*"[^"\s]`;

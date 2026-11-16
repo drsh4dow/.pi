@@ -14,7 +14,6 @@ export interface Scene {
 export interface Sample {
 	readonly scene: Scene;
 	readonly payload: string;
-	/** Partial identifiers the payload plants on purpose. */
 	readonly fragments?: ReadonlyArray<string>;
 }
 
@@ -28,7 +27,6 @@ interface Delivery {
 	readonly scene: Scene;
 	readonly parts: readonly [string] | readonly [string, string];
 	readonly image: Option.Option<Image>;
-	/** Values an `ent-reply` quotes back, by the payload lines that hold them. */
 	readonly quotes: ReadonlyArray<string>;
 	readonly rng: Random;
 }
@@ -192,7 +190,6 @@ const quoted = ({ parts, quotes }: Delivery) => {
 	return Arr.join(holding.length > 0 ? holding : Arr.take(lines, 6), "\n");
 };
 
-/** The payload arrives in a file read, and the reply `ent` writes about it quotes the lines that matter. */
 const entReply = (delivery: Delivery): Messages => [
 	...fileRead(delivery),
 	text(

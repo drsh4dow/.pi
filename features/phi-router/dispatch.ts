@@ -1,7 +1,3 @@
-/**
- * The router's two writers of verdicts: pi's `route()` for `phi/auto` and the compaction judge. Both read settings and
- * the pin fresh, decide with `route.ts`, and append what they found to the session before pi sends again.
- */
 import type { Message } from "@earendil-works/pi-ai";
 import {
 	type CompactionEntry,
@@ -48,14 +44,12 @@ export type Route = ModelRoute<typeof RouterState.Encoded>;
 
 export type Env = Readonly<Record<string, string | undefined>>;
 
-/** What `route()` reads of pi's context. */
 type RouterContext = Pick<ExtensionContext, "cwd"> & {
 	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getSessionId" | "getBranch">;
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "find" | "hasConfiguredAuth">;
 	readonly ui: Pick<ExtensionContext["ui"], "notify" | "setStatus">;
 };
 
-/** The session's verdicts, once `session_start` folded them, and how a new `phi-verdicts` entry joins the session. */
 export interface RouterSession {
 	readonly book: Option.Option<VerdictBook>;
 	readonly appendVerdicts: (entry: VerdictsEntry) => void;
@@ -64,7 +58,6 @@ export interface RouterSession {
 export const servicesOf = (env: Env) =>
 	Layer.merge(NodeServices.layer, ConfigProvider.layer(ConfigProvider.fromEnvRecord(env)));
 
-/** The v2 judge on OpenAI Decisions, through pi's classifier registry. */
 export const decisionsOf = ({ modelRegistry, signal }: Pick<ExtensionContext, "modelRegistry" | "signal">) => {
 	const classifier = Option.fromUndefinedOr(modelRegistry.findOfType("classifier", "openai", decisionsModel));
 
@@ -78,7 +71,6 @@ export const decisionsOf = ({ modelRegistry, signal }: Pick<ExtensionContext, "m
 	return decisionsPieceJudge(classify);
 };
 
-/** Decides with the settings and the pin as they are now, and appends the new verdicts to the session. */
 const decideIn = Effect.fn("decideIn")(function* ({
 	messages,
 	reason,
@@ -124,7 +116,6 @@ const usableIn = (ctx: RouterContext, model: string) => (account: AccountId) => 
 	return found !== undefined && ctx.modelRegistry.hasConfiguredAuth(found);
 };
 
-/** The account for the decision, and the router state to store: new on the first request or after a 429 stamp. */
 const accountOf = ({
 	request,
 	ctx,
@@ -263,7 +254,6 @@ export const routeWith =
 		);
 	};
 
-/** The head of the context pi builds after a compaction, its system message if it kept one and then the summary, as the model gets it. */
 export const compactionHead = (entry: CompactionEntry) => convertToLlm(sessionEntryToContextMessages(entry));
 
 /**

@@ -29,7 +29,6 @@ test("the recorded Decisions answers cover every judge call of the default corpu
 	expect(played.unrecorded).toBe(0);
 });
 
-/** The release gate: zero complete identifiers of in-policy cases in any personal view, at the policy's window. */
 test("no in-policy PHI in the default corpus reaches a personal account", () => {
 	expect(played.report.leaks).toEqual([]);
 });

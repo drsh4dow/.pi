@@ -26,7 +26,6 @@ const LineFinding = Schema.Union([
 	Schema.Struct({ quote: Schema.Literal("sealed-line") }),
 ]);
 
-/** Where each distinct part of the request got its verdict. `cache` is the book's; the rest are this request's. */
 const Sources = Schema.Struct({
 	cache: Count,
 	rule: Count,
@@ -39,7 +38,6 @@ const Sources = Schema.Struct({
 
 type Sources = typeof Sources.Type;
 
-/** One routed request. `wouldBe` is the account `enforce` would take; `dispatched` differs from it only in `shadow`. */
 const RouteLine = Schema.Struct({
 	type: Schema.Literal("route"),
 	time: Schema.Finite,
@@ -96,7 +94,6 @@ const findingOf = Finding.$match({
 	Quote: () => ({ quote: "sealed-line" as const }),
 });
 
-/** The parts of a route line that come from the decision. */
 export const judgedOf = ({ found, cached, usage, wouldStub, why }: Decision) => {
 	const sources: Record<keyof Sources, number> = {
 		cache: cached,

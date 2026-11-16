@@ -1,7 +1,3 @@
-/**
- * From a manifest case to the pi-ai messages of each request pi sends for it. Only this module and `requests.ts` know
- * the manifest's turns.
- */
 import type {
 	AssistantMessage,
 	ImageContent,
@@ -105,7 +101,6 @@ const messageOf = ({ role, parts }: Transcript[number], names: ReadonlyMap<strin
 	}
 };
 
-/** The pi-ai messages of one request, as pi sends them. */
 const messagesOf = (request: Transcript): Array<Message> => {
 	const calls = Arr.flatMap(request, ({ role, parts }) =>
 		role === "assistant" ? Arr.getSomes(Arr.map(parts, (part) => callOf(textOf([part])))) : [],
@@ -116,7 +111,6 @@ const messagesOf = (request: Transcript): Array<Message> => {
 	return Arr.map(request, (turn) => messageOf(turn, names));
 };
 
-/** Every request the case makes, with the case's system messages first, as pi reads them from `AGENTS.md`. */
 export const requestMessagesOf = Effect.fn("requestMessagesOf")(function* (subject: Case) {
 	const system = transcriptOf(Arr.filter(subject.messages, ({ role }) => role === "system"));
 	const requests = yield* Effect.orDie(requestsOf(subject));

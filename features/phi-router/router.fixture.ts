@@ -41,11 +41,9 @@ export const phiAuto = { ...opus, provider: "phi", id: "auto" };
 
 export const onAccount = (provider: string) => ({ ...opus, provider });
 
-/** Text the scripted judge scores as a patient's identifiers. */
 export const syntheticChart =
 	"Patient Jane Roe, DOB 1961-03-14, MRN 4471-0932-88, admitted with diabetic ketoacidosis.";
 
-/** Text the `ssn` rule seals before any judge call. */
 export const ssnRecord = "member_id 88213, ssn 078-05-1120, plan gold";
 
 const zero = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
@@ -98,7 +96,6 @@ interface World {
 	readonly home: string;
 	readonly cwd: string;
 	readonly session: string;
-	/** Every piece the judge was asked about, in order. */
 	readonly judged: Array<string>;
 	readonly notices: Array<string>;
 	judge: JudgeBehavior;
@@ -150,7 +147,6 @@ export const worldOf = ({
 		return world;
 	});
 
-/** The fields pi gives every custom entry. */
 const custom = { type: "custom", id: "c0000001", parentId: "", timestamp: "2026-05-14T10:00:00.000Z" } as const;
 
 const PiStateEntry = Schema.Struct({
@@ -165,14 +161,12 @@ const PiStateEntry = Schema.Struct({
 
 const decodePiStateEntry = Schema.decodeUnknownOption(PiStateEntry);
 
-/** What pi hands the route as `request.state`: the latest phi/auto entry's `state`. */
 const piStateOf = (branch: ReadonlyArray<SessionEntry>) => {
 	const states = Arr.getSomes(Arr.map(branch, (entry) => decodePiStateEntry(entry)));
 
 	return Option.map(Arr.last(states), ({ data }) => data.state);
 };
 
-/** The book as `session_start` folds it from the session's entries, with the system cache under the world's HOME. */
 const foldedBook = (world: World, branch: ReadonlyArray<SessionEntry>) => {
 	const home = ConfigProvider.fromEnvRecord({ HOME: world.home });
 
@@ -191,7 +185,6 @@ interface Sent {
 	readonly failed: AssistantMessage | undefined;
 }
 
-/** One request through the real `route()`, with what pi and the router append landing on `branch`. */
 const sent = ({ world, branch, book, reason, messages, failed }: Sent) =>
 	Effect.promise(() => {
 		const session = {
@@ -232,7 +225,6 @@ const sent = ({ world, branch, book, reason, messages, failed }: Sent) =>
 		}),
 	);
 
-/** One session branch, its book folded as at `session_start`. */
 export const branchOf = ({
 	world,
 	entries = [],
@@ -247,7 +239,6 @@ export const branchOf = ({
 		const send = (reason: Request["reason"], messages: ReadonlyArray<Message>, failed?: AssistantMessage) =>
 			sent({ world, branch, book, reason, messages, failed });
 
-		/** A new pi process on the same session file: the book folds again from the appended entries. */
 		const restart = Effect.map(foldedBook(world, branch), (folded) => {
 			book = folded;
 		});

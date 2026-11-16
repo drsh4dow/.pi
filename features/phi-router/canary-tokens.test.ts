@@ -43,7 +43,6 @@ const outcome: Outcome = {
 	broken: Option.none(),
 };
 
-/** Where the case's identifiers went, given the messages each lane received as JSON request bodies. */
 const seen = Effect.fn("seen")(function* (
 	subject: Case,
 	sent: { readonly personal: ReadonlyArray<string>; readonly ent: ReadonlyArray<string> },

@@ -1,10 +1,3 @@
-/**
- * What the corpus wire run looks for in request bodies to tell where a case's planted identifiers went. A complete
- * canary is itself, or the base64 or hex run that carries it. A split canary is its parts, each with the text around it
- * so a short part cannot match by chance. A fragment is itself. An image canary is a run of the image's base64 data.
- * Each message that holds a complete canary also yields a distinctive 40-character piece clear of the canary, which no
- * personal account may receive, so a router that redacts the identifier but sends the sealed message still fails.
- */
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Encoding from "effect/encoding";
@@ -18,7 +11,6 @@ import * as Str from "effect/String";
 import { summaryOf } from "./corpus-wire.ts";
 import type { Case } from "./corpus/manifest.ts";
 
-/** A split canary and the tokens of its parts, in order. */
 interface Split {
 	readonly canary: string;
 	readonly parts: ReadonlyArray<string>;
@@ -77,7 +69,6 @@ const encoded = (canary: string, texts: ReadonlyArray<string>) =>
 		Option.map(({ run }) => [run]),
 	);
 
-/** A part with up to `context` characters around it, from the first text that holds it. */
 const partToken = (part: string, texts: ReadonlyArray<string>) =>
 	Arr.findFirst(texts, (text) =>
 		Option.map(Str.indexOf(part)(text), (at) =>
@@ -85,7 +76,6 @@ const partToken = (part: string, texts: ReadonlyArray<string>) =>
 		),
 	);
 
-/** The part tokens of a canary the case declares split, when every part is found. */
 const splitOf = (subject: Case, canary: string, texts: ReadonlyArray<string>): Option.Option<Split> => {
 	const declared = subject.expect === "phi" ? Option.fromUndefinedOr(subject.canaryParts?.[canary]) : Option.none();
 
@@ -96,7 +86,6 @@ const splitOf = (subject: Case, canary: string, texts: ReadonlyArray<string>): O
 	});
 };
 
-/** The texts pi sends for the case's messages, with a compaction summary as the mock writes it back. */
 const sentTexts = ({ messages }: Case) =>
 	Arr.flatMap(messages, (message) =>
 		"text" in message ? [Option.getOrElse(summaryOf(message.text), () => message.text)] : [],
@@ -191,7 +180,6 @@ export const foundIn = (input: { readonly bodies: ReadonlyArray<string>; readonl
 	return Arr.filter(input.tokens, (token) => Arr.some(texts, Str.includes(token)));
 };
 
-/** Where a case's identifiers went, from the bodies each lane received over the whole run. */
 export interface Seen {
 	/** Complete canary tokens in a personal body, and split canaries whose every part reached one. */
 	readonly leaked: ReadonlyArray<string>;
@@ -205,7 +193,6 @@ export interface Seen {
 
 interface Bodies {
 	readonly tracked: Tracked;
-	/** Every body the personal mocks received over the run, and every body the `ent` mock received. */
 	readonly personal: ReadonlyArray<string>;
 	readonly ent: ReadonlyArray<string>;
 }

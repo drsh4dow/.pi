@@ -88,7 +88,6 @@ export const tableOf = (outcomes: ReadonlyArray<Outcome>) => {
 	);
 };
 
-/** Whether each clean case reached a personal mock, one line per case, then the share that did. */
 export const cleanReachOf = (outcomes: ReadonlyArray<Outcome>) => {
 	const clean = Arr.filter(outcomes, ({ expect }) => expect === "clean");
 	const reached = Arr.filter(clean, ({ personal }) => personal > 0);
