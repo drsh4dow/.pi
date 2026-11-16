@@ -19,15 +19,14 @@ import type { AccountId } from "../claude-accounts/index.ts";
 import { type BorderLink, type BorderReport, borderEvents } from "./border.ts";
 import { compactionJudged, decisionsOf, type Env, routeWith, type RouterSession, servicesOf } from "./dispatch.ts";
 import {
+	type DelegateRequest,
 	delegateTarget,
 	guardCodemode,
 	isPhi,
 	isProtected,
-	type ModelKey,
 	phiId,
 	phiProvider,
 	type Target,
-	type Wanted,
 } from "./gate.ts";
 import { appendLane } from "./lanes.ts";
 import { partsOf } from "./parts.ts";
@@ -53,13 +52,10 @@ const bridgeSection = {
 	text: `${internalIdsOnly} A message shown as ${stubs.sealed} was handled on the HIPAA account.`,
 } as const;
 
-interface DelegateCaller {
-	readonly parent: Parameters<typeof isProtected>[0];
+type DelegateCaller = Omit<DelegateRequest, "held" | "dispatchModel"> & {
 	readonly cwd: string;
 	readonly branch: ReadonlyArray<SessionEntry>;
-	readonly wanted: Wanted;
-	readonly has: (key: ModelKey) => boolean;
-}
+};
 
 /** Where owned-work starts a delegate. A `phi/auto` parent is held when it runs wholly on `ent`, `shadow` included. */
 export const delegateTargetOf = Effect.fn("delegateTargetOf")(function* (caller: DelegateCaller) {

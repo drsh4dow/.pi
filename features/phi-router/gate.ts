@@ -24,14 +24,14 @@ export type Wanted =
 	| { readonly kind: "alias"; readonly id: string }
 	| { readonly kind: "key"; readonly provider: string; readonly id: string };
 
-export type ModelKey = `${string}/${string}`;
+type ModelKey = `${string}/${string}`;
 
 export type Target =
 	| { readonly kind: "open" }
 	| { readonly kind: "run"; readonly key: ModelKey }
 	| { readonly kind: "refuse"; readonly why: string };
 
-interface DelegateRequest {
+export interface DelegateRequest {
 	readonly parent: Selection | undefined;
 	/** The parent runs wholly on the BAA account: pinned, `force-baa`, `baa-repo`, bad settings, or `shadow`. */
 	readonly held: boolean;
