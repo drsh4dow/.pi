@@ -137,7 +137,7 @@ export const decide = Effect.fn("decide")(function* (request: DecideRequest) {
 	}
 
 	const judged = Arr.map(pieces, ({ piece }) => piece);
-	const verdicts = yield* verdictsFor(judged, book.known);
+	const verdicts = yield* verdictsFor(judged, (key) => book.lookup(key) !== undefined);
 	const found = withQuotes({ judged, found: verdicts.found, book });
 	const entry = yield* book.record({ found, pieces: judged });
 	const cached = distinctKeys(pieces) - found.length;

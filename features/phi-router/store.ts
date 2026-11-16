@@ -36,8 +36,6 @@ export type VerdictsEntry = typeof VerdictsEntry.Type;
 export interface VerdictBook {
 	/** What the border reads. Synchronous, no I/O. */
 	readonly lookup: Lookup;
-	/** What `verdictsFor` reads. */
-	readonly known: (key: ContentKey) => boolean;
 	/**
 	 * Memory first, so the border sees the verdicts before pi streams. System verdicts go to this process's cache file.
 	 * The rest come back as the entry the router appends with `pi.appendEntry(verdictsEntryType, entry)`, none when
@@ -183,7 +181,6 @@ const bookWith = ({
 
 	return {
 		lookup: (key) => seals.get(key),
-		known: (key) => seals.has(key),
 		record,
 	};
 };

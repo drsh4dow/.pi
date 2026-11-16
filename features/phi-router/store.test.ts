@@ -51,8 +51,6 @@ test("the book folds the verdict entries of every branch, not only the current o
 				"cleared",
 				undefined,
 			]);
-			expect(book.known(key("abandoned"))).toBe(true);
-			expect(book.known(key("never"))).toBe(false);
 		}),
 	));
 
