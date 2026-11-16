@@ -140,6 +140,23 @@ const outcomeOf = Effect.fn("outcomeOf")(function* (subject: Case, mocks: Mocks,
 	} satisfies Outcome;
 });
 
+const encodeReceived = Schema.encodeEffect(
+	Schema.fromJsonString(Schema.Struct({ account: Schema.String, body: Schema.String })),
+);
+
+/** Every body each mock received, one `{account, body}` line each, in `mocks.jsonl` beside the case's project. */
+const keepBodies = (pi: Spawned, mocks: Mocks) =>
+	Effect.gen(function* () {
+		const fs = yield* FileSystem.FileSystem;
+		const path = yield* Path.Path;
+
+		const lines = yield* Effect.forEach(Rec.toEntries(mocks), ([account, mock]) =>
+			Effect.forEach(mock.bodies(), (body) => encodeReceived({ account, body })),
+		);
+
+		yield* fs.writeFileString(path.join(path.dirname(pi.project), "mocks.jsonl"), Arr.join(Arr.flatten(lines), "\n"));
+	}).pipe(Effect.ignore);
+
 const playCase = (run: Run, subject: Case) =>
 	Effect.scoped(
 		Effect.gen(function* () {
@@ -149,8 +166,9 @@ const playCase = (run: Run, subject: Case) =>
 			const broken = yield* Effect.gen(function* () {
 				const pi = yield* run.spawn({ name: subject.id, providers: mockedModels(mocks) });
 
-				yield* plant(pi, plan);
-				yield* played(pi, mocks, plan);
+				yield* Effect.andThen(plant(pi, plan), played(pi, mocks, plan)).pipe(
+					Effect.ensuring(keepBodies(pi, mocks)),
+				);
 			}).pipe(
 				Effect.timeout("6 minutes"),
 				Effect.as(Option.none<string>()),

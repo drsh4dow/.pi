@@ -109,6 +109,24 @@ test("a canary carried in base64 or gzip hex leaks as the encoded run", () =>
 		}),
 	));
 
+const inventoryRow = (at: number) => `INSERT INTO public.inventory VALUES ('SKU-${String(at)}', ${String(at)});`;
+
+test("a tool output the harness reads in pages is sealed page by page, so a page without the identifier may go personal", () =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const rows = Arr.makeBy(3000, inventoryRow);
+
+			const dump = Arr.join([...Arr.take(rows, 2000), record, ...Arr.drop(rows, 2000)], "\n");
+			const subject = phiCase("tool-result", [{ role: "tool", text: dump }]);
+
+			const firstPage = yield* seen(subject, { personal: [Arr.join(Arr.take(rows, 100), "\n")], ent: [dump] });
+			const redacted = yield* seen(subject, { personal: [Str.replace(mrn, "[redacted]")(dump)], ent: [dump] });
+
+			expect(firstPage).toEqual(nothing);
+			expect(redacted.unsealed.length).toBe(1);
+		}),
+	));
+
 const cut = { first: `${Str.repeat(60)("a")}MRN 4417-`, second: `2290${Str.repeat(60)("b")}` };
 
 const splitCase: Case = {

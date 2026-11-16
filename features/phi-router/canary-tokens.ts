@@ -8,7 +8,7 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { summaryOf } from "./corpus-wire.ts";
+import { sentTextsOf } from "./corpus-wire.ts";
 import type { Case } from "./corpus/manifest.ts";
 
 interface Split {
@@ -86,11 +86,6 @@ const splitOf = (subject: Case, canary: string, texts: ReadonlyArray<string>): O
 	});
 };
 
-const sentTexts = ({ messages }: Case) =>
-	Arr.flatMap(messages, (message) =>
-		"text" in message ? [Option.getOrElse(summaryOf(message.text), () => message.text)] : [],
-	);
-
 const sealedWidth = 40;
 
 const windowsOf = (text: string) =>
@@ -99,11 +94,15 @@ const windowsOf = (text: string) =>
 		window: Str.slice(start, start + sealedWidth)(text),
 	}));
 
+type Window = ReturnType<typeof windowsOf>[number];
+
+const isOneLine = ({ window }: Window) => !Str.includes("\n")(window);
+
 /**
  * A 40-character window of `text` that no message without a complete canary holds. A window clear of every canary is
- * preferred, so a message sent with its identifier redacted is still caught, and then one on a single line, since pi
- * pages a long tool output at line breaks. A message that is all canary, such as one encoded run, falls back to a
- * window inside it.
+ * preferred, so a message sent with its identifier redacted is still caught, and then one on a single line. A message
+ * that is all canary, such as one encoded run, falls back to a window inside it. The search stops at the first match,
+ * since a page of a long output is checked against every other page.
  */
 const distinctive = (text: string, canaries: ReadonlyArray<string>, others: ReadonlyArray<string>) => {
 	const taken = Arr.flatMap(canaries, (canary) =>
@@ -113,20 +112,22 @@ const distinctive = (text: string, canaries: ReadonlyArray<string>, others: Read
 		),
 	);
 
-	const unique = Arr.filter(windowsOf(text), ({ window }) => !Arr.some(others, Str.includes(window)));
+	const windows = windowsOf(text);
+	const isClear = ({ start }: Window) => !Arr.some(taken, ({ from, to }) => start < to && from < start + sealedWidth);
 
-	const clear = Arr.filter(
-		unique,
-		({ start }) => !Arr.some(taken, ({ from, to }) => start < to && from < start + sealedWidth),
+	const first = (keep: (window: Window) => boolean) =>
+		Arr.findFirst(windows, (each) => keep(each) && !Arr.some(others, Str.includes(each.window)));
+
+	const found = Option.orElse(
+		first((each) => isClear(each) && isOneLine(each)),
+		() => Option.orElse(first(isClear), () => first(() => true)),
 	);
 
-	const oneLine = Arr.findFirst(clear, ({ window }) => !Str.includes("\n")(window));
-
-	return Option.map(Option.firstSomeOf([oneLine, Arr.head(clear), Arr.head(unique)]), ({ window }) => window);
+	return Option.map(found, ({ window }) => window);
 };
 
 export const tokensOf = Effect.fn("tokensOf")(function* (subject: Case) {
-	const texts = sentTexts(subject);
+	const texts = sentTextsOf(subject);
 	const images = Arr.flatMap(subject.messages, (message) => ("image" in message ? [message.image.data] : []));
 	const sent = [...texts, ...images];
 

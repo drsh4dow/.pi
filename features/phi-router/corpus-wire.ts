@@ -148,6 +148,9 @@ const pagedCalls = (subject: Case, path: string, text: string) => {
 };
 
 /** A steering case's tool call runs for a few seconds, so the steering message arrives while it runs. */
+const awaitsSteering = (subject: Case, after: Option.Option<Message>) =>
+	isSteering(subject) && Option.exists(after, (next) => next.role === "user" && isText(next));
+
 const toolCalls = (subject: Case, { message, index, after }: At) => {
 	const path = pathOf(message, index);
 
@@ -155,12 +158,32 @@ const toolCalls = (subject: Case, { message, index, after }: At) => {
 		return [{ name: "read", input: { path } }];
 	}
 
-	if (isSteering(subject) && Option.exists(after, (next) => next.role === "user" && isText(next))) {
+	if (awaitsSteering(subject, after)) {
 		return [{ name: "bash", input: { command: `sleep 3; cat ${path}` } }];
 	}
 
 	return pagedCalls(subject, path, message.text);
 };
+
+const pageTextsOf = (text: string) => {
+	const lines = Str.split("\n")(text);
+
+	return Arr.map(pagesOf(text), ({ first, last }) => Arr.join(Arr.drop(Arr.take(lines, last), first - 1), "\n"));
+};
+
+/** Each text the case's pi sends as one message: the summary compaction keeps, each page of a paged tool output, or the text. */
+export const sentTextsOf = (subject: Case) =>
+	Arr.flatMap(walk(subject.messages), ({ message, after }) => {
+		if (!isText(message)) {
+			return [];
+		}
+
+		if (message.role === "tool" && !awaitsSteering(subject, after)) {
+			return pageTextsOf(message.text);
+		}
+
+		return [Option.getOrElse(summaryOf(message.text), () => message.text)];
+	});
 
 const assistantText = (at: Option.Option<Message>) =>
 	Option.flatMap(
