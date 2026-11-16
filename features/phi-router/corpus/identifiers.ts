@@ -64,10 +64,6 @@ const dateValue = ({ rng, lang, carrier }: DrawContext) => {
 	return lang === "de" ? `${day}.${month}.${year}` : `${day}/${month}/${year}`;
 };
 
-/** A date of service in 2022 to 2024, as the 837's DTP segment writes it. */
-export const drawServiceDate = (rng: Random) =>
-	`${String(rng.between(2022, 2024))}${two(rng.between(1, 12))}${two(rng.between(1, 28))}`;
-
 const areaCodes: Arr.NonEmptyReadonlyArray<string> = ["503", "971", "614", "412", "720", "919", "602", "786", "347"];
 
 const phoneValue = ({ rng, lang, carrier }: DrawContext) => {

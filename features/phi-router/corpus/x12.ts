@@ -2,11 +2,11 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import { drawServiceDate } from "./identifiers.ts";
 import { identifierLabels } from "./labels.ts";
 import type { TextIdentifier } from "./manifest.ts";
 import { ascii } from "./people.ts";
-import { type Field, type RenderInput, systemTime, valueOf } from "./record.ts";
+import type { Random } from "./random.ts";
+import { type Field, type RenderInput, systemTime, two, valueOf } from "./record.ts";
 
 /** Identifiers an 837P cannot leave out: the subscriber's name and member id, which the subscriber's NM1 carries. */
 export const x12Requires: ReadonlyArray<TextIdentifier> = ["patient-name", "member-number"];
@@ -23,6 +23,10 @@ const npi = (nine: string) => {
 
 	return `${nine}${String((10 - (sum % 10)) % 10)}`;
 };
+
+/** A date of service in 2022 to 2024, as the DTP segment writes it. */
+const drawServiceDate = (rng: Random) =>
+	`${String(rng.between(2022, 2024))}${two(rng.between(1, 12))}${two(rng.between(1, 28))}`;
 
 type Place = (value: string, label: string) => string;
 
