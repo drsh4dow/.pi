@@ -73,7 +73,7 @@ No linter ships these three gates, so you build them:
 
 For a new repo, ask the user for the language, the app kind, and any framework they have already picked. Pick none yourself. Stop until they answer.
 
-Read the reference for each language the repo uses: [`references/typescript.md`](references/typescript.md), [`references/effect.md`](references/effect.md) when `effect` is a dependency, [`references/rust.md`](references/rust.md), [`references/python.md`](references/python.md), and [`references/other.md`](references/other.md) for any other language.
+Read the reference for each language the repo uses: [`references/typescript.md`](references/typescript.md), [`references/effect.md`](references/effect.md) when `effect` is a dependency, [`references/rust.md`](references/rust.md), [`references/python.md`](references/python.md), and [`references/other.md`](references/other.md) for any other language. Read [`references/ui.md`](references/ui.md) as well when the repo has a web UI.
 
 For an existing repo, measure before you read. Get each of these from a command:
 
