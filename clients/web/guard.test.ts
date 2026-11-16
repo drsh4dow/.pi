@@ -3,8 +3,11 @@ import { afterAll, expect, test } from "bun:test";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as HttpClientRequest from "effect/http/HttpClientRequest";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Redacted from "effect/Redacted";
 
+import { Exa, exaLayerWith } from "../exa/index.ts";
 import { fetched, guardedHttp, isPublicAddress, lookupWith, problemOf, type Resolve, transportWith } from "./guard.ts";
 
 const urlRows = [
@@ -145,6 +148,22 @@ const local = Bun.serve({
 });
 
 afterAll(() => local.stop(true));
+
+test("Exa is asked once when its DNS answer is a private address", () => {
+	const { calls, resolve } = resolveFrom([["127.0.0.1"]]);
+	const key = Option.some(Redacted.make("test-key"));
+	const exa = Layer.provide(exaLayerWith(key), guardedHttp(transportWith(resolve)));
+
+	return Effect.runPromise(
+		Effect.gen(function* () {
+			const client = yield* Exa;
+			const got = yield* Effect.flip(client.contents("https://docs.example/"));
+
+			expect(got.message).toContain("api.exa.ai resolves to 127.0.0.1, a private address");
+			expect(calls.count).toBe(1);
+		}).pipe(Effect.provide(exa)),
+	);
+});
 
 const guarded = guardedHttp(transportWith(resolveFrom([["127.0.0.1"]]).resolve));
 

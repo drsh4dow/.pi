@@ -10,6 +10,7 @@ import * as Str from "effect/String";
 import * as TestClock from "effect/testing/TestClock";
 
 import { type Hits, Limit, type SearchRequest, Web } from "./index.ts";
+import { inTurn } from "./transport.fixture.ts";
 import { checkEach, type Row, webFor } from "./web.fixture.ts";
 
 const hitsView = ({ provider, costUsd, hits }: Hits) =>
@@ -85,15 +86,7 @@ const parallelHits = (body: string) =>
 
 const unauthorized = () => new Response("", { status: 401 });
 
-const busyOnce = () => {
-	const calls = { count: 0 };
-
-	return (body: string) => {
-		calls.count += 1;
-
-		return calls.count === 1 ? new Response("", { status: 429 }) : parallelHits(body);
-	};
-};
+const busy = () => new Response("", { status: 429 });
 
 const rows: ReadonlyArray<Row> = [
 	{
@@ -128,7 +121,7 @@ const rows: ReadonlyArray<Row> = [
 	{
 		name: "Parallel is asked once more after it answers 429",
 		withExaKey: false,
-		routes: { "POST https://mcp.parallel.ai/mcp": busyOnce() },
+		routes: { "POST https://mcp.parallel.ai/mcp": inTurn([busy, parallelHits]) },
 		expect: ["provider parallel\ncost -\n- HTTP server"],
 	},
 	{
