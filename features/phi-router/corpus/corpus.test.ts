@@ -12,7 +12,7 @@ import { loadImages } from "./images.ts";
 import { recordedJudge, recordingsPath } from "./recorded.ts";
 import { synthetic } from "./synthetic.ts";
 
-const played = Effect.gen(function* () {
+const played = await Effect.gen(function* () {
 	const fs = yield* FileSystem.FileSystem;
 	const contents = yield* fs.readFileString(recordingsPath);
 	const replay = yield* recordedJudge(contents);
@@ -25,29 +25,11 @@ const played = Effect.gen(function* () {
 	return { report, unrecorded: yield* replay.unrecorded };
 }).pipe(Effect.provide(NodeServices.layer), Effect.runPromise);
 
-test(
-	"the recorded Decisions answers cover every judge call of the default corpus",
-	() =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const { unrecorded } = yield* Effect.promise(() => played);
-
-				expect(unrecorded).toBe(0);
-			}),
-		),
-	120_000,
-);
+test("the recorded Decisions answers cover every judge call of the default corpus", () => {
+	expect(played.unrecorded).toBe(0);
+});
 
 /** The release gate: zero complete identifiers of in-policy cases in any personal view, at the policy's window. */
-test(
-	"no in-policy PHI in the default corpus reaches a personal account",
-	() =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const { report } = yield* Effect.promise(() => played);
-
-				expect(report.leaks).toEqual([]);
-			}),
-		),
-	120_000,
-);
+test("no in-policy PHI in the default corpus reaches a personal account", () => {
+	expect(played.report.leaks).toEqual([]);
+});
