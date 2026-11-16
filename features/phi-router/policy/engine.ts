@@ -69,12 +69,14 @@ export type Verdict = Data.TaggedEnum<{
 export const Verdict = Data.taggedEnum<Verdict>();
 
 /** What judge calls cost, summed for the lane log and the replay. */
-export interface Usage {
-	readonly calls: number;
-	readonly inputTokens: number;
-	readonly cost: number;
-	readonly ms: number;
-}
+export const Usage = Schema.Struct({
+	calls: Schema.Finite,
+	inputTokens: Schema.Finite,
+	cost: Schema.Finite,
+	ms: Schema.Finite,
+});
+
+export type Usage = typeof Usage.Type;
 
 const noUsage: Usage = { calls: 0, inputTokens: 0, cost: 0, ms: 0 };
 
@@ -94,6 +96,7 @@ export interface JudgeInput {
 
 export class JudgeFailed extends Schema.TaggedError<JudgeFailed, { readonly brand: unique symbol }>()("JudgeFailed", {
 	why: Schema.Literals(["judge-error", "judge-timeout", "judge-refused"]),
+	usage: Schema.optionalKey(Usage),
 }) {}
 
 /**
@@ -119,7 +122,7 @@ interface Call {
 
 /**
  * One judge question under the policy's timeout, asked again up to `retries` times, its cost added to `spent`. A failed
- * call still counts as a call. An interruption is not a failure, so it propagates.
+ * call still counts as a call, with the usage it carries when it billed. An interruption is not a failure, so it propagates.
  */
 const ask = <Answer extends { readonly usage: Usage }>(
 	question: () => Effect.Effect<Answer, JudgeFailed>,
@@ -132,8 +135,8 @@ const ask = <Answer extends { readonly usage: Usage }>(
 		Effect.result,
 		Effect.timed,
 		Effect.flatMap(([elapsed, answer]) => {
-			const failed = { ...noUsage, calls: 1, ms: Duration.toMillis(elapsed) };
-			const usage = Result.match(answer, { onSuccess: (found) => found.usage, onFailure: () => failed });
+			const measured = { ...noUsage, calls: 1, ms: Duration.toMillis(elapsed) };
+			const usage = Result.isSuccess(answer) ? answer.success.usage : (answer.failure.usage ?? measured);
 
 			return Effect.andThen(
 				Ref.update(spent, (sum) => plus(sum, usage)),

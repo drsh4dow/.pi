@@ -1,19 +1,24 @@
-import type { ClassifierContext, ClassifierResult } from "@earendil-works/pi-ai";
+import type { ClassifierContext, ClassifierResult, ImageContent } from "@earendil-works/pi-ai";
 import * as Arr from "effect/Array";
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 import * as Schema from "effect/Schema";
+import * as Str from "effect/String";
 
+import * as Engine from "./policy/engine.ts";
 import { Judge, JudgeFailed, SafeHarbor, threshold, type JudgeInput } from "./policy/index.ts";
+import { identifierQuestion, judgeLimits, kindQuestion, type IdentifierKind } from "./policy/policy.ts";
 
+/** `signal` aborts the call when the asking fiber is interrupted. */
 export type Classify = (
 	context: ClassifierContext,
-	options: { readonly timeoutMs: number },
+	options: { readonly timeoutMs: number; readonly signal?: AbortSignal },
 ) => Promise<ClassifierResult>;
 
-export const decisionsModel = "gpt-6-luna";
+export { judgeModel as decisionsModel } from "./policy/policy.ts";
 
 /** The Decisions classifier holds about 900k tokens; 2M characters stays inside it. */
 export const maxChars = 2_000_000;
@@ -134,3 +139,102 @@ const ask = (classify: Classify) => {
 };
 
 export const decisionsJudge = (classify: Classify) => Layer.succeed(Judge, { maxChars, ask: ask(classify) });
+
+/** A refusal and pi-ai's own request timeout both arrive as an error result, told apart only by its message. */
+const failureOf = (message: string | undefined): Engine.JudgeFailed["why"] => {
+	if (message === undefined) {
+		return "judge-error";
+	}
+
+	if (Str.includes("refused to answer")(message)) {
+		return "judge-refused";
+	}
+
+	return Str.includes("timed out")(message) ? "judge-timeout" : "judge-error";
+};
+
+/** Decisions bills a call even when it refuses or answers badly, so every outcome carries its usage. */
+const usageOf = (result: ClassifierResult, ms: number): Engine.Usage => ({
+	calls: 1,
+	inputTokens: result.usage?.input ?? 0,
+	cost: result.usage?.cost.total ?? 0,
+	ms,
+});
+
+const imageOf = ({ mimeType, data }: Engine.Image): ImageContent => ({ type: "image", mimeType, data });
+
+/**
+ * One Decisions call on a piece. `aborted` comes only from an aborted signal, which means the request or the asking
+ * fiber was cancelled, so it interrupts rather than sealing the piece as a failure.
+ */
+const answersTo = (classify: Classify, asked: ClassifierContext["questions"]) =>
+	Effect.fn("answersTo")(function* (input: Engine.JudgeInput) {
+		const context: ClassifierContext = {
+			state: { piece: input.piece, context: input.context },
+			images: Arr.map(input.images, imageOf),
+			questions: asked,
+		};
+
+		const [elapsed, result] = yield* Effect.tryPromise({
+			try: (signal) => classify(context, { timeoutMs: judgeLimits.timeoutMs, signal }),
+			catch: () => Engine.JudgeFailed.make({ why: "judge-error" }),
+		}).pipe(Effect.timed);
+
+		const usage = usageOf(result, Duration.toMillis(elapsed));
+
+		switch (result.stopReason) {
+			case "stop": {
+				return { answers: result.answers, usage };
+			}
+
+			case "aborted": {
+				return yield* Effect.interrupt;
+			}
+
+			case "error": {
+				return yield* Engine.JudgeFailed.make({ why: failureOf(result.errorMessage), usage });
+			}
+
+			default: {
+				const unhandled: never = result.stopReason;
+
+				return unhandled;
+			}
+		}
+	});
+
+const kindChoices: Readonly<Record<string, string>> = kindQuestion.criteria;
+
+const isKindAnswer = (choice: string): choice is IdentifierKind | "none" => Rec.has(kindChoices, choice);
+
+/**
+ * The engine's `Judge` over OpenAI Decisions. Each question is asked alone, because Decisions refuses a request whole
+ * when it refuses any one question in it. A missing or out-of-range answer is a `judge-error`.
+ */
+export const decisionsPieceJudge = (classify: Classify) => {
+	const identifierAnswers = answersTo(classify, { identifier: identifierQuestion });
+	const kindAnswers = answersTo(classify, { kind: kindQuestion });
+
+	return Layer.succeed(Engine.Judge, {
+		identifier: Effect.fn("identifier")(function* (input: Engine.JudgeInput) {
+			const { answers, usage } = yield* identifierAnswers(input);
+			const answer = answers["identifier"];
+
+			if (answer?.type !== "bool" || !isProbability(answer.probability)) {
+				return yield* Engine.JudgeFailed.make({ why: "judge-error", usage });
+			}
+
+			return { score: answer.probability, usage };
+		}),
+		kind: Effect.fn("kind")(function* (input: Engine.JudgeInput) {
+			const { answers, usage } = yield* kindAnswers(input);
+			const answer = answers["kind"];
+
+			if (answer?.type !== "choice" || !isKindAnswer(answer.choice)) {
+				return yield* Engine.JudgeFailed.make({ why: "judge-error", usage });
+			}
+
+			return { kind: answer.choice, usage };
+		}),
+	});
+};
