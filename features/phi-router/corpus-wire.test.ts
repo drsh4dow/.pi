@@ -27,6 +27,7 @@ const phiCase = (entry: PhiStrata["entry"], messages: readonly [Message, ...Arra
 	expect: "phi",
 	strata: { identifier: "mrn", carrier: "fhir-json", transform: "plain", entry },
 	canaries: [mrn],
+	fragments: [],
 	messages,
 });
 

@@ -9,8 +9,7 @@ import * as Str from "effect/String";
 
 import { Reply } from "../anthropic.fixture.ts";
 import { fillerMark, type Plan, planOf, type Sent, Step } from "../corpus-wire.ts";
-import type { Part, Transcript, Turn } from "../policy/index.ts";
-import type { Case } from "./manifest.ts";
+import type { Case, Part, Transcript, Turn } from "./manifest.ts";
 
 const text = (value: string): Part => ({ kind: "text", text: value });
 

@@ -8,16 +8,19 @@ import { Judge } from "../policy/engine.ts";
 import { window } from "../policy/policy.ts";
 import { evaluate } from "./evaluate.ts";
 import { defaultSeed, generate } from "./generate.ts";
+import { loadImages } from "./images.ts";
 import { recordedJudge, recordingsPath } from "./recorded.ts";
+import { synthetic } from "./synthetic.ts";
 
 const played = Effect.gen(function* () {
 	const fs = yield* FileSystem.FileSystem;
 	const contents = yield* fs.readFileString(recordingsPath);
 	const replay = yield* recordedJudge(contents);
 
-	const report = yield* evaluate({ cases: generate(defaultSeed), window }).pipe(
-		Effect.provideService(Judge, replay.judge),
-	);
+	const images = yield* loadImages;
+	const cases = generate({ seed: defaultSeed, images });
+
+	const report = yield* evaluate({ cases, synthetic, window }).pipe(Effect.provideService(Judge, replay.judge));
 
 	return { report, unrecorded: yield* replay.unrecorded };
 }).pipe(Effect.provide(NodeServices.layer), Effect.runPromise);

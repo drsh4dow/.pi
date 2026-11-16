@@ -3,23 +3,27 @@ import * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
-import type { SafeHarbor } from "../policy/index.ts";
 import type { Diagnosis } from "./health.ts";
 import { healthLabels, identifierLabels } from "./labels.ts";
+import type { TextIdentifier } from "./manifest.ts";
 import { type Lang, slug } from "./people.ts";
 import type { Random } from "./random.ts";
 
 export interface Field {
-	readonly kind: SafeHarbor;
+	readonly kind: TextIdentifier;
 	readonly value: string;
 }
 
+/** A patient's record as a carrier renders it. */
 export interface PhiRecord {
 	readonly lang: Lang;
-	/** The stratum's identifier first, then any identifier the carrier's format cannot leave out. */
-	readonly fields: Arr.NonEmptyReadonlyArray<Field>;
+	/**
+	 * The direct identifiers it holds: the stratum's first, then any the case or the carrier's format cannot leave out.
+	 * None for a record keyed only by its internal id.
+	 */
+	readonly fields: ReadonlyArray<Field>;
 	readonly diagnosis: Diagnosis;
-	/** A surrogate row key, which identifies nobody. */
+	/** The internal patient id, which identifies nobody outside the system. */
 	readonly rowId: number;
 }
 
@@ -38,7 +42,8 @@ export interface Labelled {
 
 const labelled = (label: string, value: string): Labelled => ({ key: slug("_")(label), label, value });
 
-export const labelledValues = ({ lang, fields, diagnosis }: PhiRecord) => [
+export const labelledValues = ({ lang, fields, diagnosis, rowId }: PhiRecord) => [
+	{ key: "patient_id", label: "patient_id", value: String(rowId) },
 	...Arr.map(fields, (field) => labelled(identifierLabels[field.kind][lang], field.value)),
 	labelled(healthLabels.code[lang], diagnosis.code),
 	labelled(healthLabels.diagnosis[lang], diagnosis.text[lang]),
@@ -54,9 +59,7 @@ export const topicOf = ({ diagnosis, lang }: PhiRecord) => {
 	return Arr.join(Arr.take(words, 4), "-");
 };
 
-export const primaryOf = (record: PhiRecord) => Arr.headNonEmpty(record.fields);
-
-export const valueOf = (kind: SafeHarbor) => (record: PhiRecord) =>
+export const valueOf = (kind: TextIdentifier) => (record: PhiRecord) =>
 	Option.map(
 		Arr.findFirst(record.fields, (field) => field.kind === kind),
 		(field) => field.value,

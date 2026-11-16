@@ -86,51 +86,16 @@ export const asGzipHex = (rng: Random) => (payload: string) => {
 	return rng.pick(envelopes)();
 };
 
-type Cut = "through-identifier" | "apart-from-marker";
-
-const between = (payload: string, from: number, to: number) => {
-	const gap = Str.slice(from, to)(payload);
-	const newline = Str.indexOf("\n")(gap);
-
-	return (
-		from +
-		Option.getOrElse(
-			Option.map(newline, (offset) => offset + 1),
-			() => Math.floor(gap.length / 2),
-		)
-	);
-};
-
 /**
- * Cuts the payload in two. An `apart-from-marker` cut puts the identifier and the first health marker found on different
- * sides, at a line break when the gap has one; it falls back to a `through-identifier` cut when they overlap.
+ * Cuts the payload in two through the middle of `canary`, so neither half holds it whole. Returns the halves and the
+ * canary's two parts, in order.
  */
-interface SplitRequest {
-	readonly payload: string;
-	readonly canary: string;
-	/** Health-context strings, such as the diagnosis code, to keep on the other side of an `apart-from-marker` cut. */
-	readonly markers: ReadonlyArray<string>;
-	readonly cut: Cut;
-}
-
-export const splitPayload = ({ payload, canary, markers, cut }: SplitRequest) => {
+export const splitPayload = ({ payload, canary }: { readonly payload: string; readonly canary: string }) => {
 	const start = Option.getOrElse(Str.indexOf(canary)(payload), () => 0);
-	const end = start + canary.length;
+	const at = start + Math.floor(canary.length / 2);
 
-	const marker = Arr.findFirst(markers, (candidate) =>
-		Option.map(Str.indexOf(candidate)(payload), (at) => ({ at, markerEnd: at + candidate.length })),
-	);
-
-	const contextCut = Option.flatMap(marker, ({ at, markerEnd }) => {
-		if (at >= end) {
-			return Option.some(between(payload, end, at));
-		}
-
-		return markerEnd <= start ? Option.some(between(payload, markerEnd, start)) : Option.none();
-	});
-
-	const midIdentifier = start + Math.floor(canary.length / 2);
-	const at = cut === "apart-from-marker" ? Option.getOrElse(contextCut, () => midIdentifier) : midIdentifier;
-
-	return [Str.slice(0, at)(payload), Str.slice(at)(payload)] as const;
+	return {
+		halves: [Str.slice(0, at)(payload), Str.slice(at)(payload)] as const,
+		parts: [Str.slice(0, at - start)(canary), Str.slice(at - start)(canary)] as const,
+	};
 };

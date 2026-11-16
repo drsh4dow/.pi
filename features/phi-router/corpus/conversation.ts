@@ -1,9 +1,9 @@
 import * as Arr from "effect/Array";
+import * as Option from "effect/Option";
+import * as Str from "effect/String";
 
 import type { Entry, Message } from "./manifest.ts";
 import type { Random } from "./random.ts";
-
-const tinyPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
 export interface Scene {
 	readonly asks: Arr.NonEmptyReadonlyArray<string>;
@@ -14,13 +14,22 @@ export interface Scene {
 export interface Sample {
 	readonly scene: Scene;
 	readonly payload: string;
+	/** Partial identifiers the payload plants on purpose. */
+	readonly fragments?: ReadonlyArray<string>;
+}
+
+export interface Image {
+	readonly mimeType: string;
+	readonly data: string;
 }
 
 interface Delivery {
 	readonly entry: typeof Entry.Type;
 	readonly scene: Scene;
 	readonly parts: readonly [string] | readonly [string, string];
-	readonly image: boolean;
+	readonly image: Option.Option<Image>;
+	/** Values an `ent-reply` quotes back, by the payload lines that hold them. */
+	readonly quotes: ReadonlyArray<string>;
 	readonly rng: Random;
 }
 
@@ -31,7 +40,7 @@ type Messages = Arr.NonEmptyReadonlyArray<Message>;
 const text = (role: Role, body: string): Message => ({ role, text: body });
 
 const imageAfter = (delivery: Delivery, role: Role): ReadonlyArray<Message> =>
-	delivery.image ? [{ role, image: { mimeType: "image/png", data: tinyPng } }] : [];
+	Option.match(delivery.image, { onNone: () => [], onSome: (image) => [{ role, image }] });
 
 const systemPrompt = (rng: Random): ReadonlyArray<Message> =>
 	rng.chance(0.4)
@@ -170,12 +179,36 @@ const compactionSummary = (delivery: Delivery): Messages => {
 	return [text("user", summary), ...imageAfter(delivery, "user"), ...rest];
 };
 
+const followUps: Arr.NonEmptyReadonlyArray<string> = [
+	"Thanks. Fix the mapper so it handles that.",
+	"Makes sense. Write a failing test for that case first.",
+	"Ok, go ahead with the fix and rerun the import.",
+];
+
+const quoted = ({ parts, quotes }: Delivery) => {
+	const lines = Str.split("\n")(Arr.join(parts, ""));
+	const holding = Arr.filter(lines, (line) => Arr.some(quotes, (quote) => Str.includes(quote)(line)));
+
+	return Arr.join(holding.length > 0 ? holding : Arr.take(lines, 6), "\n");
+};
+
+/** The payload arrives in a file read, and the reply `ent` writes about it quotes the lines that matter. */
+const entReply = (delivery: Delivery): Messages => [
+	...fileRead(delivery),
+	text(
+		"assistant",
+		`The record that fails is this one:\n\n${fenced(quoted(delivery))}\n\nIts fields don't match what the mapper expects.`,
+	),
+	text("user", delivery.rng.pick(followUps)),
+];
+
 const frames = {
 	user: viaUser,
 	"tool-result": toolResult,
 	"file-read": fileRead,
 	steering,
 	"compaction-summary": compactionSummary,
+	"ent-reply": entReply,
 } satisfies Record<typeof Entry.Type, (delivery: Delivery) => Messages>;
 
 export const converse = (delivery: Delivery): Messages =>

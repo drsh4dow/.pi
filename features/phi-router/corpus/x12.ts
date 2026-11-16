@@ -2,16 +2,14 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import type { SafeHarbor } from "../policy/index.ts";
+import { drawServiceDate } from "./identifiers.ts";
 import { identifierLabels } from "./labels.ts";
+import type { TextIdentifier } from "./manifest.ts";
 import { ascii } from "./people.ts";
-import { primaryOf, type RenderInput, systemTime, valueOf } from "./record.ts";
+import { type Field, type RenderInput, systemTime, valueOf } from "./record.ts";
 
-/**
- * Identifiers an 837P cannot leave out: subscriber name, member id and patient control number, which the subscriber's
- * NM1 and the CLM segment carry. It also needs a service date.
- */
-export const x12Requires: ReadonlyArray<SafeHarbor> = ["name", "health-plan", "account"];
+/** Identifiers an 837P cannot leave out: the subscriber's name and member id, which the subscriber's NM1 carries. */
+export const x12Requires: ReadonlyArray<TextIdentifier> = ["patient-name", "member-number"];
 
 /** A valid NPI: Luhn over the `80840` prefix and the first nine digits. */
 const npi = (nine: string) => {
@@ -28,27 +26,35 @@ const npi = (nine: string) => {
 
 type Place = (value: string, label: string) => string;
 
-/** Segments of the subscriber loop, 2010BA, that carry the stratum's identifier. */
-const subscriberLoop: Partial<Record<SafeHarbor, Place>> = {
-	date: (value) => `DMG*D8*${value}*F`,
+/** Segments of the subscriber loop, 2010BA, that carry an identifier. */
+const subscriberLoop: Partial<Record<TextIdentifier, Place>> = {
+	"birth-date": (value) => `DMG*D8*${value}*F`,
+	"street-address": (value) => `N3*${value}`,
 	ssn: (value) => `REF*SY*${value}`,
 };
 
-/** Segments of the claim loop, 2300, that carry the stratum's identifier: a native one, else a claim note. */
-const claimLoop: Partial<Record<SafeHarbor, Place>> = {
+/** Segments of the claim loop, 2300, that carry an identifier: a native one, else a claim note. */
+const claimLoop: Partial<Record<TextIdentifier, Place>> = {
 	mrn: (value) => `REF*EA*${value}`,
-	photo: (value) => `PWK*OZ*EL***AC*${value}`,
 };
 
 const claimNote: Place = (value, label) => `NTE*ADD*${Str.toUpperCase(ascii(label))} ${value}`;
 
 const transactionOf = ({ record, rng }: RenderInput, envelope: Envelope) => {
-	const field = primaryOf(record);
-	const label = identifierLabels[field.kind][record.lang];
-	const required = (kind: SafeHarbor) => Option.getOrElse(valueOf(kind)(record), () => "");
-	const serviceDate = Arr.findLast(record.fields, ({ kind }) => kind === "date");
-	const subscriberPlace = subscriberLoop[field.kind];
-	const inClaim = subscriberPlace === undefined && !Arr.contains(x12Requires, field.kind);
+	const required = (kind: TextIdentifier) => Option.getOrElse(valueOf(kind)(record), () => "");
+	const others = Arr.filter(record.fields, ({ kind }) => !Arr.contains(x12Requires, kind));
+	const label = ({ kind }: Field) => identifierLabels[kind][record.lang];
+
+	const subscriber = Arr.flatMap(others, (field) => {
+		const place = subscriberLoop[field.kind];
+
+		return place === undefined ? [] : [place(field.value, label(field))];
+	});
+
+	const claim = Arr.flatMap(others, (field) =>
+		subscriberLoop[field.kind] === undefined ? [(claimLoop[field.kind] ?? claimNote)(field.value, label(field))] : [],
+	);
+
 	const charge = `${String(rng.between(85, 420))}.00`;
 
 	return [
@@ -64,15 +70,15 @@ const transactionOf = ({ record, rng }: RenderInput, envelope: Envelope) => {
 		`REF*EI*93${rng.digits(7)}`,
 		"HL*2*1*22*0",
 		"SBR*P*18*******CI",
-		`NM1*IL*1*${required("name")}****MI*${required("health-plan")}`,
-		...(subscriberPlace === undefined ? [] : [subscriberPlace(field.value, label)]),
+		`NM1*IL*1*${required("patient-name")}****MI*${required("member-number")}`,
+		...subscriber,
 		"NM1*PR*2*CASCADE MUTUAL HEALTH PLAN*****PI*60054",
-		`CLM*${required("account")}*${charge}***11:B:1*Y*A*Y*Y`,
-		...(inClaim ? [(claimLoop[field.kind] ?? claimNote)(field.value, label)] : []),
+		`CLM*PCN${String(record.rowId)}*${charge}***11:B:1*Y*A*Y*Y`,
+		...claim,
 		`HI*ABK:${Str.replaceAll(".", "")(record.diagnosis.code)}`,
 		"LX*1",
 		`SV1*HC:${rng.pick(["99213", "99214", "99203", "93000", "80053"])}*${charge}*UN*1***1`,
-		`DTP*472*D8*${Option.match(serviceDate, { onNone: () => "", onSome: ({ value }) => value })}`,
+		`DTP*472*D8*${drawServiceDate(rng)}`,
 	];
 };
 

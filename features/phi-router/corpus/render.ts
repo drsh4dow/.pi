@@ -2,8 +2,7 @@
 import * as Arr from "effect/Array";
 import * as Str from "effect/String";
 
-import { SafeHarbor } from "../policy/index.ts";
-import { type Report, v2KindOf } from "./report.ts";
+import type { Report } from "./report.ts";
 
 interface Table {
 	readonly header: ReadonlyArray<string>;
@@ -59,12 +58,6 @@ const leakTable = ({ leaks }: Report) =>
 				]),
 			});
 
-export const categoryTable = table({
-	header: ["v1 category", "v2 kind"],
-	labels: 2,
-	rows: Arr.map(SafeHarbor.literals, (category) => [category, v2KindOf[category]]),
-});
-
 const strataTable = ({ strata }: Report) =>
 	table({
 		header: ["axis", "value", "N", "leaks", "upper95"],
@@ -100,7 +93,6 @@ const overRoutingTable = (report: Report) => {
 };
 
 const render = (report: Report) => {
-	const outside = Arr.reduce(report.outside, 0, (total, row) => total + row.cases);
 	const { judge, lanes, fragments } = report;
 
 	return Arr.join(
@@ -109,13 +101,6 @@ const render = (report: Report) => {
 			strataTable(report),
 			"",
 			leakTable(report),
-			"",
-			`Outside v2 policy, not scored: ${String(outside)} positive cases`,
-			table({
-				header: ["identifier", "N", "complete canary on personal"],
-				labels: 1,
-				rows: Arr.map(report.outside, (row) => [row.identifier, String(row.cases), String(row.shown)]),
-			}),
 			"",
 			"Over-routing: clean cases with any request on ent, and clean requests on ent",
 			overRoutingTable(report),

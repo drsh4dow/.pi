@@ -32,6 +32,7 @@ const readRecord = (id: string, record: string): Case => ({
 	expect: "phi",
 	strata,
 	canaries: [`canary-${id}`],
+	fragments: [],
 	messages: [
 		{ role: "user", text: "Why does the import drop this row?" },
 		{ role: "assistant", text: "Reading the log." },
@@ -50,6 +51,7 @@ const clean: Case = {
 	expect: "clean",
 	strata: { negative: "schema-only" },
 	canaries: [],
+	fragments: [],
 	messages: [
 		{ role: "user", text: "Add a nullable dob column to patients." },
 		{ role: "assistant", text: "Done." },
@@ -75,7 +77,11 @@ test("a sealed tool result goes to ent, and play returns to personal without its
 test("a canary the judge clears is a leak at the request that first shows it, and a clean case stays personal", () =>
 	run(
 		Effect.gen(function* () {
-			const report = yield* evaluate({ cases: [sealed, missed, clean], window: 1 });
+			const report = yield* evaluate({
+				cases: [sealed, missed, clean],
+				synthetic: { exact: [], prefixes: [] },
+				window: 1,
+			});
 
 			expect(report.leaks).toEqual([{ id: "missed", strata, request: 2 }]);
 			expect(report.overRouting).toContainEqual({

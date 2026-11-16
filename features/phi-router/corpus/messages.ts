@@ -1,6 +1,6 @@
 /**
- * From a v1 manifest case to the pi-ai messages of each request pi sends for it. Only this module and `requests.ts`
- * know the v1 manifest's turns, so retargeting the engine eval to the v2 manifest starts here.
+ * From a manifest case to the pi-ai messages of each request pi sends for it. Only this module and `requests.ts` know
+ * the manifest's turns.
  */
 import type {
 	AssistantMessage,
@@ -15,8 +15,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import type { Part, Transcript } from "../policy/index.ts";
-import { type Case, transcriptOf } from "./manifest.ts";
+import { type Case, type Part, type Transcript, transcriptOf } from "./manifest.ts";
 import { requestsOf } from "./requests.ts";
 
 const zero = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };

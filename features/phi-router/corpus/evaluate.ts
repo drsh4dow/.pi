@@ -13,9 +13,10 @@ import * as Schema from "effect/Schema";
 import { guard } from "../border.ts";
 import { foundIn, tokensOf } from "../canary-tokens.ts";
 import { Finding, type Judge, Verdict } from "../policy/engine.ts";
+import { Synthetic } from "../policy/synthetic.ts";
 import { decide } from "../route.ts";
 import { memoryBook, type VerdictBook } from "../store.ts";
-import type { Case } from "./manifest.ts";
+import type { Case, Synthetic as SyntheticList } from "./manifest.ts";
 import { requestMessagesOf } from "./messages.ts";
 import { type Played, type Report, reportOf, type Sent, type Tracked } from "./report.ts";
 
@@ -102,15 +103,19 @@ export const play = Effect.fn("play")(function* ({
 	return { case: subject, sent, tracked } satisfies Played;
 });
 
-/** The engine eval over `cases` with a judge window of `window` preceding items. */
+/** The engine eval over `cases`, whose exact test identities are `synthetic`, with a judge window of `window` items. */
 export const evaluate = Effect.fn("evaluate")(function* ({
 	cases,
+	synthetic,
 	window,
 }: {
 	readonly cases: ReadonlyArray<Case>;
+	readonly synthetic: SyntheticList;
 	readonly window: number;
 }): Effect.fn.Return<Report, never, Judge> {
-	const played = yield* Effect.forEach(cases, (subject) => play({ subject, window }), { concurrency: 8 });
+	const played = yield* Effect.forEach(cases, (subject) => play({ subject, window }), { concurrency: 8 }).pipe(
+		Effect.provideService(Synthetic, synthetic),
+	);
 
 	return reportOf({ played, window });
 });

@@ -1,23 +1,39 @@
 import { expect, test } from "bun:test";
 
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Base64 from "effect/encoding/Base64";
 import * as Hex from "effect/encoding/Hex";
 import * as Option from "effect/Option";
+import * as Rec from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { SafeHarbor } from "../policy/index.ts";
 import { defaultSeed, encodeCorpus, generate } from "./generate.ts";
-import { diagnoses } from "./health.ts";
-import { type Case, CaseFromJsonLine, Carrier, Entry, type Message, Negative, Transform } from "./manifest.ts";
+import { loadImages } from "./images.ts";
+import {
+	type Case,
+	CaseFromJsonLine,
+	Carrier,
+	Entry,
+	Identifier,
+	type Message,
+	Negative,
+	Transform,
+} from "./manifest.ts";
+import { synthetic } from "./synthetic.ts";
 
-const corpus = generate(defaultSeed);
+const images = await Effect.runPromise(loadImages.pipe(Effect.provide(NodeServices.layer)));
+const corpus = generate({ seed: defaultSeed, images });
 const phiCases = Arr.filter(corpus, (item) => item.expect === "phi");
+const cleanCases = Arr.filter(corpus, (item) => item.expect === "clean");
 
 const textsOf = (item: Case) => Arr.flatMap(item.messages, (message) => ("text" in message ? [message.text] : []));
+
+const imagesOf = (item: Case) =>
+	Arr.flatMap(item.messages, (message) => ("image" in message ? [message.image.data] : []));
 
 const plainViews = (item: Case) => {
 	const texts = textsOf(item);
@@ -30,7 +46,7 @@ const plainViews = (item: Case) => {
 		),
 	);
 
-	return [...texts, ...byRole, Arr.join(texts, "")];
+	return [...texts, ...byRole, Arr.join(texts, ""), ...imagesOf(item)];
 };
 
 const gunzip = (bytes: Uint8Array) =>
@@ -80,17 +96,59 @@ test("the default corpus round-trips line by line through the manifest schema", 
 		}),
 	));
 
-test("ids and canaries are unique across the file, and every canary has at least 8 characters", () => {
+test("ids, canaries and fragments are unique across the file, at least 8 and 6 characters long", () => {
 	const ids = Arr.map(corpus, ({ id }) => id);
 	const canaries = Arr.flatMap(corpus, ({ canaries: planted }) => planted);
+	const fragments = Arr.flatMap(corpus, ({ fragments: planted }) => planted);
 
 	expect(new Set(ids).size).toBe(ids.length);
-	expect(new Set(canaries).size).toBe(canaries.length);
+	expect(new Set([...canaries, ...fragments]).size).toBe(canaries.length + fragments.length);
 	expect(Arr.filter(canaries, (canary) => canary.length < 8)).toEqual([]);
+	expect(Arr.filter(fragments, (fragment) => fragment.length < 6)).toEqual([]);
+});
+
+test("an image canary is a base64 run of 24 or more characters from past its JPEG header", () => {
+	const imageCanaries = Arr.flatMap(phiCases, (item) =>
+		item.strata.carrier === "screenshot"
+			? Arr.map(item.canaries, (canary) => ({ canary, data: Arr.join(imagesOf(item), "") }))
+			: [],
+	);
+
+	const misplaced = Arr.filter(
+		imageCanaries,
+		({ canary, data }) => canary.length < 24 || Option.getOrElse(Str.indexOf(canary)(data), () => 0) < 8,
+	);
+
+	expect(imageCanaries.length).toBeGreaterThan(0);
+	expect(misplaced).toEqual([]);
+});
+
+test("every fragment case plants its fragments in its own text", () => {
+	const fragmentCases = Arr.filter(cleanCases, ({ strata }) => strata.negative === "fragment");
+
+	const missing = Arr.flatMap(fragmentCases, (item) =>
+		Arr.filter(item.fragments, (fragment) => !Arr.some(textsOf(item), Str.includes(fragment))),
+	);
+
+	expect(Arr.every(fragmentCases, ({ fragments }) => fragments.length > 0)).toBe(true);
+	expect(missing).toEqual([]);
+});
+
+const listed = (text: string) =>
+	Arr.some(synthetic.exact, (identity) => Str.includes(identity)(text)) ||
+	Arr.some(synthetic.prefixes, (prefix) => Str.includes(prefix)(text));
+
+test("a synthetic-listed case names a listed identity, and no PHI case holds one", () => {
+	const syntheticCases = Arr.filter(cleanCases, ({ strata }) => strata.negative === "synthetic-listed");
+	const unlisted = Arr.filter(syntheticCases, (item) => !Arr.some(textsOf(item), listed));
+	const phiListed = Arr.filter(phiCases, (item) => Arr.some(textsOf(item), listed));
+
+	expect(syntheticCases.length).toBeGreaterThan(0);
+	expect(Arr.map(unlisted, ({ id }) => id)).toEqual([]);
+	expect(Arr.map(phiListed, ({ id }) => id)).toEqual([]);
 });
 
 test("every negative class has at least 30 clean cases, and none holds a canary", () => {
-	const cleanCases = Arr.filter(corpus, (item) => item.expect === "clean");
 	const counts = countBy(Arr.map(cleanCases, ({ strata }) => strata.negative));
 	const canaries = Arr.flatMap(phiCases, ({ canaries: planted }) => planted);
 
@@ -104,7 +162,7 @@ test("every negative class has at least 30 clean cases, and none holds a canary"
 
 test("every value of every PHI axis has at least 20 cases, except buried, which has 8 to 12", () => {
 	const axes = [
-		["identifier", SafeHarbor.literals],
+		["identifier", Identifier.literals],
 		["carrier", Carrier.literals],
 		["transform", Arr.filter(Transform.literals, (transform) => transform !== "buried")],
 		["entry", Entry.literals],
@@ -156,31 +214,59 @@ test("every canary is recoverable from its case, and an encoded one only by deco
 		}),
 	));
 
-test("a split case never puts the whole identifier and its diagnosis code in one message", () => {
-	const codes = Arr.flatMap(diagnoses, ({ code }) => [code, Str.replaceAll(".", "")(code)]);
+test("a split case cuts its canary into parts in separate messages, and no message holds it whole", () => {
 	const splits = Arr.filter(phiCases, ({ strata }) => strata.transform === "split");
 
-	const whole = Arr.flatMap(splits, (item) => {
-		const [canary] = item.canaries;
+	const broken = Arr.flatMap(splits, (item) => {
+		const cuts = Rec.toEntries(item.canaryParts ?? {});
+		const texts = textsOf(item);
 
-		const together = Arr.some(
-			textsOf(item),
-			(text) => Str.includes(canary)(text) && Arr.some(codes, (code) => Str.includes(code)(text)),
-		);
+		const wrong = Arr.some(cuts, ([canary, parts]) => {
+			const holders = Arr.map(parts, (part) => Arr.findFirstIndex(texts, Str.includes(part)));
 
-		return together ? [item.id] : [];
+			return (
+				Arr.join(parts, "") !== canary ||
+				Arr.some(texts, Str.includes(canary)) ||
+				new Set(Arr.map(holders, (holder) => Option.getOrElse(holder, () => -1))).size !== parts.length ||
+				Arr.some(holders, Option.isNone)
+			);
+		});
+
+		return cuts.length === 0 || wrong ? [item.id] : [];
 	});
 
+	const unsplit = Arr.filter(phiCases, (item) => item.strata.transform !== "split" && item.canaryParts !== undefined);
+
 	expect(splits.length).toBeGreaterThan(0);
-	expect(whole).toEqual([]);
+	expect(broken).toEqual([]);
+	expect(Arr.map(unsplit, ({ id }) => id)).toEqual([]);
+});
+
+test("in an ent-reply case, the assistant quotes a canary back", () => {
+	const replies = Arr.filter(phiCases, ({ strata }) => strata.entry === "ent-reply");
+
+	const silent = Arr.filter(
+		replies,
+		(item) =>
+			!Arr.some(
+				item.messages,
+				(message) =>
+					message.role === "assistant" &&
+					"text" in message &&
+					Arr.some(item.canaries, (canary) => Str.includes(canary)(message.text)),
+			),
+	);
+
+	expect(replies.length).toBeGreaterThan(0);
+	expect(Arr.map(silent, ({ id }) => id)).toEqual([]);
 });
 
 test("the same seed gives byte-identical output and another seed differs", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
 			const first = yield* encodeCorpus(corpus);
-			const again = yield* encodeCorpus(generate(defaultSeed));
-			const other = yield* encodeCorpus(generate(defaultSeed + 1));
+			const again = yield* encodeCorpus(generate({ seed: defaultSeed, images }));
+			const other = yield* encodeCorpus(generate({ seed: defaultSeed + 1, images }));
 
 			expect(again === first).toBe(true);
 			expect(other === first).toBe(false);

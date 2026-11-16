@@ -1,9 +1,28 @@
 import * as Arr from "effect/Array";
 import * as Schema from "effect/Schema";
 
-import { SafeHarbor, type Transcript, type Turn } from "../policy/index.ts";
+/** The direct identifiers a case carries as text. */
+export const TextIdentifier = Schema.Literals([
+	"patient-name",
+	"ssn",
+	"birth-date",
+	"street-address",
+	"personal-phone",
+	"personal-email",
+	"member-number",
+	"medicare-medicaid-number",
+	"mrn",
+	"driver-license",
+	"passport",
+]);
 
-export const Carrier = Schema.Literals([
+export type TextIdentifier = typeof TextIdentifier.Type;
+
+/** The complete direct identifiers of a real patient or member, as the v2 policy lists them. */
+export const Identifier = Schema.Literals([...TextIdentifier.literals, "face-photo"]);
+
+/** The carriers that hold their content as text. */
+export const TextCarrier = Schema.Literals([
 	"sql-dump",
 	"csv",
 	"fhir-json",
@@ -15,8 +34,12 @@ export const Carrier = Schema.Literals([
 	"ticket",
 	"git-diff",
 	"file-name",
-	"screenshot",
 ]);
+
+export type TextCarrier = typeof TextCarrier.Type;
+
+/** What the content arrives in. A `screenshot` is an image. */
+export const Carrier = Schema.Literals([...TextCarrier.literals, "screenshot"]);
 
 export const Transform = Schema.Literals([
 	"plain",
@@ -29,14 +52,27 @@ export const Transform = Schema.Literals([
 	"typos",
 ]);
 
-export const Entry = Schema.Literals(["user", "tool-result", "file-read", "steering", "compaction-summary"]);
+export const Entry = Schema.Literals([
+	"user",
+	"tool-result",
+	"file-read",
+	"steering",
+	"compaction-summary",
+	"ent-reply",
+]);
 
 export const Negative = Schema.Literals([
 	"schema-only",
 	"medical-terms",
 	"public-figure",
 	"look-alike",
-	"test-fixture",
+	"internal-id",
+	"internal-id-health",
+	"synthetic-listed",
+	"staff-contact",
+	"fragment",
+	"count",
+	"clean-screenshot",
 ]);
 
 const Role = Schema.Literals(["system", "user", "assistant", "tool"]);
@@ -50,11 +86,19 @@ export type Message = typeof Message.Type;
 
 const Canary = Schema.String.check(Schema.isMinLength(8));
 
+/** A partial identifier planted on purpose: reported when it reaches a personal account, never a leak. */
+const Fragment = Schema.String.check(Schema.isMinLength(6));
+
+const CanaryParts = Schema.Record(Schema.String, Schema.NonEmptyArray(Schema.String));
+
 export const PhiCase = Schema.Struct({
 	id: Schema.String,
 	expect: Schema.Literal("phi"),
-	strata: Schema.Struct({ identifier: SafeHarbor, carrier: Carrier, transform: Transform, entry: Entry }),
+	strata: Schema.Struct({ identifier: Identifier, carrier: Carrier, transform: Transform, entry: Entry }),
 	canaries: Schema.NonEmptyArray(Canary),
+	/** For a `split` case: each cut canary's parts, in message order. The case leaks when every part reaches a personal account. */
+	canaryParts: Schema.optionalKey(CanaryParts),
+	fragments: Schema.Array(Fragment),
 	messages: Schema.NonEmptyArray(Message),
 });
 
@@ -65,6 +109,7 @@ export const CleanCase = Schema.Struct({
 	expect: Schema.Literal("clean"),
 	strata: Schema.Struct({ negative: Negative }),
 	canaries: Schema.Tuple([]),
+	fragments: Schema.Array(Fragment),
 	messages: Schema.NonEmptyArray(Message),
 });
 
@@ -73,6 +118,24 @@ export const Case = Schema.Union([PhiCase, CleanCase]);
 export type Case = typeof Case.Type;
 
 export const CaseFromJsonLine = Schema.fromJsonString(Case);
+
+/** `synthetic.json`: the corpus's exact test identities, which the router hands to the policy as settings. */
+export const Synthetic = Schema.Struct({ exact: Schema.Array(Schema.String), prefixes: Schema.Array(Schema.String) });
+
+export type Synthetic = typeof Synthetic.Type;
+
+export type Part =
+	| { readonly kind: "text"; readonly text: string }
+	/** `data` is the base64 payload. */
+	| { readonly kind: "image"; readonly mimeType: string; readonly data: string };
+
+/** A message as the request builder plays it: pi's tool calls and results are text parts until `messages.ts`. */
+export interface Turn {
+	readonly role: Message["role"];
+	readonly parts: ReadonlyArray<Part>;
+}
+
+export type Transcript = ReadonlyArray<Turn>;
 
 const turnOf = (message: Message): Turn =>
 	"text" in message

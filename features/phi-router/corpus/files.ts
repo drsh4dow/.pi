@@ -4,7 +4,7 @@ import * as Str from "effect/String";
 
 import { compactJson, prettyJson } from "./encodings.ts";
 import type { Random } from "./random.ts";
-import { type Labelled, labelledValues, primaryOf, recordObject, type RenderInput, topicOf } from "./record.ts";
+import { type Labelled, labelledValues, recordObject, type RenderInput, topicOf } from "./record.ts";
 import { sqlString } from "./tabular.ts";
 
 export const diffHeader = ({ rng, path }: { readonly rng: Random; readonly path: string }) => [
@@ -94,15 +94,12 @@ const neighbours = [
 ];
 
 export const fileName = ({ record, rng, minified }: RenderInput) => {
-	const field = primaryOf(record);
 	const root = `exports/2025-${rng.pick(["01", "02", "03", "04"])}`;
 	const topic = topicOf(record);
 	const document = rng.pick(["referral", "discharge-summary", "lab-results", "intake-form", "prior-auth"]);
 
-	const phiPath =
-		field.kind === "photo"
-			? `${root}/photos/${topic}/${field.value}`
-			: `${root}/${rng.pick(["referrals", "scans", "outbox"])}/${field.value}_${topic}_${document}.pdf`;
+	const owner = Arr.join([String(record.rowId), ...Arr.map(record.fields, ({ value }) => value)], "_");
+	const phiPath = `${root}/${rng.pick(["referrals", "scans", "outbox"])}/${owner}_${topic}_${document}.pdf`;
 
 	const others = Arr.map(Arr.take(rng.shuffle(neighbours), 4), (name) => `${root}/${name}`);
 	const listing = Arr.sort([...others, phiPath], Order.String);

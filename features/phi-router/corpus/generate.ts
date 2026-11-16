@@ -4,31 +4,38 @@ import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
+import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { cleanCase, planNegatives } from "./clean-cases.ts";
-import { type Case, CaseFromJsonLine } from "./manifest.ts";
+import { cleanImageCases, type Images, imageCases, loadImages } from "./images.ts";
+import { type Case, CaseFromJsonLine, Synthetic } from "./manifest.ts";
 import { phiCase } from "./phi-cases.ts";
 import { planStrata } from "./plan.ts";
 import { seeded } from "./random.ts";
+import { synthetic } from "./synthetic.ts";
 
 export const defaultSeed = 1729;
 
 const caseId = (index: number) => `h-${Str.padStart(4, "0")(String(index + 1))}`;
 
-/** The whole corpus for `seed`: the same seed always gives the same cases, in the same order. */
-export const generate = (seed: number): ReadonlyArray<Case> => {
+/**
+ * The whole corpus for `seed`: the same seed and images always give the same cases, in the same order. Its exact test
+ * identities are `synthetic`.
+ */
+export const generate = ({ seed, images }: { readonly seed: number; readonly images: Images }): ReadonlyArray<Case> => {
 	const rng = seeded(seed);
 	const used = new Set<string>();
+	const text = Arr.map(planStrata(rng), (strata) => phiCase({ strata, rng, used }));
+	const pictured = imageCases({ images, rng, used });
+	const clean = Arr.map(planNegatives(), ({ negative, turn }) => cleanCase({ negative, turn, rng, used }));
+	const cleanPictured = cleanImageCases({ images, rng });
 
-	const phi = Arr.map(planStrata(rng), (strata, index) => phiCase({ id: caseId(index), strata, rng, used }));
-
-	const clean = Arr.map(planNegatives(), ({ negative, turn }, index) =>
-		cleanCase({ id: caseId(phi.length + index), negative, turn, rng }),
-	);
-
-	return [...phi, ...clean];
+	return Arr.map([...text, ...pictured, ...clean, ...cleanPictured], (item, index): Case => ({
+		id: caseId(index),
+		...item,
+	}));
 };
 
 const encodeCase = Schema.encodeEffect(CaseFromJsonLine);
@@ -45,6 +52,8 @@ class UsageError extends Schema.TaggedError<UsageError, { readonly brand: unique
 }) {}
 
 const usage = "usage: bun features/phi-router/corpus/generate.ts <out.jsonl> [--seed N]";
+
+const encodeSynthetic = Schema.encodeEffect(Schema.fromJsonString(Synthetic));
 
 const Seed = Schema.NumberFromString.check(Schema.isInt());
 
@@ -73,15 +82,30 @@ const argsOf = Effect.fn("argsOf")(function* (argv: ReadonlyArray<string>) {
 	return { out, seed };
 });
 
+/** Writes \`synthetic.json\` beside the manifest at \`out\`, and returns its path. */
+const writeSynthetic = Effect.fn("writeSynthetic")(function* (out: string) {
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
+	const syntheticPath = path.join(path.dirname(out), "synthetic.json");
+	const json = yield* encodeSynthetic(synthetic);
+
+	yield* fs.writeFileString(syntheticPath, `${json}\n`);
+
+	return syntheticPath;
+});
+
 const main = Effect.gen(function* () {
 	const fs = yield* FileSystem.FileSystem;
 	const { out, seed } = yield* argsOf(Arr.drop(process.argv, 2));
-	const cases = generate(seed);
-
+	const images = yield* loadImages;
+	const cases = generate({ seed, images });
 	const manifest = yield* encodeCorpus(cases);
 
 	yield* fs.writeFileString(out, manifest);
-	yield* Effect.log(`wrote ${String(cases.length)} cases with seed ${String(seed)} to ${out}`);
+
+	const syntheticPath = yield* writeSynthetic(out);
+
+	yield* Effect.log(`wrote ${String(cases.length)} cases with seed ${String(seed)} to ${out}, and ${syntheticPath}`);
 });
 
 if (import.meta.main) {

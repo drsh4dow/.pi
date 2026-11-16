@@ -58,7 +58,7 @@ const parts = {
 	},
 } satisfies ByLang<NameParts>;
 
-interface PersonName {
+export interface PersonName {
 	readonly given: string;
 	readonly family: string;
 	readonly lang: Lang;

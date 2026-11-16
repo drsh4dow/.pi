@@ -3,7 +3,7 @@ import * as Arr from "effect/Array";
 import { compactJson } from "./encodings.ts";
 import { healthLabels, identifierLabels, phrases } from "./labels.ts";
 import type { ByLang } from "./people.ts";
-import { primaryOf, type RenderInput } from "./record.ts";
+import type { RenderInput } from "./record.ts";
 
 interface NoteFacts {
 	readonly diagnosis: string;
@@ -107,11 +107,10 @@ const noteBodies = {
 	],
 } satisfies ByLang<NoteBody>;
 
-const identifierLine = (input: RenderInput) => {
-	const field = primaryOf(input.record);
-
-	return `${identifierLabels[field.kind][input.record.lang]}: ${field.value}`;
-};
+const identifierLines = ({ record }: RenderInput) => [
+	`Patient ID: ${String(record.rowId)}`,
+	...Arr.map(record.fields, ({ kind, value }) => `${identifierLabels[kind][record.lang]}: ${value}`),
+];
 
 export const clinicalNote = (input: RenderInput) => {
 	const { record, rng, minified } = input;
@@ -124,7 +123,7 @@ export const clinicalNote = (input: RenderInput) => {
 		vitals: `BP ${String(rng.between(108, 162))}/${String(rng.between(64, 96))}, HR ${String(rng.between(58, 104))}`,
 	});
 
-	const text = Arr.join([identifierLine(input), ...body], "\n");
+	const text = Arr.join([...identifierLines(input), ...body], "\n");
 
 	return minified ? compactJson({ noteType: "progress", status: "final", text }) : text;
 };
@@ -133,7 +132,7 @@ const recordLines = (input: RenderInput) => {
 	const { lang, diagnosis } = input.record;
 
 	return [
-		identifierLine(input),
+		...identifierLines(input),
 		`${healthLabels.diagnosis[lang]}: ${diagnosis.code} ${diagnosis.text[lang]}`,
 		`${healthLabels.medication[lang]}: ${diagnosis.medication[lang]}`,
 	];
@@ -159,10 +158,4 @@ export const ticket = (input: RenderInput) => {
 		],
 		"\n",
 	);
-};
-
-export const screenshotText = (input: RenderInput) => {
-	const lines = [phrases.screen[input.record.lang], ...recordLines(input), "Status: DENIED"];
-
-	return input.minified ? compactJson({ ocr: { lines } }) : Arr.join(lines, "\n");
 };

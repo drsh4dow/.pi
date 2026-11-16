@@ -1,10 +1,8 @@
-import * as Arr from "effect/Array";
-import * as Option from "effect/Option";
+import type * as Arr from "effect/Array";
 import * as Str from "effect/String";
 
-import type { SafeHarbor } from "../policy/index.ts";
-import type { Carrier } from "./manifest.ts";
-import { ascii, drawName, fullName, type Lang } from "./people.ts";
+import type { Carrier, TextIdentifier } from "./manifest.ts";
+import { ascii, drawName, fullName, type Lang, type PersonName } from "./people.ts";
 import type { Random } from "./random.ts";
 import { two } from "./record.ts";
 
@@ -17,9 +15,8 @@ export interface DrawContext {
 const letters = "ABCDEFGHJKLMNPRSTUVWXYZ";
 const alphanumerics = `${letters}0123456789`;
 
-const nameValue = ({ rng, lang, carrier }: DrawContext) => {
-	const name = drawName(lang)(rng);
-
+/** A person's name as the carrier's format writes it. */
+export const nameIn = (carrier: typeof Carrier.Type) => (name: PersonName) => {
 	if (carrier === "hl7v2") {
 		return `${name.family}^${name.given}`;
 	}
@@ -30,6 +27,8 @@ const nameValue = ({ rng, lang, carrier }: DrawContext) => {
 
 	return carrier === "file-name" ? `${name.family}, ${name.given}` : fullName(name);
 };
+
+const nameValue = ({ rng, lang, carrier }: DrawContext) => nameIn(carrier)(drawName(lang)(rng));
 
 const streetValue = ({ rng, lang }: DrawContext) => {
 	const street = drawName(lang)(rng);
@@ -46,9 +45,6 @@ const streetValue = ({ rng, lang }: DrawContext) => {
 
 	return forms[lang];
 };
-
-const geographicValue = (context: DrawContext) =>
-	context.rng.chance(0.25) ? `${context.rng.digits(5)}-${context.rng.digits(4)}` : streetValue(context);
 
 const dateValue = ({ rng, lang, carrier }: DrawContext) => {
 	const [year, month, day] = [String(rng.between(1934, 2006)), two(rng.between(1, 12)), two(rng.between(1, 28))];
@@ -116,81 +112,27 @@ const mbiValue = (rng: Random) => {
 	return `${String(rng.between(1, 9))}${rng.chars(alpha, 1)}${rng.chars(alnum, 1)}${rng.digits(1)}${rng.chars(alpha, 1)}${rng.chars(alnum, 1)}${rng.digits(1)}${rng.chars(alpha, 2)}${rng.digits(2)}`;
 };
 
-const vinWeights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
-
-/** The VIN transliteration table: a letter's value is its index here, mod 10. */
-const vinLetters = ".ABCDEFGH..JKLMN.P.R..STUVWXYZ";
-
-const vinValue = (char: string) =>
-	Option.getOrElse(
-		Str.indexOf(char)("0123456789"),
-		() => Option.getOrElse(Str.indexOf(char)(vinLetters), () => 0) % 10,
-	);
-
-/** A VIN with a valid check digit in position 9. */
-const vehicleValue = ({ rng }: DrawContext) => {
-	const draft = `${rng.pick(["1HG", "2T1", "3FA", "5YJ", "JTD", "KMH", "WVW"])}${rng.chars(alphanumerics, 5)}0${rng.chars("LMNPRS", 1)}${rng.chars(alphanumerics, 1)}${rng.digits(6)}`;
-
-	const sum = Arr.reduce(
-		Arr.fromIterable(draft),
-		0,
-		(total, char, index) => total + vinValue(char) * (vinWeights[index] ?? 0),
-	);
-
-	const check = sum % 11 === 10 ? "X" : String(sum % 11);
-
-	return `${Str.slice(0, 8)(draft)}${check}${Str.slice(9)(draft)}`;
-};
-
 const draws = {
-	name: nameValue,
-	geographic: geographicValue,
-	date: dateValue,
-	phone: phoneValue,
-	fax: phoneValue,
-	email: emailValue,
+	"patient-name": nameValue,
 	ssn: ssnValue,
+	"birth-date": dateValue,
+	"street-address": streetValue,
+	"personal-phone": phoneValue,
+	"personal-email": emailValue,
+	"member-number": ({ rng }) => `${rng.chars(letters, 3)}${rng.digits(9)}`,
+	/** An MBI, or a Medicaid client id in New York's two letters, five digits and a letter. */
+	"medicare-medicaid-number": ({ rng }) =>
+		rng.chance(0.6) ? mbiValue(rng) : `${rng.chars(letters, 2)}${rng.digits(5)}${rng.chars(letters, 1)}`,
 	mrn: ({ rng }) =>
 		rng.pick([`E${rng.digits(7)}`, `${String(rng.between(1, 9))}${rng.digits(8)}`, `MR${rng.digits(8)}`]),
-	"health-plan": ({ rng }) => (rng.chance(0.4) ? mbiValue(rng) : `${rng.chars(letters, 3)}${rng.digits(9)}`),
-	account: ({ rng }) => rng.pick([rng.digits(10), `PA${rng.digits(8)}`, `HAR${rng.digits(9)}`]),
-	license: ({ rng }) =>
+	"driver-license": ({ rng }) =>
 		rng.pick([
 			`${rng.chars(letters, 1)}${rng.digits(7)}`,
 			`WDL${rng.chars(alphanumerics, 9)}`,
 			`${rng.digits(3)} ${rng.digits(3)} ${rng.digits(3)}`,
 			`${rng.chars(letters, 1)}${rng.digits(3)}-${rng.digits(3)}-${rng.digits(2)}-${rng.digits(3)}-${rng.digits(1)}`,
 		]),
-	vehicle: vehicleValue,
-	device: ({ rng }) =>
-		rng.pick([
-			`${rng.chars(letters, 3)}${rng.digits(6)}${rng.chars(letters, 1)}`,
-			`NG${rng.digits(7)}${rng.chars(letters, 1)}`,
-			`SM${rng.chars(alphanumerics, 8)}`,
-		]),
-	url: ({ rng }) =>
-		rng.pick([
-			`https://portal.northfield-health.example/patients/${rng.digits(7)}/chart`,
-			`https://mychart.example.org/share/${rng.chars(alphanumerics, 10)}`,
-			`https://records.example.net/r/${rng.hex(12)}`,
-		]),
-	ip: ({ rng }) =>
-		rng.pick([
-			`192.0.2.${String(rng.between(1, 254))}`,
-			`198.51.100.${String(rng.between(1, 254))}`,
-			`203.0.113.${String(rng.between(1, 254))}`,
-			`10.${String(rng.between(0, 255))}.${String(rng.between(0, 255))}.${String(rng.between(1, 254))}`,
-		]),
-	/** ISO 19794-2 templates start with "FMR\0 20\0", which base64 writes as `Rk1SACAyMAA`. */
-	biometric: ({ rng }) =>
-		`Rk1SACAyMAA${rng.chars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", 41)}=`,
-	photo: ({ rng }) =>
-		rng.pick([
-			`intake-photo-${rng.chars(alphanumerics, 8)}.png`,
-			`face_${rng.hex(10)}.png`,
-			`IMG_${rng.digits(4)}${rng.chars(letters, 3)}.png`,
-		]),
-	"other-id": ({ rng }) => rng.pick([`RX${rng.digits(7)}`, `${rng.digits(7)}-${rng.digits(2)}`]),
-} satisfies Record<SafeHarbor, (context: DrawContext) => string>;
+	passport: ({ rng }) => (rng.chance(0.5) ? `${rng.chars(letters, 1)}${rng.digits(8)}` : `5${rng.digits(8)}`),
+} satisfies Record<TextIdentifier, (context: DrawContext) => string>;
 
-export const drawIdentifier = (kind: SafeHarbor) => draws[kind];
+export const drawIdentifier = (kind: TextIdentifier) => draws[kind];

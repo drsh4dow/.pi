@@ -2,11 +2,11 @@ import * as Arr from "effect/Array";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
-import type { SafeHarbor } from "../policy/index.ts";
 import { compactJson } from "./encodings.ts";
-import { healthLabels, identifierLabels } from "./labels.ts";
+import { healthLabels } from "./labels.ts";
+import type { TextIdentifier } from "./manifest.ts";
 import type { Random } from "./random.ts";
-import { type Field, primaryOf, type RenderInput, systemTime } from "./record.ts";
+import { type Field, type PhiRecord, type RenderInput, systemTime } from "./record.ts";
 
 const segment = (name: string, fields: Readonly<Record<number, string>>) => {
 	const last = Math.max(...Arr.map(Rec.keys(fields), Number));
@@ -18,37 +18,26 @@ const states: Arr.NonEmptyReadonlyArray<string> = ["OR", "WA", "TX", "FL", "AZ",
 
 type PidPlace = (value: string, state: string) => Readonly<Record<number, string>>;
 
-const pidFields: Partial<Record<SafeHarbor, PidPlace>> = {
-	name: (value) => ({ 5: value }),
-	geographic: (value, state) => ({
-		11: /^\d{5}-\d{4}$/u.test(value) ? `^^^${state}^${value}` : `${value}^^^${state}`,
-	}),
-	date: (value) => ({ 7: value }),
-	phone: (value) => ({ 13: `${value}^PRN^PH` }),
-	fax: (value) => ({ 13: `${value}^PRN^FX` }),
-	email: (value) => ({ 13: `^NET^Internet^${value}` }),
-	url: (value) => ({ 13: `^NET^Internet^${value}` }),
+/** Where PID carries each identifier. PID-3 holds the internal patient id unless an outside identifier takes it. */
+const pidFields: Partial<Record<TextIdentifier, PidPlace>> = {
+	"patient-name": (value) => ({ 5: value }),
+	"street-address": (value, state) => ({ 11: `${value}^^^${state}` }),
+	"birth-date": (value) => ({ 7: value }),
+	"personal-phone": (value) => ({ 13: `${value}^PRN^PH` }),
+	"personal-email": (value) => ({ 13: `^NET^Internet^${value}` }),
 	mrn: (value) => ({ 3: `${value}^^^NFH^MR` }),
-	account: (value) => ({ 18: `${value}^^^NFH^AN` }),
+	"medicare-medicaid-number": (value) => ({ 3: `${value}^^^CMS^MC` }),
+	passport: (value) => ({ 3: `${value}^^^USA^PPN` }),
 	ssn: (value) => ({ 19: value }),
-	license: (value, state) => ({ 20: `${value}^${state}` }),
+	"driver-license": (value, state) => ({ 20: `${value}^${state}` }),
 };
 
-const extraSegments = (kind: SafeHarbor, value: string, label: string) => {
-	const observation = (type: string, code: string, observed: string) =>
-		segment("OBX", { 1: "1", 2: type, 3: code, 5: observed, 11: "F" });
-
-	const extras: Partial<Record<SafeHarbor, ReadonlyArray<string>>> = {
-		"health-plan": [segment("IN1", { 1: "1", 2: "CMHP01", 3: "60054", 4: "CASCADE MUTUAL HEALTH PLAN", 36: value })],
-		vehicle: [observation("ST", `VIN^${label}^L`, value)],
-		device: [observation("ST", `DEVSN^${label}^L`, value)],
-		biometric: [observation("ED", `FPT^${label}^L`, `^AP^Octet-stream^Base64^${value}`)],
-		photo: [observation("RP", `72170-4^${label}^LN`, `${value}^IMAGE^PNG`)],
-		ip: [segment("NTE", { 1: "1", 3: `${label}: ${value}` })],
-	};
-
-	return extras[kind] ?? [];
-};
+const insurance = (fields: ReadonlyArray<Field>) =>
+	Arr.flatMap(fields, ({ kind, value }) =>
+		kind === "member-number"
+			? [segment("IN1", { 1: "1", 2: "CMHP01", 3: "60054", 4: "CASCADE MUTUAL HEALTH PLAN", 36: value })]
+			: [],
+	);
 
 const header = (rng: Random, type: string) => {
 	const stamp = Str.slice(0, 12)(Str.replaceAll(/\D/gu, "")(systemTime(rng)));
@@ -69,36 +58,38 @@ const header = (rng: Random, type: string) => {
 
 	return {
 		controlId,
-		segments: Str.startsWith("OMP")(type) ? [msh] : [msh, segment("EVN", { 1: Str.slice(4, 7)(type), 2: stamp })],
+		segments: [msh, segment("EVN", { 1: Str.slice(4, 7)(type), 2: stamp })],
 	};
 };
 
-const pidSegment = (field: Field, rng: Random) =>
-	segment("PID", { 1: "1", 8: rng.pick(["F", "M"]), ...pidFields[field.kind]?.(field.value, rng.pick(states)) });
+const pidSegment = ({ fields, rowId }: PhiRecord, rng: Random) => {
+	const state = rng.pick(states);
+	const placed = Arr.flatMap(fields, ({ kind, value }) => Rec.toEntries(pidFields[kind]?.(value, state) ?? {}));
 
-/** An HL7 v2.5.1 ADT message, or a pharmacy order when the identifier is a prescription number. */
+	return segment("PID", {
+		1: "1",
+		3: `${String(rowId)}^^^NFH^PI`,
+		8: rng.pick(["F", "M"]),
+		...Rec.fromEntries(placed),
+	});
+};
+
+/** An HL7 v2.5.1 ADT message. */
 export const hl7v2 = ({ record, rng, minified }: RenderInput) => {
 	const { lang, diagnosis } = record;
-	const field = primaryOf(record);
-	const isOrder = field.kind === "other-id";
-	const type = isOrder ? "OMP^O09^OMP_O09" : rng.pick(["ADT^A01^ADT_A01", "ADT^A04^ADT_A01", "ADT^A08^ADT_A01"]);
+	const type = rng.pick(["ADT^A01^ADT_A01", "ADT^A04^ADT_A01", "ADT^A08^ADT_A01"]);
 	const { controlId, segments: head } = header(rng, type);
-	const medication = diagnosis.medication[lang];
-
-	const treatment = isOrder
-		? [segment("ORC", { 1: "NW", 2: field.value }), segment("RXO", { 1: `^${medication}^L` })]
-		: [segment("NTE", { 1: "1", 3: `${healthLabels.medication[lang]}: ${medication}` })];
 
 	const segments = [
 		...head,
-		pidSegment(field, rng),
+		pidSegment(record, rng),
 		segment("PV1", {
 			1: "1",
 			2: rng.pick(["O", "I", "E"]),
 			3: `${rng.pick(["CARD", "ENDO", "ONC", "PSY", "NEPH"])}^^^NFH`,
 		}),
-		...extraSegments(field.kind, field.value, identifierLabels[field.kind][lang]),
-		...treatment,
+		...insurance(record.fields),
+		segment("NTE", { 1: "1", 3: `${healthLabels.medication[lang]}: ${diagnosis.medication[lang]}` }),
 		segment("DG1", { 1: "1", 3: `${diagnosis.code}^${diagnosis.text[lang]}^I10`, 6: "A" }),
 	];
 

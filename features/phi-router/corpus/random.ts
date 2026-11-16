@@ -63,3 +63,16 @@ export const seeded = (seed: number): Random => {
 		hex: (count) => chars("0123456789abcdef", count),
 	};
 };
+
+/** Draws until the value is not in `used`, then records it, so every planted value is unique across the file. */
+export const unique = ({ used, draw }: { readonly used: Set<string>; readonly draw: () => string }) => {
+	let value = draw();
+
+	while (used.has(value)) {
+		value = draw();
+	}
+
+	used.add(value);
+
+	return value;
+};

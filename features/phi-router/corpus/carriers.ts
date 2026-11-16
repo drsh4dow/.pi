@@ -1,10 +1,10 @@
 import type { Scene } from "./conversation.ts";
-import { clinicalNote, screenshotText, ticket } from "./documents.ts";
+import { clinicalNote, ticket } from "./documents.ts";
 import { fhirJson } from "./fhir.ts";
 import { fileName, gitDiff } from "./files.ts";
 import { hl7v2 } from "./hl7.ts";
 import { logLine, stackTrace } from "./logs.ts";
-import type { Carrier } from "./manifest.ts";
+import type { TextCarrier } from "./manifest.ts";
 import type { RenderInput } from "./record.ts";
 import { csv, sqlDump } from "./tabular.ts";
 import { x12837 } from "./x12.ts";
@@ -154,15 +154,4 @@ export const carriers = {
 		paths: ["exports/INDEX.txt", "tmp/export_listing.txt"],
 		mimeType: "text/plain",
 	},
-	screenshot: {
-		render: screenshotText,
-		asks: [
-			"The claims grid renders this row wrong. Screenshot attached.",
-			"Why does the denial column show this? See the screenshot.",
-			"The UI cuts off this row. Here's what the support agent sees.",
-		],
-		commands: ["playwright screenshot http://localhost:3000/claims/denials shot.png && tesseract shot.png -"],
-		paths: ["screenshots/claims-denials.png"],
-		mimeType: "text/plain",
-	},
-} satisfies Record<typeof Carrier.Type, CarrierSpec>;
+} satisfies Record<TextCarrier, CarrierSpec>;

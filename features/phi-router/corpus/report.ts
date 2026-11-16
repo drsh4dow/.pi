@@ -3,35 +3,8 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 
 import type { Usage } from "../policy/engine.ts";
-import { SafeHarbor } from "../policy/index.ts";
-import type { IdentifierKind } from "../policy/policy.ts";
 import type { Lane } from "../route.ts";
-import { Carrier, type Case, Entry, Negative, type PhiStrata, Transform } from "./manifest.ts";
-
-/**
- * The v2 kind each v1 Safe Harbor category falls under. `outside` marks a category v2 never seals on its own, so its
- * cases are reported apart and not scored.
- */
-export const v2KindOf = {
-	name: "patient-name",
-	geographic: "street-address",
-	date: "birth-date",
-	phone: "personal-phone",
-	fax: "personal-phone",
-	email: "personal-email",
-	ssn: "ssn",
-	mrn: "mrn",
-	"health-plan": "member-number",
-	account: "outside",
-	license: "driver-license",
-	vehicle: "outside",
-	device: "outside",
-	url: "outside",
-	ip: "outside",
-	biometric: "outside",
-	photo: "outside",
-	"other-id": "outside",
-} as const satisfies Record<SafeHarbor, IdentifierKind | "outside">;
+import { Carrier, type Case, Entry, Identifier, Negative, type PhiStrata, Transform } from "./manifest.ts";
 
 /** What shows one canary on the wire: `complete` strings hold all of it, `parts` the pieces of a split one. */
 export interface Tracked {
@@ -103,7 +76,7 @@ export const missRateUpperBound = (tally: Tally) => {
 
 export interface Report {
 	readonly window: number;
-	/** In-policy positive cases only. Every value of every axis, including values no case covers. */
+	/** Positive cases. Every value of every axis, including values no case covers. */
 	readonly strata: ReadonlyArray<{
 		readonly axis: keyof PhiStrata;
 		readonly value: string;
@@ -111,10 +84,8 @@ export interface Report {
 		readonly leaks: number;
 		readonly leakRateUpper95: number;
 	}>;
-	/** In-policy positive cases that showed a complete canary, or all parts of a split one, to personal accounts. */
+	/** Positive cases that showed a complete canary, or all parts of a split one, to personal accounts. */
 	readonly leaks: ReadonlyArray<{ readonly id: string; readonly strata: PhiStrata; readonly request: number }>;
-	/** Positive cases whose category has no v2 kind, and how many showed a complete canary to a personal account. */
-	readonly outside: ReadonlyArray<{ readonly identifier: SafeHarbor; readonly cases: number; readonly shown: number }>;
 	readonly overRouting: ReadonlyArray<{
 		readonly negative: typeof Negative.Type;
 		readonly cases: number;
@@ -157,7 +128,7 @@ const leakAt = ({ sent, tracked }: Played) => {
 const leaked = (played: Played) => Option.isSome(leakAt(played));
 
 const axes = [
-	["identifier", SafeHarbor.literals],
+	["identifier", Identifier.literals],
 	["carrier", Carrier.literals],
 	["transform", Transform.literals],
 	["entry", Entry.literals],
@@ -173,17 +144,6 @@ const strataOf = (scored: ReadonlyArray<PhiPlayed>): Report["strata"] =>
 			return { axis, value, cases: inStratum.length, leaks, leakRateUpper95 };
 		}),
 	);
-
-const outsideOf = (phi: ReadonlyArray<PhiPlayed>): Report["outside"] =>
-	Arr.flatMap(SafeHarbor.literals, (identifier) => {
-		if (v2KindOf[identifier] !== "outside") {
-			return [];
-		}
-
-		const cases = Arr.filter(phi, ({ case: { strata } }) => strata.identifier === identifier);
-
-		return [{ identifier, cases: cases.length, shown: Arr.filter(cases, leaked).length }];
-	});
 
 const onEnt = ({ sent }: Played) => Arr.filter(sent, ({ lane }) => lane === "ent").length;
 
@@ -218,18 +178,16 @@ const judgeOf = (sent: ReadonlyArray<Sent>): Report["judge"] =>
 
 export const reportOf = ({ played, window }: { readonly played: ReadonlyArray<Played>; readonly window: number }) => {
 	const phi = Arr.filter(played, isPhi);
-	const scored = Arr.filter(phi, ({ case: { strata } }) => v2KindOf[strata.identifier] !== "outside");
 	const sent = Arr.flatMap(played, (each) => each.sent);
 
-	const leaks = Arr.flatMap(scored, (each) =>
+	const leaks = Arr.flatMap(phi, (each) =>
 		Option.toArray(Option.map(leakAt(each), (request) => ({ id: each.case.id, strata: each.case.strata, request }))),
 	);
 
 	return {
 		window,
-		strata: strataOf(scored),
+		strata: strataOf(phi),
 		leaks,
-		outside: outsideOf(phi),
 		overRouting: overRoutingOf(Arr.filter(played, (each) => each.case.expect === "clean")),
 		fragments: {
 			cases: Arr.filter(played, (each) => Arr.some(each.sent, ({ parts }) => parts.length > 0)).length,

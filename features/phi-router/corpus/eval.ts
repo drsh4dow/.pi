@@ -5,7 +5,7 @@
  * `--corpus` it plays the default generated corpus. `--sweep` runs once per judge window and prints one row per size.
  *
  * It exits non-zero on an unrecorded call in recorded mode, on a manifest line that does not decode, and, for one
- * window, on any leak among in-policy positive cases. `--record`, with `live` only, rewrites `recordings.jsonl` with the
+ * window, on any leak among positive cases. A `--corpus` manifest needs its `synthetic.json` beside it. `--record`, with `live` only, rewrites `recordings.jsonl` with the
  * run's answers.
  */
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
@@ -15,6 +15,7 @@ import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
+import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
@@ -22,12 +23,14 @@ import { Judge } from "../policy/engine.ts";
 import { window as policyWindow } from "../policy/policy.ts";
 import { evaluate } from "./evaluate.ts";
 import { defaultSeed, generate } from "./generate.ts";
+import { loadImages } from "./images.ts";
 import { decodeJsonLines } from "./jsonl.ts";
 import { judgeOn, liveClassify } from "./live.ts";
-import { CaseFromJsonLine } from "./manifest.ts";
+import { CaseFromJsonLine, Synthetic } from "./manifest.ts";
 import { recordedJudge, recording, recordingsPath } from "./recorded.ts";
-import { categoryTable, outputOf } from "./render.ts";
+import { outputOf } from "./render.ts";
 import type { Report } from "./report.ts";
+import { synthetic as generatedSynthetic } from "./synthetic.ts";
 
 class Usage extends Schema.TaggedError<Usage, { readonly brand: unique symbol }>()("Usage", {
 	message: Schema.String,
@@ -101,15 +104,23 @@ const argsOf = Effect.fn("argsOf")(
 
 type Args = Effect.Success<ReturnType<typeof argsOf>>;
 
-const casesOf = Effect.fn("casesOf")(function* (corpus: Args["corpus"]) {
+const decodeSynthetic = Schema.decodeUnknownEffect(Schema.fromJsonString(Synthetic));
+
+/** The corpus's cases and its exact test identities, from `synthetic.json` beside the manifest. */
+const corpusOf = Effect.fn("corpusOf")(function* (corpus: Args["corpus"]) {
 	if (Option.isNone(corpus)) {
-		return generate(defaultSeed);
+		const images = yield* loadImages;
+
+		return { cases: generate({ seed: defaultSeed, images }), synthetic: generatedSynthetic };
 	}
 
 	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
 	const text = yield* fs.readFileString(corpus.value);
+	const cases = yield* decodeJsonLines({ schema: CaseFromJsonLine, source: corpus.value, text });
+	const listed = yield* fs.readFileString(path.join(path.dirname(corpus.value), "synthetic.json"));
 
-	return yield* decodeJsonLines({ schema: CaseFromJsonLine, source: corpus.value, text });
+	return { cases, synthetic: yield* decodeSynthetic(listed) };
 });
 
 /** The judge for the run, and what it leaves to check or write once every window has run. */
@@ -145,9 +156,12 @@ const gate = ({ reports, unrecorded }: { readonly reports: ReadonlyArray<Report>
 
 const program = Effect.gen(function* () {
 	const args = yield* argsOf(Arr.drop(process.argv, 2));
-	const cases = yield* casesOf(args.corpus);
+	const { cases, synthetic } = yield* corpusOf(args.corpus);
 	const run = yield* judgeFor(args);
-	const evaluated = (window: number) => Effect.provideService(evaluate({ cases, window }), Judge, run.judge);
+
+	const evaluated = (window: number) =>
+		Effect.provideService(evaluate({ cases, synthetic, window }), Judge, run.judge);
+
 	const reports = yield* Effect.forEach(args.windows, evaluated);
 
 	yield* run.finish;
@@ -155,7 +169,7 @@ const program = Effect.gen(function* () {
 	const unrecorded = yield* run.unrecorded;
 	const recorded = args.judge === "recorded" ? [`unrecorded judge calls ${String(unrecorded)}`] : [];
 
-	yield* Console.log(Arr.join([outputOf(reports), "", categoryTable, ...recorded], "\n"));
+	yield* Console.log(Arr.join([outputOf(reports), ...recorded], "\n"));
 
 	return yield* gate({ reports, unrecorded });
 });

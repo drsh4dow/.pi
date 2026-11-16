@@ -1,90 +1,98 @@
 import * as Arr from "effect/Array";
-import * as Str from "effect/String";
+import * as Option from "effect/Option";
 
-import type { SafeHarbor } from "../policy/index.ts";
 import { carriers } from "./carriers.ts";
 import { converse } from "./conversation.ts";
 import { bury } from "./filler.ts";
 import { diagnoses } from "./health.ts";
-import { type DrawContext, drawIdentifier, drawServiceDate } from "./identifiers.ts";
-import type { PhiCase, PhiStrata } from "./manifest.ts";
+import { type DrawContext, drawIdentifier } from "./identifiers.ts";
+import type { PhiCase, TextIdentifier } from "./manifest.ts";
 import { foreignLangs } from "./people.ts";
-import type { Random } from "./random.ts";
-import { type Field, type PhiRecord, primaryOf, topicOf } from "./record.ts";
+import type { TextStrata } from "./plan.ts";
+import { type Random, unique } from "./random.ts";
+import type { Field, PhiRecord } from "./record.ts";
 import { asBase64, asGzipHex, splitPayload, withTypos } from "./transforms.ts";
 import { x12Requires } from "./x12.ts";
 
-const unique = (used: Set<string>, draw: () => string) => {
-	let value = draw();
+/** Identifiers the case needs beside its stratum's: a birth date is planted with its owner's name. */
+const companionsOf = ({ identifier, carrier }: TextStrata) => {
+	const needed: ReadonlyArray<TextIdentifier> = [
+		...(identifier === "birth-date" ? ["patient-name" as const] : []),
+		...(carrier === "x12-837" ? x12Requires : []),
+	];
 
-	while (used.has(value)) {
-		value = draw();
-	}
-
-	used.add(value);
-
-	return value;
+	return Arr.filter(Arr.dedupe(needed), (kind) => kind !== identifier);
 };
 
-const fieldsOf = (strata: PhiStrata, context: DrawContext, used: Set<string>): Arr.NonEmptyReadonlyArray<Field> => {
-	const field = (kind: SafeHarbor): Field => ({ kind, value: unique(used, () => drawIdentifier(kind)(context)) });
+const fieldsOf = (strata: TextStrata, context: DrawContext, used: Set<string>): Arr.NonEmptyReadonlyArray<Field> => {
+	const field = (kind: TextIdentifier): Field => ({
+		kind,
+		value: unique({ used, draw: () => drawIdentifier(kind)(context) }),
+	});
 
-	if (strata.carrier !== "x12-837") {
-		return [field(strata.identifier)];
-	}
-
-	const extras = Arr.filter(x12Requires, (kind) => kind !== strata.identifier);
-	const serviceDate: Field = { kind: "date", value: unique(used, () => drawServiceDate(context.rng)) };
-
-	return [field(strata.identifier), ...Arr.map(extras, field), serviceDate];
+	return [field(strata.identifier), ...Arr.map(companionsOf(strata), field)];
 };
 
 interface PhiCaseRequest {
-	readonly id: string;
-	readonly strata: PhiStrata;
+	readonly strata: TextStrata;
 	readonly rng: Random;
 	readonly used: Set<string>;
 }
 
 const buriedSize = 600_000;
 
-const partsOf = (request: PhiCaseRequest, record: PhiRecord) => {
+const whole = (text: string): Delivered => ({ parts: [text], canaryParts: Option.none() });
+
+interface Delivered {
+	readonly parts: readonly [string] | readonly [string, string];
+	readonly canaryParts: Option.Option<Readonly<Record<string, readonly [string, string]>>>;
+}
+
+const deliver = (request: PhiCaseRequest, record: PhiRecord, canaries: Arr.NonEmptyReadonlyArray<string>) => {
 	const { strata, rng } = request;
 	const spec = carriers[strata.carrier];
 	const payload = spec.render({ record, rng, minified: strata.transform === "minified" });
-	const canaries = Arr.map(record.fields, ({ value }) => value);
-	const { code } = record.diagnosis;
-	const markers = [code, Str.replaceAll(".", "")(code), topicOf(record)];
-	const cut = strata.entry === "compaction-summary" || rng.chance(0.5) ? "apart-from-marker" : "through-identifier";
 
 	const byTransform = {
-		plain: () => [payload] as const,
-		minified: () => [payload] as const,
-		"non-english": () => [payload] as const,
-		buried: () => [bury({ rng, carrier: strata.carrier, size: buriedSize })(payload)] as const,
-		typos: () => [withTypos({ rng, canaries })(payload)] as const,
-		base64: () => [asBase64({ rng, mimeType: spec.mimeType })(payload)] as const,
-		"gzip-hex": () => [asGzipHex(rng)(payload)] as const,
-		split: () => splitPayload({ payload, canary: primaryOf(record).value, markers, cut }),
-	};
+		plain: () => whole(payload),
+		minified: () => whole(payload),
+		"non-english": () => whole(payload),
+		buried: () => whole(bury({ rng, carrier: strata.carrier, size: buriedSize })(payload)),
+		typos: () => whole(withTypos({ rng, canaries })(payload)),
+		base64: () => whole(asBase64({ rng, mimeType: spec.mimeType })(payload)),
+		"gzip-hex": () => whole(asGzipHex(rng)(payload)),
+		split: (): Delivered => {
+			const canary = Arr.headNonEmpty(canaries);
+			const { halves, parts } = splitPayload({ payload, canary });
+
+			return { parts: halves, canaryParts: Option.some({ [canary]: parts }) };
+		},
+	} satisfies Record<TextStrata["transform"], () => Delivered>;
 
 	return byTransform[strata.transform]();
 };
 
-export const phiCase = (request: PhiCaseRequest): typeof PhiCase.Type => {
-	const { id, strata, rng, used } = request;
+export const phiCase = (request: PhiCaseRequest): Omit<typeof PhiCase.Type, "id"> => {
+	const { strata, rng, used } = request;
 	const lang = strata.transform === "non-english" ? rng.pick(foreignLangs) : "en";
 	const fields = fieldsOf(strata, { rng, lang, carrier: strata.carrier }, used);
+	const canaries = Arr.map(fields, ({ value }) => value);
 	const record: PhiRecord = { lang, fields, diagnosis: rng.pick(diagnoses), rowId: rng.between(1000, 99_999) };
-	const parts = partsOf(request, record);
+	const { parts, canaryParts } = deliver(request, record, canaries);
 
 	const messages = converse({
 		entry: strata.entry,
 		scene: carriers[strata.carrier],
 		parts,
-		image: strata.carrier === "screenshot" || strata.identifier === "photo",
+		image: Option.none(),
+		quotes: canaries,
 		rng,
 	});
 
-	return { id, expect: "phi", strata, canaries: Arr.map(fields, ({ value }) => value), messages };
+	const planted = { expect: "phi", strata, canaries, fragments: [], messages } as const;
+
+	return Option.match(canaryParts, {
+		onNone: () => planted,
+		onSome: (cut) => ({ ...planted, canaryParts: cut }),
+	});
 };

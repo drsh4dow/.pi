@@ -1,8 +1,8 @@
-import type { SafeHarbor } from "../policy/index.ts";
+import type { TextIdentifier } from "./manifest.ts";
 import type { ByLang } from "./people.ts";
 
 export const identifierLabels = {
-	name: {
+	"patient-name": {
 		en: "Patient name",
 		es: "Nombre del paciente",
 		de: "Name des Patienten",
@@ -10,25 +10,6 @@ export const identifierLabels = {
 		pt: "Nome do paciente",
 		vi: "Họ tên bệnh nhân",
 	},
-	geographic: {
-		en: "Home address",
-		es: "Domicilio",
-		de: "Wohnadresse",
-		fr: "Adresse du domicile",
-		pt: "Endereço residencial",
-		vi: "Địa chỉ nhà",
-	},
-	date: {
-		en: "Date of birth",
-		es: "Fecha de nacimiento",
-		de: "Geburtsdatum",
-		fr: "Date de naissance",
-		pt: "Data de nascimento",
-		vi: "Ngày sinh",
-	},
-	phone: { en: "Phone", es: "Teléfono", de: "Telefon", fr: "Téléphone", pt: "Telefone", vi: "Số điện thoại" },
-	fax: { en: "Fax", es: "Fax", de: "Fax", fr: "Télécopie", pt: "Fax", vi: "Số fax" },
-	email: { en: "Email", es: "Correo electrónico", de: "E-Mail", fr: "Courriel", pt: "E-mail", vi: "Thư điện tử" },
 	ssn: {
 		en: "SSN",
 		es: "Número de Seguro Social",
@@ -36,6 +17,54 @@ export const identifierLabels = {
 		fr: "Numéro de sécurité sociale",
 		pt: "Número do Seguro Social",
 		vi: "Số an sinh xã hội",
+	},
+	"birth-date": {
+		en: "Date of birth",
+		es: "Fecha de nacimiento",
+		de: "Geburtsdatum",
+		fr: "Date de naissance",
+		pt: "Data de nascimento",
+		vi: "Ngày sinh",
+	},
+	"street-address": {
+		en: "Home address",
+		es: "Domicilio",
+		de: "Wohnadresse",
+		fr: "Adresse du domicile",
+		pt: "Endereço residencial",
+		vi: "Địa chỉ nhà",
+	},
+	"personal-phone": {
+		en: "Home phone",
+		es: "Teléfono particular",
+		de: "Telefon privat",
+		fr: "Téléphone personnel",
+		pt: "Telefone residencial",
+		vi: "Số điện thoại nhà",
+	},
+	"personal-email": {
+		en: "Personal email",
+		es: "Correo personal",
+		de: "Private E-Mail",
+		fr: "Courriel personnel",
+		pt: "E-mail pessoal",
+		vi: "Email cá nhân",
+	},
+	"member-number": {
+		en: "Member ID",
+		es: "Número de afiliado",
+		de: "Versichertennummer",
+		fr: "Numéro d'adhérent",
+		pt: "Número da carteirinha",
+		vi: "Mã thẻ bảo hiểm",
+	},
+	"medicare-medicaid-number": {
+		en: "Medicare/Medicaid ID",
+		es: "Número de Medicare/Medicaid",
+		de: "Medicare-/Medicaid-Nummer",
+		fr: "Numéro Medicare/Medicaid",
+		pt: "Número do Medicare/Medicaid",
+		vi: "Mã số Medicare/Medicaid",
 	},
 	mrn: {
 		en: "MRN",
@@ -45,23 +74,7 @@ export const identifierLabels = {
 		pt: "Número do prontuário",
 		vi: "Mã hồ sơ bệnh án",
 	},
-	"health-plan": {
-		en: "Member ID",
-		es: "Número de afiliado",
-		de: "Versichertennummer",
-		fr: "Numéro d'adhérent",
-		pt: "Número da carteirinha",
-		vi: "Mã thẻ bảo hiểm",
-	},
-	account: {
-		en: "Account number",
-		es: "Número de cuenta",
-		de: "Kontonummer",
-		fr: "Numéro de compte",
-		pt: "Número da conta",
-		vi: "Số tài khoản",
-	},
-	license: {
+	"driver-license": {
 		en: "Driver license",
 		es: "Licencia de conducir",
 		de: "Führerscheinnummer",
@@ -69,63 +82,15 @@ export const identifierLabels = {
 		pt: "Carteira de motorista",
 		vi: "Số giấy phép lái xe",
 	},
-	vehicle: {
-		en: "Vehicle VIN",
-		es: "Número de bastidor",
-		de: "Fahrgestellnummer",
-		fr: "Numéro VIN du véhicule",
-		pt: "Chassi do veículo",
-		vi: "Số khung xe",
+	passport: {
+		en: "Passport number",
+		es: "Número de pasaporte",
+		de: "Reisepassnummer",
+		fr: "Numéro de passeport",
+		pt: "Número do passaporte",
+		vi: "Số hộ chiếu",
 	},
-	device: {
-		en: "Device serial",
-		es: "Número de serie del dispositivo",
-		de: "Geräteseriennummer",
-		fr: "Numéro de série de l'appareil",
-		pt: "Número de série do dispositivo",
-		vi: "Số sê-ri thiết bị",
-	},
-	url: {
-		en: "Portal link",
-		es: "Enlace del portal",
-		de: "Portal-Link",
-		fr: "Lien du portail",
-		pt: "Link do portal",
-		vi: "Đường dẫn cổng thông tin",
-	},
-	ip: {
-		en: "Client IP",
-		es: "IP del cliente",
-		de: "Client-IP",
-		fr: "IP du client",
-		pt: "IP do cliente",
-		vi: "IP máy khách",
-	},
-	biometric: {
-		en: "Fingerprint template",
-		es: "Plantilla de huella",
-		de: "Fingerabdruck-Template",
-		fr: "Gabarit d'empreinte",
-		pt: "Modelo de impressão digital",
-		vi: "Mẫu vân tay",
-	},
-	photo: {
-		en: "Patient photo",
-		es: "Foto del paciente",
-		de: "Patientenfoto",
-		fr: "Photo du patient",
-		pt: "Foto do paciente",
-		vi: "Ảnh bệnh nhân",
-	},
-	"other-id": {
-		en: "Rx number",
-		es: "Número de receta",
-		de: "Rezeptnummer",
-		fr: "Numéro d'ordonnance",
-		pt: "Número da receita",
-		vi: "Số đơn thuốc",
-	},
-} satisfies Record<SafeHarbor, ByLang<string>>;
+} satisfies Record<TextIdentifier, ByLang<string>>;
 
 export const healthLabels = {
 	code: {
@@ -178,13 +143,5 @@ export const phrases = {
 		fr: "Bonjour, la demande pour ce patient est revenue refusée et il a appelé deux fois. Quelqu'un peut vérifier l'export ?",
 		pt: "Oi pessoal, a guia deste paciente voltou negada e ele já ligou duas vezes. Alguém pode verificar a exportação?",
 		vi: "Chào cả nhóm, yêu cầu của bệnh nhân này bị từ chối và họ đã gọi hai lần. Ai kiểm tra giúp bản xuất dữ liệu được không?",
-	},
-	screen: {
-		en: "Claims review, denials queue",
-		es: "Revisión de reclamos, cola de denegados",
-		de: "Abrechnungsprüfung, Ablehnungen",
-		fr: "Revue des demandes, file des refus",
-		pt: "Revisão de guias, fila de negadas",
-		vi: "Duyệt yêu cầu, hàng đợi bị từ chối",
 	},
 } satisfies Record<string, ByLang<string>>;

@@ -5,8 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import type { Transcript } from "../policy/index.ts";
-import type { Case } from "./manifest.ts";
+import type { Case, Transcript } from "./manifest.ts";
 import { requestsOf } from "./requests.ts";
 
 const texts = (request: Transcript) =>
@@ -21,8 +20,14 @@ test("a tool result shares its request with the assistant turn that called it, r
 			const subject: Case = {
 				id: "fetch",
 				expect: "phi",
-				strata: { identifier: "license", carrier: "clinical-note", transform: "split", entry: "tool-result" },
+				strata: {
+					identifier: "driver-license",
+					carrier: "clinical-note",
+					transform: "split",
+					entry: "tool-result",
+				},
 				canaries: ["canary-fetch"],
+				fragments: [],
 				messages: [
 					{ role: "user", text: "Why is this note rejected?" },
 					{ role: "assistant", text: "Fetching it." },
@@ -60,6 +65,7 @@ test("a second compaction's summary replaces the first and lists the files read 
 				expect: "clean",
 				strata: { negative: "schema-only" },
 				canaries: [],
+				fragments: [],
 				messages: [
 					{ role: "user", text: "Why does the importer skip rows?" },
 					{ role: "assistant", text: "Reading it." },
