@@ -1,49 +1,50 @@
 import { expect, test } from "bun:test";
 
 import * as Effect from "effect/Effect";
-import * as Option from "effect/Option";
 
-import { Judge, JudgeFailed } from "../policy/index.ts";
+import { Judge, JudgeFailed } from "../policy/engine.ts";
 import { recordedJudge, recording } from "./recorded.ts";
 
+const usage = { calls: 1, inputTokens: 120, cost: 0.002, ms: 300 };
+
 const live = Judge.of({
-	maxChars: 100,
-	ask: () => Effect.succeed({ pPhi: 0.91236, category: Option.some("name" as const) }),
+	identifier: () => Effect.succeed({ score: 0.31, usage }),
+	kind: () => Effect.succeed({ kind: "patient-name", usage }),
 });
 
-const recorded = { seen: "visit on 2031-04-02", fresh: "patient Jane Roe" };
+const asked = { piece: "patient Jane Roe", context: ["[user] why is this row rejected?"], images: [] };
 
 const replay = Effect.gen(function* () {
-	const recorder = yield* recording(live);
+	const recorder = recording(live);
 
-	yield* recorder.judge.ask(recorded);
+	yield* recorder.judge.identifier(asked);
+	yield* recorder.judge.kind(asked);
 
 	const contents = yield* recorder.contents;
 
-	const replayed = yield* recordedJudge(contents);
-
-	return { contents, replayed };
+	return yield* recordedJudge(contents);
 });
 
-test("a recorded call replays its answer, rounded to 4 decimals, from one sorted line of the file", () =>
+test("a recorded call replays its answer and what it cost", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const { contents, replayed } = yield* replay;
-
-			expect(contents).toMatch(/^\{"digest":"[0-9a-f]{32}","pPhi":0\.9124,"category":"name"\}\n$/u);
-			const answer = yield* replayed.judge.ask(recorded);
+			const replayed = yield* replay;
+			const identifier = yield* replayed.judge.identifier(asked);
+			const kind = yield* replayed.judge.kind(asked);
 			const unrecorded = yield* replayed.unrecorded;
 
-			expect(answer).toEqual({ pPhi: 0.9124, category: Option.some("name") });
+			expect(identifier).toEqual({ score: 0.31, usage: { ...usage, ms: 0 } });
+			expect(kind).toEqual({ kind: "patient-name", usage: { ...usage, ms: 0 } });
 			expect(unrecorded).toBe(0);
 		}),
 	));
 
-test("an input the file lacks, even one differing only in seen, fails and counts as unrecorded", () =>
+test("a call the file lacks, even one differing only in its context, fails and counts as unrecorded", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const { replayed } = yield* replay;
-			const failure = yield* Effect.flip(replayed.judge.ask({ ...recorded, seen: "" }));
+			const replayed = yield* replay;
+			const failure = yield* Effect.flip(replayed.judge.identifier({ ...asked, context: [] }));
+
 			const unrecorded = yield* replayed.unrecorded;
 
 			expect(failure).toBeInstanceOf(JudgeFailed);

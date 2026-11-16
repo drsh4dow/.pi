@@ -149,24 +149,18 @@ const mergeInto =
 		}
 	};
 
-/**
- * The book for one session: every `phi-verdicts` entry in the session file, then the system cache. `pid` names this
- * process's cache file, so no two processes share a write target.
- */
-export const bookOf = Effect.fn("bookOf")(function* ({
-	sessionManager,
-	pid,
+/** A book over `verdicts` in memory. `keepSystem` persists the system verdicts each `record` finds. */
+const bookWith = ({
+	verdicts,
+	keepSystem,
 }: {
-	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getEntries">;
-	readonly pid: number;
-}) {
-	const fs = yield* FileSystem.FileSystem;
-	const folder = yield* systemFolder;
+	readonly verdicts: ReadonlyArray<Stored>;
+	readonly keepSystem: (lines: ReadonlyArray<Stored>) => Effect.Effect<void>;
+}): VerdictBook => {
 	const seals = new Map<ContentKey, Seal>();
 	const merge = mergeInto(seals);
-	const system = yield* systemVerdicts(fs, folder);
 
-	Arr.forEach([...sessionVerdicts(sessionManager.getEntries()), ...system], merge);
+	Arr.forEach(verdicts, merge);
 
 	const record: VerdictBook["record"] = ({ found, pieces }) => {
 		Arr.forEach(Arr.map(found, storedOf), merge);
@@ -183,14 +177,36 @@ export const bookOf = Effect.fn("bookOf")(function* ({
 			return Effect.succeed(entry);
 		}
 
-		const append = appendLines({ folder, pid, lines: Arr.map(cached, storedOf) });
-
-		return Effect.as(Effect.provideService(append, FileSystem.FileSystem, fs), entry);
+		return Effect.as(keepSystem(Arr.map(cached, storedOf)), entry);
 	};
 
 	return {
 		lookup: (key) => seals.get(key),
 		known: (key) => seals.has(key),
 		record,
-	} satisfies VerdictBook;
+	};
+};
+
+/** An empty book that lives only in memory and writes no file, for one corpus case or one replayed session. */
+export const memoryBook = (): VerdictBook => bookWith({ verdicts: [], keepSystem: () => Effect.void });
+
+/**
+ * The book for one session: every `phi-verdicts` entry in the session file, then the system cache. `pid` names this
+ * process's cache file, so no two processes share a write target.
+ */
+export const bookOf = Effect.fn("bookOf")(function* ({
+	sessionManager,
+	pid,
+}: {
+	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getEntries">;
+	readonly pid: number;
+}) {
+	const fs = yield* FileSystem.FileSystem;
+	const folder = yield* systemFolder;
+	const system = yield* systemVerdicts(fs, folder);
+
+	return bookWith({
+		verdicts: [...sessionVerdicts(sessionManager.getEntries()), ...system],
+		keepSystem: (lines) => Effect.provideService(appendLines({ folder, pid, lines }), FileSystem.FileSystem, fs),
+	});
 });

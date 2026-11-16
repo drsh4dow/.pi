@@ -3,18 +3,15 @@ import { expect, test } from "bun:test";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Encoding from "effect/encoding";
-import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import { Phi, ScanResult, type JudgeInput } from "./index.ts";
-import { scanWith, user } from "./judge.fixture.ts";
+import { judgeAll, pieceOf, run, type Script } from "./engine.fixture.ts";
+import { Finding, type JudgeInput, Verdict } from "./engine.ts";
 
-const run = (body: Effect.Effect<void>) => Effect.runPromise(body);
-
-const scanned = (text: string) =>
-	Effect.map(scanWith({ transcript: [user(text)] }), ({ result, asked }) => ({
-		result,
-		fresh: Arr.map(asked, (input) => input.fresh),
+const judged = (text: string, script: Script) =>
+	Effect.map(judgeAll({ pieces: [pieceOf(text)], script }), ({ found, asked }) => ({
+		verdicts: Arr.map(found, ([, verdict]) => verdict),
+		fresh: Arr.map(asked, ({ input }) => input.piece),
 	}));
 
 const codePoints = (text: string) => Arr.getSomes(Arr.map(Arr.fromIterable(text), Str.codePointAt(0)));
@@ -41,21 +38,22 @@ for (const [encoding, text, bytes] of [
 	test(`short ${encoding} text reaches the judge decoded: ${text}`, () =>
 		run(
 			Effect.gen(function* () {
-				const { result, fresh } = yield* scanned(`blob ${Encoding.Base64.encode(bytes)}`);
+				const { verdicts, fresh } = yield* judged(`blob ${Encoding.Base64.encode(bytes)}`, { score: () => 0 });
 
-				expect(ScanResult.$is("Clean")(result)).toBe(true);
+				expect(verdicts).toEqual([Verdict.Cleared({ by: "judge" })]);
 				expect(Arr.join(fresh, "")).toContain(text);
 			}),
 		));
 }
 
-test("long UTF-16LE text is judged, not tainted as binary", () =>
+test("long UTF-16LE text is judged, not sealed as binary", () =>
 	run(
 		Effect.gen(function* () {
 			const text = "Discharge note: Marisol Quintero, admitted with pneumonia, discharged on day four.";
-			const { result, fresh } = yield* scanned(`blob ${Encoding.Base64.encode(utf16(text, true))}`);
+			const encoded = Encoding.Base64.encode(utf16(text, true));
+			const { verdicts, fresh } = yield* judged(`blob ${encoded}`, { score: () => 0 });
 
-			expect(ScanResult.$is("Clean")(result)).toBe(true);
+			expect(verdicts).toEqual([Verdict.Cleared({ by: "judge" })]);
 			expect(Arr.join(fresh, "")).toContain(text);
 		}),
 	));
@@ -66,12 +64,11 @@ const percentEncoded = (bytes: Uint8Array) =>
 		"",
 	);
 
-/** Taints only on the plain note, so a scan taints exactly when the judge was shown a correct reading. */
-const seesNote = (plain: string) => (input: JudgeInput) =>
-	Effect.succeed({
-		pPhi: Str.includes(plain)(`${input.seen}${input.fresh}`) ? 0.9 : 0,
-		category: Option.none(),
-	});
+/** Seals only on the plain note, so a piece seals exactly when the judge was shown a correct reading. */
+const seesNote = (plain: string): Script => ({
+	score: (input: JudgeInput) => (Str.includes(plain)(input.piece) ? 0.9 : 0),
+	kind: () => "patient-name",
+});
 
 for (const [label, plain, bytes] of [
 	["short mixed-script UTF-16LE", "Αννα HIV", utf16("Αννα HIV", true)],
@@ -87,12 +84,11 @@ for (const [label, plain, bytes] of [
 	test(`${label} text reaches the judge as written: ${plain}`, () =>
 		run(
 			Effect.gen(function* () {
-				const { result } = yield* scanWith({
-					transcript: [user(`q=${percentEncoded(bytes)}`)],
-					answer: seesNote(plain),
-				});
+				const { verdicts } = yield* judged(`q=${percentEncoded(bytes)}`, seesNote(plain));
 
-				expect(ScanResult.$is("Tainted")(result) && result.taint).toEqual(Phi.make({ detector: "judge" }));
+				expect(verdicts).toEqual([
+					Verdict.Sealed({ finding: Finding.Judge({ score: 0.9, kind: "patient-name" }) }),
+				]);
 			}),
 		));
 }

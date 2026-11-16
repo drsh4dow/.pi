@@ -1,8 +1,12 @@
 /**
- * `bun features/phi-router/corpus/eval.ts <manifest.jsonl> --judge live|recorded [--record]` runs the policy engine
- * over a corpus manifest and prints misses per stratum with their 95% upper bounds, the missed cases, over-routing and
- * the judge's latency. It exits non-zero on any miss, on any unrecorded call in recorded mode, and on a manifest line
- * that does not decode. `--record`, with `live` only, rewrites `recordings.jsonl` from the run's answers.
+ * `bun features/phi-router/corpus/eval.ts [--corpus <manifest.jsonl>] --judge live|recorded [--record]
+ * [--window N | --sweep 0,1,2,4]` plays a corpus through the router core and prints, per stratum, the positive cases
+ * whose complete canary reached a personal account, then over-routing, fragments, lanes and judge cost. Without
+ * `--corpus` it plays the default generated corpus. `--sweep` runs once per judge window and prints one row per size.
+ *
+ * It exits non-zero on an unrecorded call in recorded mode, on a manifest line that does not decode, and, for one
+ * window, on any leak among in-policy positive cases. `--record`, with `live` only, rewrites `recordings.jsonl` with the
+ * run's answers.
  */
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -14,21 +18,16 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { Judge } from "../policy/index.ts";
-import { evaluate, type Report } from "./evaluate.ts";
+import { Judge } from "../policy/engine.ts";
+import { window as policyWindow } from "../policy/policy.ts";
+import { evaluate } from "./evaluate.ts";
+import { defaultSeed, generate } from "./generate.ts";
 import { decodeJsonLines } from "./jsonl.ts";
 import { judgeOn, liveClassify } from "./live.ts";
-import { type Case, CaseFromJsonLine } from "./manifest.ts";
+import { CaseFromJsonLine } from "./manifest.ts";
 import { recordedJudge, recording, recordingsPath } from "./recorded.ts";
-
-type Mode = "live" | "live-record" | "recorded";
-
-const modes = new Map<string, Mode>([
-	["--judge live", "live"],
-	["--judge live --record", "live-record"],
-	["--record --judge live", "live-record"],
-	["--judge recorded", "recorded"],
-]);
+import { categoryTable, outputOf } from "./render.ts";
+import type { Report } from "./report.ts";
 
 class Usage extends Schema.TaggedError<Usage, { readonly brand: unique symbol }>()("Usage", {
 	message: Schema.String,
@@ -38,160 +37,127 @@ class GateFailed extends Schema.TaggedError<GateFailed, { readonly brand: unique
 	message: Schema.String,
 }) {}
 
-const usage = "usage: bun features/phi-router/corpus/eval.ts <manifest.jsonl> --judge live|recorded [--record]";
+const usage =
+	"usage: bun features/phi-router/corpus/eval.ts [--corpus <manifest.jsonl>] --judge live|recorded [--record] [--window N | --sweep 0,1,2,4]";
 
-const argsOf = ([manifest, ...flags]: ReadonlyArray<string>) => {
-	const mode = modes.get(Arr.join(flags, " "));
+const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
-	if (manifest === undefined || Str.startsWith("-")(manifest) || mode === undefined) {
-		return Effect.fail(Usage.make({ message: usage }));
+const Window = Schema.FiniteFromString.pipe(Schema.decodeTo(NonNegativeInt));
+
+const Args = Schema.Struct({
+	corpus: Schema.optionalKey(Schema.String),
+	judge: Schema.Literals(["live", "recorded"]),
+	record: Schema.optionalKey(Schema.Boolean),
+	window: Schema.optionalKey(Window),
+	sweep: Schema.optionalKey(Schema.String),
+});
+
+const decodeArgs = Schema.decodeUnknownEffect(Args);
+
+const decodeWindows = Schema.decodeUnknownEffect(Schema.NonEmptyArray(Window));
+
+const valued = new Set(["--corpus", "--judge", "--window", "--sweep"]);
+
+/** `--record` alone, every other flag with its value. None for an unknown flag or a missing value. */
+const flagsOf = (
+	[flag, ...rest]: ReadonlyArray<string>,
+	flags: Readonly<Record<string, string | boolean>> = {},
+): Option.Option<Readonly<Record<string, string | boolean>>> => {
+	if (flag === undefined) {
+		return Option.some(flags);
 	}
 
-	return Effect.succeed({ manifest, mode });
+	if (flag === "--record") {
+		return flagsOf(rest, { ...flags, record: true });
+	}
+
+	const [value, ...after] = rest;
+
+	if (!valued.has(flag) || value === undefined) {
+		return Option.none();
+	}
+
+	return flagsOf(after, { ...flags, [Str.slice(2)(flag)]: value });
 };
 
-interface Judged {
-	readonly report: Report;
-	readonly unrecorded: Option.Option<number>;
-}
+const windowsOf = ({ window, sweep }: typeof Args.Type) =>
+	sweep === undefined ? Effect.succeed([window ?? policyWindow]) : decodeWindows(Str.split(",")(sweep));
 
-const recordedRun = Effect.fn("recordedRun")(function* (cases: ReadonlyArray<Case>) {
+const argsOf = Effect.fn("argsOf")(
+	function* (argv: ReadonlyArray<string>) {
+		const flags = yield* Effect.fromOption(flagsOf(argv));
+		const args = yield* decodeArgs(flags);
+
+		if ((args.record === true && args.judge !== "live") || (args.window !== undefined && args.sweep !== undefined)) {
+			return yield* Effect.fail("conflicting flags");
+		}
+
+		const windows = yield* windowsOf(args);
+
+		return { corpus: Option.fromUndefinedOr(args.corpus), judge: args.judge, record: args.record === true, windows };
+	},
+	Effect.mapError(() => Usage.make({ message: usage })),
+);
+
+type Args = Effect.Success<ReturnType<typeof argsOf>>;
+
+const casesOf = Effect.fn("casesOf")(function* (corpus: Args["corpus"]) {
+	if (Option.isNone(corpus)) {
+		return generate(defaultSeed);
+	}
+
 	const fs = yield* FileSystem.FileSystem;
-	const contents = yield* fs.readFileString(recordingsPath);
-	const replay = yield* recordedJudge(contents);
-	const report = yield* evaluate(cases).pipe(Effect.provideService(Judge, replay.judge));
-	const unrecorded = yield* replay.unrecorded;
+	const text = yield* fs.readFileString(corpus.value);
 
-	return { report, unrecorded: Option.some(unrecorded) } satisfies Judged;
+	return yield* decodeJsonLines({ schema: CaseFromJsonLine, source: corpus.value, text });
 });
 
-const liveRun = Effect.fn("liveRun")(function* (cases: ReadonlyArray<Case>) {
-	const live = yield* Effect.flatMap(liveClassify, judgeOn);
-	const report = yield* evaluate(cases).pipe(Effect.provideService(Judge, live));
-
-	return { report, unrecorded: Option.none() } satisfies Judged;
-});
-
-const recordRun = Effect.fn("recordRun")(function* (cases: ReadonlyArray<Case>) {
+/** The judge for the run, and what it leaves to check or write once every window has run. */
+const judgeFor = Effect.fn("judgeFor")(function* (args: Args) {
 	const fs = yield* FileSystem.FileSystem;
+
+	if (args.judge === "recorded") {
+		const replay = yield* Effect.flatMap(fs.readFileString(recordingsPath), recordedJudge);
+
+		return { judge: replay.judge, unrecorded: replay.unrecorded, finish: Effect.void };
+	}
+
 	const live = yield* Effect.flatMap(liveClassify, judgeOn);
-	const recorder = yield* recording(live);
-	const report = yield* evaluate(cases).pipe(Effect.provideService(Judge, recorder.judge));
-	const contents = yield* recorder.contents;
 
-	yield* fs.writeFileString(recordingsPath, contents);
+	if (!args.record) {
+		return { judge: live, unrecorded: Effect.succeed(0), finish: Effect.void };
+	}
 
-	return { report, unrecorded: Option.none() } satisfies Judged;
+	const recorder = recording(live);
+	const finish = Effect.flatMap(recorder.contents, (contents) => fs.writeFileString(recordingsPath, contents));
+
+	return { judge: recorder.judge, unrecorded: Effect.succeed(0), finish };
 });
 
-const runs = { live: liveRun, "live-record": recordRun, recorded: recordedRun } as const;
+/** A sweep measures each size, so only one window's leaks fail the run; an unrecorded call always does. */
+const gate = ({ reports, unrecorded }: { readonly reports: ReadonlyArray<Report>; readonly unrecorded: number }) => {
+	const leaks = Arr.reduce(reports, 0, (total, report) => total + report.leaks.length);
+	const message = `${String(leaks)} leaked in-policy case(s), ${String(unrecorded)} unrecorded judge call(s)`;
+	const gated = unrecorded > 0 || (reports.length === 1 && leaks > 0);
 
-interface Table {
-	readonly header: ReadonlyArray<string>;
-	readonly labels: number;
-	readonly rows: ReadonlyArray<ReadonlyArray<string>>;
-}
-
-const table = ({ header, labels, rows }: Table) => {
-	const widths = Arr.map(header, (title, column) =>
-		Math.max(title.length, ...Arr.map(rows, (row) => (row[column] ?? "").length)),
-	);
-
-	const cellOf = (cell: string, column: number) => {
-		const width = widths[column] ?? 0;
-
-		return column < labels ? Str.padEnd(width)(cell) : Str.padStart(width)(cell);
-	};
-
-	const line = (row: ReadonlyArray<string>) => Str.trimEnd(Arr.join(Arr.map(row, cellOf), "  "));
-
-	return Arr.join(Arr.map([header, ...rows], line), "\n");
-};
-
-const rate = (part: number, whole: number) => (whole === 0 ? "-" : (part / whole).toFixed(4));
-
-const ms = (value: Option.Option<number>) =>
-	Option.match(value, { onNone: () => "-", onSome: (took) => `${Math.round(took)} ms` });
-
-const strataTable = ({ strata }: Report) =>
-	table({
-		header: ["axis", "value", "N", "misses", "uncertain", "upper95"],
-		labels: 2,
-		rows: Arr.map(strata, (row) => [
-			row.axis,
-			row.value,
-			String(row.cases),
-			String(row.misses),
-			String(row.uncertain),
-			row.missRateUpper95.toFixed(4),
-		]),
-	});
-
-const missTable = ({ misses }: Report) =>
-	misses.length === 0
-		? "Missed cases: none"
-		: table({
-				header: ["missed case", "identifier", "carrier", "transform", "entry"],
-				labels: 5,
-				rows: Arr.map(misses, ({ id, strata }) => [
-					id,
-					strata.identifier,
-					strata.carrier,
-					strata.transform,
-					strata.entry,
-				]),
-			});
-
-const overRoutingTable = ({ overRouting, totals }: Report) =>
-	table({
-		header: ["negative", "N", "over-routed", "rate"],
-		labels: 1,
-		rows: [
-			...Arr.map(overRouting, (row) => [
-				row.negative,
-				String(row.cases),
-				String(row.overRouted),
-				rate(row.overRouted, row.cases),
-			]),
-			["all", String(totals.clean), String(totals.overRouted), rate(totals.overRouted, totals.clean)],
-		],
-	});
-
-const render = ({ report, unrecorded }: Judged) => {
-	const { totals, judge } = report;
-
-	return Arr.join(
-		[
-			"Misses per stratum, with the one-sided Clopper-Pearson 95% upper bound on the miss rate",
-			strataTable(report),
-			"",
-			missTable(report),
-			"",
-			"Over-routing: clean cases that did not come back Clean",
-			overRoutingTable(report),
-			"",
-			`phi cases ${totals.phi}: caught ${totals.phi - totals.misses}, missed ${totals.misses}, uncertain ${totals.uncertain}`,
-			`clean cases ${totals.clean}: over-routed ${totals.overRouted}`,
-			`judge calls ${judge.calls}: p50 ${ms(judge.p50Ms)}, p95 ${ms(judge.p95Ms)}`,
-			...Option.match(unrecorded, { onNone: () => [], onSome: (count) => [`unrecorded judge calls ${count}`] }),
-		],
-		"\n",
-	);
+	return gated ? Effect.fail(GateFailed.make({ message })) : Effect.void;
 };
 
 const program = Effect.gen(function* () {
-	const fs = yield* FileSystem.FileSystem;
-	const { manifest, mode } = yield* argsOf(Arr.drop(process.argv, 2));
-	const text = yield* fs.readFileString(manifest);
-	const cases = yield* decodeJsonLines({ schema: CaseFromJsonLine, source: manifest, text });
-	const judged = yield* runs[mode](cases);
-	const { misses } = judged.report.totals;
-	const unrecorded = Option.getOrElse(judged.unrecorded, () => 0);
-	const message = `${misses} missed PHI case(s), ${unrecorded} unrecorded judge call(s)`;
+	const args = yield* argsOf(Arr.drop(process.argv, 2));
+	const cases = yield* casesOf(args.corpus);
+	const run = yield* judgeFor(args);
+	const evaluated = (window: number) => Effect.provideService(evaluate({ cases, window }), Judge, run.judge);
+	const reports = yield* Effect.forEach(args.windows, evaluated);
 
-	yield* Console.log(render(judged));
+	yield* run.finish;
 
-	return yield* misses > 0 || unrecorded > 0 ? Effect.fail(GateFailed.make({ message })) : Effect.void;
+	const unrecorded = yield* run.unrecorded;
+	const recorded = args.judge === "recorded" ? [`unrecorded judge calls ${String(unrecorded)}`] : [];
+
+	yield* Console.log(Arr.join([outputOf(reports), "", categoryTable, ...recorded], "\n"));
+
+	return yield* gate({ reports, unrecorded });
 });
 
 NodeRuntime.runMain(program.pipe(Effect.scoped, Effect.provide(NodeServices.layer)));

@@ -38,7 +38,7 @@ const failureOf = (why: string, last: Option.Option<ClassifierResult>) =>
 			Str.slice(0, 200)(`failed (${why}), ${stopReason}: ${errorMessage ?? "no message"}`),
 	});
 
-const probe = Effect.fn("probe")(function* (classify: Classify, fresh: string) {
+const probe = Effect.fn("probe")(function* (classify: Classify, piece: string) {
 	const last = yield* Ref.make(Option.none<ClassifierResult>());
 	const services = yield* Effect.context();
 
@@ -51,22 +51,22 @@ const probe = Effect.fn("probe")(function* (classify: Classify, fresh: string) {
 		);
 
 	const judge = yield* judgeOn(watched);
-	const [took, answer] = yield* judge.ask({ seen: "", fresh }).pipe(Effect.result, Effect.timed);
+	const [took, answer] = yield* judge.identifier({ piece, context: [], images: [] }).pipe(Effect.result, Effect.timed);
 	const result = yield* Ref.get(last);
 
 	const outcome = Result.match(answer, {
-		onSuccess: ({ pPhi }) => `ok, pPhi ${pPhi.toFixed(4)}`,
+		onSuccess: ({ score }) => `ok, score ${score.toFixed(4)}`,
 		onFailure: ({ why }) => failureOf(why, result),
 	});
 
 	return { ms: Math.round(Duration.toMillis(took)), outcome };
 }, Effect.scoped);
 
-const measure = Effect.fn("measure")(function* (classify: Classify, fresh: string) {
-	const calls = yield* Effect.forEach(Arr.range(1, callsPerSize), () => probe(classify, fresh));
+const measure = Effect.fn("measure")(function* (classify: Classify, piece: string) {
+	const calls = yield* Effect.forEach(Arr.range(1, callsPerSize), () => probe(classify, piece));
 
 	yield* Effect.forEach(calls, ({ ms, outcome }, index) =>
-		Console.log(`${fresh.length} chars, call ${index + 1}: ${ms} ms, ${outcome}`),
+		Console.log(`${piece.length} chars, call ${index + 1}: ${ms} ms, ${outcome}`),
 	);
 
 	const times = Arr.sort(
@@ -76,7 +76,7 @@ const measure = Effect.fn("measure")(function* (classify: Classify, fresh: strin
 
 	const median = Arr.get(times, Math.floor(callsPerSize / 2));
 
-	yield* Console.log(`${fresh.length} chars, median ${Option.getOrElse(median, () => 0)} ms`);
+	yield* Console.log(`${piece.length} chars, median ${Option.getOrElse(median, () => 0)} ms`);
 });
 
 const program = Effect.gen(function* () {

@@ -5,8 +5,8 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 
-import { type Classify, decisionsJudge, decisionsModel } from "../decisions.ts";
-import { Judge } from "../policy/index.ts";
+import { type Classify, decisionsModel, decisionsPieceJudge } from "../decisions.ts";
+import { Judge } from "../policy/engine.ts";
 
 class ModelsUnavailable extends Schema.TaggedError<ModelsUnavailable, { readonly brand: unique symbol }>()(
 	"ModelsUnavailable",
@@ -45,4 +45,5 @@ export const liveClassify = Effect.gen(function* () {
 	return classify;
 });
 
-export const judgeOn = (classify: Classify) => Effect.map(Layer.build(decisionsJudge(classify)), Context.get(Judge));
+export const judgeOn = (classify: Classify) =>
+	Effect.map(Layer.build(decisionsPieceJudge(classify)), Context.get(Judge));

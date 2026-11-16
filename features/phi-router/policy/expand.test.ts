@@ -5,8 +5,8 @@ import * as Effect from "effect/Effect";
 import * as Encoding from "effect/encoding";
 import * as Str from "effect/String";
 
-import { ScanResult, Unscannable } from "./index.ts";
-import { scanWith, user } from "./judge.fixture.ts";
+import { judgeAll, pieceOf } from "./engine.fixture.ts";
+import { Finding, type Piece, Verdict } from "./engine.ts";
 
 const gzip = (text: string) =>
 	Effect.promise(() => new Response(new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"))).bytes());
@@ -15,17 +15,16 @@ const gzipBase64 = (text: string) => Effect.map(gzip(text), Encoding.Base64.enco
 
 const binary = (length: number) => Uint8Array.from(Arr.makeBy(length, (index) => (index * 37 + 11) % 256));
 
-const tainted = (what: "binary" | "undecodable") =>
-	ScanResult.Tainted({
-		taint: Unscannable.make({ what }),
-		stats: { newChars: 0, judgeCalls: 0, judgeMs: 0 },
-	});
+const sealed = (why: "binary" | "undecodable") => [Verdict.Sealed({ finding: Finding.Failure({ why }) })];
 
-const scanned = (text: string) =>
-	Effect.map(scanWith({ transcript: [user(text)] }), ({ result, asked }) => ({
-		result,
-		fresh: Arr.map(asked, (input) => input.fresh),
+/** The piece's verdicts, and the text the judge was shown for it. */
+const judgedPiece = (piece: Piece) =>
+	Effect.map(judgeAll({ pieces: [piece], script: { score: () => 0 } }), ({ found, asked }) => ({
+		verdicts: Arr.map(found, ([, verdict]) => verdict),
+		fresh: Arr.map(asked, ({ input }) => input.piece),
 	}));
+
+const judgedText = (text: string) => judgedPiece(pieceOf(text));
 
 const run = (body: Effect.Effect<void>) => Effect.runPromise(body);
 
@@ -36,18 +35,18 @@ test("base64 text reaches the judge decoded, after the original", () =>
 		Effect.gen(function* () {
 			const letter = `${note}\r\n\tseen for chest pain`;
 			const encoded = Encoding.Base64.encode(letter);
-			const { fresh } = yield* scanned(`token ${encoded}`);
+			const { fresh } = yield* judgedText(`token ${encoded}`);
 
-			expect(fresh).toEqual([`[user] token ${encoded}\n${letter}`]);
+			expect(fresh).toEqual([`token ${encoded}\n${letter}`]);
 		}),
 	));
 
 test("base64 text whose encoding happens to read as words still reaches the judge decoded", () =>
 	run(
 		Effect.gen(function* () {
-			const { fresh } = yield* scanned("emlwIG1hcmlzb2wgcGhvbmU=");
+			const { fresh } = yield* judgedText("emlwIG1hcmlzb2wgcGhvbmU=");
 
-			expect(fresh).toEqual(["[user] emlwIG1hcmlzb2wgcGhvbmU=\nzip marisol phone"]);
+			expect(fresh).toEqual(["emlwIG1hcmlzb2wgcGhvbmU=\nzip marisol phone"]);
 		}),
 	));
 
@@ -55,9 +54,9 @@ test("base64url text reaches the judge decoded", () =>
 	run(
 		Effect.gen(function* () {
 			const encoded = Encoding.Base64Url.encode("Marisol Quintero?? born 1962>>");
-			const { fresh } = yield* scanned(encoded);
+			const { fresh } = yield* judgedText(encoded);
 
-			expect(fresh).toEqual([`[user] ${encoded}\nMarisol Quintero?? born 1962>>`]);
+			expect(fresh).toEqual([`${encoded}\nMarisol Quintero?? born 1962>>`]);
 		}),
 	));
 
@@ -65,9 +64,9 @@ test("gzip inside base64 reaches the judge inflated", () =>
 	run(
 		Effect.gen(function* () {
 			const encoded = yield* gzipBase64(note);
-			const { fresh } = yield* scanned(encoded);
+			const { fresh } = yield* judgedText(encoded);
 
-			expect(fresh).toEqual([`[user] ${encoded}\n${note}`]);
+			expect(fresh).toEqual([`${encoded}\n${note}`]);
 		}),
 	));
 
@@ -75,19 +74,19 @@ test("gzip written as hex reaches the judge inflated", () =>
 	run(
 		Effect.gen(function* () {
 			const encoded = yield* Effect.map(gzip(note), Encoding.Hex.encode);
-			const { fresh } = yield* scanned(`payload=${encoded}`);
+			const { fresh } = yield* judgedText(`payload=${encoded}`);
 
-			expect(fresh).toEqual([`[user] payload=${encoded}\n${note}`]);
+			expect(fresh).toEqual([`payload=${encoded}\n${note}`]);
 		}),
 	));
 
 test("percent-encoded text reaches the judge decoded", () =>
 	run(
 		Effect.gen(function* () {
-			const { fresh } = yield* scanned("GET /search?q=Marisol+Quintero%2C%20chest%20pain 200");
+			const { fresh } = yield* judgedText("GET /search?q=Marisol+Quintero%2C%20chest%20pain 200");
 
 			expect(fresh).toEqual([
-				"[user] GET /search?q=Marisol+Quintero%2C%20chest%20pain 200\n/search?q=Marisol Quintero, chest pain",
+				"GET /search?q=Marisol+Quintero%2C%20chest%20pain 200\n/search?q=Marisol Quintero, chest pain",
 			]);
 		}),
 	));
@@ -99,80 +98,80 @@ const thrice = Encoding.Base64.encode(twice);
 test("a payload nested three levels deep is decoded at every level", () =>
 	run(
 		Effect.gen(function* () {
-			const { fresh } = yield* scanned(thrice);
+			const { fresh } = yield* judgedText(thrice);
 
-			expect(fresh).toEqual([`[user] ${thrice}\n${twice}\n${once}\n${note}`]);
+			expect(fresh).toEqual([`${thrice}\n${twice}\n${once}\n${note}`]);
 		}),
 	));
 
 test("a payload still encoded below three levels is undecodable", () =>
 	run(
 		Effect.gen(function* () {
-			const { result } = yield* scanned(Encoding.Base64.encode(thrice));
+			const { verdicts } = yield* judgedText(Encoding.Base64.encode(thrice));
 
-			expect(result).toEqual(tainted("undecodable"));
+			expect(verdicts).toEqual(sealed("undecodable"));
 		}),
 	));
 
-test("decoded binary over 64 bytes taints as binary without a judge call", () =>
+test("decoded binary over 64 bytes seals as binary without a judge call", () =>
 	run(
 		Effect.gen(function* () {
-			const { result, fresh } = yield* scanned(`blob ${Encoding.Base64.encode(binary(65))}`);
+			const { verdicts, fresh } = yield* judgedText(`blob ${Encoding.Base64.encode(binary(65))}`);
 
-			expect(result).toEqual(tainted("binary"));
+			expect(verdicts).toEqual(sealed("binary"));
 			expect(fresh).toEqual([]);
 		}),
 	));
 
-test("decoded bytes of 64 or less, such as a key or a digest, never taint: the judge decides", () =>
+test("decoded bytes of 64 or less, such as a key or a digest, never seal: the judge decides", () =>
 	run(
 		Effect.gen(function* () {
 			const key = `JWT_SECRET=${Encoding.Base64.encode(binary(32))}`;
 			const digest = `"digest": "${Encoding.Base64.encode(binary(64))}"`;
-			const { result, fresh } = yield* scanned(`${key}\n${digest}`);
+			const { verdicts, fresh } = yield* judgedText(`${key}\n${digest}`);
 
-			expect(ScanResult.$is("Clean")(result)).toBe(true);
+			expect(verdicts).toEqual([Verdict.Cleared({ by: "judge" })]);
 			expect(fresh).toHaveLength(1);
 		}),
 	));
 
-test("a corrupt gzip taints as undecodable", () =>
+test("a corrupt gzip seals as undecodable", () =>
 	run(
 		Effect.gen(function* () {
 			const valid = yield* gzip(`${note}, seen for chest pain on 2024-01-05`);
 			const corrupt = Uint8Array.from(valid, (byte, index) => (index > 12 ? 255 - byte : byte));
-			const { result } = yield* scanned(Encoding.Base64.encode(corrupt));
+			const { verdicts } = yield* judgedText(Encoding.Base64.encode(corrupt));
 
-			expect(result).toEqual(tainted("undecodable"));
+			expect(verdicts).toEqual(sealed("undecodable"));
 		}),
 	));
 
-test("a gzip that inflates past the size bound taints as undecodable", () =>
+test("a gzip that inflates past the size bound seals as undecodable", () =>
 	run(
 		Effect.gen(function* () {
 			const bomb = yield* gzipBase64(Str.repeat(5 * 1024 * 1024)("a"));
-			const { result } = yield* scanned(bomb);
+			const { verdicts } = yield* judgedText(bomb);
 
-			expect(result).toEqual(tainted("undecodable"));
+			expect(verdicts).toEqual(sealed("undecodable"));
 		}),
 	));
 
-test("decoded output is bounded across all the payloads of a transcript", () =>
+test("decoded output is bounded across all the texts of a piece", () =>
 	run(
 		Effect.gen(function* () {
 			const big = yield* gzipBase64(Str.repeat(3 * 1024 * 1024)("a"));
-			const { result } = yield* scanWith({ transcript: [user(big), user(big)] });
+			const { verdicts } = yield* judgedPiece({ ...pieceOf(big), texts: [big, big] });
 
-			expect(result).toEqual(tainted("undecodable"));
+			expect(verdicts).toEqual(sealed("undecodable"));
 		}),
 	));
 
 test("decoded output is bounded even when no payload is gzip", () =>
 	run(
 		Effect.gen(function* () {
-			const { result } = yield* scanned(Encoding.Base64.encode(Str.repeat(200_000)(`${note}. `)));
+			const { verdicts } = yield* judgedText(Encoding.Base64.encode(Str.repeat(200_000)(`${note}. `)));
 
-			expect(result).toEqual(tainted("undecodable"));
+			expect(verdicts).toEqual(sealed("undecodable"));
 		}),
 	));
 
@@ -194,8 +193,8 @@ const lookAlikes = Arr.join(
 test("hex digests, UUIDs, versions, paths and identifiers are left as they are", () =>
 	run(
 		Effect.gen(function* () {
-			const { fresh } = yield* scanned(lookAlikes);
+			const { fresh } = yield* judgedText(lookAlikes);
 
-			expect(fresh).toEqual([`[user] ${lookAlikes}`]);
+			expect(fresh).toEqual([lookAlikes]);
 		}),
 	));

@@ -1,84 +1,159 @@
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as HashMap from "effect/HashMap";
-import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { maxChars, questions } from "../decisions.ts";
+import { isKindAnswer } from "../decisions.ts";
 import { sha256 } from "../policy/digest.ts";
-import { Judge, type JudgeAnswer, JudgeFailed, type JudgeInput, SafeHarbor } from "../policy/index.ts";
+import { Judge, JudgeFailed, type JudgeInput, type Usage } from "../policy/engine.ts";
+import { policyVersion } from "../policy/policy.ts";
 import { decodeJsonLines } from "./jsonl.ts";
 
 export const recordingsPath = `${import.meta.dirname}/recordings.jsonl`;
 
-const Recording = Schema.Struct({ digest: Schema.String, pPhi: Schema.Finite, category: Schema.NullOr(SafeHarbor) });
+const Question = Schema.Literals(["identifier", "kind"]);
+
+type Question = typeof Question.Type;
+
+const KindAnswer = Schema.String.pipe(Schema.refine(isKindAnswer));
+
+const Answer = Schema.Union([
+	Schema.Struct({ score: Schema.Finite }),
+	Schema.Struct({ kind: KindAnswer }),
+	Schema.Struct({ refused: Schema.Literal(true) }),
+]);
+
+type Answer = typeof Answer.Type;
+
+/** One judge call: what it was asked, as digests, and what it answered and cost. */
+const Recording = Schema.Struct({
+	policy: Schema.String,
+	question: Question,
+	piece: Schema.String,
+	context: Schema.String,
+	images: Schema.Array(Schema.String),
+	answer: Answer,
+	inputTokens: Schema.Finite,
+	cost: Schema.Finite,
+});
+
+type Recording = typeof Recording.Type;
 
 const RecordingLine = Schema.fromJsonString(Recording);
 
-const prompt = Schema.encodeUnknownEffect(Schema.fromJsonString(Schema.Unknown))(questions).pipe(Effect.orDie);
-
-const digestOf = (input: JudgeInput) =>
-	Effect.map(prompt, (questionsJson) =>
-		Str.slice(
-			0,
-			32,
-		)(sha256(`${questionsJson.length}\n${questionsJson}${input.seen.length}\n${input.seen}${input.fresh}`)),
+const lengthPrefixed = (fields: ReadonlyArray<string>) =>
+	Arr.join(
+		Arr.map(fields, (field) => `${String(field.length)}:${field}`),
+		"",
 	);
 
+const digestOf = (fields: ReadonlyArray<string>) => Str.slice(0, 32)(sha256(lengthPrefixed(fields)));
+
+/** The policy version, the question, and digests of the piece, of its context items and of each image. */
+const askedOf = (question: Question, input: JudgeInput) => ({
+	policy: Str.slice(0, 32)(policyVersion),
+	question,
+	piece: digestOf([input.piece]),
+	context: digestOf(input.context),
+	images: Arr.map(input.images, ({ mimeType, data }) => digestOf([mimeType, data])),
+});
+
+const keyOf = ({ policy, question, piece, context, images }: Omit<Recording, "answer" | "inputTokens" | "cost">) =>
+	Arr.join([policy, question, piece, context, ...images], " ");
+
+const usageOf = ({ inputTokens, cost }: Recording): Usage => ({ calls: 1, inputTokens, cost, ms: 0 });
+
+const refusedWith = (usage: Usage) => JudgeFailed.make({ why: "judge-refused", usage });
+
 /**
- * A judge that answers only from `contents`, a recordings file. An input it has no answer for fails the call and
- * counts in `unrecorded`.
+ * A judge that answers only from `contents`, a recordings file. A call it has no answer for, including every call
+ * recorded under another policy version, fails as a judge error and counts in `unrecorded`.
  */
 export const recordedJudge = Effect.fn("recordedJudge")(function* (contents: string) {
 	const recordings = yield* decodeJsonLines({ schema: RecordingLine, source: "recordings.jsonl", text: contents });
+	const answers = new Map(Arr.map(recordings, (recording) => [keyOf(recording), recording] as const));
 	const unrecorded = yield* Ref.make(0);
 
-	const answers = new Map(
-		Arr.map(recordings, ({ digest, pPhi, category }) => [digest, { pPhi, category: Option.fromNullOr(category) }]),
-	);
+	const recorded = (question: Question, input: JudgeInput) => {
+		const found = answers.get(keyOf(askedOf(question, input)));
 
-	const failed = JudgeFailed.make({ why: "error" });
-	const notRecorded = Ref.update(unrecorded, (count) => count + 1).pipe(Effect.andThen(Effect.fail(failed)));
+		if (found === undefined) {
+			return Effect.andThen(
+				Ref.update(unrecorded, (count) => count + 1),
+				Effect.fail(JudgeFailed.make({ why: "judge-error" })),
+			);
+		}
 
-	const ask = (input: JudgeInput) =>
-		Effect.flatMap(digestOf(input), (digest) => {
-			const answer = answers.get(digest);
+		return "refused" in found.answer
+			? Effect.fail(refusedWith(usageOf(found)))
+			: Effect.succeed({ answer: found.answer, usage: usageOf(found) });
+	};
 
-			return answer === undefined ? notRecorded : Effect.succeed(answer);
-		});
-
-	return { judge: Judge.of({ maxChars, ask }), unrecorded: Ref.get(unrecorded) };
-});
-
-const lineOf = ([digest, { pPhi, category }]: readonly [string, JudgeAnswer]) =>
-	Schema.encodeEffect(RecordingLine)({
-		digest,
-		pPhi: Math.round(pPhi * 10_000) / 10_000,
-		category: Option.getOrNull(category),
+	const judge = Judge.of({
+		identifier: (input) =>
+			Effect.flatMap(recorded("identifier", input), ({ answer, usage }) =>
+				"score" in answer
+					? Effect.succeed({ score: answer.score, usage })
+					: Effect.fail(JudgeFailed.make({ why: "judge-error" })),
+			),
+		kind: (input) =>
+			Effect.flatMap(recorded("kind", input), ({ answer, usage }) =>
+				"kind" in answer
+					? Effect.succeed({ kind: answer.kind, usage })
+					: Effect.fail(JudgeFailed.make({ why: "judge-error" })),
+			),
 	});
 
-/** `live`, keeping every successful answer, and `contents`: those answers as a recordings file sorted by digest. */
-export const recording = Effect.fn("recording")(function* (live: Judge["Service"]) {
-	const answers = yield* Ref.make(HashMap.empty<string, JudgeAnswer>());
+	return { judge, unrecorded: Ref.get(unrecorded) };
+});
 
-	const ask = (input: JudgeInput) =>
-		Effect.tap(live.ask(input), (answer) =>
-			Effect.flatMap(digestOf(input), (digest) => Ref.update(answers, HashMap.set(digest, answer))),
+/** `live`, keeping every answer and refusal, and `contents`: them as a recordings file, one line per call, sorted. */
+export const recording = (live: Judge["Service"]) => {
+	const kept = new Map<string, Recording>();
+
+	const remember = (question: Question, input: JudgeInput, answer: Answer, usage: Usage) => {
+		const asked = askedOf(question, input);
+
+		kept.set(keyOf(asked), { ...asked, answer, inputTokens: usage.inputTokens, cost: usage.cost });
+	};
+
+	const remembered = <Value extends { readonly usage: Usage }>(
+		question: Question,
+		input: JudgeInput,
+		call: Effect.Effect<Value, JudgeFailed>,
+		answerOf: (value: Value) => Answer,
+	) =>
+		call.pipe(
+			Effect.tap((value) =>
+				Effect.sync(() => {
+					remember(question, input, answerOf(value), value.usage);
+				}),
+			),
+			Effect.tapError((failed) =>
+				Effect.sync(() => {
+					if (failed.why === "judge-refused" && failed.usage !== undefined) {
+						remember(question, input, { refused: true }, failed.usage);
+					}
+				}),
+			),
 		);
 
-	const contents = Ref.get(answers).pipe(
-		Effect.map((recorded) => Arr.sortWith(Arr.fromIterable(recorded), ([digest]) => digest, Order.String)),
-		Effect.flatMap((sorted) => Effect.forEach(sorted, lineOf)),
-		Effect.map((lines) =>
-			Arr.join(
-				Arr.map(lines, (line) => `${line}\n`),
-				"",
-			),
-		),
-	);
+	const judge = Judge.of({
+		identifier: (input) => remembered("identifier", input, live.identifier(input), ({ score }) => ({ score })),
+		kind: (input) => remembered("kind", input, live.kind(input), ({ kind }) => ({ kind })),
+	});
 
-	return { judge: Judge.of({ maxChars: live.maxChars, ask }), contents };
-});
+	const contents = Effect.gen(function* () {
+		const sorted = Arr.sortWith(Arr.fromIterable(kept), ([key]) => key, Order.String);
+		const lines = yield* Effect.forEach(sorted, ([, line]) => Schema.encodeEffect(RecordingLine)(line));
+
+		return Arr.join(
+			Arr.map(lines, (line) => `${line}\n`),
+			"",
+		);
+	});
+
+	return { judge, contents };
+};
