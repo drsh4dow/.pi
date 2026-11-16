@@ -82,14 +82,16 @@ export const identifierQuestion = {
 			...defaults,
 			"An image counts only when it shows a face or one of these identifiers.",
 			`${syntheticMark} marks a listed test identity that was removed; it identifies no one.`,
+			`Treat every other value as a real person's: a value that looks invented, a placeholder, an example domain or a reserved number range still counts.`,
+			"A name, phone, email, address, date of birth or record or member number that could belong to a patient or member counts, wherever it appears (a file name, a log, a table, a header). Clear it only when the text shows it belongs to staff, a vendor or a business.",
 			"Encoded, minified, misspelled or buried values count.",
 			`Not direct identifiers: internal ids, health facts tied only to an internal id, code, schemas, logs and SQL, staff, vendor and business contacts, fragments, counts. For example: ${counterList}.`,
 		],
 		" ",
 	),
 	criteria: {
-		true: "`piece` holds, or likely holds, a complete direct identifier of a real patient or member.",
-		false: "`piece` holds no complete direct identifier of a real patient or member: only internal ids, code, schemas, logs, contacts, fragments, counts or test identities.",
+		true: "`piece` holds, or likely holds, a complete direct identifier that could belong to a patient or member.",
+		false: `\`piece\` holds no complete direct identifier of a patient or member: only internal ids, code, schemas, staff or vendor contacts, fragments, counts or values shown as ${syntheticMark}.`,
 	},
 } as const;
 
