@@ -32,11 +32,11 @@ const SystemSection = Schema.TaggedStruct("SystemSection", { name: Schema.String
 const SystemTools = Schema.TaggedStruct("SystemTools", {});
 
 /** Where a part sits in its message, and so how the border stubs it. */
-export const Slot = Schema.Union([MessageSlot, SystemContent, SystemSection, SystemTools]);
+const Slot = Schema.Union([MessageSlot, SystemContent, SystemSection, SystemTools]);
 
 export type Slot = typeof Slot.Type;
 
-export interface Part {
+interface Part {
 	readonly key: ContentKey;
 	readonly slot: Slot;
 }
@@ -44,7 +44,7 @@ export interface Part {
 const field = (value: string) => `${String(value.length)}:${value}`;
 
 /** SHA-256 over length-prefixed fields, the first naming the role or system slot. */
-export const contentKey = (fields: ReadonlyArray<string>) => {
+const contentKey = (fields: ReadonlyArray<string>) => {
 	const encoded = Arr.join(Arr.map(fields, field), "");
 
 	return ContentKey.make(sha256(encoded));

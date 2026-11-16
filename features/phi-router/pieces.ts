@@ -82,7 +82,7 @@ const contextReader = (window: number) => {
 	return { contextOf, seamOf, remember };
 };
 
-export interface PieceAt {
+interface PieceAt {
 	readonly piece: Piece;
 	readonly message: number;
 	readonly slot: Slot;

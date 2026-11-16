@@ -42,7 +42,7 @@ export interface BorderReport {
 }
 
 /** A tool declaration cannot be stubbed without breaking the calls that name it, so the request is refused. */
-export type Refusal = "tools-not-cleared";
+type Refusal = "tools-not-cleared";
 
 type Standing = Seal | "unknown";
 

@@ -19,7 +19,7 @@ import { summaryOf } from "./corpus-wire.ts";
 import type { Case } from "./corpus/manifest.ts";
 
 /** A split canary and the tokens of its parts, in order. */
-export interface Split {
+interface Split {
 	readonly canary: string;
 	readonly parts: ReadonlyArray<string>;
 }
