@@ -28,17 +28,12 @@ import type { AccountId } from "../claude-accounts/index.ts";
 import { phiId, phiProvider } from "./gate.ts";
 import { partsOf, type Slot, writtenOnPersonal } from "./pieces.ts";
 import type { ContentKey } from "./policy/engine.ts";
+import { stubs } from "./policy/policy.ts";
 
 export type Seal = "cleared" | "sealed";
 
 /** All the border knows about verdicts. `undefined` means never judged. */
 export type Lookup = (key: ContentKey) => Seal | undefined;
-
-/** Constant per class, so a stub never changes and the account's cache prefix stays stable. */
-export const stubs = {
-	sealed: "[withheld: holds patient identifiers, handled on the HIPAA account]",
-	unknown: "[withheld: not checked for patient identifiers]",
-} as const;
 
 export interface BorderReport {
 	readonly stubbedSealed: number;

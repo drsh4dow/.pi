@@ -16,7 +16,7 @@ import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import type { AccountId } from "../claude-accounts/index.ts";
-import { type BorderLink, type BorderReport, borderEvents, stubs } from "./border.ts";
+import { type BorderLink, type BorderReport, borderEvents } from "./border.ts";
 import { compactionJudged, decisionsOf, type Env, routeWith, type RouterSession, servicesOf } from "./dispatch.ts";
 import {
 	delegateTarget,
@@ -31,6 +31,7 @@ import {
 } from "./gate.ts";
 import { appendLane } from "./lanes.ts";
 import { partsOf } from "./pieces.ts";
+import { stubs } from "./policy/policy.ts";
 import { holdOf, pinEntryType, pinnedOn, type RouterState } from "./route.ts";
 import { keepProtected, keepProtectedOnStart } from "./selection.ts";
 import { defaultModel, readSettings } from "./settings.ts";

@@ -7,9 +7,10 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 
-import { guard, type Lookup, stubs } from "./border.ts";
+import { guard, type Lookup } from "./border.ts";
 import { compactionHead } from "./dispatch.ts";
 import { Judge } from "./policy/engine.ts";
+import { stubs } from "./policy/policy.ts";
 import { accountFor, decide, homeOf } from "./route.ts";
 import {
 	asked,
@@ -86,6 +87,20 @@ test("a tool result the judge flags goes to ent, and a clean one stays home", ()
 			const flagged = yield* branch.send("continuation", [...opening, ranCat(home), catOutput(syntheticChart)]);
 
 			expect([clean, flagged]).toEqual([home, "ent"]);
+		}),
+	));
+
+test("an ent reply right after sealed content is judged beside its stub, so the next request goes home", () =>
+	run(
+		Effect.gen(function* () {
+			const world = yield* worldOf({ name: "after-seal" });
+			const branch = yield* branchOf({ world });
+			const home = homeOf(world.session);
+			const read = [...opening, ranCat(home), catOutput(syntheticChart)];
+			const sealed = yield* branch.send("continuation", read);
+			const after = yield* branch.send("user", [...read, done("ent"), asked("Now add a test.")]);
+
+			expect([sealed, after]).toEqual(["ent", home]);
 		}),
 	));
 

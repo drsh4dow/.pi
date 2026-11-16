@@ -58,8 +58,13 @@ export const syntheticIdentities: SyntheticIdentities = { exact: [], prefixes: [
 /** What a listed test identity reads as, to the rules and the judge. */
 export const syntheticMark = "[synthetic-id]";
 
-const readingRules =
-	"`piece` is new content from a developer's session with a coding agent: a message, pasted text, tool or file output, or part of a system prompt. `context` is earlier content that already cleared, for reading only: judge `piece`, not `context`.";
+/** Constant per class, so a stub never changes and a personal account's cache prefix stays stable. */
+export const stubs = {
+	sealed: "[withheld: holds patient identifiers, handled on the HIPAA account]",
+	unknown: "[withheld: not checked for patient identifiers]",
+} as const;
+
+const readingRules = `\`piece\` is new content from a developer's session with a coding agent: a message, pasted text, tool or file output, or part of a system prompt. \`context\` is earlier content that already cleared, for reading only: judge \`piece\`, not \`context\`. ${stubs.sealed} in \`context\` stands for earlier content that was withheld.`;
 
 const kindList = Arr.join(Rec.values(identifierKinds), "; ");
 
@@ -129,6 +134,7 @@ const everything = jsonOf({
 	counterExamples,
 	syntheticIdentities,
 	syntheticMark,
+	stubs,
 	identifierQuestion,
 	kindQuestion,
 	thresholds,

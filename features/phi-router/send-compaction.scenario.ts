@@ -6,7 +6,7 @@ import * as Str from "effect/String";
 
 import { type Run, scenario } from "../../tools/driver/index.ts";
 import { type Asked, compactionPrompt, mockedModels, Reply, serveMock } from "./anthropic.fixture.ts";
-import { stubs } from "./border.ts";
+import { stubs } from "./policy/policy.ts";
 import { providersOf } from "./session.fixture.ts";
 
 const summaryCanary = "Ottoline Varga-Pemberton, DOB 1947-06-02, MRN 55120-8873, metastatic breast cancer";

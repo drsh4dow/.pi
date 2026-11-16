@@ -10,8 +10,8 @@ import * as Str from "effect/String";
 import { type Run, scenario } from "../../tools/driver/index.ts";
 import { entryKind } from "../owned-work/index.ts";
 import { type Asked, compactionPrompt, mockedModels, Reply, serveMock } from "./anthropic.fixture.ts";
-import { stubs } from "./border.ts";
 import { foundIn } from "./canary-tokens.ts";
+import { stubs } from "./policy/policy.ts";
 import { providersOf } from "./session.fixture.ts";
 
 const Case = Schema.Struct({

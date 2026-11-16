@@ -106,7 +106,7 @@ interface World {
 
 const usage = { calls: 1, inputTokens: 10, cost: 0.001, ms: 5 };
 
-/** Scores `syntheticChart` as a patient's name and everything else as clean. */
+/** Scores `syntheticChart` as a patient's name, in the piece or, as Decisions did in a live run, in its context. */
 export const scriptedJudge = (world: Pick<World, "judged" | "judge">) =>
 	Judge.of({
 		identifier: (input) => {
@@ -120,7 +120,9 @@ export const scriptedJudge = (world: Pick<World, "judged" | "judge">) =>
 				return Effect.fail(JudgeFailed.make({ why: "judge-error" }));
 			}
 
-			return Effect.succeed({ score: Str.includes(syntheticChart)(input.piece) ? 0.97 : 0.01, usage });
+			const holdsChart = Arr.some([input.piece, ...input.context], Str.includes(syntheticChart));
+
+			return Effect.succeed({ score: holdsChart ? 0.97 : 0.01, usage });
 		},
 		kind: () => Effect.succeed({ kind: "patient-name", usage }),
 	});

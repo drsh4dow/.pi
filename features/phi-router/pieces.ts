@@ -21,7 +21,7 @@ import * as Schema from "effect/Schema";
 import { accountOf } from "../claude-accounts/index.ts";
 import { sha256 } from "./policy/digest.ts";
 import { ContentKey, type Image, type Piece, type PieceKind } from "./policy/engine.ts";
-import { window as policyWindow } from "./policy/policy.ts";
+import { window as policyWindow, stubs } from "./policy/policy.ts";
 
 const MessageSlot = Schema.TaggedStruct("Message", {});
 
@@ -222,7 +222,7 @@ const callsOf = (message: AssistantMessage) =>
 		block.type === "toolCall" ? [[block.id, `[tool call] ${Arr.join(textsOf([block]), "")}`] as const] : [],
 	);
 
-/** Remembers the items and tool calls read so far, and gives the next message its context from them. */
+/** Remembers the items and tool calls read so far, a sealed one as its stub, and gives the next message its context. */
 const contextReader = (window: number) => {
 	const calls = new Map<string, string>();
 	const items: Array<string> = [];
@@ -238,17 +238,15 @@ const contextReader = (window: number) => {
 		return Arr.take([...Option.toArray(ownCall), ...Arr.reverse(Arr.takeRight(items, window))], window);
 	};
 
-	const remember = (message: Message) => {
+	const remember = ({ message, sealed }: { readonly message: Message; readonly sealed: boolean }) => {
 		if (message.role === "system") {
 			return;
 		}
 
-		items.push(itemOf(message));
+		items.push(sealed ? `[${labels[message.role]}] ${stubs.sealed}` : itemOf(message));
 
-		if (message.role === "assistant") {
-			for (const [id, call] of callsOf(message)) {
-				calls.set(id, call);
-			}
+		for (const [id, call] of message.role === "assistant" ? callsOf(message) : []) {
+			calls.set(id, sealed ? `[tool call] ${stubs.sealed}` : call);
 		}
 	};
 
@@ -265,16 +263,19 @@ export interface PieceAt {
 
 /**
  * Every part of a request as a piece to judge, with at most `window` preceding items as context, nearest first. A tool
- * result's first item is its own tool call. `producedOnPersonal` tells `reply-personal` from `reply-other`.
+ * result's first item is its own tool call. `producedOnPersonal` tells `reply-personal` from `reply-other`. A message
+ * `sealed` names reaches later context only as the stub.
  */
 export const piecesOf = ({
 	messages,
 	producedOnPersonal = writtenOnPersonal,
 	window = policyWindow,
+	sealed = () => false,
 }: {
 	readonly messages: ReadonlyArray<Message>;
 	readonly producedOnPersonal?: (message: AssistantMessage) => boolean;
 	readonly window?: number;
+	readonly sealed?: (key: ContentKey) => boolean;
 }): ReadonlyArray<PieceAt> => {
 	const ownFrom = Option.getOrElse(
 		Arr.findLastIndex(messages, ({ role }) => role === "assistant"),
@@ -286,12 +287,13 @@ export const piecesOf = ({
 
 	for (const [index, message] of messages.entries()) {
 		const piece = { kind: kindOf(message, producedOnPersonal), context: reader.contextOf(message) };
+		const units = unitsOf(message);
 
-		for (const { key, slot, texts, images } of unitsOf(message)) {
+		for (const { key, slot, texts, images } of units) {
 			pieces.push({ piece: { ...piece, key, texts, images }, message: index, slot, own: index >= ownFrom });
 		}
 
-		reader.remember(message);
+		reader.remember({ message, sealed: Arr.some(units, ({ key }) => sealed(key)) });
 	}
 
 	return pieces;

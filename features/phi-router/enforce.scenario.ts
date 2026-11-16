@@ -6,7 +6,7 @@ import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import { type Run, scenario } from "../../tools/driver/index.ts";
-import { stubs } from "./border.ts";
+import { stubs } from "./policy/policy.ts";
 import { providersOf } from "./session.fixture.ts";
 
 const patient = "Wilhelmina Okafor-Brandt";

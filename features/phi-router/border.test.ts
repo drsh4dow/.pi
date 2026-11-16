@@ -18,9 +18,10 @@ import * as Predicate from "effect/Predicate";
 import * as Result from "effect/Result";
 import * as Str from "effect/String";
 
-import { guard, guardedApi, type Lookup, type Scope, type Seal, stubs } from "./border.ts";
+import { guard, guardedApi, type Lookup, type Scope, type Seal } from "./border.ts";
 import { partsOf, type Slot } from "./pieces.ts";
 import type { ContentKey } from "./policy/engine.ts";
+import { stubs } from "./policy/policy.ts";
 
 const zero = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 

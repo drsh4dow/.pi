@@ -105,7 +105,7 @@ const unjudged = ({
  */
 export const decide = Effect.fn("decide")(function* (request: DecideRequest) {
 	const { book, hold } = request;
-	const pieces = piecesOf(request);
+	const pieces = piecesOf({ ...request, sealed: (key) => book.lookup(key) === "sealed" });
 
 	if (Option.isSome(hold) || request.reason === "direct") {
 		return unjudged({ pieces, book, why: Option.getOrElse(hold, () => "direct" as const) });
