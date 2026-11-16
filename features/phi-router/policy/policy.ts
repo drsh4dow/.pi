@@ -73,19 +73,25 @@ const counterList = Arr.join(
 	"; ",
 );
 
+/** What counts and what does not. Both questions carry it, so the band's kind answer applies the same policy. */
+const countingRules = [
+	`Direct identifiers: ${kindList}.`,
+	...defaults,
+	"An image counts only when it shows a face or one of these identifiers.",
+	`${syntheticMark} marks a listed test identity that was removed; it identifies no one.`,
+	`Treat every other value as a real person's: a value that looks invented, a placeholder, an example domain or a reserved number range still counts.`,
+	"A name, phone, email, address, date of birth or record or member number that could belong to a patient or member counts, wherever it appears (a file name, a log, a table, a header). Clear it only when the text shows it belongs to staff, a vendor or a business.",
+	"Encoded, minified, misspelled or buried values count.",
+	`Not direct identifiers: internal ids, health facts tied only to an internal id, code, schemas, logs and SQL, staff, vendor and business contacts, fragments, counts. For example: ${counterList}.`,
+];
+
 export const identifierQuestion = {
 	type: "bool",
 	instructions: Arr.join(
 		[
 			readingRules,
-			`Does \`piece\` contain a complete direct identifier of a real patient or health-plan member? Direct identifiers: ${kindList}.`,
-			...defaults,
-			"An image counts only when it shows a face or one of these identifiers.",
-			`${syntheticMark} marks a listed test identity that was removed; it identifies no one.`,
-			`Treat every other value as a real person's: a value that looks invented, a placeholder, an example domain or a reserved number range still counts.`,
-			"A name, phone, email, address, date of birth or record or member number that could belong to a patient or member counts, wherever it appears (a file name, a log, a table, a header). Clear it only when the text shows it belongs to staff, a vendor or a business.",
-			"Encoded, minified, misspelled or buried values count.",
-			`Not direct identifiers: internal ids, health facts tied only to an internal id, code, schemas, logs and SQL, staff, vendor and business contacts, fragments, counts. For example: ${counterList}.`,
+			"Does `piece` contain a complete direct identifier of a real patient or health-plan member?",
+			...countingRules,
 		],
 		" ",
 	),
@@ -98,7 +104,14 @@ export const identifierQuestion = {
 /** Asked in the borderline band, and to label a seal. */
 export const kindQuestion = {
 	type: "choice",
-	instructions: `${readingRules} Which direct identifier of a real patient or member does \`piece\` contain? Answer none when it holds none.`,
+	instructions: Arr.join(
+		[
+			readingRules,
+			"Which direct identifier of a real patient or member does `piece` contain? Answer none only when it holds none.",
+			...countingRules,
+		],
+		" ",
+	),
 	criteria: { ...identifierKinds, none: "no direct identifier of a real patient or member" },
 } as const;
 
