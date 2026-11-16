@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Publish a PR title and body, or an evidence comment, with gh, only after check-body.ts passes
-// them, then read the PR or comment back and compare it with what was sent.
+// Publish a PR title and body with gh, only after check-body.ts passes them against the PR's
+// changed files, then read the PR back and compare it with what was sent.
 // Exit: 0 published and read back equal, 1 check-body found problems, 64 bad argument or
-// unreadable file, 2 a gh call failed or check-body could not run, 3 the readback differs.
+// unreadable file, 2 a gh or git call failed or check-body could not run, 3 the readback differs.
 
 // Without import statements the file runs as CommonJS or as an ES module, like check-body.ts.
 const { spawnSync } = process.getBuiltinModule("node:child_process");
@@ -34,8 +34,7 @@ class Failure {
 
 const usage =
   "expected create <body-file> --title <title> [--draft] [--base <branch>] [--head <branch>] [--repo <owner/repo>] [--template <file>], " +
-  "or edit <number> <body-file> --title <title> [--replace] [--repo <owner/repo>] [--template <file>], " +
-  "or comment <number> <comment-file> [--repo <owner/repo>]";
+  "or edit <number> <body-file> --title <title> [--replace] [--repo <owner/repo>] [--template <file>]";
 
 const optionsFor = {
   create: ["--title", "--draft", "--base", "--head", "--repo", "--template"],
@@ -111,20 +110,61 @@ function checkBody(checkArgs: readonly string[]): number {
   return 2;
 }
 
-function gh(args: readonly string[]): string | Failure {
-  const result = spawnSync("gh", args, { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+function run(command: "gh" | "git", args: readonly string[]): string | Failure {
+  const result = spawnSync(command, args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+  });
 
-  if (result.error !== undefined) return new Failure(`cannot run gh: ${result.error.message}`);
+  if (result.error !== undefined) {
+    return new Failure(`cannot run ${command}: ${result.error.message}`);
+  }
 
   if (result.status !== 0) {
-    return new Failure(`gh ${args.slice(0, 2).join(" ")} exited ${result.status ?? result.signal}`);
+    return new Failure(
+      `${command} ${args.slice(0, 2).join(" ")} exited ${result.status ?? result.signal}`,
+    );
   }
 
   return result.stdout;
 }
 
+function changedPaths(target: Target, repo: string | undefined): string | Failure {
+  if (target.kind === "edit") {
+    return run("gh", [
+      "pr",
+      "view",
+      target.number,
+      "--json",
+      "files",
+      "--jq",
+      ".files[].path",
+      ...flag("--repo", repo),
+    ]);
+  }
+
+  let base = target.base;
+
+  if (base === undefined) {
+    // gh repo view takes the repo as an argument, not as --repo.
+    const query = ["--json", "defaultBranchRef", "--jq", ".defaultBranchRef.name"];
+    const name = run("gh", ["repo", "view", ...(repo === undefined ? [] : [repo]), ...query]);
+
+    if (name instanceof Failure) return name;
+
+    base = name.trim();
+  }
+
+  // A stale origin/<base> would count the base's newer commits as the PR's.
+  const fetched = run("git", ["fetch", "--quiet", "origin", base]);
+
+  if (fetched instanceof Failure) return fetched;
+
+  return run("git", ["diff", "--name-only", `origin/${base}...${target.head ?? "HEAD"}`]);
+}
+
 function viewPullRequest(pr: string, repo: string | undefined): PullRequest | Failure {
-  const output = gh(["pr", "view", pr, "--json", "title,body", ...flag("--repo", repo)]);
+  const output = run("gh", ["pr", "view", pr, "--json", "title,body", ...flag("--repo", repo)]);
 
   if (output instanceof Failure) return output;
 
@@ -152,9 +192,6 @@ function viewPullRequest(pr: string, repo: string | undefined): PullRequest | Fa
 
 type Block = { heading: string | undefined; text: string };
 
-// Splits a body into the text before the first ## heading and one block per ## section, each
-// without its trailing blank lines. The heading rule and fenced() are twins of parseBody and
-// fenced in check-body.ts, copied because neither file may import the other.
 function blocks(text: string): Block[] {
   const lines = text.split("\n");
   const inFence = fenced(lines);
@@ -302,7 +339,7 @@ function readbackFindings(title: string, body: string, pr: PullRequest): string[
   return findings;
 }
 
-function publish(args: Arguments, draft: string): number {
+function publish(args: Arguments, draft: string, dir: string): number {
   const { target } = args;
   let body = draft;
 
@@ -319,89 +356,47 @@ function publish(args: Arguments, draft: string): number {
     body = merged.body;
   }
 
-  const dir = mkdtempSync(join(tmpdir(), "publish-pr-"));
+  const sentFile = join(dir, "body.md");
+  writeFileSync(sentFile, body);
 
-  try {
-    const sentFile = join(dir, "body.md");
-    writeFileSync(sentFile, body);
+  const verb =
+    target.kind === "edit"
+      ? ["edit", target.number]
+      : [
+          "create",
+          ...flag("--base", target.base),
+          ...flag("--head", target.head),
+          ...(target.isDraft ? ["--draft"] : []),
+        ];
 
-    const verb =
-      target.kind === "edit"
-        ? ["edit", target.number]
-        : [
-            "create",
-            ...flag("--base", target.base),
-            ...flag("--head", target.head),
-            ...(target.isDraft ? ["--draft"] : []),
-          ];
+  const output = run("gh", [
+    "pr",
+    ...verb,
+    "--title",
+    args.title,
+    "--body-file",
+    sentFile,
+    ...flag("--repo", args.repo),
+  ]);
 
-    const output = gh([
-      "pr",
-      ...verb,
-      "--title",
-      args.title,
-      "--body-file",
-      sentFile,
-      ...flag("--repo", args.repo),
-    ]);
+  if (output instanceof Failure) return ghFailed(output);
 
-    if (output instanceof Failure) return ghFailed(output);
+  const printedUrl = output.trim().split("\n").at(-1) ?? "";
+  const pr = target.kind === "edit" ? target.number : printedUrl;
 
-    // gh prints the PR's URL. create needs it to find the PR; edit names it only in the log.
-    const printedUrl = output.trim().split("\n").at(-1) ?? "";
-    const pr = target.kind === "edit" ? target.number : printedUrl;
+  if (pr === "") return ghFailed(new Failure("gh pr create printed no PR URL"));
 
-    if (pr === "") return ghFailed(new Failure("gh pr create printed no PR URL"));
-
-    const readBack = viewPullRequest(pr, args.repo);
-
-    if (readBack instanceof Failure) return ghFailed(readBack);
-
-    const findings = readbackFindings(args.title, body, readBack);
-
-    for (const finding of findings) console.error(`publish-pr: ${finding}`);
-
-    if (findings.length > 0) return 3;
-
-    console.log(`publish-pr: published ${printedUrl === "" ? `#${pr}` : printedUrl}`);
-    return 0;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
-
-// Only --repo and its value may follow the comment file.
-function comment(argv: readonly string[]): number {
-  const [pr, file, ...rest] = argv;
-  const repoFlag = rest[0] === "--repo" ? flag("--repo", rest[1]) : [];
-
-  if (!/^[1-9][0-9]*$/.test(pr ?? "") || file === undefined || rest.length !== repoFlag.length) {
-    console.error(`publish-pr: ${usage}`);
-    return 64;
-  }
-
-  const checked = checkBody(["comment", file]);
-
-  if (checked !== 0) return checked;
-
-  const sent = comparable(readFileSync(file, "utf8"));
-  const posted = gh(["pr", "comment", pr, "--body-file", file, ...repoFlag]);
-
-  if (posted instanceof Failure) return ghFailed(posted);
-
-  const url = posted.trim();
-  const select = `.comments[] | select(.url == ${JSON.stringify(url)}) | .body`;
-  const readBack = gh(["pr", "view", pr, "--json", "comments", "--jq", select, ...repoFlag]);
+  const readBack = viewPullRequest(pr, args.repo);
 
   if (readBack instanceof Failure) return ghFailed(readBack);
 
-  if (comparable(readBack) !== sent) {
-    console.error("publish-pr: the comment read back differs (- sent, + read back):");
-    for (const line of lineDiff(sent, comparable(readBack))) console.error(`publish-pr: ${line}`);
-    return 3;
-  }
+  const findings = readbackFindings(args.title, body, readBack);
 
-  console.log(`publish-pr: posted ${url}`);
+  for (const finding of findings) console.error(`publish-pr: ${finding}`);
+
+  if (findings.length > 0) return 3;
+
+  console.log(`publish-pr: published ${printedUrl === "" ? `#${pr}` : printedUrl}`);
   return 0;
 }
 
@@ -411,8 +406,6 @@ function ghFailed(failure: Failure): number {
 }
 
 function main(): number {
-  if (process.argv[2] === "comment") return comment(process.argv.slice(3));
-
   const args = parseArguments(process.argv.slice(2));
 
   if (args instanceof Failure) {
@@ -420,23 +413,43 @@ function main(): number {
     return 64;
   }
 
-  const checkOptions = ["--title", args.title, ...flag("--template", args.template)];
-  const checked = checkBody(["pr", args.bodyFile, ...checkOptions]);
+  const paths = changedPaths(args.target, args.repo);
 
-  if (checked !== 0) return checked;
+  if (paths instanceof Failure) return ghFailed(paths);
 
-  let draft: string;
+  const dir = mkdtempSync(join(tmpdir(), "publish-pr-"));
 
   try {
-    draft = readFileSync(args.bodyFile, "utf8");
-  } catch (error) {
-    console.error(
-      `publish-pr: cannot read ${args.bodyFile}: ${error instanceof Error ? error.message : error}`,
-    );
-    return 64;
-  }
+    const changedFiles = join(dir, "changed-files.txt");
+    writeFileSync(changedFiles, paths);
 
-  return publish(args, draft);
+    const checked = checkBody([
+      "pr",
+      args.bodyFile,
+      "--title",
+      args.title,
+      "--changed-files",
+      changedFiles,
+      ...flag("--template", args.template),
+    ]);
+
+    if (checked !== 0) return checked;
+
+    let draft: string;
+
+    try {
+      draft = readFileSync(args.bodyFile, "utf8");
+    } catch (error) {
+      console.error(
+        `publish-pr: cannot read ${args.bodyFile}: ${error instanceof Error ? error.message : error}`,
+      );
+      return 64;
+    }
+
+    return publish(args, draft, dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 process.exitCode = main();
