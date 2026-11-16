@@ -16,6 +16,7 @@ import * as Option from "effect/Option";
 
 import { guideFiles, readGuides } from "../loaded/index.ts";
 import { selfFromEnv } from "../owned-work/index.ts";
+import { internalIdsOnly, isPhiAuto } from "../phi-router/index.ts";
 import { lastFolder } from "../state-folder/index.ts";
 import { guidesToRestore, noGuides } from "./guides.ts";
 import {
@@ -95,6 +96,9 @@ const guidesFor = Effect.fn("guidesFor")(
 	),
 );
 
+/** In a `phi/auto` session a clean summary goes on to a personal account, so it names patients by internal id only. */
+const systemPromptFor = (model: Model<Api>) => (isPhiAuto(model) ? `${systemPrompt} ${internalIdsOnly}` : systemPrompt);
+
 interface Attempt {
 	readonly reply: Reply;
 	readonly usage: ReadonlyArray<Usage>;
@@ -118,7 +122,10 @@ const attempt = Effect.fn("attempt")(function* ({
 			ctx.modelRegistry
 				.streamSimple(
 					model,
-					{ systemPrompt, messages: [{ role: "user", content: [{ type: "text", text }], timestamp }] },
+					{
+						systemPrompt: systemPromptFor(model),
+						messages: [{ role: "user", content: [{ type: "text", text }], timestamp }],
+					},
 					{ signal, cacheRetention: "none", sessionId: uuidv7() },
 				)
 				.result(),
