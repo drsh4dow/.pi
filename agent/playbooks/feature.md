@@ -6,7 +6,7 @@ when: "New or changed behavior, built from a named data shape: add or change a f
 
 **You own the design. Plan, review, verify.** Delegate implementation. Stay in the lead.
 
-1. `how` over the affected subsystem.
+1. Trace the affected subsystem.
 2. `architect` for parallel design exploration, unless your brief names a sketch to build to.
 3. Write the throughput checkpoint as four items in your reply. A dimension that genuinely does not apply (single file, no fan-out) keeps its item with `n/a: <reason>` rather than being dropped:
    - **Blocking first steps.** Gates run before fan-out.

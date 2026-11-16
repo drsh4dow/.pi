@@ -154,7 +154,7 @@ Each live lane runs in its own git worktree at the PR head. Drive through the pr
 
 ## Appendix D. Links and reading list
 
-<Docs to read before editing. Which PRs get the **how** skill and the **interrogate** skill. The trail per the **show-me-your-work** skill.>
+<Docs to read before editing. Which PRs get the **interrogate** skill. The trail per the **show-me-your-work** skill.>
 ```
 
 **Reply:** the plan path, the PR ids with their dependencies and the review-gated set, what the prototypes proved and what stays unproven, and the check script's output.
