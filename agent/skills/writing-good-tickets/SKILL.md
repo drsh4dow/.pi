@@ -8,7 +8,19 @@ disable-model-invocation: false
 
 A ticket hands one problem to someone who was not in the conversation, a developer or an agent, who takes it to one PR. It answers, in order: what goes wrong today and for whom, what shows it, how anyone will know it is fixed, and what to read before starting. The closing PR proves each `## Done when` item with a witness, per the **writing-good-prs** skill.
 
-Edit the prose with the **unslop** skill: read its `SKILL.md` in full and apply it. Follow the repository's tracker and template conventions, starting from its issue tracker record, `docs/agents/issue-tracker.md`, when it has one. When the repository has an issue template, fill its sections and apply the rules below to the section that plays each role.
+Edit the prose with the **unslop** skill: read its `SKILL.md` in full and apply it. Follow the repository's tracker conventions, starting from its issue tracker record, `docs/agents/issue-tracker.md`, when it has one.
+
+## Template
+
+Before writing, find the template, in this order:
+
+1. The repository's issue template.
+2. The tracker's own. On Linear, call `list_templates` for the team, then `get_template` on the one that fits the work, such as a bug or a task.
+3. The template the tracker record names.
+
+Use the built-in shape under Body only when none of these exists. When the tracker record names a template you cannot fetch, file nothing and report the gap.
+
+A template's headings, their order, and their wording are the ticket. Fill each section with what the built-in section that plays its role holds, such as the Problem's story, witness, and recipe, or the Done-when items and their checks. Keep its Linear constructs, such as `+++ Agent notes` blocks. Put what fits no section into the template's own agent-notes section, or else into a final `# Notes for agents` section. A ticket in the built-in shape gets neither.
 
 Everything the ticket points at is reachable by any developer with access to the repository: issues, PRs, CI runs, hosted media, and public URLs. Paths on your machine, such as your home directory, `/tmp`, a worktree, or an agent state folder, are reachable only by you. Paste what they hold instead. Say "on main" or name the released version where you saw it, rather than a commit hash.
 
@@ -72,7 +84,7 @@ Optional, and never binding: the implementer owns the how. Give it when you hold
 
 - The cause you suspect, marked `Hypothesis` with what you saw that points to it.
 - A possible approach and the alternative you would rule out, with the reason.
-- A visual from the list under What changed in **writing-good-prs** when it shows the idea faster than prose.
+- A visual picked per the [show-me](../show-me/SKILL.md) skill when it shows the idea faster than prose.
 
 Name behavior and symbols, not file paths. Finding where a symbol lives is one search.
 
@@ -153,7 +165,7 @@ Size each ticket as a vertical slice. It cuts a narrow path through every layer 
 
 Write the body to a file and run the three gates.
 
-1. **Structure.** Run `../writing-good-prs/scripts/check-body.ts ticket <body-file> --title "<title>"`, with `--template <path>` when the repository has an issue template. A parent issue that holds a spec keeps the spec's headings, so pass `--template` with a file that lists them, which still checks paths and the title. Fix each printed problem and rerun until it exits 0. Exit 0 means the headings and title parse and the body names no path on your machine, such as one under `~/`, even inside a code block. It says nothing about the case the body makes.
+1. **Structure.** Run `../writing-good-prs/scripts/check-body.ts ticket <body-file> --title "<title>"`, with `--template <path>` when the ticket has a template, saved to a file. A parent issue that holds a spec keeps the spec's headings, so pass `--template` with a file that lists them, which still checks paths and the title. Fix each printed problem and rerun until it exits 0. Exit 0 means the headings and title parse and the body names no path on your machine, such as one under `~/`, even inside a code block. It says nothing about the case the body makes.
 2. **Implementer read.** Start one delegate with `instructionsFile: ~/.pi/agent/instructions/cold-reader.md`, and give it only the title and the body file. Ask it to:
    1. Retell the problem as one story, with who it costs, and name the witness that shows it, or write `none visible`.
    2. For each Done-when item, say exactly what it would run and what result counts as done, or write `unclear`.
@@ -163,4 +175,4 @@ Write the body to a file and run the three gates.
 
 3. **Facts.** The implementer read finds gaps, not false facts. Settle each claim you marked inferred with the read that decides it, such as one query or one `curl`, or carry its label word for word into every copy of the claim, including each comment that records a decision. When the user's answer to a compliance or health-data question reads two ways, restate it to them and get a yes before you write it as a fact.
 
-Publish the same file through the tracker, then read the ticket back and compare what the tracker stored with the title and the body file. On GitHub, publish with `gh issue create --body-file` or `gh issue edit --body-file`, read back with `gh issue view <n> --json title,body`, and diff the body with `gh issue view <n> --json body --jq .body | diff <body-file> -`. Fix each difference at its cause, such as a shell expansion or a template the tracker applied, republish, and read it back once more. Report any difference that remains.
+Publish the same file through the tracker, then read the ticket back and compare what the tracker stored with the title and the body file. On GitHub, publish with `gh issue create --body-file` or `gh issue edit --body-file`, read back with `gh issue view <n> --json title,body`, and diff the body with `gh issue view <n> --json body --jq .body | diff <body-file> -`. On Linear, publish with `save_issue`, passing `template` and the filled `description`, because a non-empty description replaces the template body. Fix each difference at its cause, such as a shell expansion or a template the tracker applied, republish, and read it back once more. Report any difference that remains.

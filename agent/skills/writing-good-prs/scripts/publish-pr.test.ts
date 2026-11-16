@@ -7,6 +7,13 @@ const draft = `## Why
 
 The parser drops the last line of a file that has no trailing newline.
 
+## What changed
+
+\`\`\`diff
+- return lines.slice(0, -1);
++ return lines;
+\`\`\`
+
 ## Scope
 
 Covers the parser only.
@@ -28,12 +35,13 @@ const live = `${draft}
 A section a bot appended.
 `;
 
-// A gh that serves the live body until an edit, then the body the edit sent.
-const fakeGh = (sent: string) => `#!/usr/bin/env node
+const fakeGh = (sent: string, files: string) => `#!/usr/bin/env node
 const { existsSync, readFileSync, writeFileSync } = require("node:fs");
 const [, , , verb, ...rest] = process.argv;
 const sent = ${JSON.stringify(sent)};
-if (verb === "view") {
+if (verb === "view" && rest[rest.indexOf("--json") + 1] === "files") {
+  process.stdout.write(${JSON.stringify(files)});
+} else if (verb === "view") {
   const body = existsSync(sent) ? readFileSync(sent, "utf8") : ${JSON.stringify(live)};
   console.log(JSON.stringify({ title: "fix(parser): read the last line", body }));
 } else {
@@ -45,41 +53,60 @@ if (verb === "view") {
 const published = "publish-pr: published https://github.com/example/repo/pull/7\n";
 
 test.each([
-  { flags: [], sent: live, printed: `publish-pr: kept "## Plan" from the live body\n${published}` },
-  { flags: ["--replace"], sent: draft, printed: published },
-])(
-  "edit $flags keeps the live sections the file lacks unless --replace",
-  ({ flags, sent, printed }) => {
-    const dir = mkdtempSync(join(tmpdir(), "publish-pr-test-"));
-
-    try {
-      writeFileSync(join(dir, "gh"), fakeGh(join(dir, "sent.md")));
-      chmodSync(join(dir, "gh"), 0o755);
-      writeFileSync(join(dir, "body.md"), draft);
-
-      const run = Bun.spawnSync(
-        [
-          process.execPath,
-          join(import.meta.dir, "publish-pr.ts"),
-          "edit",
-          "7",
-          join(dir, "body.md"),
-          "--title",
-          "fix(parser): read the last line",
-          ...flags,
-        ],
-        { env: { ...process.env, PATH: `${dir}:${process.env.PATH}` } },
-      );
-
-      expect({
-        exitCode: run.exitCode,
-        printed: run.stdout.toString(),
-        sent: existsSync(join(dir, "sent.md"))
-          ? readFileSync(join(dir, "sent.md"), "utf8")
-          : "nothing sent",
-      }).toEqual({ exitCode: 0, printed, sent });
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+  {
+    name: "keeps the live sections the file lacks",
+    flags: [],
+    files: "src/parser.ts\n",
+    exitCode: 0,
+    sent: live,
+    printed: `publish-pr: kept "## Plan" from the live body\n${published}`,
   },
-);
+  {
+    name: "with --replace sends the file as is",
+    flags: ["--replace"],
+    files: "src/parser.ts\n",
+    exitCode: 0,
+    sent: draft,
+    printed: published,
+  },
+  {
+    name: "sends nothing when a changed UI file has no Before | After table",
+    flags: [],
+    files: "src/parser.ts\nweb/Button.tsx\n",
+    exitCode: 1,
+    sent: "nothing sent",
+    printed: `<dir>/body.md:1: the PR changes UI files (web/Button.tsx) but has no "| Before | After |" table or "**Not checked:**" line naming the missing screenshots\n`,
+  },
+])("edit $name", ({ flags, files, exitCode, sent, printed }) => {
+  const dir = mkdtempSync(join(tmpdir(), "publish-pr-test-"));
+
+  try {
+    writeFileSync(join(dir, "gh"), fakeGh(join(dir, "sent.md"), files));
+    chmodSync(join(dir, "gh"), 0o755);
+    writeFileSync(join(dir, "body.md"), draft);
+
+    const run = Bun.spawnSync(
+      [
+        process.execPath,
+        join(import.meta.dir, "publish-pr.ts"),
+        "edit",
+        "7",
+        join(dir, "body.md"),
+        "--title",
+        "fix(parser): read the last line",
+        ...flags,
+      ],
+      { env: { ...process.env, PATH: `${dir}:${process.env.PATH}` } },
+    );
+
+    expect({
+      exitCode: run.exitCode,
+      printed: run.stdout.toString().replaceAll(dir, "<dir>"),
+      sent: existsSync(join(dir, "sent.md"))
+        ? readFileSync(join(dir, "sent.md"), "utf8")
+        : "nothing sent",
+    }).toEqual({ exitCode, printed, sent });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

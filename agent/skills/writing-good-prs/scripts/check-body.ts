@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Print each problem in a PR body, ticket body, or evidence comment, one per line, as
-// <body-file>:<line>: <problem>.
+// Print each problem in a PR body or ticket body, one per line, as <body-file>:<line>: <problem>.
 // A line that starts with "warning:" is a judgment call and leaves the exit code alone.
 // Exit: 0 clean or warnings only, 1 problems, 64 bad argument or unreadable file.
 
@@ -9,13 +8,16 @@
 const { readFileSync } = process.getBuiltinModule("node:fs");
 const { homedir } = process.getBuiltinModule("node:os");
 
-type Kind = "pr" | "ticket" | "comment";
+type Kind = "pr" | "ticket";
 
-type SectionRule = { heading: string; required: boolean };
+// "+++" opens a Linear collapsible block.
+type Marker = "##" | "+++" | "#";
+
+type SectionRule = { heading: string; marker: Marker; required: boolean };
 
 type Line = { number: number; text: string };
 
-type Section = { heading: string; line: number; lines: Line[] };
+type Section = { heading: string; marker: Marker; line: number; lines: Line[] };
 
 type Body = { preamble: Line[]; sections: Section[]; lines: Line[] };
 
@@ -26,6 +28,7 @@ type Arguments = {
   bodyFile: string;
   title: string | undefined;
   template: string | undefined;
+  changedFiles: string | undefined;
 };
 
 class Failure {
@@ -38,34 +41,36 @@ class Failure {
 
 const defaultShapes: Record<Kind, readonly SectionRule[]> = {
   pr: [
-    { heading: "Why", required: true },
-    { heading: "What changed", required: false },
-    { heading: "Scope", required: true },
-    { heading: "Tradeoffs", required: false },
-    { heading: "Blast Radius", required: true },
-    { heading: "Verification", required: true },
+    { heading: "Why", marker: "##", required: true },
+    { heading: "What changed", marker: "##", required: true },
+    { heading: "Scope", marker: "##", required: true },
+    { heading: "Tradeoffs", marker: "##", required: false },
+    { heading: "Blast Radius", marker: "##", required: true },
+    { heading: "Verification", marker: "##", required: true },
+    { heading: "Evidence", marker: "##", required: false },
   ],
   ticket: [
-    { heading: "Problem", required: true },
-    { heading: "Done when", required: true },
-    { heading: "Non-goals", required: false },
-    { heading: "Suggested approach", required: false },
-    { heading: "Context", required: false },
+    { heading: "Problem", marker: "##", required: true },
+    { heading: "Done when", marker: "##", required: true },
+    { heading: "Non-goals", marker: "##", required: false },
+    { heading: "Suggested approach", marker: "##", required: false },
+    { heading: "Context", marker: "##", required: false },
   ],
-  comment: [{ heading: "Evidence", required: true }],
 };
 
-const usage = "expected <pr|ticket|comment> <body-file> [--title <title>] [--template <file>]";
+const usage =
+  "expected <pr|ticket> <body-file> [--title <title>] [--template <file>] [--changed-files <file>]";
 
 function parseArguments(argv: readonly string[]): Arguments | Failure {
   const [kind, bodyFile, ...options] = argv;
 
-  if ((kind !== "pr" && kind !== "ticket" && kind !== "comment") || bodyFile === undefined) {
+  if ((kind !== "pr" && kind !== "ticket") || bodyFile === undefined) {
     return new Failure(usage);
   }
 
   let title: string | undefined;
   let template: string | undefined;
+  let changedFiles: string | undefined;
 
   for (let index = 0; index < options.length; index += 2) {
     const value = options[index + 1];
@@ -76,12 +81,14 @@ function parseArguments(argv: readonly string[]): Arguments | Failure {
       title = value;
     } else if (options[index] === "--template") {
       template = value;
+    } else if (options[index] === "--changed-files") {
+      changedFiles = value;
     } else {
       return new Failure(usage);
     }
   }
 
-  return { kind, bodyFile, title, template };
+  return { kind, bodyFile, title, template, changedFiles };
 }
 
 function readText(path: string): string | Failure {
@@ -104,11 +111,11 @@ function parseBody(text: string): Body {
   const inFence = fenced(lines);
 
   for (const [index, line] of lines.entries()) {
-    const heading = inFence[index] ? null : line.text.match(/^## +(.+?)\s*#*\s*$/);
+    const opener = inFence[index] ? null : sectionOpener(line.text);
     const current = sections.at(-1);
 
-    if (heading) {
-      sections.push({ heading: heading[1], line: line.number, lines: [] });
+    if (opener) {
+      sections.push({ ...opener, line: line.number, lines: [] });
     } else if (current === undefined) {
       preamble.push(line);
     } else {
@@ -119,50 +126,76 @@ function parseBody(text: string): Body {
   return { preamble, sections, lines };
 }
 
-function templateShape(kind: Kind, template: string): SectionRule[] | Failure {
-  const optional = new Set(
-    defaultShapes[kind].filter((rule) => !rule.required).map((rule) => normalize(rule.heading)),
-  );
-  const headings = parseBody(template).sections.map((section) => section.heading);
+function sectionOpener(text: string): { heading: string; marker: Marker } | null {
+  const heading = text.match(/^## +(.+?)\s*#*\s*$/);
 
-  if (headings.length === 0) return new Failure("the template has no ## headings");
+  if (heading) return { heading: heading[1], marker: "##" };
 
-  return headings.map((heading) => ({ heading, required: !optional.has(normalize(heading)) }));
+  const block = text.match(/^\+\+\+ +(.+?)\s*$/);
+
+  if (block) return { heading: block[1], marker: "+++" };
+
+  const notes = text.match(/^# +(notes for agents)\s*$/i);
+
+  if (notes) return { heading: notes[1], marker: "#" };
+
+  return null;
 }
 
-function normalize(heading: string) {
-  return heading.trim().toLowerCase();
+function templateShape(kind: Kind, template: string): SectionRule[] | Failure {
+  const optional = new Set(defaultShapes[kind].filter((rule) => !rule.required).map(headingKey));
+  const sections = parseBody(template).sections;
+
+  if (sections.length === 0) return new Failure("the template has no ## headings or +++ blocks");
+
+  const rules = sections.map(({ heading, marker }) => ({
+    heading,
+    marker,
+    required: !optional.has(headingKey({ heading, marker })),
+  }));
+
+  if (kind === "pr") return rules;
+
+  return [...rules, { heading: "Notes for agents", marker: "#", required: false }];
+}
+
+function display(heading: { heading: string; marker: Marker }) {
+  return `${heading.marker} ${heading.heading}`;
+}
+
+function headingKey(heading: { heading: string; marker: Marker }) {
+  return display(heading).toLowerCase();
 }
 
 function headingFindings(body: Body, shape: readonly SectionRule[]): Finding[] {
   const findings: Finding[] = [];
-  const order = shape.map((rule) => normalize(rule.heading));
-  const expected = shape.map((rule) => `## ${rule.heading}`).join(", ");
+  const order = shape.map(headingKey);
+  const expected = shape.map(display).join(", ");
   let previous = -1;
 
   for (const section of body.sections) {
-    const position = order.indexOf(normalize(section.heading));
+    const position = order.indexOf(headingKey(section));
 
     if (position === -1) {
       findings.push({
         where: section.line,
-        message: `unexpected heading "## ${section.heading}", use these in order: ${expected}`,
+        message: `unexpected heading "${display(section)}", use these in order: ${expected}`,
       });
     } else if (position <= previous) {
       findings.push({
         where: section.line,
-        message: `"## ${section.heading}" is out of order or repeated, use these in order: ${expected}`,
+        message: `"${display(section)}" is out of order or repeated, use these in order: ${expected}`,
       });
     } else {
       previous = position;
     }
   }
 
-  const present = new Set(body.sections.map((section) => normalize(section.heading)));
+  const present = new Set(body.sections.map(headingKey));
 
   for (const rule of shape) {
-    if (rule.required && !present.has(normalize(rule.heading))) {
-      findings.push({ where: 1, message: `missing "## ${rule.heading}"` });
+    if (rule.required && !present.has(headingKey(rule))) {
+      findings.push({ where: 1, message: `missing "${display(rule)}"` });
     }
   }
 
@@ -170,7 +203,7 @@ function headingFindings(body: Body, shape: readonly SectionRule[]): Finding[] {
 }
 
 function sectionNamed(body: Body, names: readonly string[]) {
-  return body.sections.find((section) => names.includes(normalize(section.heading)));
+  return body.sections.find((section) => names.includes(headingKey(section)));
 }
 
 // Marks each line that opens, sits inside, or closes a fenced block. A fence closes only on
@@ -206,6 +239,22 @@ function proseLines(lines: readonly Line[]) {
   return lines.filter((_, index) => !inFence[index]);
 }
 
+function insideDetails(lines: readonly Line[]): boolean[] {
+  const inFence = fenced(lines);
+  let depth = 0;
+
+  return lines.map((line, index) => {
+    if (inFence[index]) return depth > 0;
+
+    const opens = line.text.match(/<details\b/gi)?.length ?? 0;
+    const closes = line.text.match(/<\/details>/gi)?.length ?? 0;
+    const inside = depth > 0 || opens > 0;
+
+    depth = Math.max(0, depth + opens - closes);
+    return inside;
+  });
+}
+
 function contentFindings(kind: Kind, body: Body): Finding[] {
   const findings: Finding[] = [];
 
@@ -235,31 +284,34 @@ function contentFindings(kind: Kind, body: Body): Finding[] {
     }
   }
 
-  const evidence = sectionNamed(body, ["evidence", "verification"]);
+  const proof = sectionNamed(
+    body,
+    kind === "pr" ? ["## verification"] : ["## evidence", "## verification"],
+  );
   // A witness is something the reviewer sees: pasted output, a table, media, or a link.
   // Inline code alone names a command without showing what it printed, unless it pairs the
   // output before and after, as in `a-61 end` → `a-61 b-62 end`.
   const witness = /https?:\/\/|!\[|<img|<video|<details|^\s*(```|~~~)|^\s*\||`[^`]+`\s*→\s*`[^`]+`/;
 
-  if (evidence !== undefined && !evidence.lines.some((line) => witness.test(line.text))) {
+  if (proof !== undefined && !proof.lines.some((line) => witness.test(line.text))) {
     findings.push({
-      where: evidence.line,
-      message: `"## ${evidence.heading}" shows no witness, paste the output, or add the table, media, or CI link that shows before and after`,
+      where: proof.line,
+      message: `"${display(proof)}" shows no witness, paste the output, or add the table, media, or CI link that shows before and after`,
     });
   }
 
   if (
     kind === "pr" &&
-    evidence !== undefined &&
-    !proseLines(evidence.lines).some((line) => /^\s*\*\*Not checked:\*\*/.test(line.text))
+    proof !== undefined &&
+    !proseLines(proof.lines).some((line) => notChecked.test(line.text))
   ) {
     findings.push({
-      where: evidence.line,
-      message: `"## ${evidence.heading}" has no "**Not checked:**" line, list what has no witness or write nothing`,
+      where: proof.line,
+      message: `"${display(proof)}" has no "**Not checked:**" line, list what has no witness or write nothing`,
     });
   }
 
-  const doneWhen = sectionNamed(body, ["done when", "acceptance criteria"]);
+  const doneWhen = sectionNamed(body, ["## done when", "## acceptance criteria"]);
 
   if (
     doneWhen !== undefined &&
@@ -267,13 +319,22 @@ function contentFindings(kind: Kind, body: Body): Finding[] {
   ) {
     findings.push({
       where: doneWhen.line,
-      message: `"## ${doneWhen.heading}" has no "- [ ]" check`,
+      message: `"${display(doneWhen)}" has no "- [ ]" check`,
     });
   }
 
   if (kind !== "pr") return findings;
 
-  const why = sectionNamed(body, ["why"]);
+  const whatChanged = sectionNamed(body, ["## what changed"]);
+
+  if (whatChanged !== undefined && !whatChanged.lines.some((line) => visual.test(line.text))) {
+    findings.push({
+      where: whatChanged.line,
+      message: `"${display(whatChanged)}" has no visual, add pseudocode, a call tree, a component tree, a file tree, Mermaid, or a diff of one, per the show-me skill`,
+    });
+  }
+
+  const why = sectionNamed(body, ["## why"]);
 
   if (why !== undefined) {
     const words = proseLines(why.lines)
@@ -283,12 +344,12 @@ function contentFindings(kind: Kind, body: Body): Finding[] {
     if (words > whyWordCap) {
       findings.push({
         where: why.line,
-        message: `"## ${why.heading}" has ${words} words of prose, cut it to ${whyWordCap} or fewer`,
+        message: `"${display(why)}" has ${words} words of prose, cut it to ${whyWordCap} or fewer`,
       });
     }
   }
 
-  const blastRadius = sectionNamed(body, ["blast radius"]);
+  const blastRadius = sectionNamed(body, ["## blast radius"]);
 
   if (
     blastRadius !== undefined &&
@@ -296,30 +357,75 @@ function contentFindings(kind: Kind, body: Body): Finding[] {
   ) {
     findings.push({
       where: blastRadius.line,
-      message: `"## ${blastRadius.heading}" does not say whether the door is one-way or two-way`,
+      message: `"${display(blastRadius)}" does not say whether the door is one-way or two-way`,
     });
   }
 
-  const length = body.lines.findLastIndex((line) => line.text.trim() !== "") + 1;
+  const hidden = insideDetails(body.lines);
+  const visible = body.lines.filter((_, index) => !hidden[index]);
+  const length = visible.findLastIndex((line) => line.text.trim() !== "") + 1;
 
-  if (length > bodyLineCap) {
+  if (length > visibleLineCap) {
     findings.push({
-      where: bodyLineCap + 1,
-      message: `body has ${length} lines, cut it to ${bodyLineCap} or fewer and move the rest to the evidence comment`,
+      where: visible[visibleLineCap].number,
+      message: `body has ${length} visible lines outside <details>, cut it to ${visibleLineCap} or fewer and move the rest into the Evidence <details> block`,
     });
+  }
+
+  const evidence = sectionNamed(body, ["## evidence"]);
+
+  if (evidence !== undefined) {
+    const outside = evidence.lines.find(
+      (line) => line.text.trim() !== "" && !hidden[line.number - 1],
+    );
+
+    if (outside !== undefined || !evidence.lines.some((line) => hidden[line.number - 1])) {
+      findings.push({
+        where: outside?.number ?? evidence.line,
+        message: `"${display(evidence)}" has lines outside <details>, put its content inside one <details><summary>…</summary> block`,
+      });
+    }
   }
 
   return findings;
 }
 
+const notChecked = /^\s*\*\*Not checked:\*\*/;
+
+const visual = /^\s*(```|~~~)|!\[[^\]]*\]\([^)]*\)|<img/i;
+
 // The "Closes #N", "Part of #N", and "Depends on #N" lines that end a Why.
 const ticketLine = /^\s*(Closes|Fixes|Resolves|Part of|Depends on|Refs:?)\s/i;
 
-// One to three short sentences, per references/pr-descriptions.md.
 const whyWordCap = 70;
 
-// The body becomes the squash commit body, which references/pr-descriptions.md keeps under about 40 lines.
-const bodyLineCap = 40;
+const visibleLineCap = 40;
+
+const uiExtensions = [".tsx", ".jsx", ".css", ".scss", ".vue", ".svelte", ".html"];
+
+function screenshotFindings(changedFiles: string, body: Body): Finding[] {
+  const ui = changedFiles
+    .split("\n")
+    .map((path) => path.trim())
+    .filter((path) => uiExtensions.some((extension) => path.endsWith(extension)));
+  const shown = proseLines(body.lines).some(
+    (line) =>
+      /^\s*\|\s*Before\s*\|\s*After\s*\|/i.test(line.text) ||
+      (notChecked.test(line.text) && /screenshot/i.test(line.text)),
+  );
+
+  if (ui.length === 0 || shown) return [];
+
+  const named =
+    ui.length > 3 ? `${ui.slice(0, 3).join(", ")}, and ${ui.length - 3} more` : ui.join(", ");
+
+  return [
+    {
+      where: 1,
+      message: `the PR changes UI files (${named}) but has no "| Before | After |" table or "**Not checked:**" line naming the missing screenshots`,
+    },
+  ];
+}
 
 // A squash merge makes the PR title a commit subject, and writing-good-commits keeps a header
 // within 72.
@@ -452,12 +558,26 @@ function main(): number {
     shape = parsed;
   }
 
+  let changedFiles = "";
+
+  if (args.changedFiles !== undefined) {
+    const listed = readText(args.changedFiles);
+
+    if (listed instanceof Failure) {
+      console.error(`check-body: ${listed.message}`);
+      return 64;
+    }
+
+    changedFiles = listed;
+  }
+
   const body = parseBody(text);
   const problems = [
     ...(args.title === undefined ? [] : titleFindings(args.kind, args.title)),
     ...headingFindings(body, shape),
     ...contentFindings(args.kind, body),
     ...localPathFindings(body),
+    ...screenshotFindings(changedFiles, body),
   ];
   const warnings = args.kind === "pr" ? [...historyWarnings(body), ...openQuestionWarnings(body)] : [];
 
