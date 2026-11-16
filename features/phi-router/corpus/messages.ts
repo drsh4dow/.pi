@@ -106,7 +106,7 @@ const messageOf = ({ role, parts }: Transcript[number], names: ReadonlyMap<strin
 };
 
 /** The pi-ai messages of one request, as pi sends them. */
-export const messagesOf = (request: Transcript): Array<Message> => {
+const messagesOf = (request: Transcript): Array<Message> => {
 	const calls = Arr.flatMap(request, ({ role, parts }) =>
 		role === "assistant" ? Arr.getSomes(Arr.map(parts, (part) => callOf(textOf([part])))) : [],
 	);
