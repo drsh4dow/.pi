@@ -10,8 +10,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { storeLayer } from "#src/client/web-cache/index.ts";
 import { Body, type Hits, type Page, type PublicUrl, Web, WebError } from "#src/client/web/index.ts";
-import { storeLayer } from "./store.ts";
 import { fetchCall, replyOf, searchCall } from "./tools.ts";
 
 const root = await Effect.runPromise(

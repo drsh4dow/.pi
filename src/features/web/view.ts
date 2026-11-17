@@ -4,8 +4,8 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
+import type { Saved, SavedFile } from "#src/client/web-cache/index.ts";
 import type { Hits, Page } from "#src/client/web/index.ts";
-import type { Saved, SavedFile } from "./store.ts";
 
 export interface SavedPage {
 	readonly page: Page;

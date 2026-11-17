@@ -5,8 +5,8 @@ import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
 
+import { cacheRootOf, noStoreLayer, Store, storeLayer } from "#src/client/web-cache/index.ts";
 import { webLayer } from "#src/client/web/index.ts";
-import { cacheRootOf, noStoreLayer, Store, storeLayer } from "./store.ts";
 import { webTools } from "./tools.ts";
 
 const skillPaths = [import.meta.dirname];

@@ -6,8 +6,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { type Static, Type } from "typebox";
 
+import { Store } from "#src/client/web-cache/index.ts";
 import { Limit, PublicUrl, Web, WebError } from "#src/client/web/index.ts";
-import { Store } from "./store.ts";
 import { fetchReply, hitsJson } from "./view.ts";
 
 const Host = Type.String({ minLength: 1 });
