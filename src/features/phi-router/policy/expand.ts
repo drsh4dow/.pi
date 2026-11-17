@@ -176,27 +176,19 @@ export const expand = Effect.fn("expand")(function* (texts: ReadonlyArray<string
 			for (const { pattern, decode } of decoders) {
 				for (const encoded of Arr.getSomes(Arr.map([...Str.matchAll(pattern)(text)], ([run]) => decode(run)))) {
 					const bytes = yield* bytesOf(encoded);
-					const decoded = yield* textsOf(bytes, level);
+					const readings = yield* Effect.fromOption(readingsOf(bytes), () => "binary" as const);
 
-					found.push(...decoded);
+					if (level === maxDepth) {
+						return yield* undecodable;
+					}
+
+					for (const reading of readings) {
+						found.push(reading, ...(yield* decodedIn(reading, level + 1)));
+					}
 				}
 			}
 
 			return found;
-		});
-
-	const textsOf = (bytes: Uint8Array, level: number): Effect.Effect<ReadonlyArray<string>, Unexpandable> =>
-		Option.match(readingsOf(bytes), {
-			onNone: () => Effect.fail<Unexpandable>("binary"),
-			onSome: (readings) =>
-				level === maxDepth
-					? undecodable
-					: Effect.map(
-							Effect.forEach(readings, (reading) =>
-								Effect.map(decodedIn(reading, level + 1), (deeper) => [reading, ...deeper]),
-							),
-							Arr.flatten,
-						),
 		});
 
 	return yield* Effect.forEach(texts, (text) =>
