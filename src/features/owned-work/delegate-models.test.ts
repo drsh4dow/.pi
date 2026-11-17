@@ -25,7 +25,6 @@ const registry = [
 	on("ent", opus.id),
 	on("ultra-a", fable),
 	on("ultra-b", fable),
-	on("ent", fable),
 	on("phi", "auto"),
 	on("phi", opus.id),
 	on("phi", fable),
@@ -110,11 +109,11 @@ const onEnt = on("ent", opus.id);
 
 const onOpenai = on("openai", "gpt-6.1-sol");
 
-const divergentOnOpus = {
+/** What an alias whose id no BAA provider carries runs from a held or BAA parent. */
+const onOpus = (alias: string, named: string) => ({
 	model: "ent/claude-opus-5-5",
-	substituted:
-		"The alias `divergent` names opencode-go/glm-5.3-flash, which no BAA provider carries, so this delegate runs on ent/claude-opus-5-5.",
-};
+	substituted: `The alias \`${alias}\` names ${named}, which no BAA provider carries, so this delegate runs on ent/claude-opus-5-5.`,
+});
 
 /** The rows of a routing parent: an id a personal provider carries runs as `phi/<id>`, any other on its sealed lane. */
 const routingRows = (from: string, parent: Model<Api>): ReadonlyArray<Row> => [
@@ -133,9 +132,9 @@ const routingRows = (from: string, parent: Model<Api>): ReadonlyArray<Row> => [
 /** The rows of a parent held on ent: the id's sealed lane, or the substitute when no BAA provider carries the id. */
 const heldRows = (from: string, held: Pick<Row, "mode" | "branch">): ReadonlyArray<Row> => [
 	{ from, parent: phiAuto, ...held, name: "judgment", runs: "ent/claude-opus-5-5" },
-	{ from, parent: phiAuto, ...held, name: "fable", runs: "ent/claude-fable-5-2" },
+	{ from, parent: phiAuto, ...held, name: "fable", runs: onOpus("fable", "ultra-a/claude-fable-5-2") },
 	{ from, parent: phiAuto, ...held, name: "investigator", runs: "openai/gpt-6.1-sol" },
-	{ from, parent: phiAuto, ...held, name: "divergent", runs: divergentOnOpus },
+	{ from, parent: phiAuto, ...held, name: "divergent", runs: onOpus("divergent", "opencode-go/glm-5.3-flash") },
 	{ from, parent: phiAuto, ...held, name: "ultra-b/claude-opus-5-5", runs: "ent/claude-opus-5-5" },
 	{ from, parent: phiAuto, ...held, name: "openai/gpt-6.1-sol", runs: "openai/gpt-6.1-sol" },
 	{ from, parent: phiAuto, ...held, name: "opencode-go/glm-5.3-flash", runs: "refused" },
@@ -145,9 +144,9 @@ const heldRows = (from: string, held: Pick<Row, "mode" | "branch">): ReadonlyArr
 /** The rows of a parent on a BAA provider: an alias runs on its id's sealed lane, a spelled model only on a BAA one. */
 const baaRows = (from: string, parent: Model<Api>): ReadonlyArray<Row> => [
 	{ from, parent, name: "judgment", runs: "ent/claude-opus-5-5" },
-	{ from, parent, name: "fable", runs: "ent/claude-fable-5-2" },
+	{ from, parent, name: "fable", runs: onOpus("fable", "ultra-a/claude-fable-5-2") },
 	{ from, parent, name: "investigator", runs: "openai/gpt-6.1-sol" },
-	{ from, parent, name: "divergent", runs: divergentOnOpus },
+	{ from, parent, name: "divergent", runs: onOpus("divergent", "opencode-go/glm-5.3-flash") },
 	{ from, parent, name: "ent/claude-opus-5-5", runs: "ent/claude-opus-5-5" },
 	{ from, parent, name: "openai/gpt-6.1-sol", runs: "openai/gpt-6.1-sol" },
 	{ from, parent, name: "ultra-a/claude-opus-5-5", runs: "refused" },

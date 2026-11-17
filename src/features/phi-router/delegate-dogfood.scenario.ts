@@ -27,7 +27,7 @@ const children: ReadonlyArray<Child> = [
 	{
 		alias: "fable",
 		key: "phi/claude-fable-5-2",
-		servedBy: ["ultra-a/claude-fable-5-2", "ultra-b/claude-fable-5-2", "ent/claude-fable-5-2"],
+		servedBy: ["ultra-a/claude-fable-5-2", "ultra-b/claude-fable-5-2", "ent/claude-opus-5-5"],
 	},
 	{ alias: "investigator", key: "openai/gpt-6.1-sol", servedBy: ["openai/gpt-6.1-sol"] },
 ];

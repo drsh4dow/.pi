@@ -18,20 +18,24 @@ type OAuthAuth = NonNullable<Provider["auth"]["oauth"]>;
 /** How an account logs in: Anthropic's OAuth flow, or a token from `claude setup-token`, which has no refresh token. */
 export type Login = "oauth" | "setup-token";
 
+/** `lacks` names catalog models the account cannot serve, so the registry never offers them on it. */
 export const accounts = [
-	{ id: "ultra-a", name: "Claude Ultra A", login: "oauth", baa: false },
-	{ id: "ultra-b", name: "Claude Ultra B", login: "setup-token", baa: false },
-	{ id: "ent", name: "Claude Enterprise", login: "oauth", baa: true },
+	{ id: "ultra-a", name: "Claude Ultra A", login: "oauth", baa: false, lacks: [] },
+	{ id: "ultra-b", name: "Claude Ultra B", login: "setup-token", baa: false, lacks: [] },
+	{ id: "ent", name: "Claude Enterprise", login: "oauth", baa: true, lacks: ["claude-fable-5-2"] },
 ] as const satisfies ReadonlyArray<{
 	readonly id: string;
 	readonly name: string;
 	readonly login: Login;
 	readonly baa: boolean;
+	readonly lacks: ReadonlyArray<string>;
 }>;
 
 export type Account = (typeof accounts)[number];
 
 export type AccountId = Account["id"];
+
+const offers = (account: Account, id: string) => !Arr.some(account.lacks, (lacked) => lacked === id);
 
 export const accountOf = (id: string) => Arr.findFirst(accounts, (account) => account.id === id);
 
@@ -158,12 +162,15 @@ export const accountProvider = ({
 		id: account.id,
 		name: account.name,
 		auth: authOf(account.login, anthropic),
-		models: Arr.map(anthropic.models, (model) => ({
-			...model,
-			provider: account.id,
-			// Pi turns message threads on by itself only for the provider named `anthropic`. Every account talks to the same endpoint.
-			// The BAA org answers a thread with HTTP 400.
-			compat: { ...model.compat, supportsMessageThreads: !account.baa },
-		})),
+		models: Arr.map(
+			Arr.filter(anthropic.models, ({ id }) => offers(account, id)),
+			(model) => ({
+				...model,
+				provider: account.id,
+				// Pi turns message threads on by itself only for the provider named `anthropic`. Every account talks to the same endpoint.
+				// The BAA org answers a thread with HTTP 400.
+				compat: { ...model.compat, supportsMessageThreads: !account.baa },
+			}),
+		),
 		api: wrap(anthropicMessagesApi()),
 	});
