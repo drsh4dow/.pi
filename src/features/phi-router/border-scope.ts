@@ -58,9 +58,9 @@ const guardBuiltins = ({
 	readonly register: (provider: Provider) => void;
 }) => {
 	for (const account of borderedBuiltins) {
-		const held = Option.filter(Option.fromUndefinedOr(registry.getProvider(account)), (found) => !mine.has(found));
+		const found = registry.getProvider(account);
 
-		for (const found of Option.toArray(held)) {
+		if (found !== undefined && !mine.has(found)) {
 			const original = isWrapper(found) ? found[originalKey] : found;
 
 			const wrapper: Wrapper = {

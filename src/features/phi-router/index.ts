@@ -1,6 +1,7 @@
-import type { Api, Model, ModelThinkingLevel } from "@earendil-works/pi-ai";
+import type { Api, Model } from "@earendil-works/pi-ai";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
 import { getBuiltinModels } from "@earendil-works/pi-ai/providers/all";
+import { MODEL_THINKING_LEVELS } from "@earendil-works/pi-ai/providers/model-schema";
 import {
 	type BeforeAgentStartEvent,
 	buildSessionContext,
@@ -216,16 +217,6 @@ type PhiModel = ExtensionVirtualModel<typeof RouterState.Encoded>;
 
 const catalogProviders = ["anthropic", ...borderedBuiltins] as const;
 
-const everyThinkingLevel: ReadonlyArray<ModelThinkingLevel> = [
-	"off",
-	"minimal",
-	"low",
-	"medium",
-	"high",
-	"xhigh",
-	"max",
-];
-
 /**
  * Thinking levels and limits from the first builtin catalog model with the id. An id the catalog lacks gets every
  * level and unknown limits.
@@ -234,7 +225,7 @@ const limitsOf = (id: string): Pick<PhiModel, "thinkingLevels" | "contextWindow"
 	Option.match(
 		Arr.findFirst(Arr.flatMap(catalogProviders, getBuiltinModels), (model) => model.id === id),
 		{
-			onNone: () => ({ thinkingLevels: everyThinkingLevel }),
+			onNone: () => ({ thinkingLevels: MODEL_THINKING_LEVELS }),
 			onSome: (model) => ({
 				thinkingLevels: getSupportedThinkingLevels(model),
 				contextWindow: model.contextWindow,
