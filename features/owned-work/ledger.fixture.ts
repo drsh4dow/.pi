@@ -80,11 +80,14 @@ const handleChecked = (expected: Readonly<Record<string, string | boolean>> | un
 const replyOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) =>
 	act.continues === undefined
 		? world.ledger.start(requestOf(world, act))
-		: world.ledger.continue({
-				ref: WorkRef(act.continues),
-				message: Option.fromUndefinedOr(act.message),
-				group: Option.none(),
-			});
+		: Effect.flatMap(
+				world.ledger.continuation({
+					ref: WorkRef(act.continues),
+					message: Option.fromUndefinedOr(act.message),
+					group: Option.none(),
+				}),
+				world.ledger.start,
+			);
 
 const start = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
 	const request = replyOf(world, act);
@@ -231,9 +234,6 @@ const staged = (world: World, terminal: string) => {
 	}));
 };
 
-const refsAre = (refs: Effect.Effect<ReadonlyArray<string>>, expected: ReadonlyArray<string>) =>
-	Effect.flatMap(refs, (got) => checked(() => got, expected));
-
 const perform = (world: World, act: Act): Effect.Effect<void> =>
 	Match.valueTags(act, {
 		Hook: ({ event }) => hook(world, event),
@@ -246,8 +246,8 @@ const perform = (world: World, act: Act): Effect.Effect<void> =>
 		End: ({ terminal, end }) => ended(world, terminal, end),
 		Group: (grouping) => group(world, grouping),
 		Cancel: (cancelling) => cancel(world, cancelling),
-		Running: ({ expect: expected }) => refsAre(world.ledger.running, expected),
-		Waking: ({ expect: expected }) => refsAre(world.ledger.waking, expected),
+		Running: ({ expect: expected }) => Effect.flatMap(world.ledger.running, (got) => checked(() => got, expected)),
+		Waking: ({ expect: expected }) => Effect.flatMap(world.ledger.waking, (got) => checked(() => got, expected)),
 		TurnEnds: ({ expect: expected }) => turnEnds(world, expected),
 		Wakes: ({ expect: expected }) => checked(() => world.wakes.splice(0), [...expected]),
 		Delivered: ({ expect: expected }) =>

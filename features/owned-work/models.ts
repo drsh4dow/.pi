@@ -6,6 +6,7 @@ import * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
+import { delegateTargetOf, type Wanted } from "../phi-router/index.ts";
 import { BadDelegate } from "./work.ts";
 
 export type ModelKey = `${string}/${string}`;
@@ -60,8 +61,9 @@ const panel: ReadonlyArray<keyof typeof aliases> = ["judgment", "investigator"];
 
 export const modelTable: ModelTable = { aliases, panel };
 
-export type ModelCaller = Pick<ExtensionContext, "model"> & {
+export type ModelCaller = Pick<ExtensionContext, "model" | "cwd"> & {
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll">;
+	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;
 };
 
 export const modelDescription = (table: ModelTable) => {
@@ -96,22 +98,51 @@ export const modelChoices = (table: ModelTable) => {
 	return `an alias (${Arr.join(named, ", ")}) or a \`provider/id\`, your own included`;
 };
 
-export const modelOf = Effect.fn("modelOf")(function* (ctx: ModelCaller, table: ModelTable, name: ModelName) {
-	const { model, source } = yield* ModelName.$match(name, {
-		Spelled: ({ key }) => Effect.succeed({ model: key, source: "" }),
+const resolvedOf = (ctx: ModelCaller, table: ModelTable, name: ModelName) =>
+	ModelName.$match(name, {
+		Spelled: ({ key }) => {
+			const [provider, ...id] = Str.split(key, "/");
+			const wanted: Wanted = { kind: "key", provider, id: Arr.join(id, "/") };
+
+			return Effect.succeed({ wanted, model: key, source: "" });
+		},
 		Alias: ({ alias }) =>
 			Effect.fromOption(Rec.get(table.aliases, alias), () =>
 				BadDelegate.make({ why: `${alias} is not an alias: name ${modelChoices(table)}` }),
 			).pipe(
 				Effect.map((entry) => ({
+					wanted: { kind: "alias", id: entry.id } satisfies Wanted,
 					model: aliasedModel(ctx, entry),
 					source: `, which the alias ${alias} names,`,
 				})),
 			),
 	});
 
-	return yield* Effect.fromOption(
-		Arr.findFirst(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === model),
-		() => BadDelegate.make({ why: `model ${model}${source} is not in the model registry` }),
-	).pipe(Effect.as(model));
+const isRegistered = (ctx: ModelCaller) => (key: string) =>
+	Arr.some(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === key);
+
+/** A protected session's delegate runs where the PHI router allows, so an alias never takes session content off its boundary. */
+export const modelOf = Effect.fn("modelOf")(function* (ctx: ModelCaller, table: ModelTable, name: ModelName) {
+	const resolved = yield* resolvedOf(ctx, table, name);
+
+	const target = yield* delegateTargetOf({
+		parent: ctx.model,
+		branch: ctx.sessionManager.getBranch(),
+		cwd: ctx.cwd,
+		wanted: resolved.wanted,
+		has: isRegistered(ctx),
+	});
+
+	if (target.kind === "refuse") {
+		return yield* BadDelegate.make({ why: target.why });
+	}
+
+	const { model, source } =
+		target.kind === "run" ? { model: target.key, source: ", which the PHI router picks," } : resolved;
+
+	if (!isRegistered(ctx)(model)) {
+		return yield* BadDelegate.make({ why: `model ${model}${source} is not in the model registry` });
+	}
+
+	return model;
 });

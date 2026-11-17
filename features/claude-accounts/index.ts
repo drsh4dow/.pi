@@ -1,14 +1,17 @@
-import type { Api, Model } from "@earendil-works/pi-ai";
+import type { Api, Model, ProviderStreams } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
+import * as Function from "effect/Function";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import { accountOf, accountProvider, accounts, anthropicOf } from "./accounts.ts";
+import { type AccountId, accountOf, accountProvider, accounts, anthropicOf } from "./accounts.ts";
 import { endedOnRateLimit, failOver } from "./failover.ts";
 
-export { accounts, type Login } from "./accounts.ts";
+export { type AccountId, accountOf, accounts, fallbackChain, isBaaAccount, type Login } from "./accounts.ts";
+
+export { isRateLimited } from "./failover.ts";
 
 const accountIds = Arr.map(accounts, ({ id }) => id);
 
@@ -94,12 +97,15 @@ const switchAccount = (pi: ExtensionAPI) => (args: string, ctx: ExtensionCommand
 		}),
 	);
 
-/** Registers one provider per Claude account and the `/account` command that moves the session between them. */
-export const claudeAccounts = (pi: ExtensionAPI) => {
+type GuardPersonal = (account: AccountId) => (api: ProviderStreams) => ProviderStreams;
+
+export const claudeAccounts = (guardPersonal: GuardPersonal) => (pi: ExtensionAPI) => {
 	const anthropic = anthropicOf();
 
 	for (const account of accounts) {
-		pi.registerProvider(accountProvider({ anthropic, account }));
+		pi.registerProvider(
+			accountProvider({ anthropic, account, wrap: account.baa ? Function.identity : guardPersonal(account.id) }),
+		);
 	}
 
 	pi.on("agent_end", (event, ctx) =>

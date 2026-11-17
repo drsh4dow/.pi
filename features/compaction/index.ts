@@ -1,4 +1,4 @@
-import { type Usage, uuidv7 } from "@earendil-works/pi-ai";
+import { type Api, type Model, type Usage, uuidv7 } from "@earendil-works/pi-ai";
 import {
 	convertToLlm,
 	type ExtensionContext,
@@ -16,6 +16,7 @@ import * as Option from "effect/Option";
 
 import { guideFiles, readGuides } from "../loaded/index.ts";
 import { selfFromEnv } from "../owned-work/index.ts";
+import { internalIdsOnly, isPhiAuto } from "../phi-router/index.ts";
 import { lastFolder } from "../state-folder/index.ts";
 import { guidesToRestore, noGuides } from "./guides.ts";
 import {
@@ -37,11 +38,19 @@ import {
 	totalUsage,
 } from "./summary.ts";
 
+export { narrativeCap } from "./summary.ts";
+
 type Env = Readonly<Record<string, string | undefined>>;
 
-type Caller = Pick<ExtensionContext, "model"> & {
-	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "complete">;
-};
+type StreamSimple = ExtensionContext["modelRegistry"]["streamSimple"];
+
+/** `streamSimple`, unlike `complete`, routes a virtual model, as `direct`, so a PHI router sends the summary to its BAA account. */
+interface Caller {
+	readonly model: Model<Api> | undefined;
+	readonly modelRegistry: {
+		readonly streamSimple: (...args: Parameters<StreamSimple>) => Pick<ReturnType<StreamSimple>, "result">;
+	};
+}
 
 const anchorOf = Effect.fn("anchorOf")(
 	function* (env: Env, branch: ReadonlyArray<SessionEntry>) {
@@ -87,6 +96,9 @@ const guidesFor = Effect.fn("guidesFor")(
 	),
 );
 
+/** In a `phi/auto` session a clean summary goes on to a personal account, so it names patients by internal id only. */
+const systemPromptFor = (model: Model<Api>) => (isPhiAuto(model) ? `${systemPrompt} ${internalIdsOnly}` : systemPrompt);
+
 interface Attempt {
 	readonly reply: Reply;
 	readonly usage: ReadonlyArray<Usage>;
@@ -99,7 +111,7 @@ const attempt = Effect.fn("attempt")(function* ({
 	text,
 }: {
 	readonly ctx: Caller;
-	readonly model: NonNullable<Caller["model"]>;
+	readonly model: Model<Api>;
 	readonly signal: AbortSignal;
 	readonly text: string;
 }) {
@@ -107,11 +119,16 @@ const attempt = Effect.fn("attempt")(function* ({
 
 	const call = Effect.tryPromise({
 		try: () =>
-			ctx.modelRegistry.complete(
-				model,
-				{ systemPrompt, messages: [{ role: "user", content: [{ type: "text", text }], timestamp }] },
-				{ signal, cacheRetention: "none", sessionId: uuidv7() },
-			),
+			ctx.modelRegistry
+				.streamSimple(
+					model,
+					{
+						systemPrompt: systemPromptFor(model),
+						messages: [{ role: "user", content: [{ type: "text", text }], timestamp }],
+					},
+					{ signal, cacheRetention: "none", sessionId: uuidv7() },
+				)
+				.result(),
 		catch: (cause) => (cause instanceof Error ? cause.message : String(cause)),
 	});
 

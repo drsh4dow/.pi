@@ -20,6 +20,7 @@ import * as Stream from "effect/Stream";
 
 import { ScenarioFailed, SetupFailed } from "./failed.ts";
 import { lfLines } from "./lines.ts";
+import { type Message, type Sent, sentOf, textOf } from "./message.ts";
 import type { World } from "./world.ts";
 
 /** The root pi a scenario talks to. Every call fails at once if the root has exited. */
@@ -30,7 +31,9 @@ export interface Root {
 	 * or it ended on an error). Sent as a follow-up, so a prompt while a wake turn runs queues behind it instead of failing.
 	 * Fails when pi rejects the prompt or `within` (default 10 minutes) passes first.
 	 */
-	readonly prompt: (message: string, within?: Duration.Input) => Effect.Effect<Option.Option<string>, ScenarioFailed>;
+	readonly prompt: (message: Message, within?: Duration.Input) => Effect.Effect<Option.Option<string>, ScenarioFailed>;
+	/** Queues `message` as steering while pi runs: pi delivers it after the current tool calls, before its next model call. */
+	readonly steer: (message: Message) => Effect.Effect<void, ScenarioFailed>;
 	/** Runs pi's manual compaction, as `/compact` does, and returns once pi answers. */
 	readonly compact: Effect.Effect<void, ScenarioFailed>;
 	/** The root pi's stderr so far. */
@@ -48,7 +51,7 @@ export interface RootProcess extends Root {
 /** The commands the driver sends. One list, so the protocol the driver depends on is visible in one place. */
 type Command =
 	| { readonly type: "get_state" }
-	| { readonly type: "prompt"; readonly message: string; readonly streamingBehavior: "followUp" }
+	| (({ readonly type: "prompt"; readonly streamingBehavior: "followUp" } | { readonly type: "steer" }) & Sent)
 	| { readonly type: "get_last_assistant_text" }
 	| { readonly type: "compact" };
 
@@ -75,8 +78,6 @@ const isResponseTo =
 	(id: string) =>
 	(record: Inbound): record is typeof Response.Type =>
 		record.type === "response" && record.id === id;
-
-const isSettled = (record: Inbound) => record.type === "agent_settled";
 
 const failed = (message: string) => Effect.fail(ScenarioFailed.make({ message }));
 
@@ -231,17 +232,23 @@ const LastText = Schema.Struct({ text: Schema.String.pipe(Schema.NullOr, Schema.
 /** `within` bounds the whole prompt: pi's acknowledgement, the settle, and the final text. */
 const prompted =
 	(wire: Wire, progress: (what: string) => Effect.Effect<void>) =>
-	(message: string, within: Duration.Input = "10 minutes") =>
+	(message: Message, within: Duration.Input = "10 minutes") =>
 		Effect.gen(function* () {
 			const subscription = yield* PubSub.subscribe(wire.records);
-			const data = yield* request(wire, subscription, { type: "prompt", message, streamingBehavior: "followUp" });
+
+			const data = yield* request(wire, subscription, {
+				type: "prompt",
+				streamingBehavior: "followUp",
+				...sentOf(message),
+			});
+
 			const { disposition } = yield* decodeDisposition(data);
 
 			if (disposition === "handled") {
 				return Option.none<string>();
 			}
 
-			const settle = PubSub.take(subscription).pipe(Effect.repeat({ until: isSettled }));
+			const settle = PubSub.take(subscription).pipe(Effect.repeat({ until: Schema.is(Settled) }));
 			const { aborted } = yield* Effect.raceFirst(settle, wire.exited);
 			const { text } = aborted ? {} : yield* asked(wire, { type: "get_last_assistant_text" }, LastText);
 
@@ -254,7 +261,9 @@ const prompted =
 			Effect.timeoutOrElse({
 				duration: within,
 				orElse: () =>
-					failed(`the root did not settle within ${String(Duration.toSeconds(within))} s after "${message}"`),
+					failed(
+						`the root did not settle within ${String(Duration.toSeconds(within))} s after "${textOf(message)}"`,
+					),
 			}),
 		);
 
@@ -281,6 +290,7 @@ export const startRoot = (input: {
 
 		return {
 			prompt: prompted(wire, input.progress),
+			steer: (message: Message) => Effect.asVoid(asked(wire, { type: "steer", ...sentOf(message) }, Schema.Unknown)),
 			compact: Effect.asVoid(asked(wire, { type: "compact" }, Schema.Unknown)),
 			output: wire.stderr,
 			session: { id: state.sessionId, file: state.sessionFile },

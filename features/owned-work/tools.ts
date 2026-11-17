@@ -21,7 +21,7 @@ import { type Caller, type DelegateParams, delegateParams, parseCall } from "./b
 import { type ChildRole, type ChildSession, childRoles, Self } from "./child.ts";
 import { freshCall, parseContinuation } from "./continuation.ts";
 import { Ledger, type LedgerFailure } from "./ledger.ts";
-import { type ModelTable, modelTable } from "./models.ts";
+import { modelNameOf, modelOf, type ModelTable, modelTable } from "./models.ts";
 import { HandleOut, Out, ResultsOut } from "./out.ts";
 import { withReview } from "./review.ts";
 import { BadDelegate, StartRequest, WorkRef } from "./work.ts";
@@ -142,9 +142,11 @@ const delegateTool = (
 				(ledger) =>
 					Effect.gen(function* () {
 						if (call.continues !== undefined) {
-							const continuation = yield* parseContinuation(call.continues, call);
+							const request = yield* parseContinuation(call.continues, call);
+							const continuation = yield* ledger.continuation(request);
+							const model = yield* modelOf(ctx, table, modelNameOf(continuation.brief.model));
 
-							return yield* ledger.continue(continuation);
+							return yield* ledger.start({ ...continuation, brief: { ...continuation.brief, model } });
 						}
 
 						const fresh = yield* freshCall(call);

@@ -1,4 +1,4 @@
-import type { Model } from "@earendil-works/pi-ai";
+import type { Model, ProviderStreams } from "@earendil-works/pi-ai";
 import { anthropicMessagesApi } from "@earendil-works/pi-ai/compat";
 import { createProvider, hasApi, type Provider } from "@earendil-works/pi-ai/models";
 import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
@@ -16,14 +16,37 @@ type OAuthAuth = NonNullable<Provider["auth"]["oauth"]>;
 export type Login = "oauth" | "setup-token";
 
 export const accounts = [
-	{ id: "ultra-a", name: "Claude Ultra A", login: "oauth" },
-	{ id: "ultra-b", name: "Claude Ultra B", login: "setup-token" },
-	{ id: "ent", name: "Claude Enterprise", login: "oauth" },
-] as const satisfies ReadonlyArray<{ readonly id: string; readonly name: string; readonly login: Login }>;
+	{ id: "ultra-a", name: "Claude Ultra A", login: "oauth", baa: false },
+	{ id: "ultra-b", name: "Claude Ultra B", login: "setup-token", baa: false },
+	{ id: "ent", name: "Claude Enterprise", login: "oauth", baa: true },
+] as const satisfies ReadonlyArray<{
+	readonly id: string;
+	readonly name: string;
+	readonly login: Login;
+	readonly baa: boolean;
+}>;
 
 export type Account = (typeof accounts)[number];
 
+export type AccountId = Account["id"];
+
 export const accountOf = (id: string) => Arr.findFirst(accounts, (account) => account.id === id);
+
+export const isBaaAccount = (id: string) => Option.exists(accountOf(id), ({ baa }) => baa);
+
+/**
+ * Where a request that `from` cannot answer goes next: the other personal accounts, then the BAA accounts. A BAA account
+ * has nowhere to go, since what it holds may be PHI.
+ */
+export const fallbackChain = (from: AccountId): ReadonlyArray<Account> => {
+	if (isBaaAccount(from)) {
+		return [];
+	}
+
+	const others = Arr.filter(accounts, ({ id }) => id !== from);
+
+	return [...Arr.filter(others, ({ baa }) => !baa), ...Arr.filter(others, ({ baa }) => baa)];
+};
 
 export class NotASetupToken extends Schema.TaggedError<NotASetupToken, { readonly brand: unique symbol }>()(
 	"NotASetupToken",
@@ -117,9 +140,18 @@ const authOf = (login: Login, { oauth }: Anthropic) => {
 
 /**
  * Anthropic's catalog and API under the account's id. Pi stores and reads the account's credential under that id, and
- * each model names it as its provider, so a session shows which account answered.
+ * each model names it as its provider, so a session shows which account answered. `wrap` goes around the api here, in
+ * the provider itself, so no later registration can drop it.
  */
-export const accountProvider = ({ anthropic, account }: { anthropic: Anthropic; account: Account }): Provider =>
+export const accountProvider = ({
+	anthropic,
+	account,
+	wrap,
+}: {
+	anthropic: Anthropic;
+	account: Account;
+	wrap: (api: ProviderStreams) => ProviderStreams;
+}): Provider =>
 	createProvider({
 		id: account.id,
 		name: account.name,
@@ -128,7 +160,8 @@ export const accountProvider = ({ anthropic, account }: { anthropic: Anthropic; 
 			...model,
 			provider: account.id,
 			// Pi turns message threads on by itself only for the provider named `anthropic`. Every account talks to the same endpoint.
-			compat: { ...model.compat, supportsMessageThreads: true },
+			// The BAA org answers a thread with HTTP 400.
+			compat: { ...model.compat, supportsMessageThreads: !account.baa },
 		})),
-		api: anthropicMessagesApi(),
+		api: wrap(anthropicMessagesApi()),
 	});

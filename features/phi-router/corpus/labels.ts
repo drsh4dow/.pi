@@ -1,0 +1,147 @@
+import type { TextIdentifier } from "./manifest.ts";
+import type { ByLang } from "./people.ts";
+
+export const identifierLabels = {
+	"patient-name": {
+		en: "Patient name",
+		es: "Nombre del paciente",
+		de: "Name des Patienten",
+		fr: "Nom du patient",
+		pt: "Nome do paciente",
+		vi: "Họ tên bệnh nhân",
+	},
+	ssn: {
+		en: "SSN",
+		es: "Número de Seguro Social",
+		de: "Sozialversicherungsnummer",
+		fr: "Numéro de sécurité sociale",
+		pt: "Número do Seguro Social",
+		vi: "Số an sinh xã hội",
+	},
+	"birth-date": {
+		en: "Date of birth",
+		es: "Fecha de nacimiento",
+		de: "Geburtsdatum",
+		fr: "Date de naissance",
+		pt: "Data de nascimento",
+		vi: "Ngày sinh",
+	},
+	"street-address": {
+		en: "Home address",
+		es: "Domicilio",
+		de: "Wohnadresse",
+		fr: "Adresse du domicile",
+		pt: "Endereço residencial",
+		vi: "Địa chỉ nhà",
+	},
+	"personal-phone": {
+		en: "Home phone",
+		es: "Teléfono particular",
+		de: "Telefon privat",
+		fr: "Téléphone personnel",
+		pt: "Telefone residencial",
+		vi: "Số điện thoại nhà",
+	},
+	"personal-email": {
+		en: "Personal email",
+		es: "Correo personal",
+		de: "Private E-Mail",
+		fr: "Courriel personnel",
+		pt: "E-mail pessoal",
+		vi: "Email cá nhân",
+	},
+	"member-number": {
+		en: "Member ID",
+		es: "Número de afiliado",
+		de: "Versichertennummer",
+		fr: "Numéro d'adhérent",
+		pt: "Número da carteirinha",
+		vi: "Mã thẻ bảo hiểm",
+	},
+	"medicare-medicaid-number": {
+		en: "Medicare/Medicaid ID",
+		es: "Número de Medicare/Medicaid",
+		de: "Medicare-/Medicaid-Nummer",
+		fr: "Numéro Medicare/Medicaid",
+		pt: "Número do Medicare/Medicaid",
+		vi: "Mã số Medicare/Medicaid",
+	},
+	mrn: {
+		en: "MRN",
+		es: "Número de historia clínica",
+		de: "Patientennummer",
+		fr: "Numéro de dossier patient",
+		pt: "Número do prontuário",
+		vi: "Mã hồ sơ bệnh án",
+	},
+	"driver-license": {
+		en: "Driver license",
+		es: "Licencia de conducir",
+		de: "Führerscheinnummer",
+		fr: "Numéro de permis de conduire",
+		pt: "Carteira de motorista",
+		vi: "Số giấy phép lái xe",
+	},
+	passport: {
+		en: "Passport number",
+		es: "Número de pasaporte",
+		de: "Reisepassnummer",
+		fr: "Numéro de passeport",
+		pt: "Número do passaporte",
+		vi: "Số hộ chiếu",
+	},
+} satisfies Record<TextIdentifier, ByLang<string>>;
+
+export const healthLabels = {
+	code: {
+		en: "Diagnosis code",
+		es: "Código de diagnóstico",
+		de: "Diagnoseschlüssel",
+		fr: "Code diagnostic",
+		pt: "Código do diagnóstico",
+		vi: "Mã chẩn đoán",
+	},
+	diagnosis: {
+		en: "Diagnosis",
+		es: "Diagnóstico",
+		de: "Diagnose",
+		fr: "Diagnostic",
+		pt: "Diagnóstico",
+		vi: "Chẩn đoán",
+	},
+	medication: {
+		en: "Medication",
+		es: "Medicamento",
+		de: "Medikation",
+		fr: "Traitement",
+		pt: "Medicamento",
+		vi: "Thuốc",
+	},
+} satisfies Record<string, ByLang<string>>;
+
+export const phrases = {
+	rejected: {
+		en: "record rejected",
+		es: "registro rechazado",
+		de: "Datensatz abgelehnt",
+		fr: "enregistrement rejeté",
+		pt: "registro rejeitado",
+		vi: "bản ghi bị từ chối",
+	},
+	ticketSubject: {
+		en: "Claim denied, patient asking why",
+		es: "Reclamo denegado, el paciente pregunta por qué",
+		de: "Abrechnung abgelehnt, Patient fragt nach",
+		fr: "Demande de remboursement refusée, le patient demande pourquoi",
+		pt: "Guia negada, paciente quer saber o motivo",
+		vi: "Yêu cầu bồi hoàn bị từ chối, bệnh nhân hỏi lý do",
+	},
+	ticketBody: {
+		en: "Hi team, the claim for this patient came back denied and they called twice. Can someone check the export?",
+		es: "Hola equipo, el reclamo de este paciente volvió denegado y ya llamó dos veces. ¿Pueden revisar la exportación?",
+		de: "Hallo zusammen, die Abrechnung für diesen Patienten kam abgelehnt zurück, er hat zweimal angerufen. Kann jemand den Export prüfen?",
+		fr: "Bonjour, la demande pour ce patient est revenue refusée et il a appelé deux fois. Quelqu'un peut vérifier l'export ?",
+		pt: "Oi pessoal, a guia deste paciente voltou negada e ele já ligou duas vezes. Alguém pode verificar a exportação?",
+		vi: "Chào cả nhóm, yêu cầu của bệnh nhân này bị từ chối và họ đã gọi hai lần. Ai kiểm tra giúp bản xuất dữ liệu được không?",
+	},
+} satisfies Record<string, ByLang<string>>;

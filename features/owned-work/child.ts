@@ -105,6 +105,7 @@ export const childExtensions: ReadonlyArray<string> = [
 	`${extensionsFolder}/prompt/index.ts`,
 	`${extensionsFolder}/web/index.ts`,
 	`${extensionsFolder}/claude-accounts/index.ts`,
+	`${extensionsFolder}/phi-router/index.ts`,
 	`${extensionsFolder}/compaction/index.ts`,
 	`${extensionsFolder}/cache/index.ts`,
 	`${extensionsFolder}/loaded/index.ts`,

@@ -129,6 +129,8 @@ export type StartRequest = Data.TaggedEnum<{
 
 export const StartRequest = Data.taggedEnum<StartRequest>();
 
+export type DelegateStart = Data.TaggedEnum.Value<StartRequest, "Delegate">;
+
 export interface ContinueRequest {
 	readonly ref: WorkRef;
 	readonly message: Option.Option<string>;
