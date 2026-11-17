@@ -2,12 +2,14 @@
 
 ## Layout
 
-See `docs/adr/0001-harness-layout.md`.
+See `docs/adr/0014-src-layout-held-by-dependency-cruiser-bans-and-a-comment-check.md`.
 
 - **Host.** The program that loads an entrypoint: pi.
-- **Entrypoint.** The file pi loads for one extension, `agent/extensions/<name>/index.ts`. It only wires a feature into pi.
+- **Entrypoint.** The file pi loads for one extension, `agent/extensions/<name>/index.ts`, or a command in `agent/bin/<name>.ts`. It only wires a feature into pi or argv.
 - **Feature.** One piece of harness behavior, in `src/features/<name>/`, used only through its `index.ts`.
-- **Client.** A typed adapter to one outside system, such as hc, systemd or pi's session store, in `src/client/<system>/index.ts`.
+- **Client.** The one writer of a durable value, or a typed adapter to one outside system such as hc, systemd or pi's session store, in `src/client/<system>/index.ts`. Only a client touches disk, HTTP or a child process.
+- **Pi host.** `piHost(layer)` in `src/client/pi-host/`, the one place that runs an Effect for a pi callback.
+- **Primitive.** A building block in `src/primitives/` that knows no feature and owns no state.
 
 ## Prompt
 

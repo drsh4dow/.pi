@@ -1,0 +1,117 @@
+{
+	"forbidden": [
+		{
+			"name": "entry-imports",
+			"severity": "error",
+			"comment": "An entry file imports only a feature's or a client's index.ts. Put the logic in src/features/<name>/.",
+			"from": {
+				"path": "^agent/(extensions/[^/]+/index|bin/[^/]+)\\.ts$"
+			},
+			"to": {
+				"path": "^(src|tools|agent)/",
+				"pathNot": ["^src/(features|client)/[^/]+/index\\.ts$"]
+			}
+		},
+		{
+			"name": "feature-imports",
+			"severity": "error",
+			"comment": "A feature imports its own files, another feature's or a client's index.ts, and src/primitives/. Move shared code to src/primitives/ or behind an index.ts.",
+			"from": {
+				"path": "^src/features/([^/]+)/",
+				"pathNot": ["\\.(test|fixture|scenario)\\.ts$", "^src/features/phi-router/corpus/"]
+			},
+			"to": {
+				"path": "^(src|tools|agent)/",
+				"pathNot": ["^src/features/$1/", "^src/(features|client)/[^/]+/index\\.ts$", "^src/primitives/"]
+			}
+		},
+		{
+			"name": "client-imports",
+			"severity": "error",
+			"comment": "A client imports its own files, another client's index.ts, and src/primitives/. Call a client from a feature, never a feature from a client.",
+			"from": {
+				"path": "^src/client/([^/]+)/",
+				"pathNot": ["\\.(test|fixture|scenario)\\.ts$"]
+			},
+			"to": {
+				"path": "^(src|tools|agent)/",
+				"pathNot": ["^src/client/$1/", "^src/client/[^/]+/index\\.ts$", "^src/primitives/"]
+			}
+		},
+		{
+			"name": "primitives-imports",
+			"severity": "error",
+			"comment": "src/primitives/ knows no feature and no client. Move code that needs one into that feature or client.",
+			"from": {
+				"path": "^src/primitives/"
+			},
+			"to": {
+				"path": "^(src|tools|agent)/",
+				"pathNot": ["^src/primitives/"]
+			}
+		},
+		{
+			"name": "test-code-imports",
+			"severity": "error",
+			"comment": "Test code imports its own folder, index.ts files, src/primitives/ and tools/driver/index.ts.",
+			"from": {
+				"path": "^(src/(?:features|client)/[^/]+)/(.+\\.(?:test|fixture|scenario)\\.ts$|corpus/)"
+			},
+			"to": {
+				"path": "^(src|tools|agent)/",
+				"pathNot": [
+					"^$1/",
+					"^src/(features|client)/[^/]+/index\\.ts$",
+					"^src/primitives/",
+					"^tools/driver/index\\.ts$"
+				]
+			}
+		},
+		{
+			"name": "production-imports-test-code",
+			"severity": "error",
+			"comment": "Production code never imports a test, a fixture, a scenario or the PHI eval corpus.",
+			"from": {
+				"path": "^(src|agent)/",
+				"pathNot": ["\\.(test|fixture|scenario)\\.ts$", "^src/features/phi-router/corpus/"]
+			},
+			"to": {
+				"path": ["\\.(test|fixture|scenario)\\.ts$", "^src/features/phi-router/corpus/"]
+			}
+		},
+		{
+			"name": "tools-imports",
+			"severity": "error",
+			"comment": "Dev tooling imports the harness only through a feature's or a client's index.ts or src/primitives/.",
+			"from": {
+				"path": "^tools/"
+			},
+			"to": {
+				"path": "^(src|agent)/",
+				"pathNot": ["^src/(features|client)/[^/]+/index\\.ts$", "^src/primitives/"]
+			}
+		},
+		{
+			"name": "no-scenario-imports",
+			"severity": "error",
+			"comment": "Nothing imports a scenario. Run it with bun <file>.",
+			"from": {},
+			"to": {
+				"path": "\\.scenario\\.ts$"
+			}
+		}
+	],
+	"options": {
+		"parser": "swc",
+		"tsPreCompilationDeps": true,
+		"tsConfig": {
+			"fileName": "tsconfig.json"
+		},
+		"doNotFollow": {
+			"path": "node_modules"
+		},
+		"exclude": {
+			"path": "^tools/(oxlint/anti-slop|oxlint/fixtures|gates/fixtures)/"
+		}
+	}
+}

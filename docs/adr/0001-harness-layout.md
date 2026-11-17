@@ -1,3 +1,8 @@
+---
+status: superseded
+superseded-by: 0014
+---
+
 # Harness code is split into entrypoints, features and clients, and a lint rule holds the import graph
 
 The harness follows the principles of Lauren Tan's Dune framework. Those are features, entrypoints, clients and hosts, typed interfaces between them, boundaries held by the import graph in CI, and lint rules over prose rules. Dune's own folder names are not public, so these names are ours. Every harness extension uses this layout:

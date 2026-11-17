@@ -29,7 +29,7 @@
 		".roo/**",
 		".windsurf/**",
 		"tools/oxlint/anti-slop/**",
-		"tools/oxlint/fixtures/harness-layout/**",
+		"tools/gates/fixtures/**",
 	],
 	"jsPlugins": [
 		{
@@ -39,10 +39,6 @@
 		{
 			"name": "anti-slop-effect",
 			"specifier": "./tools/oxlint/anti-slop/effect/index.ts",
-		},
-		{
-			"name": "harness",
-			"specifier": "./tools/oxlint/harness/index.ts",
 		},
 	],
 	"rules": {
@@ -70,7 +66,6 @@
 		"anti-slop-effect/no-manual-tagged-construction": "error",
 		"anti-slop-effect/no-service-constructor-imports": "error",
 		"anti-slop-effect/prefer-effect-match": "error",
-		"harness/import-boundaries": "error",
 		// Effect's own setting; pi writes `string[]`, Effect wins
 		"typescript/array-type": ["error", { "default": "generic", "readonly": "generic" }],
 		// pi tool handlers take (toolCallId, params, signal, onUpdate, ctx)

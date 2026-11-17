@@ -13,7 +13,8 @@
 		"typecheck": "tsc -p .",
 		"test": "bun test --parallel",
 		"prompts": "bun tools/prompts/index.ts",
-		"check": "oxfmt --check && bun run --parallel lint typecheck test"
+		"check": "oxfmt --check && bun run --parallel lint typecheck boundaries test",
+		"boundaries": "depcruise src tools agent/extensions agent/bin --output-type err"
 	},
 	"dependencies": {
 		"@effect/platform-node": "4.1.2",
@@ -24,15 +25,26 @@
 		"unpdf": "2.1.0"
 	},
 	"devDependencies": {
+		"@ast-grep/cli": "0.51.3",
+		"@earendil-works/pi-agent-core": "1.5.0",
+		"@earendil-works/pi-ai": "1.5.0",
 		"@earendil-works/pi-coding-agent": "1.5.0",
+		"@earendil-works/pi-tui": "1.5.0",
 		"@effect/tsgo": "0.67.5",
 		"@oxlint/plugins": "1.92.0",
+		"@swc/core": "1.16.22",
 		"@types/bun": "1.4.4",
 		"@types/node": "26.6.6",
+		"dependency-cruiser": "18.8.0",
+		"knip": "6.45.1",
 		"oxfmt": "0.77.0",
 		"oxlint": "1.92.0",
 		"oxlint-tsgolint": "7.0.2006",
 		"typebox": "1.3.27",
 		"typescript": "7.0.2"
-	}
+	},
+	"trustedDependencies": [
+		"@ast-grep/cli",
+		"@swc/core"
+	]
 }
