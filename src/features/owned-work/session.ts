@@ -251,43 +251,46 @@ const end = (current: Current) => (event: SessionShutdownEvent) => {
 };
 
 /** `childExtensions` are the entrypoints each delegate loads: this feature's own, plus any the harness wants in every child. */
-export const ownedWork = (childExtensions: ReadonlyArray<string>) => (agentDir: string) => (pi: ExtensionAPI) => {
-	const env = withAgentBin(agentDir)({ ...process.env });
-	const host = piHost(Layer.provideMerge(sourceStampLayer, NodeServices.layer));
-	const current: Current = { session: Option.none() };
+export const ownedWork =
+	(childExtensions: ReadonlyArray<string>) => (agentDir: string, processEnv: Env) => (pi: ExtensionAPI) => {
+		const env = withAgentBin(agentDir)(processEnv);
+		const host = piHost(Layer.provideMerge(sourceStampLayer, NodeServices.layer));
+		const current: Current = { session: Option.none() };
 
-	const withLedger = <Reply>(
-		use: (session: Session) => (ledger: (typeof Ledger)["Service"]) => Effect.Effect<Reply, never, RuntimeServices>,
-	) =>
-		Option.match(current.session, {
-			onNone: () => Promise.resolve(),
-			onSome: (session) => {
-				const hook = Effect.flatMap(Ledger, use(session));
+		const withLedger = <Reply>(
+			use: (
+				session: Session,
+			) => (ledger: (typeof Ledger)["Service"]) => Effect.Effect<Reply, never, RuntimeServices>,
+		) =>
+			Option.match(current.session, {
+				onNone: () => Promise.resolve(),
+				onSome: (session) => {
+					const hook = Effect.flatMap(Ledger, use(session));
 
-				return host.run(awaitOn(session.host)(hook));
-			},
-		});
-
-	return {
-		sessionStart: (event: SessionStartEvent, ctx: ExtensionContext): Promise<void> =>
-			host.run(begin(pi, env, childExtensions, current)(event, ctx)),
-		input: ({ text }: InputEvent, ctx: ExtensionContext) => {
-			const session = { dir: ctx.sessionManager.getSessionDir(), id: ctx.sessionManager.getSessionId() };
-
-			return Option.match(unwrapMessage(session)(text), {
-				onNone: () => ({ action: "continue" as const }),
-				onSome: (message) => ({ action: "transform" as const, text: message }),
+					return host.run(awaitOn(session.host)(hook));
+				},
 			});
-		},
-		agentStart: () => withLedger(() => (ledger) => ledger.runStarted),
-		beforeSettle: (event: AgentBeforeSettleEvent, ctx: ExtensionContext) =>
-			withLedger((session) => settle(session, event, ctx)),
-		settled: () => withLedger(() => (ledger) => ledger.wentIdle),
-		toolResult: (event: ToolResultEvent) => withLedger(() => warnPolling(event)),
-		beforeSwitch: (_event: SessionBeforeSwitchEvent, ctx: ExtensionContext) =>
-			withLedger(() => (ledger) => cancelUnless(ledger, ctx)),
-		beforeFork: (event: SessionBeforeForkEvent, ctx: ExtensionContext) =>
-			withLedger((session) => forkOrAsk(session, event, ctx)),
-		shutdown: (event: SessionShutdownEvent): Promise<void> => host.run(end(current)(event)),
+
+		return {
+			sessionStart: (event: SessionStartEvent, ctx: ExtensionContext): Promise<void> =>
+				host.run(begin(pi, env, childExtensions, current)(event, ctx)),
+			input: ({ text }: InputEvent, ctx: ExtensionContext) => {
+				const session = { dir: ctx.sessionManager.getSessionDir(), id: ctx.sessionManager.getSessionId() };
+
+				return Option.match(unwrapMessage(session)(text), {
+					onNone: () => ({ action: "continue" as const }),
+					onSome: (message) => ({ action: "transform" as const, text: message }),
+				});
+			},
+			agentStart: () => withLedger(() => (ledger) => ledger.runStarted),
+			beforeSettle: (event: AgentBeforeSettleEvent, ctx: ExtensionContext) =>
+				withLedger((session) => settle(session, event, ctx)),
+			settled: () => withLedger(() => (ledger) => ledger.wentIdle),
+			toolResult: (event: ToolResultEvent) => withLedger(() => warnPolling(event)),
+			beforeSwitch: (_event: SessionBeforeSwitchEvent, ctx: ExtensionContext) =>
+				withLedger(() => (ledger) => cancelUnless(ledger, ctx)),
+			beforeFork: (event: SessionBeforeForkEvent, ctx: ExtensionContext) =>
+				withLedger((session) => forkOrAsk(session, event, ctx)),
+			shutdown: (event: SessionShutdownEvent): Promise<void> => host.run(end(current)(event)),
+		};
 	};
-};
