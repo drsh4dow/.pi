@@ -1,4 +1,4 @@
-import { expect } from "bun:test";
+import { beforeAll, expect } from "bun:test";
 
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -45,10 +45,19 @@ const instructionFiles = {
 	late: `\n---\nreadonly: true\n---\n${body}`,
 };
 
-await Bun.$`mkdir -p ${fixtures}/work && ln -sfn work ${fixtures}/link`.quiet();
-
-await Promise.all(
-	Arr.map(Struct.keys(instructionFiles), (name) => Bun.write(`${fixtures}/${name}.md`, instructionFiles[name])),
+beforeAll(() =>
+	Effect.runPromise(
+		Effect.andThen(
+			Effect.promise(() => Bun.$`mkdir -p ${fixtures}/work && ln -sfn work ${fixtures}/link`.quiet()),
+			Effect.promise(() =>
+				Promise.all(
+					Arr.map(Struct.keys(instructionFiles), (name) =>
+						Bun.write(`${fixtures}/${name}.md`, instructionFiles[name]),
+					),
+				),
+			),
+		),
+	),
 );
 
 export const table = {

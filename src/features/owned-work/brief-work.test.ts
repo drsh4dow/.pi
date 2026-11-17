@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -24,15 +24,6 @@ const root = `${Bun.env["TMPDIR"] ?? "/tmp"}/owned-work-brief-work-test-${String
 
 const staging = ManagedRuntime.make(Layer.provideMerge(piCliLayer([]), NodeServices.layer));
 
-afterAll(() =>
-	Effect.runPromise(
-		Effect.andThen(
-			Effect.promise(() => staging.dispose()),
-			Effect.promise(() => Bun.$`rm -rf ${root}`.quiet()),
-		),
-	),
-);
-
 const goal = "Cap the retries.";
 
 const facts = "Build with make.";
@@ -43,12 +34,23 @@ const stateFolder = `${root}/state`;
 
 const otherFolder = `${root}/other`;
 
-await Promise.all([
-	Bun.write(`${stateFolder}/facts.md`, `${facts}\n`),
-	Bun.write(`${otherFolder}/facts.md`, "Other facts.\n"),
-	Bun.write(`${stateFolder}/owner.md`, `${ownerRules}\n`),
-	Bun.write(`${root}/sketch.md`, "## Synthesis decision\n"),
-]);
+beforeAll(() =>
+	Promise.all([
+		Bun.write(`${stateFolder}/facts.md`, `${facts}\n`),
+		Bun.write(`${otherFolder}/facts.md`, "Other facts.\n"),
+		Bun.write(`${stateFolder}/owner.md`, `${ownerRules}\n`),
+		Bun.write(`${root}/sketch.md`, "## Synthesis decision\n"),
+	]),
+);
+
+afterAll(() =>
+	Effect.runPromise(
+		Effect.andThen(
+			Effect.promise(() => staging.dispose()),
+			Effect.promise(() => Bun.$`rm -rf ${root}`.quiet()),
+		),
+	),
+);
 
 const Refusal = Schema.Struct({ message: Schema.String });
 
