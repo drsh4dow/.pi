@@ -892,9 +892,6 @@
     "jsdoc/require-returns": {
       "count": 5
     },
-    "no-restricted-properties": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 8
     },
@@ -2753,9 +2750,6 @@
     },
     "no-restricted-imports": {
       "count": 2
-    },
-    "no-restricted-properties": {
-      "count": 1
     },
     "no-undefined": {
       "count": 2

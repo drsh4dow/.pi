@@ -14,10 +14,12 @@ import * as Arr from "effect/Array";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Function from "effect/Function";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Str from "effect/String";
 
+import { piHost } from "#src/client/pi-host/index.ts";
 import { formatDuration, sessionDuration } from "./duration.ts";
 
 export interface FooterContext {
@@ -260,8 +262,10 @@ export const footerView = (inputs: FooterInputs) => {
  * model apart.
  */
 export const footer = (pi: Pick<ExtensionAPI, "on" | "getThinkingLevel">) => {
+	const host = piHost(Layer.empty);
+
 	pi.on("session_start", (_event, ctx) =>
-		Effect.runPromise(
+		host.run(
 			Effect.gen(function* () {
 				if (ctx.mode !== "tui") {
 					return;
