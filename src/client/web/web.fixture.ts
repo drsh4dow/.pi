@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect } from "bun:test";
 
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -35,18 +35,14 @@ const missingParts = (got: string, row: Row) => ({
 export const webFor = ({ routes, withExaKey }: Pick<Row, "routes" | "withExaKey">) =>
 	webLayerWith({ transport: fakeTransport(routes), exa: exaKey(withExaKey ?? false) });
 
-export const checkEach =
+export const checkRow =
 	<Case extends Row>(outcome: (row: Case) => Effect.Effect<string, never, Web>) =>
-	(rows: ReadonlyArray<Case>) => {
-		for (const row of rows) {
-			const layer = webFor(row);
+	(row: Case) => {
+		const check = Effect.map(outcome(row), (got) => {
+			expect(missingParts(got, row)).toEqual({ lacking: [], unwanted: [] });
+		});
 
-			const check = Effect.map(outcome(row), (got) => {
-				expect(missingParts(got, row)).toEqual({ lacking: [], unwanted: [] });
-			});
-
-			test(row.name, () => Effect.runPromise(Effect.provide(check, layer)));
-		}
+		return Effect.runPromise(Effect.provide(check, webFor(row)));
 	};
 
 const bodyView = (page: Page) =>
@@ -75,4 +71,4 @@ export const readOutcome = (url: string) =>
 		Effect.match({ onFailure: ({ kind, message }) => `${kind}: ${message}`, onSuccess: view }),
 	);
 
-export const readRows = checkEach((row: ReadRow) => readOutcome(row.url));
+export const readRow = checkRow((row: ReadRow) => readOutcome(row.url));

@@ -1,7 +1,9 @@
+import { test } from "bun:test";
+
 import * as Str from "effect/String";
 
 import { docsPage, dropsMidBody, html, markdown, missing, plain, prose, redirect } from "./transport.fixture.ts";
-import { type ReadRow, readRows } from "./web.fixture.ts";
+import { type ReadRow, readRow } from "./web.fixture.ts";
 
 const redditEntry = (author: string, date: string, title: string, content: string) =>
 	`<entry><author><name>/u/${author}</name></author><content type="html">${Str.replaceAll("<", "&lt;")(content)}</content><updated>${date}T00:00:00+00:00</updated><title>${title}</title></entry>`;
@@ -281,4 +283,4 @@ const rows: ReadonlyArray<ReadRow> = [
 	},
 ];
 
-readRows(rows);
+test.each(rows)("$name", readRow);

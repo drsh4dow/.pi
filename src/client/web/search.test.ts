@@ -11,7 +11,7 @@ import * as TestClock from "effect/testing/TestClock";
 
 import { type Hits, Limit, type SearchRequest, Web } from "./index.ts";
 import { inTurn } from "./transport.fixture.ts";
-import { checkEach, type Row, webFor } from "./web.fixture.ts";
+import { checkRow, type Row, webFor } from "./web.fixture.ts";
 
 const hitsView = ({ provider, costUsd, hits }: Hits) =>
 	Arr.join(
@@ -132,7 +132,10 @@ const rows: ReadonlyArray<Row> = [
 	},
 ];
 
-checkEach(() => search)(rows);
+test.each(rows)(
+	"$name",
+	checkRow(() => search),
+);
 
 const never = () => new Response(new ReadableStream());
 

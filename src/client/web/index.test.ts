@@ -1,3 +1,5 @@
+import { test } from "bun:test";
+
 import * as Arr from "effect/Array";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
@@ -14,7 +16,7 @@ import {
 	prose,
 	redirect,
 } from "./transport.fixture.ts";
-import { type ReadRow, readRows } from "./web.fixture.ts";
+import { type ReadRow, readRow } from "./web.fixture.ts";
 
 const latin1 = (text: string) => Buffer.from(text, "latin1");
 
@@ -230,4 +232,4 @@ const rows: ReadonlyArray<ReadRow> = [
 	},
 ];
 
-readRows(rows);
+test.each(rows)("$name", readRow);
