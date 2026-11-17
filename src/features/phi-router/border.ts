@@ -15,7 +15,7 @@ import {
 	type SystemMessage,
 	type TranscriptContext,
 } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as DateTime from "effect/DateTime";
 import * as Function from "effect/Function";
@@ -253,27 +253,22 @@ const isBorderLink = (data: unknown): data is BorderLink =>
 	Predicate.hasProperty(data, "report") &&
 	Predicate.isFunction(data.report);
 
-const selectsPhi = (model: Model<Api> | undefined, ctx: ExtensionContext) =>
-	(model?.provider === phiProvider && model.id === phiId) ||
-	Arr.some(
-		ctx.sessionManager.getBranch(),
-		(entry) => entry.type === "model_change" && entry.provider === phiProvider && entry.modelId === phiId,
-	);
+const selectsPhi = (model: Model<Api> | undefined) => model?.provider === phiProvider && model.id === phiId;
 
 /**
- * The process's scope and link. A session that selects `phi/auto`, or whose branch ever did, stays protected until the
- * next session starts, so a later switch to a raw personal model is still guarded.
+ * The process's scope and link. The process is protected while its selection is `phi/auto`. A switch to any other
+ * model is the human's choice to break the seal, so it ends the protection (ADR 0017).
  */
 export const phiBorder = (pi: Pick<ExtensionAPI, "on" | "events">) => {
 	let protectedSession = false;
 	let link = Option.none<BorderLink>();
 
 	pi.on("session_start", (_event, ctx) => {
-		protectedSession = selectsPhi(ctx.model, ctx);
+		protectedSession = selectsPhi(ctx.model);
 	});
 
-	pi.on("model_select", (event, ctx) => {
-		protectedSession ||= selectsPhi(event.model, ctx);
+	pi.on("model_select", (event) => {
+		protectedSession = selectsPhi(event.model);
 	});
 
 	pi.events.on(borderEvents.link, (data) => {

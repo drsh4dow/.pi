@@ -121,10 +121,10 @@ Terms for sending each request to a personal account or the BAA account by what 
 - **BAA account.** A Claude account covered by the Anthropic business associate agreement, today `ent`.
 - **`phi/auto`.** The model a session selects to be routed by content. A request goes to the BAA account when its own new content holds a **sealed** message, and to the session's **home account** otherwise. One sealed message does not keep the session on the BAA account.
 - **Home account.** The personal account a `phi/auto` session uses for clean requests, picked from its session id. A 429 there moves the retry to the other personal account, then to the BAA account.
-- **Protected session.** A session whose selected model is `phi/auto` or one on a BAA account. Its delegates and scripts stay inside the BAA boundary. The human may still switch it to any model.
+- **Protected session.** A session whose selected model is `phi/auto` or one on a BAA account. Its delegates and scripts stay inside the BAA boundary. The human may still switch it to any model, which ends the protection.
 - **Verdict.** What the router concluded about one message part, kept by its content hash in the session: **sealed**, it holds a complete direct identifier of a real patient or member, or cleared, it does not. A part is judged once.
 - **Stub.** The constant text a personal account sees in place of a part that is sealed or not yet judged.
-- **Border.** The check on every request bound for a personal account in a `phi/auto` process. It passes cleared parts, stubs the rest, and refuses a request whose tool list never cleared.
+- **Border.** The check on every request bound for a personal account in a process while its selected model is `phi/auto`. It passes cleared parts, stubs the rest, and refuses a request whose tool list never cleared.
 - **Pin.** `/phi pin`: the session runs wholly on the BAA account, with nothing judged, until `/phi unpin`.
 - **Fixture.** A turn part whose exact text has a SHA-256 listed under `fixtures` in `~/.pi/agent/phi-router.json`. The policy engine skips it, rules and judge alike. It is the only exemption the engine applies: no rule excuses an identifier for looking like a placeholder or for sitting near one.
 - **Lane log.** One line per routed request, with its lane, accounts, counts of verdicts by source and the rules or kinds that sealed, and one line per border report. It never holds content.
