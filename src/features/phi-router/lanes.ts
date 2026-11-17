@@ -15,8 +15,6 @@ import { Why } from "./store.ts";
 
 const Id = Schema.String.check(Schema.isPattern(/^[\w-]{1,64}$/u));
 
-const AccountId = Schema.Literals(["ultra-a", "ultra-b", "ent"]);
-
 const Carrier = Schema.Literals([...personalProviders, "ent"]);
 
 /** A model id. Ids contain dots, such as `gpt-6.1-sol`. */
@@ -65,7 +63,7 @@ const BorderLine = Schema.Struct({
 	type: Schema.Literal("border"),
 	time: Schema.Finite,
 	session: Id,
-	account: AccountId,
+	account: Schema.Literals(personalProviders),
 	stubbedSealed: Count,
 	stubbedUnknown: Count,
 	refused: Schema.Boolean,

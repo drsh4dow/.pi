@@ -37,6 +37,9 @@ export type Personal = PersonalAccount | (typeof borderedBuiltins)[number];
 /** The clean lane walks this order after home. */
 export const personalProviders: ReadonlyArray<Personal> = [...personalAccounts, ...borderedBuiltins];
 
+export const isPersonal = (provider: string): provider is Personal =>
+	Arr.some(personalProviders, (personal) => personal === provider);
+
 /** Where a request can land. */
 export type Carrier = Personal | "ent";
 

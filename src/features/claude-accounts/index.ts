@@ -6,7 +6,7 @@ import * as Function from "effect/Function";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import { type AccountId, accountOf, accountProvider, accounts, accountsHost, anthropicOf } from "./accounts.ts";
+import { type Account, accountOf, accountProvider, accounts, accountsHost, anthropicOf } from "./accounts.ts";
 import { endedOnRateLimit, failOver } from "./failover.ts";
 
 export { type AccountId, accountOf, accounts, isBaaAccount, type Login } from "./accounts.ts";
@@ -95,7 +95,9 @@ const switchAccount = (pi: ExtensionAPI) => (args: string, ctx: ExtensionCommand
 		yield* moveTo(pi, ctx, target.model);
 	});
 
-type GuardPersonal = (account: AccountId) => (api: ProviderStreams) => ProviderStreams;
+type GuardPersonal = (
+	account: Extract<Account, { readonly baa: false }>["id"],
+) => (api: ProviderStreams) => ProviderStreams;
 
 export const claudeAccounts = (guardPersonal: GuardPersonal) => (pi: ExtensionAPI) => {
 	const anthropic = anthropicOf();

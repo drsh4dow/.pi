@@ -1,8 +1,8 @@
 /**
- * The border: what a personal Claude account may receive in a protected process. An allow-list over the verdicts the
- * router wrote, which never judges. In a protected process, every part a personal account receives has a cleared
- * verdict for its key or is a constant stub, even when `route()` dispatches wrongly or never ran. `border-scope.ts`
- * decides which processes are protected.
+ * The border: what a personal provider may receive in a protected process. An allow-list over the verdicts the router
+ * wrote, which never judges. In a protected process, every part a personal provider receives has a cleared verdict for
+ * its key or is a constant stub, even when `route()` dispatches wrongly or never ran. `border-scope.ts` decides which
+ * processes are protected and puts the guard in front of each personal provider.
  */
 import {
 	type Api,
@@ -23,7 +23,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Result from "effect/Result";
 
-import type { AccountId } from "#src/features/claude-accounts/index.ts";
+import type { Personal } from "./gate.ts";
 import { partsOf, type Slot, writtenOnPersonal } from "./parts.ts";
 import type { ContentKey } from "./policy/engine.ts";
 import { stubs } from "./policy/policy.ts";
@@ -166,7 +166,7 @@ export const guard = ({
 /** Handed from the router to claude-accounts over `pi.events`. Function values survive the bus. */
 export interface BorderLink {
 	readonly lookup: Lookup;
-	readonly report: (report: BorderReport & { readonly account: AccountId }) => void;
+	readonly report: (report: BorderReport & { readonly account: Personal }) => void;
 }
 
 /** How the border treats requests in this process. Protected with no link yet, every part is unknown. */
@@ -206,7 +206,7 @@ const reportOf = Result.match({
 type Send<Options> = (model: Model<Api>, context: TranscriptContext, options?: Options) => AssistantMessageEventStream;
 
 const guardedSend =
-	<Options>(send: Send<Options>, account: AccountId, scope: () => Scope): Send<Options> =>
+	<Options>(send: Send<Options>, account: Personal, scope: () => Scope): Send<Options> =>
 	(model, context, options) => {
 		const now = scope();
 
@@ -234,7 +234,7 @@ export const guardedApi = ({
 	scope,
 }: {
 	readonly api: ProviderStreams;
-	readonly account: AccountId;
+	readonly account: Personal;
 	readonly scope: () => Scope;
 }): ProviderStreams => ({
 	...api,
