@@ -1,8 +1,9 @@
 /**
  * The delegate-wire fact on real providers and the real judge. The root runs on phi/auto in enforce mode and starts a
  * fable and an investigator leaf on a synthetic chart that holds a name, an MRN and a DOB. Each child runs the model
- * its alias names, every turn lands on an account that serves that model, and the identifiers send a turn to ent. It
- * costs real model calls, and prints each child's physical models and lane log.
+ * its alias names and every turn lands on an account that serves that model. The fable child is routed, so the
+ * identifiers send a turn to ent. The investigator child runs wholly on openai, a BAA provider, with nothing judged. It
+ * costs real model calls, and prints each child's physical models and the routed child's lane log.
  */
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -28,8 +29,11 @@ const children: ReadonlyArray<Child> = [
 		key: "phi/claude-fable-5-2",
 		servedBy: ["ultra-a/claude-fable-5-2", "ultra-b/claude-fable-5-2", "ent/claude-fable-5-2"],
 	},
-	{ alias: "investigator", key: "phi/gpt-6.1-sol", servedBy: ["openai/gpt-6.1-sol", "ent/claude-opus-5-5"] },
+	{ alias: "investigator", key: "openai/gpt-6.1-sol", servedBy: ["openai/gpt-6.1-sol"] },
 ];
+
+/** The PHI router routes only a child on a `phi` model, so only such a child has a lane log and a turn on ent. */
+const isRouted = (child: Child) => Str.startsWith("phi/")(child.key);
 
 /** Invented, but plausible: the judge clears identifiers that look fake, such as `MRN 000-SYNTH-0001`, so they never reach ent. */
 const brief =
@@ -115,7 +119,7 @@ const observed = (run: Run, child: Child) =>
 		const { wake, session } = yield* settled(run, `${child.alias} child`);
 		const modelChanges = modelChangesOf(session);
 		const served = servedOf(session);
-		const lanes = yield* lanesOf(run, session);
+		const lanes = isRouted(child) ? yield* lanesOf(run, session) : [];
 
 		yield* run.say({ child: child.alias, outcome: wake.details.outcome.status, modelChanges, served, lanes });
 
@@ -132,10 +136,13 @@ const checked = (run: Run, { child, modelChanges, served }: Effect.Success<Retur
 			Arr.isReadonlyArrayNonEmpty(served) && Arr.every(served, (pair) => Arr.contains(child.servedBy, pair)),
 			`every turn of the ${child.alias} child ran on ${Arr.join(child.servedBy, " or ")} (they ran on ${Arr.join(served, ", ")})`,
 		);
-		yield* run.check(
-			Arr.some(served, Str.startsWith("ent/")),
-			`a turn of the ${child.alias} child went to ent (none did: the router cleared a brief holding a name, an MRN and a DOB, a finding)`,
-		);
+
+		if (isRouted(child)) {
+			yield* run.check(
+				Arr.some(served, Str.startsWith("ent/")),
+				`a turn of the ${child.alias} child went to ent (none did: the router cleared a brief holding a name, an MRN and a DOB, a finding)`,
+			);
+		}
 	});
 
 scenario({
