@@ -25,7 +25,7 @@ import * as Str from "effect/String";
 const marker = "PI_DRIVER_SERVICE";
 
 /** Whether this process is the driver inside the run's service. */
-export const inService = (): boolean => Bun.env[marker] === "1";
+export const inService = (env: Readonly<Record<string, string | undefined>>): boolean => env[marker] === "1";
 
 /**
  * Interrupts once stdin ends: the process the human started closed it, or died. It closes stdin when it ends or is
@@ -86,8 +86,16 @@ const exitCode: Runtime.Teardown = (exit, onExit) => {
  * Ctrl-C reaches only this process, and nothing here signals it: Effect's spawner would signal its group after it
  * exited.
  */
-export const runAsService = ({ name, argv }: { readonly name: string; readonly argv: ReadonlyArray<string> }) => {
-	const command = serviceArgv({ env: Bun.env, argv });
+export const runAsService = ({
+	name,
+	argv,
+	env,
+}: {
+	readonly name: string;
+	readonly argv: ReadonlyArray<string>;
+	readonly env: Readonly<Record<string, string | undefined>>;
+}) => {
+	const command = serviceArgv({ env, argv });
 
 	const service = Effect.acquireRelease(
 		Effect.sync(() => Bun.spawn(command, { stdin: "pipe", stdout: "inherit", stderr: "inherit", detached: true })),

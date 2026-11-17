@@ -1,21 +1,6 @@
 {
-  "src/features/owned-work/preview.ts": {
-    "node/no-process-env": {
-      "count": 1
-    }
-  },
   "src/features/pr/review-wakes.scenario.ts": {
     "no-restricted-properties": {
-      "count": 1
-    }
-  },
-  "tools/driver/service.ts": {
-    "no-restricted-properties": {
-      "count": 2
-    }
-  },
-  "tools/driver/world.ts": {
-    "node/no-process-env": {
       "count": 1
     }
   }

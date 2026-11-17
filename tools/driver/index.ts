@@ -50,6 +50,8 @@ export type { Exited } from "./core.ts";
  * Every pi in the run, delegates included, sees the setup.
  */
 export interface Scenario<Failure> extends Setup {
+	/** The environment of the process that runs the scenario, `process.env`. The run copies it, as `runEnv` describes. */
+	readonly env: Readonly<Record<string, string | undefined>>;
 	/** The root's `provider/id`. Required, so every scenario states what it spends. */
 	readonly model: string;
 	/**
@@ -175,7 +177,7 @@ const playIn = <Failure>({
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 		const setup = setupOf(spec);
-		const world = yield* openWorld({ layout, setup });
+		const world = yield* openWorld({ layout, setup, own: spec.env });
 
 		yield* report.say(`pi ${world.pi.version} ${world.pi.path}`);
 		yield* report.say(`agent ${world.agentDir}`);
@@ -276,7 +278,7 @@ export const scenario = <Failure>(spec: Scenario<Failure>): void => {
 	const name = nameOf(process.argv[1] ?? "scenario");
 	const program = Effect.raceFirst(played({ name, spec }), stdinEnded);
 
-	if (inService()) {
+	if (inService(spec.env)) {
 		NodeRuntime.runMain(Effect.provide(program, NodeServices.layer), {
 			disableErrorReporting: true,
 			teardown: (exit, onExit) => {
@@ -284,6 +286,6 @@ export const scenario = <Failure>(spec: Scenario<Failure>): void => {
 			},
 		});
 	} else {
-		runAsService({ name, argv: process.argv });
+		runAsService({ name, argv: process.argv, env: spec.env });
 	}
 };

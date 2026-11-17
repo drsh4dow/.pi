@@ -32,7 +32,7 @@ const driverOf = () =>
 		[
 			process.execPath,
 			"-e",
-			`import { runAsService } from "${import.meta.dirname}/service.ts"; runAsService({ name: "t", argv: ${run} });`,
+			`import { runAsService } from "${import.meta.dirname}/service.ts"; runAsService({ name: "t", argv: ${run}, env: process.env });`,
 		],
 		{ stdout: "pipe" },
 	);

@@ -45,6 +45,7 @@ const leafLoaded = (run: Run) =>
 	);
 
 scenario({
+	env: process.env,
 	model: "ultra-a/claude-fable-5-2",
 	play: (run) =>
 		Effect.gen(function* () {

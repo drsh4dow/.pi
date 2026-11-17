@@ -196,6 +196,7 @@ const rootCompacts = (run: Run, round: number) =>
 	});
 
 scenario({
+	env: process.env,
 	model,
 	contextWindow: 40_000,
 	play: (run) =>

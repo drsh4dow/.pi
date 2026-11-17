@@ -108,6 +108,7 @@ const quotes = (
 	});
 
 scenario({
+	env: process.env,
 	model: "ultra-a/claude-haiku-4-5",
 	// With no reserve pi never compacts at its threshold, only when the provider refuses a request as too long.
 	settings: { compaction: { enabled: true, reserveTokens: 0, keepRecentTokens: 20_000 } },

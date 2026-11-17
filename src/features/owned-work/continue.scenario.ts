@@ -92,6 +92,7 @@ const bothRunsInOneFile = (run: Run, session: string) =>
 	});
 
 scenario({
+	env: process.env,
 	model: "ultra-a/claude-fable-5-2",
 	models: {
 		flaky: {

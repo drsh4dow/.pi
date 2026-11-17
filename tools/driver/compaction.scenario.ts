@@ -13,6 +13,7 @@ const filler = Arr.join(
 );
 
 scenario({
+	env: process.env,
 	model: "ultra-a/claude-fable-5-2",
 	contextWindow: 40_000,
 	play: (run) =>

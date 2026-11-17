@@ -43,6 +43,7 @@ const wakeOf = (run: Run, name: string, parent: (sessions: Sessions) => Option.O
 const request = `Use the delegate tool once to start an owner named "${ownerName}" with goal "Prove that wakes name their delegates", and model ultra-a/claude-fable-5-2. Its whole task message: Use the delegate tool once to start a leaf named "${leafName}" whose whole task is to reply with the single word ok. End your turn, and once the leaf wakes you, reply with the single word done. Then end your turn without waiting for the owner.`;
 
 scenario({
+	env: process.env,
 	model: "ultra-a/claude-fable-5-2",
 	play: (run) =>
 		Effect.gen(function* () {

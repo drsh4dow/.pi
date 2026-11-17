@@ -45,6 +45,7 @@ const verdict = (run: Run, providers: ReadonlyArray<string>) =>
 	});
 
 scenario({
+	env: process.env,
 	model: "phi/auto",
 	settings: { compaction: { enabled: true, reserveTokens: 984_000, keepRecentTokens: 2000 } },
 	models: mockedModels(mocks),

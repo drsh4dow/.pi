@@ -9,6 +9,7 @@ import * as Str from "effect/String";
 import { scenario } from "./index.ts";
 
 scenario({
+	env: process.env,
 	model: "ultra-a/claude-fable-5-2",
 	contextWindow: 40_000,
 	play: (run) =>

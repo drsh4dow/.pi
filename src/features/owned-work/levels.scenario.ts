@@ -154,6 +154,7 @@ const checkCost = (run: Run, root: Session, leaf: Session) =>
 	});
 
 scenario({
+	env: process.env,
 	model,
 	play: (run) =>
 		Effect.gen(function* () {

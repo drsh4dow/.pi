@@ -230,6 +230,7 @@ const heldBorder = (run: Run) =>
 	});
 
 scenario({
+	env: process.env,
 	model: "phi/auto",
 	models: mockedModels(mocks),
 	play: (run) =>
