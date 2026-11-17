@@ -16,13 +16,11 @@ const binRows = [
 	{ name: "no PATH becomes the agent's bin folder alone", path: undefined, expect: "/a/agent/bin" },
 ];
 
-for (const row of binRows) {
-	test(row.name, () => {
-		const env: Readonly<Record<string, string | undefined>> = withAgentBin("/a/agent")({
-			HOME: "/h",
-			PATH: row.path,
-		});
-
-		expect(env).toEqual({ HOME: "/h", PATH: row.expect });
+test.each(binRows)("$name", (row) => {
+	const env: Readonly<Record<string, string | undefined>> = withAgentBin("/a/agent")({
+		HOME: "/h",
+		PATH: row.path,
 	});
-}
+
+	expect(env).toEqual({ HOME: "/h", PATH: row.expect });
+});

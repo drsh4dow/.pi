@@ -127,9 +127,7 @@ const rows: ReadonlyArray<Row> = [
 	},
 ];
 
-for (const row of rows) {
-	test(row.name, () => Effect.runPromise(runRow(row)));
-}
+test.each(rows)("$name", (row) => Effect.runPromise(runRow(row)));
 
 const parentEnv = inheritedEnv({
 	PATH: "/bin",
@@ -233,15 +231,13 @@ const launchRows = [
 	},
 ];
 
-for (const row of launchRows) {
-	test(row.name, () =>
-		Effect.runPromise(
-			Effect.map(row.spec, (spec) => {
-				expect(plumbing(spec)).toEqual(row.expect);
-			}).pipe(Effect.provide(node)),
-		),
-	);
-}
+test.each(launchRows)("$name", (row) =>
+	Effect.runPromise(
+		Effect.map(row.spec, (spec) => {
+			expect(plumbing(spec)).toEqual(row.expect);
+		}).pipe(Effect.provide(node)),
+	),
+);
 
 const envRows: ReadonlyArray<{
 	name: string;
@@ -269,22 +265,20 @@ const envRows: ReadonlyArray<{
 	},
 ];
 
-for (const row of envRows) {
-	test(row.name, () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const self = yield* Effect.option(selfFromEnv({ ...row.env, PI_OWNED_WORK_SLICE: "s" }));
+test.each(envRows)("$name", (row) =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const self = yield* Effect.option(selfFromEnv({ ...row.env, PI_OWNED_WORK_SLICE: "s" }));
 
-				expect(
-					self.pipe(
-						Option.map(({ role, level }) => ({ role, level })),
-						Option.getOrUndefined,
-					),
-				).toEqual(row.reads);
-			}),
-		),
-	);
-}
+			expect(
+				self.pipe(
+					Option.map(({ role, level }) => ({ role, level })),
+					Option.getOrUndefined,
+				),
+			).toEqual(row.reads);
+		}),
+	),
+);
 
 test("every child extension is an entrypoint pi can load", () => {
 	for (const entry of childExtensions) {

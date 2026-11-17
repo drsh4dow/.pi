@@ -36,11 +36,9 @@ const rows = [
 	})),
 ];
 
-for (const { name, got, expected } of rows) {
-	test(name, () => {
-		expect(got).toEqual(expected);
-	});
-}
+test.each(rows)("$name", ({ got, expected }) => {
+	expect(got).toEqual(expected);
+});
 
 const manager = "0::/user.slice/user-1000.slice/user@1000.service";
 
@@ -62,8 +60,6 @@ const slices = [
 	},
 ];
 
-for (const { name, cgroup, expected } of slices) {
-	test(name, () => {
-		expect(rootSliceOf(cgroup)("k1")).toBe(expected);
-	});
-}
+test.each(slices)("$name", ({ cgroup, expected }) => {
+	expect(rootSliceOf(cgroup)("k1")).toBe(expected);
+});

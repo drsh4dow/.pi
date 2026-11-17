@@ -224,9 +224,7 @@ const briefRows: ReadonlyArray<BriefRow> = [
 	},
 ];
 
-for (const row of briefRows) {
-	test(row.name, () => runBriefRow(row));
-}
+test.each(briefRows)("$name", (row) => runBriefRow(row));
 
 const Refusal = Schema.Struct({ message: Schema.String });
 
@@ -238,8 +236,9 @@ const badFrontmatterRows = [
 	{ name: "a frontmatter block below the first line", file: "../late.md", names: "frontmatter block" },
 ];
 
-for (const row of badFrontmatterRows) {
-	test(`an instructions file with ${row.name} is a tool error that names it, and starts nothing`, () =>
+test.each(badFrontmatterRows)(
+	"an instructions file with $name is a tool error that names it, and starts nothing",
+	(row) =>
 		runtime.runPromise(
 			Effect.gen(function* () {
 				const call = { name: "m", message: "m", goal, instructionsFile: row.file };
@@ -256,8 +255,8 @@ for (const row of badFrontmatterRows) {
 					names: true,
 				});
 			}),
-		));
-}
+		),
+);
 
 type Assignable<From, To> = [From] extends [To] ? true : false;
 

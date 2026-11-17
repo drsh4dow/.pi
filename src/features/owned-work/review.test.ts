@@ -21,11 +21,9 @@ const lines: ReadonlyArray<readonly [string, string, Option.Option<VerdictResult
 	["an empty answer", "", Option.none()],
 ];
 
-for (const [name, text, expected] of lines) {
-	test(`the verdict line of ${name}`, () => {
-		expect(lastLineVerdict(text)).toEqual(expected);
-	});
-}
+test.each(lines)("the verdict line of %s", (_name, text, expected) => {
+	expect(lastLineVerdict(text)).toEqual(expected);
+});
 
 const call = { name: "verify", message: "Review it.", goal: "Cap the retries.", model: "quick", reviews: "7" };
 
