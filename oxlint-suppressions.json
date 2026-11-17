@@ -2254,9 +2254,6 @@
     "no-undefined": {
       "count": 1
     },
-    "no-use-before-define": {
-      "count": 1
-    },
     "oxc/no-optional-chaining": {
       "count": 1
     },
