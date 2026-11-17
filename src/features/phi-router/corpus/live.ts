@@ -1,12 +1,9 @@
 import { ModelRegistry, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import * as Config from "effect/Config";
-import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 
 import { type Classify, decisionsModel, decisionsPieceJudge } from "#src/features/phi-router/decisions.ts";
-import { Judge } from "#src/features/phi-router/policy/engine.ts";
 
 class ModelsUnavailable extends Schema.TaggedError<ModelsUnavailable, { readonly brand: unique symbol }>()(
 	"ModelsUnavailable",
@@ -45,5 +42,4 @@ export const liveClassify = Effect.gen(function* () {
 	return classify;
 });
 
-export const judgeOn = (classify: Classify) =>
-	Effect.map(Layer.build(decisionsPieceJudge(classify)), Context.get(Judge));
+export const judgeOn = (classify: Classify) => Effect.succeed(decisionsPieceJudge(classify));

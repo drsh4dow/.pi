@@ -6,7 +6,7 @@ import * as Function from "effect/Function";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import { type AccountId, accountOf, accountProvider, accounts, anthropicOf } from "./accounts.ts";
+import { type AccountId, accountOf, accountProvider, accounts, accountsHost, anthropicOf } from "./accounts.ts";
 import { endedOnRateLimit, failOver } from "./failover.ts";
 
 export { type AccountId, accountOf, accounts, fallbackChain, isBaaAccount, type Login } from "./accounts.ts";
@@ -76,26 +76,24 @@ const moveTo = Effect.fn("moveTo")(function* (pi: ExtensionAPI, ctx: ExtensionCo
 });
 
 const switchAccount = (pi: ExtensionAPI) => (args: string, ctx: ExtensionCommandContext) =>
-	Effect.runPromise(
-		Effect.gen(function* () {
-			const name = yield* nameOf(args, ctx);
+	Effect.gen(function* () {
+		const name = yield* nameOf(args, ctx);
 
-			if (Option.isNone(name)) {
-				return;
-			}
+		if (Option.isNone(name)) {
+			return;
+		}
 
-			const find = (provider: string, id: string) => ctx.modelRegistry.find(provider, id);
-			const target = targetOf({ name: name.value, current: ctx.model, find });
+		const find = (provider: string, id: string) => ctx.modelRegistry.find(provider, id);
+		const target = targetOf({ name: name.value, current: ctx.model, find });
 
-			if (target.kind === "refuse") {
-				ctx.ui.notify(target.why, "error");
+		if (target.kind === "refuse") {
+			ctx.ui.notify(target.why, "error");
 
-				return;
-			}
+			return;
+		}
 
-			yield* moveTo(pi, ctx, target.model);
-		}),
-	);
+		yield* moveTo(pi, ctx, target.model);
+	});
 
 type GuardPersonal = (account: AccountId) => (api: ProviderStreams) => ProviderStreams;
 
@@ -109,13 +107,13 @@ export const claudeAccounts = (guardPersonal: GuardPersonal) => (pi: ExtensionAP
 	}
 
 	pi.on("agent_end", (event, ctx) =>
-		endedOnRateLimit(event.messages) ? Effect.runPromise(failOver(pi, ctx)) : Promise.resolve(),
+		endedOnRateLimit(event.messages) ? accountsHost.run(failOver(pi, ctx)) : Promise.resolve(),
 	);
 
 	pi.registerCommand("account", {
 		description: "Keep the model, and move this session to another Claude account",
 		getArgumentCompletions: (prefix) =>
 			Arr.map(Arr.filter(accountIds, Str.startsWith(prefix)), (id) => ({ value: id, label: id })),
-		handler: switchAccount(pi),
+		handler: (args, ctx) => accountsHost.run(switchAccount(pi)(args, ctx)),
 	});
 };

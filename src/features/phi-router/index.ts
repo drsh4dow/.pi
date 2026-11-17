@@ -11,11 +11,12 @@ import {
 import * as Arr from "effect/Array";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
+import type * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import { makePhiSettings, PhiSettings } from "#src/client/phi-settings/index.ts";
+import { piHost, type PiHost } from "#src/client/pi-host/index.ts";
 import type { AccountId } from "#src/features/claude-accounts/index.ts";
 import { type BorderLink, type BorderReport, borderEvents } from "./border.ts";
 import { compactionJudged, decisionsOf, type Env, routeWith, type RouterSession, servicesOf } from "./dispatch.ts";
@@ -31,6 +32,7 @@ import {
 } from "./gate.ts";
 import { appendLane } from "./lanes.ts";
 import { partsOf } from "./parts.ts";
+import { Judge } from "./policy/engine.ts";
 import { stubs } from "./policy/policy.ts";
 import { holdOf, pinEntryType, pinnedOn, type RouterState } from "./route.ts";
 import { keepProtected, keepProtectedOnStart } from "./selection.ts";
@@ -96,13 +98,13 @@ const pinNotices = {
 	unpin: "Unpinned: requests are routed again, and the next one judges what the pinned stretch added.",
 } as const;
 
-type Services = ReturnType<typeof servicesOf>;
+type Host = PiHost<Layer.Success<ReturnType<typeof servicesOf>>, never>;
 
 /**
  * The verdict book of the session pi runs now, folded at `session_start`, and the border's link to it, emitted on load,
  * on every fold and whenever claude-accounts says hello, so load order does not matter.
  */
-const sessionBook = (pi: Pick<ExtensionAPI, "appendEntry" | "events">, services: Services) => {
+const sessionBook = (pi: Pick<ExtensionAPI, "appendEntry" | "events">, host: Host) => {
 	let folded = Option.none<{ readonly id: string; readonly book: VerdictBook }>();
 
 	const borderLogged = (report: BorderReport & { readonly account: AccountId }) =>
@@ -115,7 +117,7 @@ const sessionBook = (pi: Pick<ExtensionAPI, "appendEntry" | "events">, services:
 	const link: BorderLink = {
 		lookup: (key) => (Option.isSome(folded) ? folded.value.book.lookup(key) : undefined),
 		report: (report) => {
-			Effect.runFork(borderLogged(report).pipe(Effect.ignore({ log: "Warn" }), Effect.provide(services)));
+			host.fork(borderLogged(report).pipe(Effect.ignore({ log: "Warn" })));
 		},
 	};
 
@@ -151,7 +153,7 @@ const sessionBook = (pi: Pick<ExtensionAPI, "appendEntry" | "events">, services:
 
 const phiCommand = (
 	pi: Pick<ExtensionAPI, "appendEntry">,
-	services: Services,
+	host: Host,
 	book: () => Option.Option<VerdictBook>,
 ): Parameters<ExtensionAPI["registerCommand"]>[1] => ({
 	description:
@@ -172,11 +174,11 @@ const phiCommand = (
 			ctx.ui.notify(text, "info");
 		});
 
-		return Effect.runPromise(shown.pipe(Effect.provide(services)));
+		return host.run(shown);
 	},
 });
 
-const phiAuto = (env: Env, session: () => RouterSession): ExtensionVirtualModel<typeof RouterState.Encoded> => {
+const phiAuto = (host: Host, session: () => RouterSession): ExtensionVirtualModel<typeof RouterState.Encoded> => {
 	const dispatch = getBuiltinModel("anthropic", defaultModel);
 
 	return {
@@ -187,38 +189,32 @@ const phiAuto = (env: Env, session: () => RouterSession): ExtensionVirtualModel<
 		contextWindow: dispatch.contextWindow,
 		maxTokens: dispatch.maxTokens,
 		route: (request, ctx) =>
-			routeWith({
-				env,
-				judge: decisionsOf({ modelRegistry: ctx.modelRegistry, signal: request.signal }),
-				session: session(),
-			})(request, ctx),
+			host.run(
+				routeWith({
+					judge: decisionsOf({ modelRegistry: ctx.modelRegistry, signal: request.signal }),
+					session: session(),
+				})(request, ctx),
+			),
 	};
 };
 
 export const phiRouter = (env: Env) => (pi: ExtensionAPI) => {
-	const services = servicesOf(env);
-	const { fold, session } = sessionBook(pi, services);
+	const host = piHost(servicesOf(env));
+	const { fold, session } = sessionBook(pi, host);
 	const setModel = (model: Parameters<ExtensionAPI["setModel"]>[0]) => pi.setModel(model);
 
-	pi.registerVirtualModel(phiAuto(env, session));
+	pi.registerVirtualModel(phiAuto(host, session));
 
-	pi.on("session_start", (_event, ctx) => {
-		const started = Effect.andThen(
-			fold(ctx),
-			Effect.promise(() => keepProtectedOnStart({ ctx, setModel })),
-		);
-
-		return Effect.runPromise(started.pipe(Effect.provide(services)));
-	});
+	pi.on("session_start", (_event, ctx) =>
+		host.run(Effect.andThen(fold(ctx), keepProtectedOnStart({ ctx, setModel }))),
+	);
 
 	pi.on("session_compact", (event, ctx) => {
 		const judged = compactionJudged({ compaction: event.compactionEntry, ctx, session: session() }).pipe(
 			Effect.catchCause((cause) => Effect.logWarning("phi-router: the compaction summary was not judged", cause)),
 		);
 
-		const judge = Layer.merge(services, decisionsOf(ctx));
-
-		return Effect.runPromise(judged.pipe(Effect.provide(judge)));
+		return host.run(Effect.provideService(judged, Judge, decisionsOf(ctx)));
 	});
 
 	pi.on("before_agent_start", (event, ctx) => {
@@ -229,8 +225,8 @@ export const phiRouter = (env: Env) => (pi: ExtensionAPI) => {
 
 	pi.registerCommand(
 		"phi",
-		phiCommand(pi, services, () => session().book),
+		phiCommand(pi, host, () => session().book),
 	);
 	pi.on("tool_call", (event, ctx) => guardCodemode({ event, ctx }));
-	pi.on("model_select", (event, ctx) => keepProtected({ event, ctx, setModel }));
+	pi.on("model_select", (event, ctx) => host.run(keepProtected({ event, ctx, setModel })));
 };

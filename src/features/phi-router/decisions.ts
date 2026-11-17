@@ -2,7 +2,6 @@ import type { ClassifierContext, ClassifierResult, ImageContent } from "@earendi
 import * as Arr from "effect/Array";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
@@ -95,7 +94,7 @@ export const decisionsPieceJudge = (classify: Classify) => {
 	const identifierAnswers = answersTo(classify, { identifier: identifierQuestion });
 	const kindAnswers = answersTo(classify, { kind: kindQuestion });
 
-	return Layer.succeed(Judge, {
+	return Judge.of({
 		identifier: Effect.fn("identifier")(function* (input: JudgeInput) {
 			const { answers, usage } = yield* identifierAnswers(input);
 			const answer = answers["identifier"];

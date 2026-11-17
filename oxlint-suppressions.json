@@ -631,9 +631,6 @@
     "jsdoc/require-returns": {
       "count": 3
     },
-    "no-restricted-properties": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 1
     },
@@ -686,9 +683,6 @@
       "count": 2
     },
     "jsdoc/require-returns": {
-      "count": 2
-    },
-    "no-restricted-properties": {
       "count": 2
     },
     "no-undefined": {
@@ -2098,9 +2092,6 @@
     "jsdoc/require-returns": {
       "count": 1
     },
-    "no-restricted-properties": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 2
     },
@@ -2142,9 +2133,6 @@
     },
     "jsdoc/require-returns": {
       "count": 1
-    },
-    "no-restricted-properties": {
-      "count": 4
     },
     "no-undefined": {
       "count": 1
@@ -2359,9 +2347,6 @@
     },
     "jsdoc/require-returns": {
       "count": 1
-    },
-    "no-restricted-properties": {
-      "count": 2
     },
     "no-undefined": {
       "count": 1

@@ -4,9 +4,12 @@ import { createProvider, hasApi, type Provider } from "@earendil-works/pi-ai/mod
 import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
+
+import { piHost } from "#src/client/pi-host/index.ts";
 
 type ApiKeyAuth = NonNullable<Provider["auth"]["apiKey"]>;
 
@@ -48,6 +51,8 @@ export const fallbackChain = (from: AccountId): ReadonlyArray<Account> => {
 	return [...Arr.filter(others, ({ baa }) => !baa), ...Arr.filter(others, ({ baa }) => baa)];
 };
 
+export const accountsHost = piHost(Layer.empty);
+
 class NotASetupToken extends Schema.TaggedError<NotASetupToken, { readonly brand: unique symbol }>()("NotASetupToken", {
 	message: Schema.String,
 }) {}
@@ -73,7 +78,7 @@ const setupTokenOf = (pasted: string) => {
 const setupTokenAuth: ApiKeyAuth = {
 	name: "Claude setup-token",
 	login: (interaction) =>
-		Effect.runPromise(
+		accountsHost.run(
 			Effect.flatMap(
 				Effect.promise(() =>
 					interaction.prompt({ type: "secret", message: "Paste the token `claude setup-token` printed" }),

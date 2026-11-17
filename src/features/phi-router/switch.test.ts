@@ -79,10 +79,7 @@ const switchTo = ({
 	const pi = piWith(failing, branch);
 	const event = { type: "model_select" as const, model: to, previousModel: from, source: "set" as const };
 
-	return Effect.as(
-		Effect.promise(() => keepProtected({ event, ctx: pi.ctx, setModel: pi.setModel })),
-		pi,
-	);
+	return Effect.as(keepProtected({ event, ctx: pi.ctx, setModel: pi.setModel }), pi);
 };
 
 const rows = [
@@ -164,10 +161,7 @@ const startOn = (branch: ReadonlyArray<SessionEntry>) => {
 	const pi = piWith([], branch);
 	const ctx = { ...pi.ctx, model: onAccount("ultra-a") };
 
-	return Effect.as(
-		Effect.promise(() => keepProtectedOnStart({ ctx, setModel: pi.setModel })),
-		pi.asked,
-	);
+	return Effect.as(keepProtectedOnStart({ ctx, setModel: pi.setModel }), pi.asked);
 };
 
 const resumedOnPersonal = [selectedOn("ent", opus), message, selectedOn("ultra-a", opus)];

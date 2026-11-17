@@ -93,7 +93,7 @@ export const keepProtected = ({
 	readonly event: ModelSelectEvent;
 	readonly ctx: SelectionContext;
 	readonly setModel: SetModel;
-}) => Effect.runPromise(restore({ selected: event.model, previous: event.previousModel, ctx, setModel }));
+}) => restore({ selected: event.model, previous: event.previousModel, ctx, setModel });
 
 /** Pi's `--model` flag and its fallback when a selection cannot be restored both set the model with no `model_select`. */
 export const keepProtectedOnStart = ({
@@ -102,4 +102,4 @@ export const keepProtectedOnStart = ({
 }: {
 	readonly ctx: SelectionContext & { readonly model: Model<Api> | undefined };
 	readonly setModel: SetModel;
-}) => Effect.runPromise(restore({ selected: ctx.model, previous: undefined, ctx, setModel }));
+}) => restore({ selected: ctx.model, previous: undefined, ctx, setModel });
