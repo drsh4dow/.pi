@@ -1,10 +1,10 @@
 import type { Message } from "@earendil-works/pi-ai";
-import {
-	type CompactionEntry,
-	type ExtensionContext,
-	type ModelRoute,
-	type ModelRouteRequest,
-	type SessionEntry,
+import type {
+	CompactionEntry,
+	ExtensionContext,
+	ModelRoute,
+	ModelRouteRequest,
+	SessionEntry,
 } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";

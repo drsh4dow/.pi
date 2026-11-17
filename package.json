@@ -9,7 +9,7 @@
 	"scripts": {
 		"prepare": "effect-tsgo patch --oxlint",
 		"fmt": "oxfmt",
-		"lint": "oxlint",
+		"lint": "oxlint src tools agent/extensions agent/bin",
 		"typecheck": "tsc -p .",
 		"test": "bun test --parallel",
 		"prompts": "bun tools/prompts/index.ts",

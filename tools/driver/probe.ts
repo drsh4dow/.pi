@@ -138,7 +138,7 @@ const sent = (event: BeforeProviderRequestEvent, ctx: ExtensionContext) =>
 const run = <Failure>(effect: Effect.Effect<void, Failure, FileSystem.FileSystem>) =>
 	Effect.runPromise(Effect.provide(effect, NodeServices.layer));
 
-export default function (pi: ExtensionAPI) {
+export default function probeExtension(pi: ExtensionAPI) {
 	pi.on("session_start", (_event, ctx) => run(loaded(pi, ctx)));
 	// The probe loads first, so at `session_start` the extensions that register tools in their own handler have not yet.
 	pi.on("agent_start", (_event, ctx) => run(loaded(pi, ctx)));

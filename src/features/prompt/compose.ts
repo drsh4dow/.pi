@@ -1,8 +1,4 @@
-import {
-	type BeforeAgentStartEvent,
-	type NormalizedBuildSystemPromptOptions,
-	type Skill,
-} from "@earendil-works/pi-coding-agent";
+import type { BeforeAgentStartEvent, NormalizedBuildSystemPromptOptions, Skill } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";

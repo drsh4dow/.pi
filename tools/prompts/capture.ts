@@ -27,7 +27,7 @@ const save = (event: BeforeProviderRequestEvent, ctx: ExtensionContext) =>
 	});
 
 /** Loaded with `-e` by `tools/prompts`. Does nothing while `PI_PROMPTS_CAPTURE` is unset. */
-export default function (pi: ExtensionAPI) {
+export default function captureExtension(pi: ExtensionAPI) {
 	pi.on("before_provider_request", (event, ctx) =>
 		Effect.runPromise(save(event, ctx).pipe(Effect.provide(NodeServices.layer))),
 	);

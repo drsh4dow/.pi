@@ -75,7 +75,7 @@ const toolResult = ({ path }: SummarizeParams) =>
 		Effect.map((text) => ({ content: [{ type: "text" as const, text }], details: {} })),
 	);
 
-export default function (pi: ExtensionAPI) {
+export default function idiomsExtension(pi: ExtensionAPI) {
 	const runtime = ManagedRuntime.make(Layer.provide(FilesLive, NodeServices.layer));
 
 	pi.on("session_shutdown", () => runtime.dispose());

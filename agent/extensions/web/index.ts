@@ -2,7 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { web } from "#src/features/web/index.ts";
 
-export default function (pi: ExtensionAPI) {
+export default function webExtension(pi: ExtensionAPI) {
 	const feature = web(pi);
 
 	pi.on("session_start", feature.sessionStart);
