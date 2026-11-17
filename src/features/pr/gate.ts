@@ -1,13 +1,12 @@
 import * as Arr from "effect/Array";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
-import type * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import { Gh, type PrView, type StackMember } from "#src/client/gh/index.ts";
+import { type VerdictRecord, verdictsOf } from "#src/client/verdicts/index.ts";
 import { MergeRequest } from "./merge-request.ts";
-import { type VerdictRecord, verdictsOf } from "./verdict.ts";
 
 /** `pin` holds the arguments that bind the real merge to the head the gate checked. */
 export type Authorization = Data.TaggedEnum<{
@@ -121,7 +120,9 @@ const merge = (root: string, pr: string) =>
 /** Reads the pull requests a merge lands and their verdicts under `root`, and refuses when any read fails. */
 export const gate =
 	(root: string) =>
-	(request: MergeRequest): Effect.Effect<Authorization, never, Gh | FileSystem.FileSystem> =>
+	(
+		request: MergeRequest,
+	): Effect.Effect<Authorization, never, Gh | Effect.Services<ReturnType<ReturnType<typeof verdictsOf>>>> =>
 		MergeRequest.$match(request, {
 			Refuse: ({ why }) => Effect.succeed(Authorization.Refuse({ why })),
 			Merge: ({ pr }) => merge(root, pr),

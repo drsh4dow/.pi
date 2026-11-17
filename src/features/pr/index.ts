@@ -11,15 +11,9 @@ export { Authorization, gate } from "./gate.ts";
 
 export { mergeRequestOf } from "./merge-request.ts";
 
-export {
-	pin,
-	recordVerdict,
-	type ReviewTarget,
-	VerdictRecord,
-	VerdictResult,
-	verdictsFolder,
-	verdictsOf,
-} from "./verdict.ts";
+export { recordVerdict, VerdictRecord, VerdictResult, verdictsFolder, verdictsOf } from "#src/client/verdicts/index.ts";
+
+export { pin, type ReviewTarget } from "./verdict.ts";
 
 const changed = (label: string, from: string, to: string) => (from === to ? [] : [`${label} ${from} -> ${to}`]);
 
