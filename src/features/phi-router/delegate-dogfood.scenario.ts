@@ -35,18 +35,21 @@ const children: ReadonlyArray<Child> = [
 /** The PHI router routes only a child on a `phi` model, so only such a child has a lane log and a turn on ent. */
 const isRouted = (child: Child) => Str.startsWith("phi/")(child.key);
 
-/** Invented, but plausible: the judge clears identifiers that look fake, such as `MRN 000-SYNTH-0001`, so they never reach ent. */
-const brief =
-	"Summarize this chart in one sentence: Maria Delgado-Ruiz, MRN 48213977, DOB 1958-03-14, seen for a persistent cough. Then reply ok.";
+/**
+ * Invented, but plausible: the judge clears identifiers that look fake, such as `MRN 000-SYNTH-0001`. The children read
+ * it from a file, since the parent's bridge prompt tells it to withhold identifiers from a brief it writes.
+ */
+const chart = "Maria Delgado-Ruiz, MRN 48213977, DOB 1958-03-14, seen for a persistent cough.\n";
 
-const request = Arr.join(
-	[
-		`In one turn, use the delegate tool twice with goal "Prove a protected parent's delegates run their alias models", both as leaves: one named "fable child" with model fable, one named "investigator child" with model investigator.`,
-		`Give each this exact task message: ${brief}`,
-		"Then end your turn without waiting for them.",
-	],
-	"\n",
-);
+const requestFor = (chartPath: string) =>
+	Arr.join(
+		[
+			`In one turn, use the delegate tool twice with goal "Prove a protected parent's delegates run their alias models", both as leaves: one named "fable child" with model fable, one named "investigator child" with model investigator.`,
+			`Give each this exact task message: Read the file ${chartPath} and summarize it in one sentence. Then reply ok.`,
+			"Then end your turn without waiting for them.",
+		],
+		"\n",
+	);
 
 const Started = Schema.Struct({
 	type: Schema.Literal("custom"),
@@ -59,29 +62,23 @@ const Started = Schema.Struct({
 	}),
 });
 
-const Wake = Schema.Struct({
-	type: Schema.Literal("custom_message"),
-	customType: Schema.Literal(entryKind),
-	details: Schema.Struct({ ref: Schema.String, outcome: Schema.Struct({ status: Schema.String }) }),
-});
-
 const decodeStarted = Schema.decodeUnknownOption(Started);
 
-const decodeWake = Schema.decodeUnknownOption(Wake);
+/** The child's last message is its final answer. A wake may name the child's group rather than the child. */
+const answered = (session: Session) =>
+	Option.exists(
+		Arr.findLast(session.entries, (entry) => entry.type === "message"),
+		(entry) => entry.type === "message" && entry.message.role === "assistant" && entry.message.stopReason === "stop",
+	);
 
 const settled = (run: Run, name: string) =>
-	run.waitFor(`the wake of the ${name}`, "10 minutes", ({ root, delegates }) => {
+	run.waitFor(`the answer of the ${name}`, "10 minutes", ({ root, delegates }) => {
 		const started = Arr.findFirst(root.entries, (entry) =>
 			Option.filter(decodeStarted(entry), ({ data }) => data.name === name),
 		);
 
 		return Option.flatMap(started, ({ data }) =>
-			Option.all({
-				wake: Arr.findFirst(root.entries, (entry) =>
-					Option.filter(decodeWake(entry), ({ details }) => details.ref === data.handle),
-				),
-				session: Arr.findFirst(delegates, (session) => session.id === data.child_session_id),
-			}),
+			Arr.findFirst(delegates, (session) => session.id === data.child_session_id && answered(session)),
 		);
 	});
 
@@ -113,15 +110,15 @@ const lanesOf = (run: Run, session: Session) =>
 		);
 	});
 
-/** Waits for the child's wake and prints what it ran on, so a failed check of one child still shows both. */
+/** Waits for the child's answer and prints what it ran on, so a failed check of one child still shows both. */
 const observed = (run: Run, child: Child) =>
 	Effect.gen(function* () {
-		const { wake, session } = yield* settled(run, `${child.alias} child`);
+		const session = yield* settled(run, `${child.alias} child`);
 		const modelChanges = modelChangesOf(session);
 		const served = servedOf(session);
 		const lanes = isRouted(child) ? yield* lanesOf(run, session) : [];
 
-		yield* run.say({ child: child.alias, outcome: wake.details.outcome.status, modelChanges, served, lanes });
+		yield* run.say({ child: child.alias, modelChanges, served, lanes });
 
 		return { child, modelChanges, served };
 	});
@@ -140,7 +137,7 @@ const checked = (run: Run, { child, modelChanges, served }: Effect.Success<Retur
 		if (isRouted(child)) {
 			yield* run.check(
 				Arr.some(served, Str.startsWith("ent/")),
-				`a turn of the ${child.alias} child went to ent (none did: the router cleared a brief holding a name, an MRN and a DOB, a finding)`,
+				`a turn of the ${child.alias} child went to ent (none did: the router cleared a chart holding a name, an MRN and a DOB, a finding)`,
 			);
 		}
 	});
@@ -153,7 +150,8 @@ scenario({
 			const fs = yield* FileSystem.FileSystem;
 
 			yield* fs.writeFileString(`${run.home}/.pi/agent/phi-router.json`, '{"mode":"enforce"}\n');
-			yield* run.root.prompt(request);
+			yield* fs.writeFileString(`${run.home}/chart.txt`, chart);
+			yield* run.root.prompt(requestFor(`${run.home}/chart.txt`));
 
 			const seen = yield* Effect.forEach(children, (child) => observed(run, child));
 
