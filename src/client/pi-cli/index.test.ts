@@ -69,7 +69,8 @@ test("a launch stages the message and the brief for the user alone, and names on
 				messageMode: yield* modeOf(messageFile),
 				brief: yield* readStagedBrief(session),
 				briefMode: yield* modeOf(`${staging}/child.brief.json`),
-				briefArgs: Arr.filter(argv, (word) => Str.endsWith(".brief.json")(word) || word === "--instructions"),
+				briefArgs: Arr.filter(argv, Str.endsWith(".brief.json")),
+				instructionsArg: Arr.contains(argv, "--instructions"),
 			}).toEqual({
 				messageArgs: [`@${messageFile}`],
 				message: "m",
@@ -77,6 +78,7 @@ test("a launch stages the message and the brief for the user alone, and names on
 				brief: ownerBrief,
 				briefMode: "600",
 				briefArgs: [],
+				instructionsArg: false,
 			});
 		}).pipe(Effect.provide(cli)),
 	));

@@ -265,9 +265,6 @@
     }
   },
   "src/client/pi-cli/index.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 2
     }
