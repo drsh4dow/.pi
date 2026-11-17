@@ -11,8 +11,8 @@ import { webTools } from "./tools.ts";
 
 const skillPaths = [import.meta.dirname];
 
-export const web = (pi: Pick<ExtensionAPI, "registerTool">) => {
-	const store = Option.match(cacheRootOf(process.env), {
+export const web = (env: Readonly<Record<string, string | undefined>>) => (pi: Pick<ExtensionAPI, "registerTool">) => {
+	const store = Option.match(cacheRootOf(env), {
 		onNone: () => noStoreLayer,
 		onSome: (root) => storeLayer(root).pipe(Layer.provide(NodeServices.layer)),
 	});

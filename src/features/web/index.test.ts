@@ -11,7 +11,7 @@ import { web } from "./index.ts";
 const registered = () => {
 	const tools: Array<{ readonly name: string }> = [];
 
-	const feature = web({
+	const feature = web({})({
 		registerTool: (tool) => {
 			tools.push(tool);
 		},
