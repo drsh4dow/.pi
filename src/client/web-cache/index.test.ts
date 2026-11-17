@@ -10,7 +10,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 import { Body, type Page, PublicUrl } from "#src/client/web/index.ts";
-import { cacheRootOf, noStoreLayer, Store, storeLayer } from "./store.ts";
+import { cacheRootOf, noStoreLayer, Store, storeLayer } from "./index.ts";
 
 const root = await Effect.runPromise(
 	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.makeTempDirectory()).pipe(Effect.provide(NodeServices.layer)),
