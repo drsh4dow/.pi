@@ -1,11 +1,10 @@
 import * as Arr from "effect/Array";
-import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { PhiSettings } from "#src/client/phi-settings/index.ts";
 import type { SyntheticIdentities } from "./policy/policy.ts";
 
 export const defaultModel = "claude-opus-5-5";
@@ -81,13 +80,7 @@ const settingsOf = ({ text, cwd }: { readonly text: Option.Option<string>; reado
 /** Read on every request, so a change applies to the next one without a restart. A file that cannot be read fails closed. */
 export const readSettings = Effect.fn("readSettings")(
 	function* (cwd: string) {
-		const home = yield* Config.String("HOME");
-		const fs = yield* FileSystem.FileSystem;
-
-		const text = yield* fs.readFileString(`${home}/.pi/agent/phi-router.json`).pipe(
-			Effect.asSome,
-			Effect.catchReason("PlatformError", "NotFound", () => Effect.succeedNone),
-		);
+		const text = yield* Effect.flatMap(PhiSettings, (settings) => settings.text);
 
 		return settingsOf({ text, cwd });
 	},

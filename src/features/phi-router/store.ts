@@ -8,13 +8,11 @@
  */
 import type { ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
-import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import * as Str from "effect/String";
 
+import { VerdictCache, type VerdictCacheFile } from "#src/client/phi-verdict-cache/index.ts";
 import type { Lookup, Seal } from "./border.ts";
 import { ContentKey, Finding, type Piece, Verdict } from "./policy/engine.ts";
 import { PolicyVersion, policyVersion } from "./policy/policy.ts";
@@ -87,21 +85,12 @@ const decodeLine = Schema.decodeUnknownOption(Line);
 
 const encodeLine = Schema.encodeEffect(Line);
 
-const systemFolder = Effect.map(
-	Config.String("HOME"),
-	(home) => `${home}/.local/state/pi-phi-router/system/${policyVersion}`,
-);
-
 /** Every process's file merged. A line cut short by a crash fails to decode and is skipped. */
 const systemVerdicts = Effect.fn("systemVerdicts")(
-	function* (fs: FileSystem.FileSystem, folder: string) {
-		const files = yield* fs
-			.readDirectory(folder)
-			.pipe(Effect.catchReason("PlatformError", "NotFound", () => Effect.succeed([])));
+	function* (cache: VerdictCacheFile) {
+		const lines = yield* cache.lines;
 
-		const texts = yield* Effect.forEach(files, (file) => fs.readFileString(`${folder}/${file}`));
-
-		return Arr.flatMap(texts, (text) => Arr.getSomes(Arr.map(Str.split("\n")(text), (line) => decodeLine(line))));
+		return Arr.getSomes(Arr.map(lines, (line) => decodeLine(line)));
 	},
 	Effect.catchCause((cause) =>
 		Effect.as(
@@ -114,27 +103,11 @@ const systemVerdicts = Effect.fn("systemVerdicts")(
 	),
 );
 
-/** Each line starts with a newline, so a line cut short by a crash never swallows the next one. */
 const appendLines = Effect.fn("appendLines")(
-	function* ({
-		folder,
-		pid,
-		lines,
-	}: {
-		readonly folder: string;
-		readonly pid: number;
-		readonly lines: ReadonlyArray<Stored>;
-	}) {
-		const fs = yield* FileSystem.FileSystem;
+	function* ({ cache, lines }: { readonly cache: VerdictCacheFile; readonly lines: ReadonlyArray<Stored> }) {
 		const encoded = yield* Effect.forEach(lines, (line) => encodeLine(line));
 
-		const text = Arr.join(
-			Arr.map(encoded, (line) => `\n${line}`),
-			"",
-		);
-
-		yield* fs.makeDirectory(folder, { recursive: true });
-		yield* fs.writeFileString(`${folder}/${String(pid)}.jsonl`, text, { flag: "a" });
+		yield* cache.append(encoded);
 	},
 	Effect.ignore({ log: "Warn" }),
 );
@@ -198,12 +171,11 @@ export const bookOf = Effect.fn("bookOf")(function* ({
 	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getEntries">;
 	readonly pid: number;
 }) {
-	const fs = yield* FileSystem.FileSystem;
-	const folder = yield* systemFolder;
-	const system = yield* systemVerdicts(fs, folder);
+	const cache = yield* Effect.flatMap(VerdictCache, ({ open }) => open({ policy: policyVersion, pid }));
+	const system = yield* systemVerdicts(cache);
 
 	return bookWith({
 		verdicts: [...sessionVerdicts(sessionManager.getEntries()), ...system],
-		keepSystem: (lines) => Effect.provideService(appendLines({ folder, pid, lines }), FileSystem.FileSystem, fs),
+		keepSystem: (lines) => appendLines({ cache, lines }),
 	});
 });

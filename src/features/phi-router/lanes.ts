@@ -4,11 +4,10 @@
  * reversed.
  */
 import * as Arr from "effect/Array";
-import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Schema from "effect/Schema";
 
+import { LaneLog } from "#src/client/phi-lane-log/index.ts";
 import { type ClearedBy, Finding, Usage, Verdict } from "./policy/engine.ts";
 import type { Decision } from "./route.ts";
 import { Why } from "./store.ts";
@@ -116,13 +115,9 @@ export const judgedOf = ({ found, cached, usage, wouldStub, why }: Decision) => 
 	return { why, sources, findings, judge: usage, wouldStub };
 };
 
-const lanesFolder = Effect.map(Config.String("HOME"), (home) => `${home}/.local/state/pi-phi-router/lanes`);
-
 export const appendLane = Effect.fn("appendLane")(function* (line: LaneLine) {
-	const fs = yield* FileSystem.FileSystem;
-	const folder = yield* lanesFolder;
+	const log = yield* LaneLog;
 	const json = yield* Schema.encodeEffect(LaneJson)(line);
 
-	yield* fs.makeDirectory(folder, { recursive: true });
-	yield* fs.writeFileString(`${folder}/${line.session}.jsonl`, `${json}\n`, { flag: "a" });
+	yield* log.append({ session: line.session, json });
 });

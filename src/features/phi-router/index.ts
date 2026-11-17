@@ -15,6 +15,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
+import { makePhiSettings, PhiSettings } from "#src/client/phi-settings/index.ts";
 import type { AccountId } from "#src/features/claude-accounts/index.ts";
 import { type BorderLink, type BorderReport, borderEvents } from "./border.ts";
 import { compactionJudged, decisionsOf, type Env, routeWith, type RouterSession, servicesOf } from "./dispatch.ts";
@@ -62,7 +63,7 @@ export const delegateTargetOf = Effect.fn("delegateTargetOf")(function* (caller:
 		return { kind: "open" } satisfies Target;
 	}
 
-	const settings = yield* readSettings(caller.cwd);
+	const settings = yield* Effect.provideServiceEffect(readSettings(caller.cwd), PhiSettings, makePhiSettings);
 	const hold = holdOf({ mode: settings.mode, pinned: pinnedOn(caller.branch) });
 	const held = Option.isSome(hold) || settings.mode === "shadow";
 
