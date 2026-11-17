@@ -148,6 +148,11 @@ export const piCliLayer = (childExtensions: ReadonlyArray<string>): Layer.Layer<
 		}),
 	);
 
+export const makeSessionFolder = (
+	dir: string,
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
+	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.makeDirectory(dir, { recursive: true, mode: 0o700 }));
+
 export class BriefUnreadable extends Schema.TaggedError<BriefUnreadable, { readonly brand: unique symbol }>()(
 	"BriefUnreadable",
 	{ file: Schema.String, why: Schema.String },

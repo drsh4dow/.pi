@@ -26,6 +26,7 @@ import { type Hc, hcLayer, TerminalAddress } from "#src/client/hc/index.ts";
 import { type HerdrApp, herdrAppLayer } from "#src/client/herdr-app/index.ts";
 import { type PiCli, piCliLayer, unwrapMessage } from "#src/client/pi-cli/index.ts";
 import { type PiSessions, piSessionsLayer } from "#src/client/pi-sessions/index.ts";
+import { sourceStampLayer } from "#src/client/source-stamp/index.ts";
 import { type Slices, slicesLayer } from "#src/client/systemd/index.ts";
 import { inheritedEnv, Self, selfFromEnv, withAgentBin } from "./child.ts";
 import { forkInTab, restoreDraft } from "./fork.ts";
@@ -50,14 +51,12 @@ import type { Settled } from "./work.ts";
 
 type RuntimeServices = Ledger | ToolServices | Hc | Slices | PiCli | PiSessions | HerdrApp | NodeServices.NodeServices;
 
-type Runtime = ManagedRuntime.ManagedRuntime<RuntimeServices, never>;
-
 interface Relay {
 	waiter: Option.Option<Deferred.Deferred<ReadonlyArray<Settled>>>;
 }
 
 interface Session {
-	readonly runtime: Runtime;
+	readonly runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>;
 	readonly lineage: Lineage;
 	readonly relay: Relay;
 	/** The hc terminal pi runs in, when it runs in one. */
@@ -243,7 +242,7 @@ const begin =
 			current.session = Option.some(session);
 			restoreDraft({ event, ctx, env });
 			yield* Effect.promise(() => runHook(session.runtime)(stopStale({ ui: ctx.ui, sliceOf })(inheritance)));
-		}).pipe(Effect.provide(NodeServices.layer), Effect.runPromise);
+		}).pipe(Effect.provide(Layer.provideMerge(sourceStampLayer, NodeServices.layer)), Effect.runPromise);
 
 /** Forgets the session before it stops, so no hook reaches a ledger that froze for a reload. */
 const end = (current: Current) => (event: SessionShutdownEvent) => {

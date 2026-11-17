@@ -1,15 +1,13 @@
 import { uuidv7 } from "@earendil-works/pi-ai";
 import type { ExtensionContext, SessionShutdownEvent, SessionStartEvent } from "@earendil-works/pi-coding-agent";
-import * as Arr from "effect/Array";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
-import * as Hash from "effect/Hash";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import { PiCli } from "#src/client/pi-cli/index.ts";
-import { Slices, stopRoot } from "#src/client/systemd/index.ts";
+import { SourceStamp } from "#src/client/source-stamp/index.ts";
+import { ownCgroup, Slices, stopRoot } from "#src/client/systemd/index.ts";
 import { Ledger } from "./ledger.ts";
 import type { LedgerState } from "./step.ts";
 
@@ -32,11 +30,8 @@ declare global {
  * A hash of the files that lay out `LedgerState`. A reload that changed them would read state written by other code, so
  * it stops the old work instead. An unreadable file gives a stamp no other load shares.
  */
-export const ledgerStamp = Effect.flatMap(FileSystem.FileSystem, (fs) =>
-	Effect.forEach(["work.ts", "step.ts"], (file) => fs.readFileString(`${import.meta.dirname}/${file}`)).pipe(
-		Effect.map((texts) => Hash.string(Arr.join(texts, "\n"))),
-		Effect.orElseSucceed(() => Hash.string(uuidv7())),
-	),
+export const ledgerStamp = Effect.flatMap(SourceStamp, (stamp) =>
+	stamp.of([`${import.meta.dirname}/work.ts`, `${import.meta.dirname}/step.ts`]),
 );
 
 /** Empties the slot, so a handover reaches at most the one session start after it. */
@@ -77,12 +72,7 @@ export const rootSliceOf =
 		});
 
 /** This process's root slice names. Off Linux there is no cgroup to read, and a root gets a slice of its own. */
-export const rootSlices = Effect.flatMap(FileSystem.FileSystem, (fs) =>
-	Effect.map(
-		Effect.orElseSucceed(fs.readFileString("/proc/self/cgroup"), () => ""),
-		rootSliceOf,
-	),
-);
+export const rootSlices = Effect.map(ownCgroup, rootSliceOf);
 
 export const inheritanceOf =
 	({ stamp, agentKey }: Lineage) =>

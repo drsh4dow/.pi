@@ -945,11 +945,8 @@
     }
   },
   "src/features/owned-work/brief.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
-      "count": 5
+      "count": 4
     },
     "typescript/explicit-module-boundary-types": {
       "count": 1
@@ -1084,9 +1081,6 @@
     "jsdoc/require-returns": {
       "count": 4
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 1
     },
@@ -1134,9 +1128,6 @@
     }
   },
   "src/features/owned-work/ledger.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "no-use-before-define": {
       "count": 3
     },
@@ -1256,9 +1247,6 @@
     "jsdoc/require-returns": {
       "count": 1
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "node/no-process-env": {
       "count": 1
     },
@@ -1361,9 +1349,6 @@
       "count": 1
     },
     "jsdoc/require-returns": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     },
     "no-restricted-properties": {
