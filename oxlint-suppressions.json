@@ -2714,6 +2714,9 @@
     "jsdoc/require-returns": {
       "count": 3
     },
+    "no-restricted-properties": {
+      "count": 2
+    },
     "typescript/explicit-function-return-type": {
       "count": 3
     },

@@ -156,6 +156,11 @@
 			},
 			{
 				"object": "Bun",
+				"property": "env",
+				"message": "Read the environment in the entry file and pass it in, or read one variable with Effect's Config.",
+			},
+			{
+				"object": "Bun",
 				"property": "file",
 				"message": "Read and write disk through the src/client/ folder that owns the file, such as #src/client/web-cache/index.ts. Add a client for a new store.",
 			},
@@ -317,7 +322,14 @@
 			"files": ["tools/**", "src/features/phi-router/corpus/**"],
 			"rules": {
 				"eslint/no-restricted-imports": "off",
-				"eslint/no-restricted-properties": "off",
+				"eslint/no-restricted-properties": [
+					"error",
+					{
+						"object": "Bun",
+						"property": "env",
+						"message": "Read the environment in the entry file and pass it in, or read one variable with Effect's Config.",
+					},
+				],
 			},
 		},
 		{

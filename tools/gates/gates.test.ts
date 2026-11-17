@@ -62,7 +62,7 @@ test("the boundary gate rejects a client that imports a type from a feature", ()
 		["error client-imports: src/client/leaky/index.ts → src/features/sample/index.ts"],
 	));
 
-test("the bans reject an Effect runner and a disk import in a feature, and a fixed sleep in test code", () =>
+test("the bans reject an Effect runner, a disk import and Bun.env in a feature, and a fixed sleep in test code", () =>
 	failsWith(
 		"bans",
 		"oxlint-bans",
@@ -71,6 +71,7 @@ test("the bans reject an Effect runner and a disk import in a feature, and a fix
 			"hand it to run or fork from #src/client/pi-host/index.ts",
 			"Read and write disk through the src/client/ folder that owns the file",
 			"call eventually from #src/primitives/eventually.ts",
+			"Read the environment in the entry file and pass it in",
 		],
 	));
 

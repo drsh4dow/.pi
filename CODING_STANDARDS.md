@@ -17,7 +17,7 @@
 | Only `piHost` in `src/client/pi-host/` runs an Effect                                                   | oxlint `no-restricted-properties`                                                            |
 | Only `src/client/` touches disk, HTTP or a child process                                                | oxlint `no-restricted-imports`, `no-restricted-properties`                                   |
 | Test code waits on a condition with `eventually`, never a fixed sleep                                   | oxlint `no-restricted-properties`                                                            |
-| Only entry files read `process.env`                                                                     | oxlint `node/no-process-env`                                                                 |
+| Only entry files read the environment                                                                   | oxlint `node/no-process-env`, and `no-restricted-properties` on `Bun.env`                    |
 | owned-work resolves a delegate's model with `modelOf`                                                   | `tools/ast-grep/rules/delegate-model-lookup.yml`                                             |
 | A source file holds no comment but a doc comment on a declaration, a tool directive or a license header | `tools/ast-grep/rules/no-comments.yml`                                                       |
 | No suppression directive such as `oxlint-disable` or `@ts-expect-error`                                 | `tools/ast-grep/rules/no-suppression.yml`                                                    |
