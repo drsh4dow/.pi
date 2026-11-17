@@ -105,7 +105,6 @@ test("a reply over the cap gets one retry, and the entry counts the usage of bot
 			expect({
 				narrative: entry.details.narrative,
 				usage: entry.usage,
-				retryNamesRun: Str.includes("13000")(prompts[1] ?? ""),
 			}).toEqual({
 				narrative: short,
 				usage: {
@@ -116,8 +115,8 @@ test("a reply over the cap gets one retry, and the entry counts the usage of bot
 					totalTokens: 2222,
 					cost: { input: 0.375, output: 0.375, cacheRead: 0, cacheWrite: 0, total: 0.75 },
 				},
-				retryNamesRun: true,
 			});
+			expect(prompts[1]).toContain("13000");
 		}),
 	));
 
@@ -164,8 +163,6 @@ test("a split turn's prefix reaches the narrative call after the messages to sum
 				ctx,
 			);
 
-			expect(
-				Str.includes("[User]: Read src/a.ts and edit it.\n\n[User]: Then split the lexer.")(prompts[0] ?? ""),
-			).toBe(true);
+			expect(prompts[0]).toContain("[User]: Read src/a.ts and edit it.\n\n[User]: Then split the lexer.");
 		}),
 	));

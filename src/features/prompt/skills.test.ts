@@ -147,14 +147,12 @@ test("no skill an owner or a leaf loads points it at a skill hidden from its rol
 						Arr.map(forRole.skills, ({ filePath }) => nameOf(filePath)),
 					);
 
-					return yield* Effect.forEach(forRole.skills, ({ filePath }) =>
+					const modelLoads = yield* Effect.filter(forRole.skills, ({ filePath }) =>
+						Effect.map(fs.readFileString(filePath), (skillText) => !hiddenFromModel.test(skillText)),
+					);
+
+					return yield* Effect.forEach(modelLoads, ({ filePath }) =>
 						Effect.gen(function* () {
-							const skillText = yield* fs.readFileString(filePath);
-
-							if (hiddenFromModel.test(skillText)) {
-								return [];
-							}
-
 							const docs = yield* docsOf(filePath);
 							const texts = Arr.map(docs, ({ text }) => text);
 
@@ -197,6 +195,17 @@ const contradictions = [
 	},
 ];
 
+const contradictedRules = ({
+	text,
+	seenByDelegate,
+}: {
+	readonly text: string;
+	readonly seenByDelegate: boolean;
+}): ReadonlyArray<string> =>
+	Arr.flatMap(contradictions, ({ phrase, rule, delegates }) =>
+		phrase.test(text) && (!delegates || seenByDelegate) ? [rule] : [],
+	);
+
 test("no skill contradicts a rule the always-on prompt owns", () =>
 	run(
 		Effect.gen(function* () {
@@ -210,8 +219,9 @@ test("no skill contradicts a rule the always-on prompt owns", () =>
 			const found = yield* Effect.forEach(skills, ({ filePath }) =>
 				Effect.map(docsOf(filePath), (docs) =>
 					Arr.flatMap(docs, ({ doc, text }) =>
-						Arr.flatMap(contradictions, ({ phrase, rule, delegates }) =>
-							phrase.test(text) && (!delegates || delegateSees.has(filePath)) ? [`${doc}: ${rule}`] : [],
+						Arr.map(
+							contradictedRules({ text, seenByDelegate: delegateSees.has(filePath) }),
+							(rule) => `${doc}: ${rule}`,
 						),
 					),
 				),

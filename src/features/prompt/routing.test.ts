@@ -26,6 +26,8 @@ const Cases = Schema.Struct({ positive: Schema.Array(Positive), negative: Schema
 
 const Triggers = Schema.fromJsonString(Schema.Record(Schema.String, Cases));
 
+const ownerOf = ({ owner }: typeof Negative.Type): ReadonlyArray<string> => (owner === undefined ? [] : [owner]);
+
 /**
  * Prompts keyed by the skill or playbook each must route to: addyosmani/agent-skills' `evals/cases/`, pstack's quoted
  * trigger phrases, and paraphrases of the owner's own first prompts.
@@ -84,9 +86,7 @@ test("every trigger prompt routes to its own skill or playbook over every other 
 			const triggers = yield* Effect.flatMap(fs.readFileString(triggerFile), Schema.decodeEffect(Triggers));
 			const names = Arr.map(skills, ({ name }) => name);
 
-			const owners = Arr.flatMap(Record.values(triggers), ({ negative }) =>
-				Arr.flatMap(negative, ({ owner }) => (owner === undefined ? [] : [owner])),
-			);
+			const owners = Arr.flatMap(Record.values(triggers), ({ negative }) => Arr.flatMap(negative, ownerOf));
 
 			const named = Arr.dedupe([...Record.keys(triggers), ...owners]);
 
