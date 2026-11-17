@@ -1008,9 +1008,6 @@
     }
   },
   "src/features/owned-work/delegate-models.test.ts": {
-    "jest/prefer-each": {
-      "count": 2
-    },
     "no-undefined": {
       "count": 2
     },
@@ -1281,14 +1278,6 @@
       "count": 1
     }
   },
-  "src/features/owned-work/session.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
-    "jest/prefer-each": {
-      "count": 2
-    }
-  },
   "src/features/owned-work/session.ts": {
     "jsdoc/require-param": {
       "count": 5
@@ -1325,12 +1314,6 @@
     }
   },
   "src/features/owned-work/tools.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 2
-    },
-    "jest/prefer-each": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 3
     },

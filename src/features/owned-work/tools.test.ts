@@ -85,11 +85,18 @@ const startableRoles = (tools: ReturnType<typeof toolsOf>) =>
 		Option.getOrUndefined,
 	);
 
-for (const row of levelRows) {
-	test(`${row.name} starts ${row.expect.roles === undefined ? "no delegates" : Arr.join(row.expect.roles, " or ")}, and always gets the rest of the tools`, () => {
+const startsOf = ({ expect: { roles } }: (typeof levelRows)[number]): string =>
+	roles === undefined ? "no delegates" : Arr.join(roles, " or ");
+
+const guidelinesOf = (tools: ReturnType<typeof toolsOf>): Array<string> =>
+	Arr.flatMap(tools, ({ promptGuidelines }) => promptGuidelines ?? []);
+
+test.each(Arr.map(levelRows, (row) => ({ ...row, starts: startsOf(row) })))(
+	"$name starts $starts, and always gets the rest of the tools",
+	(row) => {
 		const tools = toolsOf(row.self);
 		const names = Arr.map(tools, ({ name }) => name);
-		const guidelines = Arr.flatMap(tools, ({ promptGuidelines }) => promptGuidelines ?? []);
+		const guidelines = guidelinesOf(tools);
 
 		expect({
 			rest: Arr.filter(names, (name) => name !== "delegate"),
@@ -97,8 +104,8 @@ for (const row of levelRows) {
 			lastLevelLine: Arr.some(guidelines, Str.includes("cannot start delegates of their own")),
 			ownerLine: Arr.some(guidelines, Str.includes("one owner per slice")),
 		}).toEqual({ rest: ["serve", "watch", "group", "cancel"], ...row.expect });
-	});
-}
+	},
+);
 
 const delegate = Tools.delegate(runtime, ["owner", "leaf"], { cwd: "/", dir: "/d" }, modelTable, Option.none());
 
