@@ -30,6 +30,8 @@ export const HandleOut = Type.Object({
 	group: Type.Optional(Type.String()),
 	ready: Type.Optional(Type.Boolean()),
 	next: Type.Optional(Type.String()),
+	/** Set when the whole delegate run lands on another model, because no BAA account carries the one named. */
+	substituted: Type.Optional(Type.String()),
 });
 
 const VerdictOut = Type.Object({
@@ -179,6 +181,17 @@ const handleOut = ({ ref, kind, terminal, group, ready }: Handle) => ({
 	),
 });
 
+const delegatedOut = ({
+	handle,
+	substitution,
+}: {
+	readonly handle: Handle;
+	readonly substitution: Option.Option<string>;
+}) => ({
+	...handleOut(handle),
+	...Option.match(substitution, { onNone: () => ({}), onSome: (substituted) => ({ substituted }) }),
+});
+
 const endOut = (end: Option.Option<TerminalEnd>) =>
 	Option.match(end, {
 		onNone: () => ({}),
@@ -229,6 +242,7 @@ const text = (json: JsonValue): Effect.Effect<string> => Effect.orDie(encode(jso
 
 export const Out = {
 	handle: handleOut,
+	delegated: delegatedOut,
 	reason: reasonOut,
 	result: resultOut,
 	entry: entryOut,

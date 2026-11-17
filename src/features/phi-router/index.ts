@@ -1,4 +1,4 @@
-import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
+import type { Api, Model, ModelThinkingLevel } from "@earendil-works/pi-ai";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
 import { getBuiltinModels } from "@earendil-works/pi-ai/providers/all";
 import {
@@ -37,6 +37,7 @@ import {
 	isProtected,
 	type Personal,
 	phiProvider,
+	standingOf,
 	type Target,
 } from "./gate.ts";
 import { appendLane } from "./lanes.ts";
@@ -49,7 +50,7 @@ import { bookOf, type VerdictBook, verdictsEntryType } from "./store.ts";
 
 export { phiBorder } from "./border-scope.ts";
 
-export { isPhi, type Wanted } from "./gate.ts";
+export { isPhi, type Target, type Wanted } from "./gate.ts";
 
 export const internalIdsOnly =
 	"Refer to patients and members only by internal ids, such as a patient_id or a row id, never by name, SSN, date of birth, address, phone, email, member number or record number.";
@@ -73,12 +74,13 @@ export const bridged = ({
 	}
 };
 
-type DelegateCaller = Omit<DelegateRequest, "held" | "dispatchModel"> & {
+type DelegateCaller = Pick<DelegateRequest, "wanted" | "carries"> & {
+	readonly parent: Pick<Model<Api>, "provider" | "id"> | undefined;
 	readonly cwd: string;
 	readonly branch: ReadonlyArray<SessionEntry>;
 };
 
-/** Where owned-work starts a delegate. A `phi/auto` parent is held when it runs wholly on `ent`, `shadow` included. */
+/** Where owned-work starts a delegate. A `phi` parent is held when it runs wholly on `ent`, `shadow` included. */
 export const delegateTargetOf = Effect.fn("delegateTargetOf")(function* (caller: DelegateCaller) {
 	if (!isProtected(caller.parent)) {
 		return { kind: "open" } satisfies Target;
@@ -88,7 +90,12 @@ export const delegateTargetOf = Effect.fn("delegateTargetOf")(function* (caller:
 	const hold = holdOf({ mode: settings.mode, pinned: pinnedOn(caller.branch) });
 	const held = Option.isSome(hold) || settings.mode === "shadow";
 
-	return delegateTarget({ ...caller, held, dispatchModel: settings.model });
+	return delegateTarget({
+		standing: standingOf({ parent: caller.parent, held }),
+		wanted: caller.wanted,
+		fallback: settings.model,
+		carries: caller.carries,
+	});
 });
 
 const statusLine = Effect.fn("statusLine")(function* ({
