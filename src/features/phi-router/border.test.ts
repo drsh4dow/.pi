@@ -84,11 +84,15 @@ test("cleared user, tool and reply parts pass as they are", () => {
 	expect(report).toEqual({ stubbedSealed: 0, stubbedUnknown: 0, refused: false });
 });
 
-test("a cleared reply keeps its thinking only when a personal account wrote it", () => {
-	const messages = [answer("ent"), answer("ultra-b")];
+test("a cleared reply keeps its thinking only when a personal provider wrote it", () => {
+	const messages = [answer("ent"), answer("ultra-b"), answer("openai")];
 	const { messages: sent } = guarded(messages, lookupOf(all("cleared", messages)));
 
-	expect(sent).toEqual([reply("ent", [{ type: "text", text: "Reading the file." }, call]), answer("ultra-b")]);
+	expect(sent).toEqual([
+		reply("ent", [{ type: "text", text: "Reading the file." }, call]),
+		answer("ultra-b"),
+		answer("openai"),
+	]);
 });
 
 test("sealed and never-judged parts become stubs that keep only roles, ids and tool names", () => {

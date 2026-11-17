@@ -14,7 +14,7 @@ import * as Predicate from "effect/Predicate";
 import * as Rec from "effect/Record";
 import * as Schema from "effect/Schema";
 
-import { accountOf } from "#src/features/claude-accounts/index.ts";
+import { isPersonal } from "./gate.ts";
 import { sha256 } from "./policy/digest.ts";
 import { ContentKey, type Image } from "./policy/engine.ts";
 
@@ -187,5 +187,5 @@ export const unitsOf = (message: Message): ReadonlyArray<Unit> => {
 export const partsOf = (message: Message): ReadonlyArray<Part> =>
 	Arr.map(unitsOf(message), ({ key, slot }) => ({ key, slot }));
 
-export const writtenOnPersonal = (message: AssistantMessage) =>
-	Option.exists(accountOf(message.provider), ({ baa }) => !baa);
+/** A reply a personal provider wrote behind the border, so it read only cleared parts and stubs. */
+export const writtenOnPersonal = (message: AssistantMessage) => isPersonal(message.provider);

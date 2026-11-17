@@ -23,7 +23,6 @@ import { laneLogLayer } from "#src/client/phi-lane-log/index.ts";
 import { makePhiSettings, PhiSettings, phiSettingsLayer } from "#src/client/phi-settings/index.ts";
 import { verdictCacheLayer } from "#src/client/phi-verdict-cache/index.ts";
 import { piHost, type PiHost } from "#src/client/pi-host/index.ts";
-import type { AccountId } from "#src/features/claude-accounts/index.ts";
 import { borderEvents } from "./border-scope.ts";
 import type { BorderLink, BorderReport } from "./border.ts";
 import { decisionsOf } from "./decisions.ts";
@@ -36,6 +35,7 @@ import {
 	guardCodemode,
 	isPhi,
 	isProtected,
+	type Personal,
 	phiProvider,
 	type Target,
 } from "./gate.ts";
@@ -134,7 +134,7 @@ type Host = PiHost<Layer.Success<ReturnType<typeof servicesOf>>, never>;
 const sessionBook = (pi: Pick<ExtensionAPI, "appendEntry" | "events">, host: Host) => {
 	let folded = Option.none<{ readonly id: string; readonly book: VerdictBook }>();
 
-	const borderLogged = (report: BorderReport & { readonly account: AccountId }) =>
+	const borderLogged = (report: BorderReport & { readonly account: Personal }) =>
 		Effect.forEach(Option.toArray(folded), ({ id }) =>
 			Effect.flatMap(Clock.currentTimeMillis, (time) =>
 				appendLane({ type: "border", time, session: id, ...report }),
