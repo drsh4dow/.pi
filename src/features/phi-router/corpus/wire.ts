@@ -15,13 +15,13 @@ import { Reply } from "#src/features/phi-router/anthropic.fixture.ts";
 import type { Case, Message } from "./manifest.ts";
 
 /** A file the case's pi reads, at `path` under its project folder. */
-export interface Planted {
+interface Planted {
 	readonly path: string;
 	readonly bytes: Uint8Array;
 }
 
 /** An image as pi's RPC takes it with a prompt. */
-export interface Image {
+interface Image {
 	readonly type: "image";
 	readonly data: string;
 	readonly mimeType: string;
@@ -67,7 +67,7 @@ const summaryPattern =
  * request with. None when the message is no summary, or when its text is longer than compaction keeps, since
  * compaction would replace it and only a pasted turn can carry it.
  */
-export const summaryOf = (text: string) => {
+const summaryOf = (text: string) => {
 	const inner = Option.fromNullishOr(summaryPattern.exec(text)?.groups?.["inner"]);
 
 	return Option.filter(Option.map(inner, Str.trim), (summary) => summary.length <= narrativeCap);

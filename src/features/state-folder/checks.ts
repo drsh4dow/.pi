@@ -13,7 +13,7 @@ import {
 	requiredLabels,
 } from "./action-items.ts";
 
-export const stateCap = 16_384;
+const stateCap = 16_384;
 
 export interface Place {
 	readonly home: string;

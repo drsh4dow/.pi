@@ -39,7 +39,7 @@ import {
 	type WorkRef,
 } from "./work.ts";
 
-export type SpawnError = HcError | PlatformError.PlatformError;
+type SpawnError = HcError | PlatformError.PlatformError;
 
 export type StartError = SpawnError | NameTaken;
 

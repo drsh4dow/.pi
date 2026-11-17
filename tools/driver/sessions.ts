@@ -73,7 +73,7 @@ const isEntry = (entry: ReturnType<typeof parseSessionEntries>[number]): entry i
 	entry.type !== "session";
 
 /** Pure. One session file's text with its probe records. None when the header is not written yet. */
-export const sessionIn = ({
+const sessionIn = ({
 	file,
 	text,
 	probed,

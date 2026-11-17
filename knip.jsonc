@@ -1,0 +1,26 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"entry": [
+		"agent/extensions/*/index.ts",
+		"agent/bin/*.ts",
+		"src/**/*.{test,scenario}.ts",
+		// pi loads these by path
+		"src/features/phi-router/border.fixture.ts",
+		"tools/driver/probe.ts",
+		"tools/prompts/capture.ts",
+		// commands run with bun <file>
+		"src/features/phi-router/corpus/{eval,generate,latency}.ts",
+		"tools/**/*.{test,scenario}.ts",
+		"tools/loaded/replay.ts",
+	],
+	"project": ["src/**/*.ts", "tools/**/*.ts", "agent/extensions/**/*.ts", "agent/bin/**/*.ts"],
+	"ignore": ["tools/oxlint/anti-slop/**", "tools/oxlint/fixtures/**", "tools/gates/fixtures/**"],
+	"ignoreDependencies": [
+		// the tsconfig plugin name that @effect/tsgo answers to; no package by that name exists
+		"@effect/language-service",
+		// tools/gates/budget.ts runs ast-grep by path, which knip does not follow
+		"@ast-grep/cli",
+		// dependency-cruiser loads it for "parser": "swc" in .dependency-cruiser.json
+		"@swc/core",
+	],
+}

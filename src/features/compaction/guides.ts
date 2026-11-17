@@ -4,7 +4,7 @@ import * as Option from "effect/Option";
 
 import { type GuideFile, guidesOf, indexOf, inContext } from "#src/features/loaded/index.ts";
 
-export const guideBudget = 120_000;
+const guideBudget = 120_000;
 
 export interface Guides {
 	readonly restored: ReadonlyArray<{ readonly path: string; readonly text: string }>;

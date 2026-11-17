@@ -228,9 +228,9 @@ const holds = (message: ReadonlyArray<string>) => (token: string) => Arr.some(me
  * whole. A message that holds the canary whole, or holds every part, makes it `whole`, a leak that fails the gate
  * whatever the case's label. Some parts alone are `partial`: fragments, never a leak.
  */
-export type SplitReach = "whole" | "split" | "partial" | "none";
+type SplitReach = "whole" | "split" | "partial" | "none";
 
-export const splitReachOf = ({
+const splitReachOf = ({
 	split,
 	received,
 }: {

@@ -20,7 +20,7 @@ export const onlyYouLabel = "**Only you.**";
 
 export const onlyYouKinds = ["decision", "approval", "irreversible action", "access"] as const;
 
-export interface Denial {
+interface Denial {
 	readonly line: number;
 	readonly paths: Arr.NonEmptyReadonlyArray<string>;
 }

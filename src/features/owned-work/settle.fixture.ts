@@ -11,7 +11,7 @@ export interface InFlight {
 	files: number;
 }
 
-export interface WorldClock {
+interface WorldClock {
 	backMs: number;
 	sleeping: number;
 	readonly paused: TestClock.TestClock;

@@ -145,7 +145,7 @@ const gh = Layer.succeed(
 
 export const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, ledger, home, gh));
 
-export const delegateStarting = (roles: ReadonlyArray<ChildRole>) =>
+const delegateStarting = (roles: ReadonlyArray<ChildRole>) =>
 	Tools.delegate(runtime, roles, { cwd: "/", dir: "/d" }, table, Option.none());
 
 export const delegate = delegateStarting(["owner", "leaf"]);

@@ -1040,7 +1040,7 @@
       "count": 7
     },
     "typescript/explicit-module-boundary-types": {
-      "count": 4
+      "count": 3
     }
   },
   "src/features/owned-work/brief.scenario.ts": {
@@ -2113,7 +2113,7 @@
       "count": 17
     },
     "typescript/explicit-module-boundary-types": {
-      "count": 2
+      "count": 1
     }
   },
   "src/features/phi-router/corpus/x12.ts": {
