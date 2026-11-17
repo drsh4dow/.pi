@@ -6,7 +6,10 @@ import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 
+import { piHost } from "#src/client/pi-host/index.ts";
 import { hidesFromMenu, withoutHiddenSkills } from "./index.ts";
+
+const host = piHost(NodeServices.layer);
 
 type AutocompleteProvider = Parameters<AutocompleteProviderFactory>[0];
 
@@ -58,7 +61,7 @@ test("the menu leaves out hidden skills and keeps every other command", () =>
 				command("unreadable", `${scratch}/missing.md`),
 			];
 
-			const provider = withoutHiddenSkills(() => commands)(
+			const provider = withoutHiddenSkills({ host, commands: () => commands })(
 				fixedProvider(["model", "skill:hidden", "skill:shown", "skill:unreadable"]),
 			);
 
@@ -77,7 +80,10 @@ test("the menu shows a hidden skill again once its file drops the key", () =>
 			yield* fs.makeDirectory(scratch, { recursive: true });
 			yield* fs.writeFileString(path, skillFile("user-invocable: false\n"));
 
-			const provider = withoutHiddenSkills(() => [command("edited", path)])(fixedProvider(["skill:edited"]));
+			const provider = withoutHiddenSkills({ host, commands: () => [command("edited", path)] })(
+				fixedProvider(["skill:edited"]),
+			);
+
 			const before = yield* suggest(provider);
 
 			yield* fs.writeFileString(path, skillFile(""));

@@ -14,6 +14,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
+import { piHost } from "#src/client/pi-host/index.ts";
 import { StateFolder, stateFolderLayer } from "#src/client/state-folder/index.ts";
 import { guideFiles, readGuides } from "#src/features/loaded/index.ts";
 import { selfFromEnv } from "#src/features/owned-work/index.ts";
@@ -42,8 +43,6 @@ import {
 export { narrativeCap } from "./summary.ts";
 
 type Env = Readonly<Record<string, string | undefined>>;
-
-const services = Layer.provideMerge(stateFolderLayer, NodeServices.layer);
 
 type StreamSimple = ExtensionContext["modelRegistry"]["streamSimple"];
 
@@ -247,7 +246,9 @@ export const compaction =
 		) => void;
 		readonly getCommands: () => ReadonlyArray<SlashCommandInfo>;
 	}) => {
+		const host = piHost(Layer.provideMerge(stateFolderLayer, NodeServices.layer));
+
 		pi.on("session_before_compact", (event, ctx) =>
-			Effect.runPromise(compact({ env, commands: pi.getCommands(), event, ctx }).pipe(Effect.provide(services))),
+			host.run(compact({ env, commands: pi.getCommands(), event, ctx })),
 		);
 	};

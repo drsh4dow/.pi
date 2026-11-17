@@ -11,6 +11,7 @@ import type * as Option from "effect/Option";
 
 import { agentFileText } from "#src/client/agent-files/index.ts";
 import { readStagedBrief, type StagedBrief } from "#src/client/pi-cli/index.ts";
+import { piHost } from "#src/client/pi-host/index.ts";
 import { type Role, Self, selfFromEnv } from "#src/features/owned-work/index.ts";
 import { compose } from "./compose.ts";
 import { entryIndex, type Kind, loadEntries } from "./kinds.ts";
@@ -73,7 +74,7 @@ const run = Effect.fn("prompt")(function* (event: BeforeAgentStartEvent, ctx: Ex
 });
 
 export const prompt = (pi: Pick<ExtensionAPI, "on">) => {
-	pi.on("before_agent_start", (event, ctx) =>
-		Effect.runPromise(run(event, ctx).pipe(Effect.provide(NodeServices.layer))),
-	);
+	const host = piHost(NodeServices.layer);
+
+	pi.on("before_agent_start", (event, ctx) => host.run(run(event, ctx)));
 };
