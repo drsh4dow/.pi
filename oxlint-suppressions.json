@@ -743,9 +743,6 @@
     }
   },
   "src/features/compaction/guides.test.ts": {
-    "jest/prefer-each": {
-      "count": 2
-    },
     "oxc/no-optional-chaining": {
       "count": 2
     },
@@ -767,9 +764,6 @@
   "src/features/compaction/index.test.ts": {
     "jest/no-conditional-in-test": {
       "count": 1
-    },
-    "jest/prefer-each": {
-      "count": 2
     },
     "typescript/explicit-function-return-type": {
       "count": 1
@@ -801,9 +795,6 @@
   "src/features/compaction/narrative.test.ts": {
     "jest/no-conditional-in-test": {
       "count": 2
-    },
-    "jest/prefer-each": {
-      "count": 1
     },
     "no-undefined": {
       "count": 1
@@ -2658,9 +2649,6 @@
     "jest/no-conditional-in-test": {
       "count": 1
     },
-    "jest/prefer-each": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }
@@ -2688,9 +2676,6 @@
     }
   },
   "src/features/prompt/index.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "node/no-top-level-await": {
       "count": 1
     },
@@ -2717,9 +2702,6 @@
   },
   "src/features/prompt/kinds.test.ts": {
     "jest/no-conditional-in-test": {
-      "count": 2
-    },
-    "jest/prefer-each": {
       "count": 2
     },
     "jsdoc/require-param": {
@@ -2784,9 +2766,6 @@
     "jest/no-conditional-in-test": {
       "count": 4
     },
-    "jest/prefer-each": {
-      "count": 1
-    },
     "jsdoc/require-param": {
       "count": 2
     },
@@ -2815,9 +2794,6 @@
     }
   },
   "src/features/skill-menu/index.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "jsdoc/require-param": {
       "count": 1
     },

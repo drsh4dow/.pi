@@ -55,21 +55,20 @@ const failedRows: ReadonlyArray<{ readonly name: string; readonly ctx: () => Ctx
 	},
 ];
 
-for (const row of failedRows) {
-	test(`${row.name} carries the prior narrative, the anchor and the file lists`, () =>
-		run(
-			Effect.gen(function* () {
-				const event = eventFor({ session: sessionWithPrior(), fileOps: ops({ read: ["src/new.ts"] }) });
-				const { summary, details } = yield* compact(delegateEnv, event, row.ctx());
+test.each(failedRows)("$name carries the prior narrative, the anchor and the file lists", (row) =>
+	run(
+		Effect.gen(function* () {
+			const event = eventFor({ session: sessionWithPrior(), fileOps: ops({ read: ["src/new.ts"] }) });
+			const { summary, details } = yield* compact(delegateEnv, event, row.ctx());
 
-				expect({
-					opensWithNote: Str.startsWith(carriedNote)(summary),
-					endsWithPriorAnchorAndFiles: Str.endsWith(carriedTail)(summary),
-					narrative: details.narrative,
-				}).toEqual({ opensWithNote: true, endsWithPriorAnchorAndFiles: true, narrative: "Prior narrative." });
-			}),
-		));
-}
+			expect({
+				opensWithNote: Str.startsWith(carriedNote)(summary),
+				endsWithPriorAnchorAndFiles: Str.endsWith(carriedTail)(summary),
+				narrative: details.narrative,
+			}).toEqual({ opensWithNote: true, endsWithPriorAnchorAndFiles: true, narrative: "Prior narrative." });
+		}),
+	),
+);
 
 test("without a narrative of ours, the summary pi wrote is the prior narrative, cut to the cap", () =>
 	run(

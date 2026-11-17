@@ -118,11 +118,9 @@ const preambleRows: ReadonlyArray<{ name: string; shared: string; layers: Layers
 	},
 ];
 
-for (const row of preambleRows) {
-	test(row.name, () => {
-		expect(composed(options({ customPrompt: row.shared }), row.layers).customPrompt).toBe(row.expect);
-	});
-}
+test.each(preambleRows)("$name", (row) => {
+	expect(composed(options({ customPrompt: row.shared }), row.layers).customPrompt).toBe(row.expect);
+});
 
 test("an owner handed its own design reads that it runs architect first", () => {
 	const brief = {
@@ -164,11 +162,9 @@ const ruleRows = [
 	},
 ] satisfies ReadonlyArray<{ name: string; given: Partial<NormalizedBuildSystemPromptOptions>; rules: string }>;
 
-for (const { name, given, rules } of ruleRows) {
-	test(`the rules section ${name}`, () => {
-		expect(composed(options(given), root).sections["rules"]).toBe(rules);
-	});
-}
+test.each(ruleRows)("the rules section $name", ({ given, rules }) => {
+	expect(composed(options(given), root).sections["rules"]).toBe(rules);
+});
 
 test("the prompt gets no tools list, since each tool's schema already describes it", () => {
 	expect(composed(options({}), root).sections).not.toHaveProperty("tools");

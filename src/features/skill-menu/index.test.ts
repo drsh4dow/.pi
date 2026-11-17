@@ -22,11 +22,9 @@ const rows: ReadonlyArray<{ name: string; text: string; hides: boolean }> = [
 	{ name: "unparseable frontmatter shows the skill", text: "---\nname: [x\n---\nBody.\n", hides: false },
 ];
 
-for (const row of rows) {
-	test(row.name, () => {
-		expect(hidesFromMenu(row.text)).toBe(row.hides);
-	});
-}
+test.each(rows)("$name", (row) => {
+	expect(hidesFromMenu(row.text)).toBe(row.hides);
+});
 
 const command = (name: string, path: string): SlashCommandInfo => ({
 	name: `skill:${name}`,

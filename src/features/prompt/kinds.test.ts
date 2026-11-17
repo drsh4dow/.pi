@@ -60,31 +60,30 @@ const write = Effect.fn("write")(function* (dir: string, file: string, text: str
 const run = <Success, Failure>(effect: Effect.Effect<Success, Failure, FileSystem.FileSystem>) =>
 	Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
 
-for (const kind of kinds) {
-	for (const [index, row] of rows.entries()) {
-		test(`${kind}: ${row.name}`, () =>
-			run(
-				Effect.gen(function* () {
-					const dir = `${scratch}/${String(index)}/${kind}`;
+test.each(Arr.flatMap(kinds, (kind) => Arr.map(rows, (row, index) => ({ ...row, kind, index }))))(
+	"$kind: $name",
+	({ kind, index, ...row }) =>
+		run(
+			Effect.gen(function* () {
+				const dir = `${scratch}/${String(index)}/${kind}`;
 
-					yield* write(dir, row.file, row.text);
+				yield* write(dir, row.file, row.text);
 
-					const { entries, problems } = yield* loadEntries(kind, dir);
-					const loaded = Arr.map(entries, ({ name, roles }) => ({ name, roles }));
-					const name = Str.replace(/\.md$/u, "")(row.file);
+				const { entries, problems } = yield* loadEntries(kind, dir);
+				const loaded = Arr.map(entries, ({ name, roles }) => ({ name, roles }));
+				const name = Str.replace(/\.md$/u, "")(row.file);
 
-					expect({ loaded, problems: problems.length }).toEqual(
-						row.roles === undefined
-							? { loaded: [], problems: 1 }
-							: {
-									loaded: [{ name, roles: row.roles === "default" ? withoutFor[kind] : row.roles }],
-									problems: 0,
-								},
-					);
-				}),
-			));
-	}
-}
+				expect({ loaded, problems: problems.length }).toEqual(
+					row.roles === undefined
+						? { loaded: [], problems: 1 }
+						: {
+								loaded: [{ name, roles: row.roles === "default" ? withoutFor[kind] : row.roles }],
+								problems: 0,
+							},
+				);
+			}),
+		),
+);
 
 test("a file in a playbook's subfolder is a reference file: neither listed nor refused", () =>
 	run(
@@ -112,8 +111,9 @@ test("a missing folder holds no entries and no problems", () =>
 		}),
 	));
 
-for (const kind of kinds) {
-	test(`the ${kind} index names the folder once, then each entry's name and trigger, only for the roles it fits`, () => {
+test.each(kinds)(
+	"the %s index names the folder once, then each entry's name and trigger, only for the roles it fits",
+	(kind) => {
 		const everywhere: Entry = { name: "bug-fix", when: "Debugging.", roles: every };
 		const rootOnly: Entry = { name: "ask-less", when: "Asking.", roles: ["root"] };
 
@@ -127,8 +127,8 @@ for (const kind of kinds) {
 
 		expect(entryIndex({ kind, role: "leaf", dir: "/p", entries: [rootOnly] })).toEqual(Option.none());
 		expect(entryIndex({ kind, role: "root", dir: "/p", entries: [] })).toEqual(Option.none());
-	});
-}
+	},
+);
 
 /** The names `text` points at as `principle-<name>`, the one spelling prompts and answers use. */
 const principleReferences = (text: string) => {

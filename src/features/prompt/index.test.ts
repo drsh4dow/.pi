@@ -36,20 +36,17 @@ const rows: ReadonlyArray<{ role: Role; playbooks: Option.Option<string> }> = [
 	{ role: "leaf", playbooks: playbooksFor("- review-lane: Reviewing one lane.") },
 ];
 
-for (const row of rows) {
-	test(`a ${row.role} reads its own role file, every principle, and only the playbooks that fit it`, () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const { layers, problems } = yield* layersOf(agentDir, row.role, Option.none(), []);
+test.each(rows)("a $role reads its own role file, every principle, and only the playbooks that fit it", (row) =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const { layers, problems } = yield* layersOf(agentDir, row.role, Option.none(), []);
 
-				expect({ role: layers.role, principles: layers.principles, playbooks: layers.playbooks, problems }).toEqual(
-					{
-						role: `<role>\n${row.role}\n</role>`,
-						principles,
-						playbooks: row.playbooks,
-						problems: [],
-					},
-				);
-			}).pipe(Effect.provide(NodeServices.layer)),
-		));
-}
+			expect({ role: layers.role, principles: layers.principles, playbooks: layers.playbooks, problems }).toEqual({
+				role: `<role>\n${row.role}\n</role>`,
+				principles,
+				playbooks: row.playbooks,
+				problems: [],
+			});
+		}).pipe(Effect.provide(NodeServices.layer)),
+	),
+);

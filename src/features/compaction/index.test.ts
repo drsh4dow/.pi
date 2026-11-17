@@ -46,48 +46,45 @@ const anchorRows = [
 	},
 ];
 
-for (const row of anchorRows) {
-	test(row.name, () =>
-		run(
-			Effect.gen(function* () {
-				const fs = yield* FileSystem.FileSystem;
-				const session = sessionWithTask();
+test.each(anchorRows)("$name", (row) =>
+	run(
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const session = sessionWithTask();
 
-				for (const { path, state } of Option.toArray(row.folder)) {
-					session.appendCustomEntry(entryKind, { folder: path });
-					yield* fs.makeDirectory(path, { recursive: true });
+			for (const { path, state } of Option.toArray(row.folder)) {
+				session.appendCustomEntry(entryKind, { folder: path });
+				yield* fs.makeDirectory(path, { recursive: true });
 
-					for (const text of Option.toArray(state)) {
-						yield* fs.writeFileString(`${path}/STATE.md`, text);
-					}
+				for (const text of Option.toArray(state)) {
+					yield* fs.writeFileString(`${path}/STATE.md`, text);
 				}
+			}
 
-				const { summary } = yield* compact(
-					row.env,
-					eventFor({ session, fileOps: readA }),
-					answering(reply({ text: "Narrative." })).ctx,
-				);
+			const { summary } = yield* compact(
+				row.env,
+				eventFor({ session, fileOps: readA }),
+				answering(reply({ text: "Narrative." })).ctx,
+			);
 
-				expect(summary).toBe(`Narrative.\n\n${row.anchor}<read-files>\nsrc/a.ts\n</read-files>`);
-			}),
-		),
-	);
-}
+			expect(summary).toBe(`Narrative.\n\n${row.anchor}<read-files>\nsrc/a.ts\n</read-files>`);
+		}),
+	),
+);
 
-for (const reason of ["manual", "overflow"] as const) {
-	test(`a delegate's ${reason} compaction gets the same summary`, () =>
-		run(
-			Effect.gen(function* () {
-				const { summary } = yield* compact(
-					delegateEnv,
-					eventFor({ session: sessionWithTask(), fileOps: readA, reason }),
-					answering(reply({ text: "Narrative." })).ctx,
-				);
+test.each(["manual", "overflow"] as const)("a delegate's %s compaction gets the same summary", (reason) =>
+	run(
+		Effect.gen(function* () {
+			const { summary } = yield* compact(
+				delegateEnv,
+				eventFor({ session: sessionWithTask(), fileOps: readA, reason }),
+				answering(reply({ text: "Narrative." })).ctx,
+			);
 
-				expect(summary).toBe(`Narrative.\n\n<task>\n${task}\n</task>\n\n<read-files>\nsrc/a.ts\n</read-files>`);
-			}),
-		));
-}
+			expect(summary).toBe(`Narrative.\n\n<task>\n${task}\n</task>\n\n<read-files>\nsrc/a.ts\n</read-files>`);
+		}),
+	),
+);
 
 test("three compactions keep the union of their file lists and feed each narrative, alone, to the next", () =>
 	run(
