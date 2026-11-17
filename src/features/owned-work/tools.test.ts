@@ -10,13 +10,20 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { briefSourcesLayer } from "#src/client/brief-sources/index.ts";
 import { Gh } from "#src/client/gh/index.ts";
 import { Self } from "./child.ts";
 import { Ledger } from "./ledger.ts";
 import { modelTable } from "./models.ts";
 import { Tools } from "./tools.ts";
 
-const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, Layer.mock(Ledger)({}), Layer.mock(Gh)({})));
+const runtime = ManagedRuntime.make(
+	Layer.mergeAll(
+		Layer.provideMerge(briefSourcesLayer, NodeServices.layer),
+		Layer.mock(Ledger)({}),
+		Layer.mock(Gh)({}),
+	),
+);
 
 const toolsOf = (self: Self) => {
 	const tools: Array<Pick<ToolDefinition, "name" | "description" | "parameters" | "promptGuidelines" | "execute">> =

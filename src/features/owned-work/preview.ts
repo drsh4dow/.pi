@@ -1,12 +1,12 @@
 import { uuidv7 } from "@earendil-works/pi-ai";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
+import { BriefSources, briefSourcesLayer } from "#src/client/brief-sources/index.ts";
 import { PiCli, piCliLayer } from "#src/client/pi-cli/index.ts";
 import { roleFieldsFor } from "./brief.ts";
 import { type Brief, childExtensions, type ChildRole, inheritedEnv, launch, levels } from "./child.ts";
@@ -59,8 +59,8 @@ const bareDelegates = [
 ];
 
 const onInstructionsFile = Effect.fn("onInstructionsFile")(function* (file: string) {
-	const fs = yield* FileSystem.FileSystem;
-	const profile = yield* Effect.flatMap(fs.readFileString(`${instructionsFolder}/${file}`), parseProfile);
+	const sources = yield* BriefSources;
+	const profile = yield* Effect.flatMap(sources.read(`${instructionsFolder}/${file}`), parseProfile);
 	const role = yield* Effect.fromOption(profile.role, () => `instructions file ${file} names no role`);
 	const model = yield* Effect.fromOption(profile.model, () => `instructions file ${file} names no model`);
 
@@ -89,15 +89,13 @@ export const stagedLaunches = Effect.fn("stagedLaunches")(function* (
 	message: string,
 	state: string,
 ) {
-	const fs = yield* FileSystem.FileSystem;
-	const files = yield* fs.readDirectory(instructionsFolder);
-
-	const services = yield* Layer.build(piCliLayer(childExtensions));
+	const services = yield* Layer.build(Layer.merge(piCliLayer(childExtensions), briefSourcesLayer));
 	const cli = Context.get(services, PiCli);
+	const files = yield* Context.get(services, BriefSources).list(instructionsFolder);
 
-	const withInstructions = yield* Effect.forEach(files, onInstructionsFile);
+	const withInstructions = yield* Effect.provideContext(Effect.forEach(files, onInstructionsFile), services);
 
-	return yield* Effect.forEach([...withInstructions, ...bareDelegates], ({ level, role, design, ...staged }) =>
+	const launches = Effect.forEach([...withInstructions, ...bareDelegates], ({ level, role, design, ...staged }) =>
 		Effect.gen(function* () {
 			const roleFields = yield* roleFieldsFor(state, Option.some(state), role, design);
 			const brief: Brief = { ...staged, message, goal, state: Option.some(state), ...roleFields };
@@ -121,4 +119,6 @@ export const stagedLaunches = Effect.fn("stagedLaunches")(function* (
 			return launched;
 		}),
 	);
+
+	return yield* Effect.provideContext(launches, services);
 });

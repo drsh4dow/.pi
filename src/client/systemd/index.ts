@@ -1,5 +1,6 @@
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as ChildProcess from "effect/process/ChildProcess";
@@ -69,6 +70,11 @@ const stopUnit = (spawner: ChildProcessSpawner.ChildProcessSpawner["Service"], u
 /** Stops the root's watcher, whose ExecStopPost stops the root's slice and every job in it. */
 export const stopRoot = (slice: string) =>
 	Effect.flatMap(ChildProcessSpawner.ChildProcessSpawner, (spawner) => stopUnit(spawner, `${slice}.service`));
+
+/** This process's `/proc/self/cgroup`, which names the units it runs in. Off Linux there is none, and it is empty. */
+export const ownCgroup = Effect.flatMap(FileSystem.FileSystem, (fs) =>
+	Effect.orElseSucceed(fs.readFileString("/proc/self/cgroup"), () => ""),
+);
 
 const isActive = (spawner: ChildProcessSpawner.ChildProcessSpawner["Service"], unit: string) =>
 	Effect.isSuccess(systemd(spawner, "systemctl", ["is-active", "--quiet", unit], [0]));

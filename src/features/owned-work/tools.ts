@@ -5,17 +5,18 @@ import {
 	type ExtensionContext,
 	type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
+import type * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import type * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
-import type * as Path from "effect/Path";
 import { type Static, Type } from "typebox";
 
+import { type BriefSources, briefSourcesLayer } from "#src/client/brief-sources/index.ts";
 import { type Gh, ghLayer } from "#src/client/gh/index.ts";
-import { readStagedBrief } from "#src/client/pi-cli/index.ts";
+import { makeSessionFolder, readStagedBrief } from "#src/client/pi-cli/index.ts";
 import type { SessionAddress } from "#src/client/pi-sessions/index.ts";
 import { type Caller, type DelegateParams, delegateParams, parseCall } from "./brief.ts";
 import { type ChildRole, type ChildSession, childRoles, Self } from "./child.ts";
@@ -88,11 +89,13 @@ const resultOf = (json: JsonValue, isError: boolean) =>
 		isError,
 	}));
 
-type Runtime = ManagedRuntime.ManagedRuntime<Ledger | Gh | FileSystem.FileSystem | Path.Path, never>;
+type CallServices = Gh | BriefSources | NodeServices.NodeServices;
+
+type Runtime = ManagedRuntime.ManagedRuntime<Ledger | CallServices, never>;
 
 type Call<Reply> = (
 	ledger: (typeof Ledger)["Service"],
-) => Effect.Effect<Reply, LedgerFailure | BadDelegate, Gh | FileSystem.FileSystem | Path.Path>;
+) => Effect.Effect<Reply, LedgerFailure | BadDelegate, CallServices>;
 
 const runTool =
 	(runtime: Runtime, signal: AbortSignal | undefined) =>
@@ -195,11 +198,10 @@ const watchTool = (runtime: Runtime, place: Omit<ChildSession, "id">) =>
 			const after = Option.map(Option.fromUndefinedOr(deadline), Duration.seconds);
 			const request = StartRequest.Watch({ command, deadline: after, log: `${place.dir}/${uuidv7()}.log` });
 
-			const ownerOnlyDir = Effect.flatMap(FileSystem.FileSystem, (fs) =>
-				fs.makeDirectory(place.dir, { recursive: true, mode: 0o700 }),
+			return runTool(runtime, signal)(
+				(ledger) => Effect.andThen(makeSessionFolder(place.dir), ledger.start(request)),
+				Out.handle,
 			);
-
-			return runTool(runtime, signal)((ledger) => Effect.andThen(ownerOnlyDir, ledger.start(request)), Out.handle);
 		},
 	});
 
@@ -252,6 +254,6 @@ const register = (
 	}
 };
 
-export type ToolServices = Gh;
+export type ToolServices = Gh | BriefSources;
 
-export const Tools = { register, delegate: delegateTool, layer: ghLayer };
+export const Tools = { register, delegate: delegateTool, layer: Layer.merge(ghLayer, briefSourcesLayer) };

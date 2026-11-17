@@ -2,12 +2,12 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Str from "effect/String";
 import { type Static, Type } from "typebox";
 
+import { BriefSources } from "#src/client/brief-sources/index.ts";
 import { Design, type StagedBrief } from "#src/client/pi-cli/index.ts";
 import { lastFolder } from "#src/features/state-folder/index.ts";
 import type { Brief, ChildRole } from "./child.ts";
@@ -95,11 +95,11 @@ const absoluteOf = Effect.fn("absoluteOf")(function* (cwd: string, file: string)
 });
 
 const instructionsOf = Effect.fn("instructionsOf")(function* (cwd: string, file: string) {
-	const fs = yield* FileSystem.FileSystem;
+	const sources = yield* BriefSources;
 	const absolute = yield* absoluteOf(cwd, file);
 
-	const text = yield* Effect.mapError(fs.readFileString(absolute), (error) =>
-		BadDelegate.make({ why: `cannot read instructionsFile ${file}: ${error.reason._tag}` }),
+	const text = yield* Effect.mapError(sources.read(absolute), ({ why }) =>
+		BadDelegate.make({ why: `cannot read instructionsFile ${file}: ${why}` }),
 	);
 
 	const profile = yield* Effect.mapError(parseProfile(text), (why) =>
@@ -111,13 +111,12 @@ const instructionsOf = Effect.fn("instructionsOf")(function* (cwd: string, file:
 
 /** The real path, since the child records that one in its session, and pi finds the session by comparing the two as text. */
 const folderOf = Effect.fn("folderOf")(function* (cwd: string, folder: string, refused: string) {
-	const fs = yield* FileSystem.FileSystem;
+	const sources = yield* BriefSources;
 	const absolute = yield* absoluteOf(cwd, folder);
-	const refusal = (why: string) => BadDelegate.make({ why: `${refused} ${folder}: ${why}` });
-	const real = yield* Effect.mapError(fs.realPath(absolute), (error) => refusal(error.reason._tag));
-	const info = yield* Effect.mapError(fs.stat(real), (error) => refusal(error.reason._tag));
 
-	return info.type === "Directory" ? real : yield* refusal("not a folder");
+	return yield* Effect.mapError(sources.realFolder(absolute), ({ why }) =>
+		BadDelegate.make({ why: `${refused} ${folder}: ${why}` }),
+	);
 });
 
 const stateFile = (state: Option.Option<string>, name: string) =>
@@ -126,10 +125,8 @@ const stateFile = (state: Option.Option<string>, name: string) =>
 		onSome: (folder) => {
 			const file = `${folder}/${name}`;
 
-			return Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readFileString(file)).pipe(
-				Effect.asSome,
-				Effect.catchReason("PlatformError", "NotFound", () => Effect.succeedNone),
-				Effect.mapError((error) => BadDelegate.make({ why: `cannot read ${file}: ${error.reason._tag}` })),
+			return Effect.flatMap(BriefSources, (sources) => sources.readIfPresent(file)).pipe(
+				Effect.mapError(({ why }) => BadDelegate.make({ why: `cannot read ${file}: ${why}` })),
 			);
 		},
 	});
@@ -139,11 +136,11 @@ const designOf = Effect.fn("designOf")(function* (cwd: string, named: string) {
 		return Design.cases.Yours.make({});
 	}
 
-	const fs = yield* FileSystem.FileSystem;
+	const sources = yield* BriefSources;
 	const path = yield* absoluteOf(cwd, named);
 
-	const text = yield* Effect.mapError(fs.readFileString(path), (error) =>
-		BadDelegate.make({ why: `cannot read design sketch ${named}: ${error.reason._tag}` }),
+	const text = yield* Effect.mapError(sources.read(path), ({ why }) =>
+		BadDelegate.make({ why: `cannot read design sketch ${named}: ${why}` }),
 	);
 
 	return /^## Synthesis decision\s*$/mu.test(text)

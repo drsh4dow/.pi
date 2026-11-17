@@ -4,7 +4,6 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as FiberMap from "effect/FiberMap";
 import * as FiberSet from "effect/FiberSet";
-import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
@@ -44,6 +43,9 @@ type SpawnError = HcError | PlatformError.PlatformError;
 export type StartError = SpawnError | NameTaken;
 
 export type LedgerFailure = LedgerError | StartError | NotContinuable;
+
+/** What recording a verdict needs, which the ledger takes when it is built and hands on. */
+type VerdictServices = Effect.Services<ReturnType<ReturnType<typeof recordVerdict>>>;
 
 export class Host extends Context.Service<
 	Host,
@@ -87,7 +89,7 @@ interface Kit {
 	readonly slices: (typeof Slices)["Service"];
 	readonly sessions: (typeof PiSessions)["Service"];
 	readonly cli: (typeof PiCli)["Service"];
-	readonly fs: FileSystem.FileSystem;
+	readonly verdictServices: Context.Context<VerdictServices>;
 	readonly state: Ref.Ref<LedgerState>;
 	readonly lock: Semaphore.Semaphore;
 	readonly fibers: FiberSet.FiberSet;
@@ -198,7 +200,7 @@ const run = (kit: Kit, command: Command): Effect.Effect<unknown> =>
 
 const recordOf = (kit: Kit, record: VerdictRecord) =>
 	recordVerdict(verdictsFolder(kit.options.passEnv["HOME"] ?? ""))(record).pipe(
-		Effect.provideService(FileSystem.FileSystem, kit.fs),
+		Effect.provideContext(kit.verdictServices),
 		Effect.catchCause((cause) => Effect.logWarning(`no verdict record at ${record.head}`, cause)),
 	);
 
@@ -253,7 +255,7 @@ const follow = (kit: Kit): Effect.Effect<void> =>
 
 export const ledgerLayer = (
 	options: LedgerOptions,
-): Layer.Layer<Ledger, never, Hc | Host | Slices | PiSessions | PiCli | FileSystem.FileSystem> =>
+): Layer.Layer<Ledger, never, Hc | Host | Slices | PiSessions | PiCli | VerdictServices> =>
 	Layer.effect(
 		Ledger,
 		Effect.gen(function* () {
@@ -266,7 +268,7 @@ export const ledgerLayer = (
 				slices: yield* Slices,
 				sessions: yield* PiSessions,
 				cli: yield* PiCli,
-				fs: yield* FileSystem.FileSystem,
+				verdictServices: yield* Effect.context<VerdictServices>(),
 				state: yield* Ref.make(
 					Option.getOrElse(options.carried, () => Transitions.initial(options.self.role, options.firstRef, now)),
 				),
