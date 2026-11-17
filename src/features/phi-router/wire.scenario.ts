@@ -9,7 +9,14 @@ import * as Str from "effect/String";
 
 import { entryKind } from "#src/features/owned-work/index.ts";
 import { type Run, scenario } from "#tools/driver/index.ts";
-import { type Asked, compactionPrompt, mockedModels, Reply, serveMock } from "./anthropic.fixture.ts";
+import {
+	type Asked,
+	compactionPrompt,
+	type MockAnthropic,
+	mockedModels,
+	Reply,
+	serveMock,
+} from "./anthropic.fixture.ts";
 import { foundIn } from "./corpus/canary-tokens.ts";
 import { stubs } from "./policy/policy.ts";
 import { providersOf } from "./session.fixture.ts";
@@ -73,23 +80,26 @@ type Counts = Readonly<Record<"ultra-a" | "ultra-b" | "ent", number>>;
 
 const atFirstEnt = MutableRef.make(Option.none<Counts>());
 
+const counts = (served: Readonly<Record<keyof Counts, MockAnthropic>>): Counts => ({
+	"ultra-a": served["ultra-a"].bodies().length,
+	"ultra-b": served["ultra-b"].bodies().length,
+	ent: served.ent.bodies().length,
+});
+
 const mocks = {
 	"ultra-a": serveMock(reply),
 	"ultra-b": serveMock(reply),
 	ent: serveMock((asked) => {
-		MutableRef.update(atFirstEnt, Option.orElseSome(counts));
+		MutableRef.update(
+			atFirstEnt,
+			Option.orElseSome(() => counts(mocks)),
+		);
 
 		return reply(asked);
 	}),
 };
 
 const personalBodies = () => [...mocks["ultra-a"].bodies(), ...mocks["ultra-b"].bodies()];
-
-const counts = (): Counts => ({
-	"ultra-a": mocks["ultra-a"].bodies().length,
-	"ultra-b": mocks["ultra-b"].bodies().length,
-	ent: mocks.ent.bodies().length,
-});
 
 const casesOf = (text: string) => decodeManifest(Arr.filter(Str.split(text, "\n"), Str.isNonEmpty));
 
@@ -224,7 +234,7 @@ const backOnPersonal = (run: Run, { atSeal, atEnd, childProviders, blocked }: Se
 const verdict = (run: Run, { canaries, atSeal }: Pick<Seen, "canaries" | "atSeal">) =>
 	Effect.gen(function* () {
 		const { rootProviders, childProviders, blocked } = yield* finalState(run);
-		const seen = { canaries, atSeal, atEnd: counts(), childProviders, blocked };
+		const seen = { canaries, atSeal, atEnd: counts(mocks), childProviders, blocked };
 
 		yield* run.say({ atSeal, atEnd: seen.atEnd, rootProviders, childProviders });
 		yield* noLeak(run, seen);
@@ -242,7 +252,7 @@ scenario({
 			yield* run.root.prompt("STEP-CLEAN. Read the notes.");
 			yield* run.root.prompt("STEP-PHI. Read the records one at a time.");
 
-			const atSeal = Option.getOrElse(MutableRef.get(atFirstEnt), counts);
+			const atSeal = Option.getOrElse(MutableRef.get(atFirstEnt), () => counts(mocks));
 
 			yield* stepsAfterSeal(run);
 			yield* verdict(run, { canaries, atSeal });
