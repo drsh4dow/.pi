@@ -52,11 +52,9 @@ const failovers = [
 	},
 ];
 
-for (const { name, request, targets } of failovers) {
-	test(`a rate limit fails over to the same model on the next account: ${name}`, () => {
-		expect(Arr.map(failoverTargets(request), ({ provider, id }) => `${provider}/${id}`)).toEqual(targets);
-	});
-}
+test.each(failovers)("a rate limit fails over to the same model on the next account: $name", ({ request, targets }) => {
+	expect(Arr.map(failoverTargets(request), ({ provider, id }) => `${provider}/${id}`)).toEqual(targets);
+});
 
 const zero = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
@@ -88,8 +86,6 @@ const runEnds = [
 	{ name: "a run that ends on a user message did not", messages: [asked], limited: false },
 ];
 
-for (const { name, messages, limited } of runEnds) {
-	test(name, () => {
-		expect(endedOnRateLimit(messages)).toBe(limited);
-	});
-}
+test.each(runEnds)("$name", ({ messages, limited }) => {
+	expect(endedOnRateLimit(messages)).toBe(limited);
+});
