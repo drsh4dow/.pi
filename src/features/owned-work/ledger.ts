@@ -144,28 +144,10 @@ const specOf = ({ options, cli }: Kit, ref: WorkRef, request: StartRequest): Eff
 	});
 };
 
-const attempt = <Reply, Failure>(
-	kit: Kit,
-	transition: (current: LedgerState) => Result.Result<Step<Reply>, Failure>,
-): Effect.Effect<Reply, Failure> =>
-	Semaphore.withPermit(
-		kit.lock,
-		Effect.gen(function* () {
-			const now = yield* monotonicNow;
-			const current = yield* Ref.get(kit.state);
-			const step = yield* Effect.fromResult(transition({ ...current, now }));
-
-			yield* Ref.set(kit.state, step.state);
-			yield* Effect.forEach(step.commands, (command) =>
-				Command.$is("Append")(command) ||
-				Command.$is("ArmDeadline")(command) ||
-				Command.$is("RecordVerdict")(command)
-					? run(kit, command)
-					: runOutsideLock(kit, command),
-			);
-
-			return step.reply;
-		}),
+const recordOf = (kit: Kit, record: VerdictRecord) =>
+	recordVerdict(verdictsFolder(kit.options.passEnv["HOME"] ?? ""))(record).pipe(
+		Effect.provideContext(kit.verdictServices),
+		Effect.catchCause((cause) => Effect.logWarning(`no verdict record at ${record.head}`, cause)),
 	);
 
 const apply = <Reply>(kit: Kit, transition: (current: LedgerState) => Step<Reply>): Effect.Effect<Reply> =>
@@ -198,14 +180,32 @@ const run = (kit: Kit, command: Command): Effect.Effect<unknown> =>
 		RecordVerdict: ({ record }) => recordOf(kit, record),
 	});
 
-const recordOf = (kit: Kit, record: VerdictRecord) =>
-	recordVerdict(verdictsFolder(kit.options.passEnv["HOME"] ?? ""))(record).pipe(
-		Effect.provideContext(kit.verdictServices),
-		Effect.catchCause((cause) => Effect.logWarning(`no verdict record at ${record.head}`, cause)),
-	);
-
 const runOutsideLock = (kit: Kit, command: Command): Effect.Effect<void> =>
 	Effect.asVoid(FiberSet.run(kit.fibers, run(kit, command)));
+
+const attempt = <Reply, Failure>(
+	kit: Kit,
+	transition: (current: LedgerState) => Result.Result<Step<Reply>, Failure>,
+): Effect.Effect<Reply, Failure> =>
+	Semaphore.withPermit(
+		kit.lock,
+		Effect.gen(function* () {
+			const now = yield* monotonicNow;
+			const current = yield* Ref.get(kit.state);
+			const step = yield* Effect.fromResult(transition({ ...current, now }));
+
+			yield* Ref.set(kit.state, step.state);
+			yield* Effect.forEach(step.commands, (command) =>
+				Command.$is("Append")(command) ||
+				Command.$is("ArmDeadline")(command) ||
+				Command.$is("RecordVerdict")(command)
+					? run(kit, command)
+					: runOutsideLock(kit, command),
+			);
+
+			return step.reply;
+		}),
+	);
 
 const awaitReady = (kit: Kit, handle: Handle, request: StartRequest): Effect.Effect<Handle> => {
 	const pattern = StartRequest.$is("Serve")(request) ? request.ready : Option.none<string>();

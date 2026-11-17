@@ -1129,7 +1129,7 @@
   },
   "src/features/owned-work/ledger.ts": {
     "no-use-before-define": {
-      "count": 3
+      "count": 1
     },
     "typescript/explicit-function-return-type": {
       "count": 3
