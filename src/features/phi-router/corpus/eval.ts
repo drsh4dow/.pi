@@ -1,5 +1,5 @@
 /**
- * `bun features/phi-router/corpus/eval.ts [--corpus <manifest.jsonl>] --judge live|recorded [--record]
+ * `bun src/features/phi-router/corpus/eval.ts [--corpus <manifest.jsonl>] --judge live|recorded [--record]
  * [--window N | --sweep 0,1,2,4]` plays a corpus through the router core and prints, per stratum, the positive cases
  * whose complete canary reached a personal account, then over-routing, fragments, lanes and judge cost. Without
  * `--corpus` it plays the default generated corpus. `--sweep` runs once per judge window and prints one row per size.
@@ -41,7 +41,7 @@ class GateFailed extends Schema.TaggedError<GateFailed, { readonly brand: unique
 }) {}
 
 const usage =
-	"usage: bun features/phi-router/corpus/eval.ts [--corpus <manifest.jsonl>] --judge live|recorded [--record] [--window N | --sweep 0,1,2,4]";
+	"usage: bun src/features/phi-router/corpus/eval.ts [--corpus <manifest.jsonl>] --judge live|recorded [--record] [--window N | --sweep 0,1,2,4]";
 
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
