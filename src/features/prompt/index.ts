@@ -55,8 +55,10 @@ const briefOf = (self: Self, ctx: ExtensionContext) =>
 				readStagedBrief({ dir: ctx.sessionManager.getSessionDir(), id: ctx.sessionManager.getSessionId() }),
 			);
 
-const run = Effect.fn("prompt")(function* (event: BeforeAgentStartEvent, ctx: ExtensionContext) {
-	const self = yield* selfFromEnv(process.env);
+type Env = Readonly<Record<string, string | undefined>>;
+
+const run = Effect.fn("prompt")(function* (env: Env, event: BeforeAgentStartEvent, ctx: ExtensionContext) {
+	const self = yield* selfFromEnv(env);
 	const brief = yield* briefOf(self, ctx);
 	const { layers, problems } = yield* layersOf(getAgentDir(), self.role, brief, event.systemPromptOptions.skills);
 
@@ -73,8 +75,8 @@ const run = Effect.fn("prompt")(function* (event: BeforeAgentStartEvent, ctx: Ex
 	}
 });
 
-export const prompt = (pi: Pick<ExtensionAPI, "on">) => {
+export const prompt = (env: Env) => (pi: Pick<ExtensionAPI, "on">) => {
 	const host = piHost(NodeServices.layer);
 
-	pi.on("before_agent_start", (event, ctx) => host.run(run(event, ctx)));
+	pi.on("before_agent_start", (event, ctx) => host.run(run(env, event, ctx)));
 };
