@@ -192,6 +192,7 @@
 		// Effect constructors are capitalized calls, e.g. Schema.Struct(...)
 		"eslint/new-cap": ["error", { "capIsNew": false }],
 		"eslint/one-var": ["error", "never"],
+		// Each rule turned off from here on names its collision, or the user approved it on 2026-11-17
 		// Effect declares tagged errors and services as classes, several per module
 		"eslint/max-classes-per-file": "off",
 		// oxfmt sorts imports, as Biome does for pi
@@ -230,6 +231,22 @@
 		"unicorn/no-array-method-this-argument": "off",
 		// reports a different set of sites on each run of the same tree (161, 164, 159 in three runs), so no baseline can hold it; waits on the user
 		"effecttsgo/api-stability-leak": "off",
+		// Off with the user's approval (2026-11-17): tsc infers these return types, including Effect.fn generators
+		"typescript/explicit-function-return-type": "off",
+		"typescript/explicit-module-boundary-types": "off",
+		// Off with the user's approval (2026-11-17): TypeScript signatures already carry what these tags would repeat
+		"jsdoc/require-param": "off",
+		"jsdoc/require-returns": "off",
+		"jsdoc/require-param-type": "off",
+		"jsdoc/require-returns-type": "off",
+		// Off with the user's approval (2026-11-17): pi's APIs and exactOptionalPropertyTypes take undefined explicitly
+		"eslint/no-undefined": "off",
+		// Off with the user's approval (2026-11-17): a?.b reads plainer than an Option pipeline for pi's optional fields
+		"oxc/no-optional-chaining": "off",
+		// Off with the user's approval (2026-11-17): misreads Effect.forEach as Array.prototype.forEach
+		"unicorn/no-array-for-each": "off",
+		// With the user's approval (2026-11-17): a reference inside a function body may name a later declaration, so mutual recursion passes
+		"eslint/no-use-before-define": ["error", { "functions": false, "variables": false }],
 		// collides with effecttsgo/async-function, oxc/no-async-await and eslint/require-await: a function that returns a promise fails it without async and the others with it
 		"typescript/promise-function-async": "off",
 		// collides with eslint/prefer-object-spread: an object spread fails it, and Object.assign fails the other
@@ -321,8 +338,8 @@
 			},
 		},
 		{
-			// entry files own process.env and hand what a feature needs to it
-			"files": ["agent/extensions/*/index.ts", "agent/bin/*.ts"],
+			// entry files own process.env and hand what a feature needs to it; tools/prompts and scenarios with the user's approval (2026-11-17)
+			"files": ["agent/extensions/*/index.ts", "agent/bin/*.ts", "tools/prompts/index.ts", "**/*.scenario.ts"],
 			"rules": {
 				"node/no-process-env": "off",
 			},
@@ -340,6 +357,17 @@
 						"message": "Read the environment in the entry file and pass it in, or read one variable with Effect's Config.",
 					},
 				],
+			},
+		},
+		{
+			// With the user's approval (2026-11-17): the corpus's CRC32 and seeded random generator need bitwise math
+			"files": [
+				"src/features/phi-router/corpus/encodings.ts",
+				"src/features/phi-router/corpus/random.ts",
+				"src/features/phi-router/corpus/images.ts",
+			],
+			"rules": {
+				"eslint/no-bitwise": "off",
 			},
 		},
 		{
