@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { beforeAll, expect, test } from "bun:test";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
@@ -17,6 +17,7 @@ import {
 	type Case,
 	CaseFromJsonLine,
 	Carrier,
+	type CleanCase,
 	Entry,
 	Identifier,
 	type Message,
@@ -26,10 +27,21 @@ import {
 } from "./manifest.ts";
 import { synthetic } from "./synthetic.ts";
 
-const images = await Effect.runPromise(loadImages.pipe(Effect.provide(NodeServices.layer)));
-const corpus = generate({ seed: defaultSeed, images });
-const phiCases = Arr.filter(corpus, (item) => item.expect === "phi");
-const cleanCases = Arr.filter(corpus, (item) => item.expect === "clean");
+type Phi = typeof PhiCase.Type;
+
+const corpus: Array<Case> = [];
+const phiCases: Array<Phi> = [];
+const cleanCases: Array<typeof CleanCase.Type> = [];
+
+beforeAll(() =>
+	Effect.runPromise(
+		Effect.map(loadImages, (images) => {
+			corpus.push(...generate({ seed: defaultSeed, images }));
+			phiCases.push(...Arr.filter(corpus, (item) => item.expect === "phi"));
+			cleanCases.push(...Arr.filter(corpus, (item) => item.expect === "clean"));
+		}).pipe(Effect.provide(NodeServices.layer)),
+	),
+);
 
 const textsOf = (item: Case) => Arr.flatMap(item.messages, (message) => ("text" in message ? [message.text] : []));
 
@@ -83,8 +95,6 @@ const countBy = (values: ReadonlyArray<string>) => {
 
 	return counts;
 };
-
-type Phi = typeof PhiCase.Type;
 
 const countOf = (counts: ReadonlyMap<string, number>, value: string): number => counts.get(value) ?? 0;
 
@@ -276,11 +286,12 @@ test("in an ent-reply case, the assistant quotes a canary back", () => {
 test("the same seed gives byte-identical output and another seed differs", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
+			const images = yield* loadImages;
 			const first = yield* encodeCorpus(corpus);
 			const again = yield* encodeCorpus(generate({ seed: defaultSeed, images }));
 			const other = yield* encodeCorpus(generate({ seed: defaultSeed + 1, images }));
 
 			expect(again === first).toBe(true);
 			expect(other === first).toBe(false);
-		}),
+		}).pipe(Effect.provide(NodeServices.layer)),
 	));
