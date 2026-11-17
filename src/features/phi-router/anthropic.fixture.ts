@@ -16,6 +16,8 @@ export const Reply = Data.taggedEnum<Reply>();
 export interface Asked {
 	readonly lastText: string;
 	readonly body: string;
+	/** The model id the request names. */
+	readonly model: string;
 }
 
 type Replier = (asked: Asked) => Reply;
@@ -145,7 +147,8 @@ const respond = (reply: Replier, bodies: Array<string>) =>
 
 			const messages = yield* decodeRequest(body);
 			const lastText = yield* lastTextOf(messages);
-			const sse = yield* sseOf(reply({ lastText, body }), messages.model, `mock_${String(bodies.length)}`);
+			const next = reply({ lastText, body, model: messages.model });
+			const sse = yield* sseOf(next, messages.model, `mock_${String(bodies.length)}`);
 
 			return new Response(sse, { headers: { "content-type": "text/event-stream" } });
 		},
@@ -175,5 +178,5 @@ export const serveMock = (reply: Replier): MockAnthropic => {
 export const compactionPrompt = "the narrative part of a coding agent";
 
 /** The `models` entries that point each provider at its mock. */
-export const mockedModels = <Provider extends string>(mocks: Readonly<Record<Provider, MockAnthropic>>) =>
+export const mockedModels = <Provider extends string>(mocks: Readonly<Record<Provider, Pick<MockAnthropic, "url">>>) =>
 	Rec.map(mocks, ({ url }) => ({ baseUrl: url }));
