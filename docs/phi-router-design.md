@@ -1,6 +1,6 @@
 # PHI router design (v2)
 
-The architect synthesis for `phi/auto` v2. The plan the human agreed is `docs/plan-v2.md` in the work's state folder. This file records the shape the build follows and every change from the plan. It replaces the v1 design, whose session latch ADR 0013 supersedes.
+The architect synthesis for `phi/auto` v2. The plan the human agreed is `docs/plan-v2.md` in the work's state folder. This file records the shape the build follows and every change from the plan. It replaces the v1 design, whose session latch ADR 0013 supersedes. ADR 0016 later split the model choice from the account choice, and this file follows it.
 
 ## Problem
 
@@ -16,9 +16,9 @@ Five measured facts shape it.
 
 ## Usage
 
-The developer selects `phi/auto` once. `~/.pi/agent/phi-router.json` keeps v1's shape (`mode`, `model`, `baaRepos`, `fixtures`). Without it, or without `mode`, the router runs in `enforce`. To make `phi/auto` the default model, set `defaultProvider: "phi"` and `defaultModel: "auto"` in your own `~/.pi/agent/settings.json`, and add `phi/auto` to `enabledModels` when that list is set, since pi starts on the first enabled model when the default is not among them.
+The developer selects `phi/auto` once. It runs the `model` the settings name. A `phi/<id>` such as `phi/gpt-6.1-sol` runs that model under the same routing. `~/.pi/agent/phi-router.json` keeps v1's shape (`mode`, `model`, `baaRepos`, `fixtures`). Without it, or without `mode`, the router runs in `enforce`. To make `phi/auto` the default model, set `defaultProvider: "phi"` and `defaultModel: "auto"` in your own `~/.pi/agent/settings.json`, and add `phi/auto` to `enabledModels` when that list is set, since pi starts on the first enabled model when the default is not among them.
 
-- The footer shows `phi → ultra-a` on most requests. A request that seals shows `phi → ent`. A notice says that one message held patient identifiers and was handled only on `ent`.
+- The footer shows `phi → ultra-a/claude-opus-5-5` on most requests. A request that seals shows `phi → ent/claude-opus-5-5`. A notice says that one message held patient identifiers and was handled only on `ent`.
 - The `ultra` model sees `[withheld: holds patient identifiers, handled on the HIPAA account]` in place of a sealed message. `ent`'s reply follows, and it names patients by internal id.
 - `/phi` prints the mode, the pin and the counts of sealed and cleared messages. `/phi pin` keeps the session wholly on `ent` with no judging. `/phi unpin` returns it to routing.
 
@@ -41,8 +41,9 @@ const view = guard({ messages, lookup: book.lookup }); // exactly what a persona
 | `Piece`       | `policy/engine.ts` | What the policy judges: `{key, kind, texts, images, context, seam}`. `kind` is `system`, `user`, `tool-result`, `reply-personal` or `reply-other`. `context` is at most `policy.window` preceding rendered items. `seam` is the cleared end of the previous message of the same role when this one goes on from it mid-word. |
 | `Verdict`     | `policy/engine.ts` | `Cleared {by}` or `Sealed {finding}`. `finding` is `Rule {rule, kind}`, `Judge {score, kind}`, `Quote {of}` or `Failure {why}`. Sealed wins over cleared for one key.                                                                                                                                                        |
 | `VerdictBook` | `store.ts`         | The router's in-memory map from key to verdict for the session, folded from the session file. One writer, the router extension.                                                                                                                                                                                              |
+| `Placement`   | `gate.ts`          | `{provider, id}`: one physical model, a personal provider or `ent` with a model id. A placement whose id differs from the id the request asked for is a substitute. Nothing stores a flag.                                                                                                                                   |
 | `Lookup`      | `border.ts`        | `(key) => "cleared" \| "sealed" \| undefined`. All the border knows about verdicts.                                                                                                                                                                                                                                          |
-| `Decision`    | `route.ts`         | `{lane, why, found, usage, wouldStub}`. Account choice comes after it.                                                                                                                                                                                                                                                       |
+| `Decision`    | `route.ts`         | `{lane, why, found, usage, wouldStub}`. The placement comes after it.                                                                                                                                                                                                                                                        |
 
 ### The policy module
 
@@ -73,7 +74,7 @@ Exact synthetic identities are blanked to `[synthetic-id]` before the rules and 
 - **Borderline.** Below 0.2 clears and 0.5 or more seals. In the band a second call asks the kind question ("which direct identifier, or none"). The piece seals only when it names a kind. Decisions seems to answer identical input identically: the three variant runs agreed on every first taint, an inference from one run each (`variants/REPORT.md`). So re-asking the same question would likely repeat the first answer.
 - **A message cut mid-word is read with its seam.** A tool output cut at a limit and fetched again, or a value pasted in two messages, splits an identifier so neither half is one. When a user message or tool result starts with no space and the previous cleared message of its role ended on a letter or digit, the rules and the judge read the last 200 characters of that message in front of it. Its key is unchanged. The seam is a prefix of the piece, not `context`, so the judge reads the identifier whole. Three split leaks on the v2 corpus closed with it and over-routing did not move.
 - **An `ent` reply that repeats sealed content seals.** `ent` writes its reply from sealed content, so it can quote a record's row without the header that made a value an identifier. Judged alone, such rows cleared (five leaks on the v2 corpus). A new `ent` reply that shares a line of 16 or more characters with a sealed piece before it in the request seals as `Quote`, whatever the judge said, with no extra call. Showing the judge the sealed content beside the reply caught the same leaks but sealed 29 replies that only said "done" or "fetching the rest", because the judge reads `context` as part of `piece`. `policy/quotes.ts` holds the check and `decide` applies it to the request's verdicts.
-- **Personal replies skip the judge.** An assistant message whose `provider` is a personal account was written from bytes the border let through, every one of which cleared. Its only new source of an identifier is the model itself, and a made-up identifier is not a real patient's. Rules still run on it, so a valid SSN in a reply still seals. A reply from `ent` (the bridge) is judged.
+- **Personal replies skip the judge.** An assistant message whose `provider` is a personal provider was written from bytes the border let through, every one of which cleared. Its only new source of an identifier is the model itself, and a made-up identifier is not a real patient's. Rules still run on it, so a valid SSN in a reply still seals. A reply from `ent` (the bridge) is judged.
 - **System prompt.** System parts are judged once per digest and cached in a global per-policy-version file. A system part seals only on a rule hit or on a score of 0.5 or more with a named kind. A refused or failed system judgment is retried once and then seals that part narrowly. The 0.23 to 0.34 scores on the harness prompt cost nothing. A sealed system section is stubbed on `ultra`. No session is sealed on its system prompt.
 - **Failures seal narrowly.** A judge error, timeout, refusal or oversize input seals that one piece. Unreadable bytes do the same. The request goes to `ent`, and the next one returns to `ultra` with that piece stubbed.
 
@@ -87,20 +88,35 @@ Exact synthetic identities are blanked to `[synthetic-id]` before the rules and 
 
 A request seals exactly the pieces that got `Sealed`. Its other new pieces clear on their own. `laneOf` sends `ent` when a part of the request's own new content (the last assistant message and everything after it, and a sealed compaction summary no `ent` reply has followed) is sealed, or when a part sealed during this request. A repeated read of sealed content is sealed new content, so it goes to `ent`. A retry of a sealed request goes to `ent`. Every later request goes to `ultra`, and the border stubs the sealed parts. There is no session latch.
 
+### The model and the account
+
+The router registers `phi/auto` and one `phi/<id>` for each distinct model id the alias table names: `phi/claude-opus-5-5`, `phi/gpt-6.1-sol`, `phi/claude-fable-5-2` and `phi/glm-5.3-flash`. They share one `route()`. The selected id picks the model. `phi/auto` asks for `settings.model`, read per request, and `phi/<id>` asks for `<id>`. The content of each request picks only where that model runs.
+
+- **Registration.** `agent/extensions/phi-router/index.ts` passes owned-work's `delegateModelIds` to `phiRouter`, because phi-router must not import owned-work. The router registers every `phi` model at load, since `--model` cannot find a virtual model registered later. Each `phi/<id>` takes its thinking levels and limits from the first builtin catalog model with that id among `anthropic`, `openai` and `opencode-go`. An id the catalog lacks gets every thinking level and unknown limits.
+- **The clean lane.** A request with no sealed new content runs on the session's home account if it has the id, a login and no 429 stamp. Otherwise it walks the other personal providers in `personalProviders` order (`ultra-a`, `ultra-b`, `openai`, `opencode-go`) and takes the first that passes the same test. When none passes, it runs on the sealed lane. For a Claude id the order is home, the other Claude account, then `ent/<id>`, as before. For `gpt-6.1-sol` it reaches `openai`.
+- **The sealed lane.** `sealedLane` in `gate.ts`: `ent/<id>` when `ent` carries the id, else `ent/<settings.model>`. A sealed request, a held request, a shadow dispatch, a retry after a failure on `ent` and a router failure all run it.
+- **Substitution.** When `ent` lacks the id, a sealed request runs on `ent/<settings.model>` for that request alone. The status line, the lane log's `model` and the assistant message show the substitute. A delegate whose whole run lands on it says so in its tool result.
+
+`route.ts` `placementFor` makes the choice, and `dispatch.ts` looks up `find(provider, id)` of the result.
+
 ### The guarded lanes
 
-`border.ts` holds a pure `guard({ messages, lookup })` and `guardedApi`. claude-accounts wraps `ultra-a` and `ultra-b` with it in `accountProvider`, the module that registers them, so no later registration can drop it. Its entrypoint passes `phiBorder(pi).wrap` to `claudeAccounts`, because a feature imports another only through its `index.ts` and phi-router already imports claude-accounts.
+`border.ts` holds a pure `guard({ messages, lookup })` and `guardedApi`. The border guards every personal provider: `ultra-a`, `ultra-b`, `openai` and `opencode-go`.
 
-| Part                           | Cleared                                                    | Sealed or unknown                                                   |
-| ------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------- |
-| user, tool result              | pass                                                       | stub text, keeping role, `toolCallId`, `toolName`, `isError`        |
-| assistant                      | pass; thinking stripped unless a personal account wrote it | stub text, keeping each tool call's id and name with `{}` arguments |
-| system content, system section | pass                                                       | that content or section stubbed                                     |
-| system tools                   | pass                                                       | the request is refused with an error stream                         |
+claude-accounts wraps `ultra-a` and `ultra-b` in `accountProvider`, the module that registers them, so no later registration can drop the guard. Its entrypoint passes `phiBorder(pi).wrap` to `claudeAccounts`, because a feature imports another only through its `index.ts` and phi-router already imports claude-accounts.
+
+`openai` and `opencode-go` are pi-ai builtins, so `border-scope.ts` wraps the provider the registry holds, at `session_start` and again in `before_agent_start` before each agent run. It first unwraps a guard from this load or an earlier one, so the registry holds one guard over the original even after `new_session` reloads extensions. The guard covers `stream` and `streamSimple` only. `classify` and auth pass through untouched, so the OpenAI Decisions judge on the same `openai` provider still reads raw content. The wrap waits for `session_start` because a copy of a builtin registered at load replaces pi's remote catalog and drops catalog-only models in every process. In the prototype, `openai` went from 45 models to 44 and `opencode-go` from 34 to 32. No chat request precedes `session_start`.
+
+| Part                           | Cleared                                                     | Sealed or unknown                                                   |
+| ------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------- |
+| user, tool result              | pass                                                        | stub text, keeping role, `toolCallId`, `toolName`, `isError`        |
+| assistant                      | pass; thinking stripped unless a personal provider wrote it | stub text, keeping each tool call's id and name with `{}` arguments |
+| system content, system section | pass                                                        | that content or section stubbed                                     |
+| system tools                   | pass                                                        | the request is refused with an error stream                         |
 
 Tool-call ids are provider-generated and tool names come from the harness, so neither carries session content.
 
-**Scope.** claude-accounts marks the process protected on `session_start` and `model_select` when the selection is `phi/auto`, and clears it on a switch to any other model (ADR 0017). A protected process guards every request to a personal account: routed, failover, `direct` or a raw selection. An unprotected process is untouched, so non-PHI sessions and their `judgment` delegates pay nothing. A protected process with no link from the router treats every part as unknown, which fails closed.
+**Scope.** `border-scope.ts`, which claude-accounts' entrypoint loads, marks the process protected on `session_start` and `model_select` when the selection is a `phi` model or the branch ever selected one. Protection lasts for the session. A protected process guards every request to a personal provider: routed, failover, `direct` or a raw selection. An unprotected process is untouched, so non-PHI sessions and their `judgment` delegates pay nothing. A protected process with no link from the router treats every part as unknown, which fails closed.
 
 **What it proves.** In a protected process, no part reaches a personal account unless the router cleared its key, or it is a constant stub. That holds when `route()` dispatches wrongly, when pi compacts at send time, and when the router never loaded. It does not hold when the judge clears PHI. The leak gate tests the judge, and the border test tests dispatch.
 
@@ -108,7 +124,7 @@ The wrapper reports `{stubbedSealed, stubbedUnknown, refused}` per request, whic
 
 ### The `ent` bridge
 
-In a `phi/auto` session the router adds a `phi-bridge` prompt section through `before_agent_start`. It tells the model to refer to patients by internal id only, and says a withheld message was handled on the HIPAA account. Both lanes get the same section, so neither cache breaks on a switch. `ent`'s reply is judged on the next request. If clean, it enters the `ultra` context. If not, it is sealed. The harness summarizer gets the same sentence in a `phi/auto` session.
+In a session on a `phi` model the router adds a `phi-bridge` prompt section through `before_agent_start`. It tells the model to refer to patients by internal id only, and says a withheld message was handled on the HIPAA account. Both lanes get the same section, so neither cache breaks on a switch. `ent`'s reply is judged on the next request. If clean, it enters the `ultra` context. If not, it is sealed. The harness summarizer gets the same sentence in a `phi` session.
 
 ### Compaction
 
@@ -118,37 +134,44 @@ In a `phi/auto` session the router adds a `phi-bridge` prompt section through `b
 
 ### Delegates, pin, modes, log, failover, switches, codemode
 
-- **Delegates.** From `phi/auto`, an alias or a personal or `phi` key runs on `phi/auto`, or on `ent/<model>` when the parent is held (pinned, `force-baa`, `baa-repo`, bad settings, or `shadow`). A BAA key passes. Anything else is refused. The child is its own protected process and judges its brief as new content. Its result returns to the parent as a tool result and is judged there.
+- **Delegates.** The alias or the spelled key picks the model id, and the parent's standing picks where it runs (`standingOf` and `delegateTarget` in `gate.ts`).
+   - A parent on a `phi` model that is not held routes. Its delegate runs an alias or a personal key as `phi/<id>`, so the content of each request picks the account. A `phi` key or a BAA key runs as named. Anything else is refused.
+   - A `phi` parent is held when it is pinned, `force-baa`, `baa-repo`, bad settings, or `shadow`. Its delegate runs an alias or a `phi` key on that id's sealed lane, with `phi/auto` asking for `settings.model`. A BAA key runs as named. A spelled personal key means that model, so it runs on `ent` only when `ent` carries the same id, and is refused otherwise. Anything else is refused.
+   - A parent on a BAA account never routes. Its delegate runs an alias on the sealed lane and a BAA key as named. It refuses a `phi` key and a personal key.
+
+   When the sealed lane gives the whole run to `ent/<settings.model>`, the `delegate` tool result carries a `substituted` sentence, on a fresh call and on a continuation: "The alias `investigator` names openai/gpt-6.1-sol, which no BAA account carries, so this delegate runs on ent/claude-opus-5-5." The child is its own protected process and judges its brief as new content. Its result returns to the parent as a tool result and is judged there.
+
 - **`/phi pin`.** A custom entry `phi-pin {pinned}` on the branch. Pinned requests go to `ent` with no judge calls. Messages from a pinned stretch have no verdicts, so after `/phi unpin` the next request judges them.
-- **Modes.** `enforce` dispatches the decision. `shadow` judges, records verdicts, dispatches `ent` and logs `wouldBe` and `wouldStub`. `force-baa` holds.
-- **Lane log.** `~/.local/state/pi-phi-router/lanes/<session>.jsonl`. A `route` line holds reason, mode, `wouldBe`, `dispatched`, `why`, piece counts by source (cache, rule, judge, personal reply, fixture, failure), findings as rule ids, kinds, quotes or failure reasons, judge calls, input tokens, cost, milliseconds and `wouldStub`. A `border` line holds the wrapper's counts. No content and no keys, since the hash of a short value such as a bare SSN can be reversed.
-- **429.** v1's `limited` stamps stay in the router's virtual-model state. Home is the session's hashed personal account, then the other personal account, then `ent`. `fallbackChain` still sends nothing from `ent` to a personal account.
-- **Model switches.** The human's pick stands (ADR 0015). A switch to a raw personal Claude model still passes the border, which stubs every sealed or unjudged message.
+- **Modes.** `enforce` dispatches the decision. `shadow` judges, records verdicts, dispatches the sealed lane and logs `wouldBe` and `wouldStub`. `force-baa` holds.
+- **Lane log.** `~/.local/state/pi-phi-router/lanes/<session>.jsonl`. A `route` line holds reason, mode, `wouldBe` and `dispatched` as providers, `model` as the physical model id, `why`, piece counts by source (cache, rule, judge, personal reply, fixture, failure), findings as rule ids, kinds, quotes or failure reasons, judge calls, input tokens, cost, milliseconds and `wouldStub`. A `border` line holds the wrapper's counts. No content and no keys, since the hash of a short value such as a bare SSN can be reversed.
+- **429.** v1's `limited` stamps stay in the router's virtual-model state. Only the Claude personal accounts get one. Home is the session's hashed personal account. The clean lane skips a provider stamped in the last 30 minutes, so a 429 on home moves the retry to the next personal provider that has the model, then to the sealed lane. `openai` and `opencode-go` get no stamp, because each alias names one of them, and pi retries their 429s. `fallbackChain` still sends nothing from `ent` to a personal account.
+- **Model switches.** The human's pick stands (ADR 0015). A switch to a raw model of a personal provider, `openai` and `opencode-go` included, still passes the border, which stubs every sealed or unjudged message.
 - **Codemode.** v1's guard stays. It now matters only for classifier and image models of other providers.
 - **Threads.** BAA accounts set `supportsMessageThreads: false`, since the BAA org rejects threads.
 
 ## Module map
 
-| File                      | Owns                                                                                                                                      |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `policy/policy.ts`        | Kinds, defaults, questions, counter-examples, synthetic list, thresholds, window, limits, `policyVersion`.                                |
-| `policy/rules.ts`         | The five rules, each one pattern with its validation inside it, `firstHit`.                                                               |
-| `policy/quotes.ts`        | `quotingReplies`: the `ent` replies that repeat a line of sealed content.                                                                 |
-| `policy/synthetic.ts`     | The caller's synthetic list (`Synthetic`) and blanking to `[synthetic-id]`.                                                               |
-| `policy/expand.ts`        | Decoders, unchanged from v1.                                                                                                              |
-| `policy/engine.ts`        | `ContentKey`, `Piece`, `Verdict`, `Judge`, `verdictsFor`, band logic, failure sealing, synthetic blanking, fixtures.                      |
-| `parts.ts`                | `partsOf` and the key function: pi-ai `Message` to stub-able parts. The border reads only this.                                           |
-| `pieces.ts`               | `piecesOf`: each part's kind, rendering and the window.                                                                                   |
-| `border.ts`               | `guard`, stubs, `guardedApi`, `phiBorder` (scope and link).                                                                               |
-| `store.ts`                | `VerdictBook`, the fold, the entry schema, the system cache file.                                                                         |
-| `decisions.ts`            | The `Judge` layer over OpenAI Decisions, with images and usage.                                                                           |
-| `route.ts`                | `decide`, `laneOf`, `accountFor`.                                                                                                         |
-| `dispatch.ts`             | pi's `route()` (`routeWith`), the account and router state, the fail-closed path, the `session_compact` judge, the Decisions judge layer. |
-| `gate.ts`                 | `delegateTarget` with `held`, the codemode guard and `unsafeReach`.                                                                       |
-| `settings.ts`, `lanes.ts` | Settings, the log.                                                                                                                        |
-| `index.ts`                | The virtual model, the `phi-bridge` section, `/phi`, the fold at `session_start`, the border link, `delegateTargetOf`, and the hooks.     |
+| File                      | Owns                                                                                                                                         |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `policy/policy.ts`        | Kinds, defaults, questions, counter-examples, synthetic list, thresholds, window, limits, `policyVersion`.                                   |
+| `policy/rules.ts`         | The five rules, each one pattern with its validation inside it, `firstHit`.                                                                  |
+| `policy/quotes.ts`        | `quotingReplies`: the `ent` replies that repeat a line of sealed content.                                                                    |
+| `policy/synthetic.ts`     | The caller's synthetic list (`Synthetic`) and blanking to `[synthetic-id]`.                                                                  |
+| `policy/expand.ts`        | Decoders, unchanged from v1.                                                                                                                 |
+| `policy/engine.ts`        | `ContentKey`, `Piece`, `Verdict`, `Judge`, `verdictsFor`, band logic, failure sealing, synthetic blanking, fixtures.                         |
+| `parts.ts`                | `partsOf` and the key function: pi-ai `Message` to stub-able parts. The border reads only this.                                              |
+| `pieces.ts`               | `piecesOf`: each part's kind, rendering and the window.                                                                                      |
+| `border.ts`               | `guard`, stubs, `guardedApi`.                                                                                                                |
+| `border-scope.ts`         | `phiBorder`: the process scope, the link, and the guard over `openai` and `opencode-go`.                                                     |
+| `store.ts`                | `VerdictBook`, the fold, the entry schema, the system cache file.                                                                            |
+| `decisions.ts`            | The `Judge` layer over OpenAI Decisions, with images and usage.                                                                              |
+| `route.ts`                | `decide`, `laneOf`, `placementFor`.                                                                                                          |
+| `dispatch.ts`             | pi's `route()` (`routeWith`), the placement and router state, the fail-closed path, the `session_compact` judge.                             |
+| `gate.ts`                 | `personalProviders`, `askedId`, `sealedLane`, `standingOf`, `delegateTarget`, the codemode guard and `unsafeReach`.                          |
+| `settings.ts`, `lanes.ts` | Settings, the log.                                                                                                                           |
+| `index.ts`                | The `phi` virtual models, the `phi-bridge` section, `/phi`, the fold at `session_start`, the border link, `delegateTargetOf`, and the hooks. |
 
-claude-accounts gains a `wrap` on `accountProvider` and `supportsMessageThreads: false` for BAA accounts. The compaction feature gains one sentence in a `phi/auto` session. A request flows from `index.ts` to `dispatch.ts` to `route.ts` to `policy/engine.ts`. The border flows from pi-ai to `border.ts`.
+claude-accounts gains a `wrap` on `accountProvider` and `supportsMessageThreads: false` for BAA accounts. The compaction feature gains one sentence in a `phi` session. A request flows from `index.ts` to `dispatch.ts` to `route.ts` to `policy/engine.ts`. The border flows from pi-ai to `border.ts`, through the wrap in claude-accounts or in `border-scope.ts`.
 
 ## v1 subtraction
 
@@ -212,6 +235,7 @@ Rejected:
 - Bash, MCP servers and other tools can send content anywhere. The router governs model requests only.
 - Two personal plans may not absorb the moved usage. Overflow fails over to `ent`, at `ent` prices.
 - A personal reply that combines cleared fragments into a complete identifier is checked by the rules only.
+- Another extension that registers `openai` or `opencode-go` in the middle of an agent run replaces the guarded provider, so that provider goes unguarded until the next run starts. No extension in the harness does that.
 
 ## Open questions for the human
 
