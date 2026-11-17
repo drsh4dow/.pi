@@ -24,7 +24,8 @@ import { makePhiSettings, PhiSettings, phiSettingsLayer } from "#src/client/phi-
 import { verdictCacheLayer } from "#src/client/phi-verdict-cache/index.ts";
 import { piHost, type PiHost } from "#src/client/pi-host/index.ts";
 import type { AccountId } from "#src/features/claude-accounts/index.ts";
-import { type BorderLink, type BorderReport, borderEvents } from "./border.ts";
+import { borderEvents } from "./border-scope.ts";
+import type { BorderLink, BorderReport } from "./border.ts";
 import { decisionsOf } from "./decisions.ts";
 import { compactionJudged, routeWith, type RouterSession } from "./dispatch.ts";
 import {
@@ -46,7 +47,7 @@ import { holdOf, pinEntryType, pinnedOn, type RouterState } from "./route.ts";
 import { defaultModel, readSettings } from "./settings.ts";
 import { bookOf, type VerdictBook, verdictsEntryType } from "./store.ts";
 
-export { phiBorder } from "./border.ts";
+export { phiBorder } from "./border-scope.ts";
 
 export { isPhi, type Wanted } from "./gate.ts";
 
