@@ -3045,9 +3045,6 @@
     }
   },
   "tools/driver/core.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }
@@ -3262,7 +3259,7 @@
   },
   "tools/driver/world.test.ts": {
     "jest/no-conditional-in-test": {
-      "count": 2
+      "count": 1
     },
     "jest/prefer-each": {
       "count": 3
