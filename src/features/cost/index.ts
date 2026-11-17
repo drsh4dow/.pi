@@ -12,6 +12,7 @@ import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { labelTerminal, TerminalAddress } from "#src/client/hc/index.ts";
+import { piHost } from "#src/client/pi-host/index.ts";
 import { emptyTally, type Started, type Tally, tallyLines } from "./tally.ts";
 
 /** The hc label on a root agent's own terminal that holds its `CostLabel`, which herdr-app's status bar reads. */
@@ -174,6 +175,7 @@ const publish = (files: TreeFiles, terminal: TerminalAddress) => {
  * Outside herdr-core, or without a session file, it does nothing.
  */
 export const cost = (pi: Pick<ExtensionAPI, "on">) => {
+	const host = piHost(NodeServices.layer);
 	let running: Option.Option<Fiber.Fiber<unknown>> = Option.none();
 
 	pi.on("session_start", (_event, ctx) => {
@@ -191,7 +193,7 @@ export const cost = (pi: Pick<ExtensionAPI, "on">) => {
 			Option.match({ onNone: () => Effect.void, onSome: (terminal) => publish(files, terminal) }),
 		);
 
-		const fiber = start.pipe(Effect.provide(NodeServices.layer), Effect.runFork);
+		const fiber = host.fork(start);
 
 		running = Option.some(fiber);
 	});
@@ -203,7 +205,7 @@ export const cost = (pi: Pick<ExtensionAPI, "on">) => {
 
 		return Option.match(fiber, {
 			onNone: () => Promise.resolve(),
-			onSome: (started) => Fiber.interrupt(started).pipe(Effect.runPromise),
+			onSome: (started) => host.run(Fiber.interrupt(started)),
 		});
 	});
 };
