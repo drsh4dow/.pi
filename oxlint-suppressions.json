@@ -966,9 +966,6 @@
     "jsdoc/require-param": {
       "count": 1
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "no-restricted-properties": {
       "count": 1
     },
@@ -2672,9 +2669,6 @@
     }
   },
   "src/features/prompt/index.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "no-restricted-properties": {
       "count": 1
     },
@@ -2710,9 +2704,6 @@
       "count": 1
     },
     "jsdoc/require-returns": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     },
     "typescript/explicit-function-return-type": {
@@ -2762,9 +2753,6 @@
     "jsdoc/require-returns": {
       "count": 3
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 4
     },
@@ -2792,9 +2780,6 @@
     },
     "jsdoc/require-returns": {
       "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
     },
     "no-restricted-properties": {
       "count": 1

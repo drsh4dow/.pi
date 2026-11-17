@@ -1,7 +1,6 @@
 import { parseFrontmatter, type Skill } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Function from "effect/Function";
 import * as Option from "effect/Option";
 import * as Record from "effect/Record";
@@ -9,6 +8,7 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { agentFileText } from "#src/client/agent-files/index.ts";
 import { Role, Roles } from "#src/features/owned-work/index.ts";
 import type { Problem } from "./kinds.ts";
 
@@ -18,8 +18,7 @@ const Audience = Schema.Struct({ for: Schema.optionalKey(Roles) });
 const decodeAudience = Schema.decodeUnknownEffect(Audience);
 
 const rolesOf = Effect.fn("rolesOf")(function* (filePath: string) {
-	const fs = yield* FileSystem.FileSystem;
-	const text = yield* fs.readFileString(filePath);
+	const text = yield* agentFileText(filePath);
 	const { frontmatter } = yield* Effect.try({ try: () => parseFrontmatter(text), catch: String });
 	const fields = yield* decodeAudience(frontmatter);
 	const roles: ReadonlyArray<Role> = fields.for ?? Role.literals;

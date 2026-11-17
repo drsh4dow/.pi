@@ -8,11 +8,11 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { agentFileText, markdownIn } from "#src/client/agent-files/index.ts";
 import { labelTerminal, TerminalAddress } from "#src/client/hc/index.ts";
 import { type GuideKind, guidesOf, type Index, indexOf, inContext, Loaded } from "./context.ts";
 
@@ -41,12 +41,10 @@ const encodeLabel = Schema.encodeEffect(Schema.fromJsonString(ContextLabel));
 
 /** Reads each guide file. One that cannot be read is left out, so a deleted skill never hides the rest. */
 export const readGuides = Effect.fn("readGuides")(function* (files: ReadonlyArray<GuideFile>) {
-	const fs = yield* FileSystem.FileSystem;
-
 	const read = yield* Effect.forEach(
 		files,
 		(file) =>
-			fs.readFileString(file.path).pipe(
+			agentFileText(file.path).pipe(
 				Effect.map((text) => [{ ...file, text }]),
 				Effect.orElseSucceed(() => []),
 			),
@@ -61,14 +59,9 @@ export const loadGuides = (files: ReadonlyArray<GuideFile>) =>
 
 /** Every `<name>.md` principle or playbook directly in `dir`, none when it is missing. A subfolder's files are not guides. */
 export const guideFilesIn = Effect.fn("guideFilesIn")(function* (kind: Exclude<GuideKind, "skill">, dir: string) {
-	const fs = yield* FileSystem.FileSystem;
-	const names = (yield* fs.exists(dir)) ? yield* fs.readDirectory(dir) : [];
+	const files = yield* markdownIn(dir);
 
-	return Arr.map(Arr.filter(names, Str.endsWith(".md")), (name): GuideFile => ({
-		kind,
-		name: Str.slice(0, -3)(name),
-		path: `${dir}/${name}`,
-	}));
+	return Arr.map(files, (file): GuideFile => ({ kind, ...file }));
 });
 
 const skillPrefix = "skill:";
@@ -141,7 +134,7 @@ const clear = Effect.fn("clear")(function* (publisher: Publisher) {
 	}
 });
 
-const run = <Failure>(effect: Effect.Effect<void, Failure, FileSystem.FileSystem>) =>
+const run = <Failure>(effect: Effect.Effect<void, Failure, NodeServices.NodeServices>) =>
 	Effect.runPromise(effect.pipe(Effect.ignore({ log: "Warn" }), Effect.provide(NodeServices.layer)));
 
 /**

@@ -7,9 +7,9 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import type * as Option from "effect/Option";
 
+import { agentFileText } from "#src/client/agent-files/index.ts";
 import { readStagedBrief, type StagedBrief } from "#src/client/pi-cli/index.ts";
 import { type Role, Self, selfFromEnv } from "#src/features/owned-work/index.ts";
 import { compose } from "./compose.ts";
@@ -30,8 +30,7 @@ export const layersOf = Effect.fn("layersOf")(function* (
 	brief: Option.Option<StagedBrief>,
 	loaded: ReadonlyArray<Skill>,
 ) {
-	const fs = yield* FileSystem.FileSystem;
-	const roleText = yield* fs.readFileString(`${agentDir}/roles/${role}.md`);
+	const roleText = yield* agentFileText(`${agentDir}/roles/${role}.md`);
 	const principles = yield* indexOf("principles", agentDir, role);
 	const playbooks = yield* indexOf("playbooks", agentDir, role);
 	const skills = yield* skillsFor({ role, skills: loaded });
