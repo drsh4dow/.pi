@@ -464,9 +464,6 @@
     }
   },
   "src/client/web/search.test.ts": {
-    "node/no-top-level-await": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 6
     }
