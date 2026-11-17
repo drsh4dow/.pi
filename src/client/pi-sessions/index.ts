@@ -11,6 +11,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+export { type Appended, appendedLines, sessionFileById } from "./follow.ts";
+
 export { SessionsUnreadable, type Spend, type SpendRequest, spendSince } from "./spend.ts";
 
 export interface SessionAddress {

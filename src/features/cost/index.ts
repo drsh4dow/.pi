@@ -4,15 +4,14 @@ import * as Arr from "effect/Array";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
-import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import type * as PlatformError from "effect/PlatformError";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
-import * as Str from "effect/String";
 
 import { labelTerminal, TerminalAddress } from "#src/client/hc/index.ts";
 import { piHost } from "#src/client/pi-host/index.ts";
+import { appendedLines, sessionFileById } from "#src/client/pi-sessions/index.ts";
 import { emptyTally, type Started, type Tally, tallyLines } from "./tally.ts";
 
 /** The hc label on a root agent's own terminal that holds its `CostLabel`, which herdr-app's status bar reads. */
@@ -44,44 +43,17 @@ interface Followed {
 
 const unread: Followed = { offset: 0, tally: emptyTally };
 
-const newline = 10;
-
 const usd = (amount: number) => Math.round(amount * 10_000) / 10_000;
-
-/**
- * Adds the whole lines appended since `before`. The last line may still be half written, so reading stops at the last
- * newline. A file shorter than what was read was replaced, so it is read again from the start.
- */
-const readAppended = Effect.fn("readAppended")(function* (path: string, before: Followed) {
-	const fs = yield* FileSystem.FileSystem;
-	const info = yield* fs.stat(path);
-	const size = Number(info.size);
-	const from = size < before.offset ? unread : before;
-
-	const bytes = yield* Effect.scoped(
-		Effect.flatMap(fs.open(path), (file) => file.readAlloc(size - from.offset, { position: BigInt(from.offset) })),
-	);
-
-	const appended = Option.getOrElse(bytes, () => new Uint8Array());
-	const end = appended.lastIndexOf(newline) + 1;
-
-	return {
-		offset: from.offset + end,
-		tally: tallyLines({ tally: from.tally, text: new TextDecoder().decode(appended.subarray(0, end)) }),
-	} satisfies Followed;
-});
 
 /** Finds a delegate's session file by the id in its name, and remembers it, since a delegate never moves its file. */
 const locate = Effect.fn("locate")(function* (located: Map<string, string>, dir: string, { id }: Started) {
-	const fs = yield* FileSystem.FileSystem;
 	const known = located.get(id);
 
-	if (known !== undefined || !(yield* fs.exists(dir))) {
-		return Option.fromUndefinedOr(known);
+	if (known !== undefined) {
+		return Option.some(known);
 	}
 
-	const names = yield* fs.readDirectory(dir);
-	const path = Option.map(Arr.findFirst(names, Str.endsWith(`_${id}.jsonl`)), (name) => `${dir}/${name}`);
+	const path = yield* sessionFileById({ dir, id });
 
 	if (Option.isSome(path)) {
 		located.set(id, path.value);
@@ -100,13 +72,15 @@ export const treeReader = (files: TreeFiles) => {
 
 	// A session file appears at its first reply, so one that is not there yet has spent nothing.
 	const advance = Effect.fn("advance")(function* (path: string) {
-		const fs = yield* FileSystem.FileSystem;
+		const before = followed.get(path) ?? unread;
+		const appended = yield* appendedLines({ path, offset: before.offset });
 
-		if (!(yield* fs.exists(path))) {
+		if (Option.isNone(appended)) {
 			return emptyTally;
 		}
 
-		const next = yield* readAppended(path, followed.get(path) ?? unread);
+		const { replaced, text, offset } = appended.value;
+		const next: Followed = { offset, tally: tallyLines({ tally: replaced ? emptyTally : before.tally, text }) };
 
 		followed.set(path, next);
 
@@ -116,7 +90,7 @@ export const treeReader = (files: TreeFiles) => {
 	/** Each delegate, then the ones it started, in the order they started. */
 	const spentBelow = (
 		started: ReadonlyArray<Started>,
-	): Effect.Effect<CostLabel["delegates"], PlatformError.PlatformError, FileSystem.FileSystem> =>
+	): Effect.Effect<CostLabel["delegates"], PlatformError.PlatformError, Effect.Services<ReturnType<typeof locate>>> =>
 		Effect.map(
 			Effect.forEach(started, (delegate) =>
 				Effect.gen(function* () {
