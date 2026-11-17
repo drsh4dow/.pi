@@ -45,31 +45,29 @@ const rows: ReadonlyArray<{ name: string; text: string; fits: ReadonlyArray<Role
 	},
 ];
 
-for (const [index, row] of rows.entries()) {
-	test(row.name, () =>
-		run(
-			Effect.gen(function* () {
-				const fs = yield* FileSystem.FileSystem;
-				const filePath = `${scratch}/${String(index)}/SKILL.md`;
+test.each(Arr.map(rows, (row, index) => ({ ...row, index })))("$name", ({ index, ...row }) =>
+	run(
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const filePath = `${scratch}/${String(index)}/SKILL.md`;
 
-				yield* fs.makeDirectory(`${scratch}/${String(index)}`, { recursive: true });
-				yield* fs.writeFileString(filePath, row.text);
+			yield* fs.makeDirectory(`${scratch}/${String(index)}`, { recursive: true });
+			yield* fs.writeFileString(filePath, row.text);
 
-				const seen = yield* Effect.forEach(every, (role) =>
-					Effect.map(skillsFor({ role, skills: [{ filePath }] }), ({ skills, problems }) => ({
-						role,
-						fits: Arr.isReadonlyArrayNonEmpty(skills),
-						problems: problems.length,
-					})),
-				);
+			const seen = yield* Effect.forEach(every, (role) =>
+				Effect.map(skillsFor({ role, skills: [{ filePath }] }), ({ skills, problems }) => ({
+					role,
+					fits: Arr.isReadonlyArrayNonEmpty(skills),
+					problems: problems.length,
+				})),
+			);
 
-				expect(seen).toEqual(
-					Arr.map(every, (role) => ({ role, fits: row.fits.includes(role), problems: row.problems })),
-				);
-			}),
-		),
-	);
-}
+			expect(seen).toEqual(
+				Arr.map(every, (role) => ({ role, fits: row.fits.includes(role), problems: row.problems })),
+			);
+		}),
+	),
+);
 
 test("a skill file that cannot be read is left out and reported", () =>
 	run(

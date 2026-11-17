@@ -117,27 +117,25 @@ const budgetRows = [
 	{ name: "guides that fill the budget exactly all restore", sizes: [60_000, 60_000], restored: 2 },
 ];
 
-for (const [rowAt, row] of budgetRows.entries()) {
-	test(row.name, () =>
-		run(
-			Effect.gen(function* () {
-				const skills = yield* Effect.forEach(row.sizes, (size, at) => {
-					const name = `budget-${String(rowAt)}-${String(row.sizes.length - at)}`;
+test.each(Arr.map(budgetRows, (row, rowAt) => ({ ...row, rowAt })))("$name", (row) =>
+	run(
+		Effect.gen(function* () {
+			const skills = yield* Effect.forEach(row.sizes, (size, at) => {
+				const name = `budget-${String(row.rowAt)}-${String(row.sizes.length - at)}`;
 
-					return writeSkill(name, skillText(name, size));
-				});
+				return writeSkill(name, skillText(name, size));
+			});
 
-				const { entry } = yield* compactAfterReading({ read: Arr.map(skills, ({ text }) => text), skills });
-				const paths = Arr.map(skills, ({ path }) => path);
+			const { entry } = yield* compactAfterReading({ read: Arr.map(skills, ({ text }) => text), skills });
+			const paths = Arr.map(skills, ({ path }) => path);
 
-				expect({ restored: restoredPaths(entry.summary), listed: listedPaths(entry.summary) }).toEqual({
-					restored: Arr.take(paths, row.restored),
-					listed: Arr.drop(paths, row.restored),
-				});
-			}),
-		),
-	);
-}
+			expect({ restored: restoredPaths(entry.summary), listed: listedPaths(entry.summary) }).toEqual({
+				restored: Arr.take(paths, row.restored),
+				listed: Arr.drop(paths, row.restored),
+			});
+		}),
+	),
+);
 
 test("a guide comes back as its file reads at the compaction, and the label shows it loaded", () =>
 	run(
@@ -220,17 +218,16 @@ test("a guide read whole whose kept messages hold only part of it is restored", 
 		}),
 	));
 
-for (const reason of ["overflow", "manual"] as const) {
-	test(`a delegate's ${reason} compaction restores the guide it read`, () =>
-		run(
-			Effect.gen(function* () {
-				const skill = yield* writeSkill(reason, skillText(reason, 1000));
-				const { entry } = yield* compactAfterReading({ reason, read: [skill.text], skills: [skill] });
+test.each(["overflow", "manual"] as const)("a delegate's %s compaction restores the guide it read", (reason) =>
+	run(
+		Effect.gen(function* () {
+			const skill = yield* writeSkill(reason, skillText(reason, 1000));
+			const { entry } = yield* compactAfterReading({ reason, read: [skill.text], skills: [skill] });
 
-				expect(restoredPaths(entry.summary)).toEqual([skill.path]);
-			}),
-		));
-}
+			expect(restoredPaths(entry.summary)).toEqual([skill.path]);
+		}),
+	),
+);
 
 afterAll(() =>
 	run(Effect.flatMap(FileSystem.FileSystem, (fs) => fs.remove(scratch, { recursive: true, force: true }))),
