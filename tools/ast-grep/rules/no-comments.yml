@@ -1,0 +1,27 @@
+id: no-comments
+language: TypeScript
+severity: error
+message: Delete this comment. Say it with a type, a test, a lint rule, or a doc comment on the declaration.
+ignores:
+   - tools/oxlint/anti-slop/**
+   - tools/oxlint/fixtures/**
+   - tools/gates/fixtures/**
+rule:
+   kind: comment
+   not:
+      any:
+         - all:
+              - regex: '^/\*\*[^*]'
+              - not: { inside: { kind: statement_block } }
+              - precedes: { not: { any: [kind: expression_statement, kind: comment] }, stopBy: neighbor }
+              - not:
+                   all:
+                      - inside: { kind: program }
+                      - precedes: { regex: '^(if|for|while|do|try|switch|throw)\b|^[{;]', stopBy: neighbor }
+         - regex: '^(//|/\*)\s*(oxlint|oxfmt)-'
+         - regex: '^//\s*@ts-expect-error'
+         - regex: '^///\s*<reference '
+         - all:
+              - regex: '^(//|/\*)[\s\S]*(Copyright|SPDX-License-Identifier)'
+              - inside: { kind: program }
+              - not: { follows: { not: { any: [kind: comment, kind: hash_bang_line] }, stopBy: end } }

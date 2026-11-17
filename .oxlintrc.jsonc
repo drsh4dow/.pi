@@ -66,6 +66,120 @@
 		"anti-slop-effect/no-manual-tagged-construction": "error",
 		"anti-slop-effect/no-service-constructor-imports": "error",
 		"anti-slop-effect/prefer-effect-match": "error",
+		// Bans: each names the one owner allowed to use the API, which the overrides below exempt
+		"eslint/no-restricted-imports": [
+			"error",
+			{
+				"paths": [
+					{
+						"name": "effect/FileSystem",
+						"message": "Read and write disk through the src/client/ folder that owns the file, such as #src/client/web-cache/index.ts. Add a client for a new store.",
+					},
+					{
+						"name": "node:fs",
+						"message": "Read and write disk through the src/client/ folder that owns the file, such as #src/client/web-cache/index.ts. Add a client for a new store.",
+					},
+					{
+						"name": "node:fs/promises",
+						"message": "Read and write disk through the src/client/ folder that owns the file, such as #src/client/web-cache/index.ts. Add a client for a new store.",
+					},
+					{
+						"name": "node:child_process",
+						"message": "Run outside commands through the src/client/ folder for that system, such as #src/client/gh/index.ts. Add a client for a new one.",
+					},
+					{
+						"name": "@effect/platform-node/NodeHttpClient",
+						"message": "Call the src/client/ folder for that service, such as #src/client/exa/index.ts. Add a client for a new one.",
+					},
+				],
+				"patterns": [
+					{
+						"group": ["effect/http/*"],
+						"message": "Call the src/client/ folder for that service, such as #src/client/exa/index.ts. Add a client for a new one.",
+					},
+					{
+						"group": ["effect/process/*"],
+						"message": "Run outside commands through the src/client/ folder for that system, such as #src/client/gh/index.ts. Add a client for a new one.",
+					},
+				],
+			},
+		],
+		"eslint/no-restricted-properties": [
+			"error",
+			{
+				"property": "runPromise",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runPromiseExit",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runPromiseWith",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runPromiseExitWith",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runFork",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runForkWith",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runSync",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runSyncExit",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runSyncWith",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runSyncExitWith",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runCallback",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"property": "runCallbackWith",
+				"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+			},
+			{
+				"object": "Bun",
+				"property": "file",
+				"message": "Read and write disk through the src/client/ folder that owns the file, such as #src/client/web-cache/index.ts. Add a client for a new store.",
+			},
+			{
+				"object": "Bun",
+				"property": "write",
+				"message": "Read and write disk through the src/client/ folder that owns the file, such as #src/client/web-cache/index.ts. Add a client for a new store.",
+			},
+			{
+				"object": "Bun",
+				"property": "spawn",
+				"message": "Run outside commands through the src/client/ folder for that system, such as #src/client/gh/index.ts. Add a client for a new one.",
+			},
+			{
+				"object": "Bun",
+				"property": "spawnSync",
+				"message": "Run outside commands through the src/client/ folder for that system, such as #src/client/gh/index.ts. Add a client for a new one.",
+			},
+			{
+				"object": "Bun",
+				"property": "$",
+				"message": "Run outside commands through the src/client/ folder for that system, such as #src/client/gh/index.ts. Add a client for a new one.",
+			},
+		],
 		// Effect's own setting; pi writes `string[]`, Effect wins
 		"typescript/array-type": ["error", { "default": "generic", "readonly": "generic" }],
 		// pi tool handlers take (toolCallId, params, signal, onUpdate, ctx)
@@ -124,6 +238,107 @@
 		{
 			"files": ["**/*.test.ts"],
 			"plugins": ["jest"],
+		},
+		{
+			// src/client/ owns disk, HTTP and processes
+			"files": ["src/client/**"],
+			"rules": {
+				"eslint/no-restricted-imports": "off",
+				"eslint/no-restricted-properties": [
+					"error",
+					{
+						"property": "runPromise",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runPromiseExit",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runPromiseWith",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runPromiseExitWith",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runFork",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runForkWith",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runSync",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runSyncExit",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runSyncWith",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runSyncExitWith",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runCallback",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+					{
+						"property": "runCallbackWith",
+						"message": "Return the Effect and hand it to run or fork from #src/client/pi-host/index.ts, the one place that runs Effects.",
+					},
+				],
+			},
+		},
+		{
+			// pi-host owns the Effect runners
+			"files": ["src/client/pi-host/**"],
+			"rules": {
+				"eslint/no-restricted-imports": "off",
+				"eslint/no-restricted-properties": "off",
+			},
+		},
+		{
+			// entry files own process.env and hand what a feature needs to it
+			"files": ["agent/extensions/*/index.ts", "agent/bin/*.ts"],
+			"rules": {
+				"node/no-process-env": "off",
+			},
+		},
+		{
+			// tools/ and the PHI eval corpus are outside the runtime the bans guard
+			"files": ["tools/**", "src/features/phi-router/corpus/**"],
+			"rules": {
+				"eslint/no-restricted-imports": "off",
+				"eslint/no-restricted-properties": "off",
+			},
+		},
+		{
+			// test code sets up files and processes itself, and waits on conditions
+			"files": ["**/*.test.ts", "**/*.fixture.ts", "**/*.scenario.ts"],
+			"rules": {
+				"eslint/no-restricted-imports": "off",
+				"eslint/no-restricted-properties": [
+					"error",
+					{
+						"object": "Effect",
+						"property": "sleep",
+						"message": "Wait on a condition, never a fixed time: call eventually from #src/primitives/eventually.ts.",
+					},
+					{
+						"object": "Bun",
+						"property": "sleep",
+						"message": "Wait on a condition, never a fixed time: call eventually from #src/primitives/eventually.ts.",
+					},
+				],
+			},
 		},
 		{
 			// pi and oxlint load these files' default export, so no other export form works
