@@ -1,4 +1,4 @@
-import { afterAll, test } from "bun:test";
+import { afterAll, beforeAll, test } from "bun:test";
 
 import * as Effect from "effect/Effect";
 
@@ -8,13 +8,15 @@ import { designChoice } from "./brief.ts";
 
 const folder = `${Bun.env["TMPDIR"] ?? "/tmp"}/owned-work-design-test-${String(process.pid)}`;
 
-await Promise.all([
-	Bun.write(`${folder}/sketch.md`, "# Retry cap\n\n## Synthesis decision\n\nBase: one.\n"),
-	Bun.write(
-		`${folder}/draft.md`,
-		"# Retry cap\n\nNo decision yet. A later ## Synthesis decision heading goes here.\n",
-	),
-]);
+beforeAll(() =>
+	Promise.all([
+		Bun.write(`${folder}/sketch.md`, "# Retry cap\n\n## Synthesis decision\n\nBase: one.\n"),
+		Bun.write(
+			`${folder}/draft.md`,
+			"# Retry cap\n\nNo decision yet. A later ## Synthesis decision heading goes here.\n",
+		),
+	]),
+);
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${folder}`.quiet())));
 
