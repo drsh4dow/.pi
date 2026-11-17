@@ -6,7 +6,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
-import { patchIdOf, recordVerdict, verdictsFolder } from "../../features/pr/index.ts";
+import { patchIdOf, recordVerdict, verdictsFolder } from "#src/features/pr/index.ts";
 
 const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/gh-wrapper-test-${String(process.pid)}`;
 

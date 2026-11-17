@@ -110,7 +110,7 @@ type Allowed = FileSystem.FileSystem | Path.Path;
 const check = (condition: boolean, claim: string): Effect.Effect<void, ScenarioFailed> =>
 	condition ? Effect.void : Effect.fail(ScenarioFailed.make({ message: claim }));
 
-/** `features/owned-work/leaf-wake.scenario.ts` is `leaf-wake`. */
+/** `src/features/owned-work/leaf-wake.scenario.ts` is `leaf-wake`. */
 const nameOf = (entry: string) => Str.replace(/^(?:.*\/)?(?<name>[^/]+?)(?:\.scenario)?\.ts$/u, "$<name>")(entry);
 
 /** `20260514-101010` from an ISO time. */

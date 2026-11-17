@@ -14,7 +14,7 @@ import * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
 import * as Str from "effect/String";
 
-import { harnessEntries, withoutPackageBins } from "../harness.ts";
+import { harnessEntries, withoutPackageBins } from "#tools/harness.ts";
 import { type Argv, execIn, type Exited, ran, startCore } from "./core.ts";
 import { type ScenarioFailed, SetupFailed } from "./failed.ts";
 import { modelsOf, type RunSetup, settingsOf } from "./setup.ts";

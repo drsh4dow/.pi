@@ -136,8 +136,7 @@
 			"files": [
 				"agent/bin/**",
 				"agent/extensions/**",
-				"features/**",
-				"clients/**",
+				"src/**",
 				"tools/prompts/**",
 				"tools/loaded/**",
 				"tools/driver/**",
@@ -150,7 +149,7 @@
 		},
 		{
 			// The URL guard pins the address it checked by replacing node:http's DNS lookup, which only node:dns and node:net offer
-			"files": ["clients/web/guard.ts"],
+			"files": ["src/client/web/guard.ts"],
 			"rules": {
 				"import/no-nodejs-modules": ["error", { "allow": ["node:dns", "node:net"] }],
 			},

@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-import { web } from "../../../features/web/index.ts";
+import { web } from "#src/features/web/index.ts";
 
 export default function (pi: ExtensionAPI) {
 	const feature = web(pi);

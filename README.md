@@ -160,5 +160,5 @@ The harness has no prompt templates. The extensions add two commands. `/account 
 - `agent/playbooks/` holds the playbooks. The files in its subfolders are their reference files and scripts.
 - `agent/principles/` holds the hard rules an agent reads when a principle's `when` line matches its task.
 - `agent/SYSTEM.md` and `agent/roles/` make up the system prompt. `agent/instructions/` holds the delegate briefs, such as `code-reviewer.md`.
-- `agent/extensions/`, `features/`, and `clients/` hold the TypeScript extensions. `docs/adr/0001-harness-layout.md` explains how the code splits across them.
+- `agent/extensions/`, `src/features/`, and `src/client/` hold the TypeScript extensions. `docs/adr/0001-harness-layout.md` explains how the code splits across them.
 - `GLOSSARY.md` defines the terms the code uses, such as delegate, serve, watch, and group.

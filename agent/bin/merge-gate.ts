@@ -8,7 +8,7 @@ import * as Option from "effect/Option";
 import * as ChildProcess from "effect/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
-import { Authorization, gate, ghLayer, mergeRequestOf, verdictsFolder } from "../../features/pr/index.ts";
+import { Authorization, gate, ghLayer, mergeRequestOf, verdictsFolder } from "#src/features/pr/index.ts";
 
 const [real = "gh", ...args] = process.argv.slice(2);
 

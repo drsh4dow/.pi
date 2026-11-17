@@ -2,6 +2,10 @@
 	"name": "pi-harness",
 	"private": true,
 	"type": "module",
+	"imports": {
+		"#src/*": "./src/*",
+		"#tools/*": "./tools/*"
+	},
 	"scripts": {
 		"prepare": "effect-tsgo patch --oxlint",
 		"fmt": "oxfmt",

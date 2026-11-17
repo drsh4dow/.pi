@@ -3,7 +3,9 @@
 	"useTabs": true,
 	"tabWidth": 3,
 	"printWidth": 120,
-	"sortImports": true,
+	"sortImports": {
+		"groups": ["builtin", "external", ["internal", "subpath", "parent", "sibling", "index"], "style", "unknown"]
+	},
 	"ignorePatterns": [
 		".agent/**",
 		".agents/**",

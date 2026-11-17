@@ -1,0 +1,124 @@
+import { uuidv7 } from "@earendil-works/pi-ai";
+import * as Context from "effect/Context";
+import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
+import * as Rec from "effect/Record";
+import * as Str from "effect/String";
+
+import { PiCli, piCliLayer } from "#src/client/pi-cli/index.ts";
+import { roleFieldsFor } from "./brief.ts";
+import { type Brief, childExtensions, type ChildRole, inheritedEnv, launch, levels } from "./child.ts";
+import { type Alias, aliases, ModelName, modelTable } from "./models.ts";
+import { parseProfile } from "./profile.ts";
+
+/** One delegate as its parent would start it, minus the systemd scope and hc terminal around it. */
+export interface StagedLaunch {
+	readonly name: string;
+	readonly role: ChildRole;
+	readonly level: number;
+	readonly argv: ReadonlyArray<string>;
+	readonly env: Readonly<Record<string, string>>;
+}
+
+const instructionsFolder = `${import.meta.dirname}/../../../agent/instructions`;
+
+const keyOf = ({ provider, id }: Alias) => `${provider}/${id}`;
+
+/** An alias runs on its own provider, since no caller stands behind a staged delegate. */
+const stagedModel = (name: ModelName) =>
+	ModelName.$match(name, {
+		Spelled: ({ key }) => key,
+		Alias: ({ alias }) => Option.match(Rec.get(modelTable.aliases, alias), { onNone: () => alias, onSome: keyOf }),
+	});
+
+const goal = "Capture the system prompt each delegate gets.";
+
+interface Staged extends Pick<Brief, "name" | "model" | "thinking" | "readOnly" | "instructions"> {
+	readonly role: ChildRole;
+	readonly level: number;
+	readonly design: Option.Option<string>;
+}
+
+const bare = (name: string, role: ChildRole, level: number, design: Option.Option<string>): Staged => ({
+	name,
+	role,
+	level,
+	design,
+	model: keyOf(aliases.judgment),
+	thinking: Option.none(),
+	readOnly: false,
+	instructions: Option.none(),
+});
+
+const bareDelegates = [
+	bare("owner", "owner", 2, Option.some("sketch.md")),
+	bare("owner-last-level", "owner", levels, Option.some("yours")),
+	bare("leaf", "leaf", 2, Option.none()),
+];
+
+const onInstructionsFile = Effect.fn("onInstructionsFile")(function* (file: string) {
+	const fs = yield* FileSystem.FileSystem;
+	const profile = yield* Effect.flatMap(fs.readFileString(`${instructionsFolder}/${file}`), parseProfile);
+	const role = yield* Effect.fromOption(profile.role, () => `instructions file ${file} names no role`);
+	const model = yield* Effect.fromOption(profile.model, () => `instructions file ${file} names no model`);
+
+	const staged: Staged = {
+		name: Str.replace(/\.md$/u, "")(file),
+		role,
+		level: 2,
+		design: Option.none(),
+		model: stagedModel(model),
+		thinking: profile.thinking,
+		readOnly: profile.readOnly,
+		instructions: Option.some({ file, text: profile.text }),
+	};
+
+	return staged;
+});
+
+/**
+ * Stages, on `message`, one level-2 delegate per harness instructions file, in the role its profile names, and the bare
+ * delegates above, with the same `launch` the ledger uses, so a tool can run each and see exactly what it receives. The
+ * staged files live in `dir` until the caller's scope closes.
+ */
+export const stagedLaunches = Effect.fn("stagedLaunches")(function* (
+	cwd: string,
+	dir: string,
+	message: string,
+	state: string,
+) {
+	const fs = yield* FileSystem.FileSystem;
+	const files = yield* fs.readDirectory(instructionsFolder);
+
+	const services = yield* Layer.build(piCliLayer(childExtensions));
+	const cli = Context.get(services, PiCli);
+
+	const withInstructions = yield* Effect.forEach(files, onInstructionsFile);
+
+	return yield* Effect.forEach([...withInstructions, ...bareDelegates], ({ level, role, design, ...staged }) =>
+		Effect.gen(function* () {
+			const roleFields = yield* roleFieldsFor(state, Option.some(state), role, design);
+			const brief: Brief = { ...staged, message, goal, state: Option.some(state), ...roleFields };
+
+			const spec = yield* launch(cli)({
+				brief,
+				level,
+				childSession: { cwd, dir: `${dir}/${brief.name}`, id: uuidv7() },
+				passEnv: inheritedEnv(process.env),
+			});
+
+			// In a real launch the systemd client's `wrap` sets the slice. A child without one fails to start.
+			const launched: StagedLaunch = {
+				name: brief.name,
+				role,
+				level,
+				argv: spec.argv,
+				env: { ...spec.env, PI_OWNED_WORK_SLICE: `pi-ow-prompts-${brief.name}` },
+			};
+
+			return launched;
+		}),
+	);
+});
