@@ -227,7 +227,7 @@ const find = (provider: string, id: string) => modelsWith({}).getModel(provider,
 test("/account keeps the model and moves it to the named account", () => {
 	const target = targetOf({ name: "ent", current: { ...opus, provider: "ultra-a" }, find });
 
-	expect(target.kind === "switch" && `${target.model.provider}/${target.model.id}`).toBe("ent/claude-opus-5-5");
+	expect(target).toMatchObject({ kind: "switch", model: { provider: "ent", id: "claude-opus-5-5" } });
 });
 
 const refusals = [

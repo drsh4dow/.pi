@@ -21,6 +21,7 @@ import {
 	Identifier,
 	type Message,
 	Negative,
+	type PhiCase,
 	Transform,
 } from "./manifest.ts";
 import { synthetic } from "./synthetic.ts";
@@ -83,6 +84,54 @@ const countBy = (values: ReadonlyArray<string>) => {
 	return counts;
 };
 
+type Phi = typeof PhiCase.Type;
+
+const countOf = (counts: ReadonlyMap<string, number>, value: string): number => counts.get(value) ?? 0;
+
+const misplacedInImage = ({ canary, data }: { readonly canary: string; readonly data: string }): boolean =>
+	canary.length < 24 || Option.getOrElse(Str.indexOf(canary)(data), () => 0) < 8;
+
+const lostCanaries = (item: Phi, decoded: ReadonlyArray<string>): ReadonlyArray<string> => {
+	const plain = plainViews(item);
+	const encoded = item.strata.transform === "base64" || item.strata.transform === "gzip-hex";
+
+	return Arr.flatMap(item.canaries, (canary) => {
+		const inPlain = Arr.some(plain, Str.includes(canary));
+		const recovered = encoded ? Arr.some(decoded, Str.includes(canary)) && !inPlain : inPlain;
+
+		return recovered ? [] : [`${item.id} ${canary}`];
+	});
+};
+
+const badlySplit = (item: Phi): boolean => {
+	const cuts = Rec.toEntries(item.canaryParts ?? {});
+	const texts = textsOf(item);
+
+	const wrong = Arr.some(cuts, ([canary, parts]) => {
+		const holders = Arr.map(parts, (part) => Arr.findFirstIndex(texts, Str.includes(part)));
+
+		return (
+			Arr.join(parts, "") !== canary ||
+			Arr.some(texts, Str.includes(canary)) ||
+			new Set(Arr.map(holders, (holder) => Option.getOrElse(holder, () => -1))).size !== parts.length ||
+			Arr.some(holders, Option.isNone)
+		);
+	});
+
+	return cuts.length === 0 || wrong;
+};
+
+const partsOutsideSplit = (item: Phi): boolean => item.strata.transform !== "split" && item.canaryParts !== undefined;
+
+const quotesCanaryBack = (item: Phi): boolean =>
+	Arr.some(
+		item.messages,
+		(message) =>
+			message.role === "assistant" &&
+			"text" in message &&
+			Arr.some(item.canaries, (canary) => Str.includes(canary)(message.text)),
+	);
+
 test("the default corpus round-trips line by line through the manifest schema", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
@@ -108,16 +157,13 @@ test("ids, canaries and fragments are unique across the file, at least 8 and 6 c
 });
 
 test("an image canary is a base64 run of 24 or more characters from past its JPEG header", () => {
-	const imageCanaries = Arr.flatMap(phiCases, (item) =>
-		item.strata.carrier === "screenshot"
-			? Arr.map(item.canaries, (canary) => ({ canary, data: Arr.join(imagesOf(item), "") }))
-			: [],
+	const screenshots = Arr.filter(phiCases, ({ strata }) => strata.carrier === "screenshot");
+
+	const imageCanaries = Arr.flatMap(screenshots, (item) =>
+		Arr.map(item.canaries, (canary) => ({ canary, data: Arr.join(imagesOf(item), "") })),
 	);
 
-	const misplaced = Arr.filter(
-		imageCanaries,
-		({ canary, data }) => canary.length < 24 || Option.getOrElse(Str.indexOf(canary)(data), () => 0) < 8,
-	);
+	const misplaced = Arr.filter(imageCanaries, misplacedInImage);
 
 	expect(imageCanaries.length).toBeGreaterThan(0);
 	expect(misplaced).toEqual([]);
@@ -156,7 +202,7 @@ test("every negative class has at least 30 clean cases, and none holds a canary"
 		Arr.some(textsOf(item), (text) => Arr.some(canaries, (canary) => Str.includes(canary)(text))),
 	);
 
-	expect(Arr.filter(Negative.literals, (negative) => (counts.get(negative) ?? 0) < 30)).toEqual([]);
+	expect(Arr.filter(Negative.literals, (negative) => countOf(counts, negative) < 30)).toEqual([]);
 	expect(Arr.map(leaked, ({ id }) => id)).toEqual([]);
 });
 
@@ -171,7 +217,10 @@ test("every value of every PHI axis has at least 20 cases, except buried, which 
 	const short = Arr.flatMap(axes, ([axis, values]) => {
 		const counts = countBy(Arr.map(phiCases, ({ strata }) => strata[axis]));
 
-		return Arr.flatMap(values, (value) => ((counts.get(value) ?? 0) < 20 ? [`${axis}=${value}`] : []));
+		return Arr.map(
+			Arr.filter(values, (value) => countOf(counts, value) < 20),
+			(value) => `${axis}=${value}`,
+		);
 	});
 
 	const buried = Arr.filter(phiCases, ({ strata }) => strata.transform === "buried").length;
@@ -197,17 +246,7 @@ test("every canary is recoverable from its case, and an encoded one only by deco
 	Effect.runPromise(
 		Effect.gen(function* () {
 			const lost = yield* Effect.forEach(phiCases, (item) =>
-				Effect.map(decodedViews(item), (decoded) => {
-					const plain = plainViews(item);
-					const encoded = item.strata.transform === "base64" || item.strata.transform === "gzip-hex";
-
-					return Arr.flatMap(item.canaries, (canary) => {
-						const inPlain = Arr.some(plain, Str.includes(canary));
-						const recovered = encoded ? Arr.some(decoded, Str.includes(canary)) && !inPlain : inPlain;
-
-						return recovered ? [] : [`${item.id} ${canary}`];
-					});
-				}),
+				Effect.map(decodedViews(item), (decoded) => lostCanaries(item, decoded)),
 			);
 
 			expect(Arr.flatten(lost)).toEqual([]);
@@ -217,45 +256,18 @@ test("every canary is recoverable from its case, and an encoded one only by deco
 test("a split case cuts its canary into parts in separate messages, and no message holds it whole", () => {
 	const splits = Arr.filter(phiCases, ({ strata }) => strata.transform === "split");
 
-	const broken = Arr.flatMap(splits, (item) => {
-		const cuts = Rec.toEntries(item.canaryParts ?? {});
-		const texts = textsOf(item);
-
-		const wrong = Arr.some(cuts, ([canary, parts]) => {
-			const holders = Arr.map(parts, (part) => Arr.findFirstIndex(texts, Str.includes(part)));
-
-			return (
-				Arr.join(parts, "") !== canary ||
-				Arr.some(texts, Str.includes(canary)) ||
-				new Set(Arr.map(holders, (holder) => Option.getOrElse(holder, () => -1))).size !== parts.length ||
-				Arr.some(holders, Option.isNone)
-			);
-		});
-
-		return cuts.length === 0 || wrong ? [item.id] : [];
-	});
-
-	const unsplit = Arr.filter(phiCases, (item) => item.strata.transform !== "split" && item.canaryParts !== undefined);
+	const broken = Arr.filter(splits, badlySplit);
+	const unsplit = Arr.filter(phiCases, partsOutsideSplit);
 
 	expect(splits.length).toBeGreaterThan(0);
-	expect(broken).toEqual([]);
+	expect(Arr.map(broken, ({ id }) => id)).toEqual([]);
 	expect(Arr.map(unsplit, ({ id }) => id)).toEqual([]);
 });
 
 test("in an ent-reply case, the assistant quotes a canary back", () => {
 	const replies = Arr.filter(phiCases, ({ strata }) => strata.entry === "ent-reply");
 
-	const silent = Arr.filter(
-		replies,
-		(item) =>
-			!Arr.some(
-				item.messages,
-				(message) =>
-					message.role === "assistant" &&
-					"text" in message &&
-					Arr.some(item.canaries, (canary) => Str.includes(canary)(message.text)),
-			),
-	);
+	const silent = Arr.filter(replies, (item) => !quotesCanaryBack(item));
 
 	expect(replies.length).toBeGreaterThan(0);
 	expect(Arr.map(silent, ({ id }) => id)).toEqual([]);

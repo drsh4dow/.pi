@@ -74,6 +74,9 @@ const sectionsJson = '{"project": "<project>phi-router</project>", "removed": nu
 
 const sections = decodeSections(sectionsJson).pipe(Option.getOrThrow);
 
+const slotNames = (parts: ReturnType<typeof partsOf>): ReadonlyArray<string> =>
+	Arr.flatMap(parts, ({ slot }) => ("name" in slot ? [slot.name] : []));
+
 test("a system message gives a content part, a part per present section and a tools part", () => {
 	const system: Message = {
 		role: "system",
@@ -86,7 +89,7 @@ test("a system message gives a content part, a part per present section and a to
 	const parts = partsOf(system);
 
 	expect(Arr.map(parts, ({ slot }) => slot._tag)).toEqual(["SystemContent", "SystemSection", "SystemTools"]);
-	expect(Arr.flatMap(parts, ({ slot }) => ("name" in slot ? [slot.name] : []))).toEqual(["project"]);
+	expect(slotNames(parts)).toEqual(["project"]);
 	expect(new Set(Arr.map(parts, ({ key }) => key)).size).toBe(3);
 });
 

@@ -128,12 +128,14 @@ test("decoded bytes of 64 or less, such as a key or a digest, never seal: the ju
 		}),
 	));
 
+const corrupted = (bytes: Uint8Array): Uint8Array =>
+	Uint8Array.from(bytes, (byte, index) => (index > 12 ? 255 - byte : byte));
+
 test("a corrupt gzip seals as undecodable", () =>
 	run(
 		Effect.gen(function* () {
 			const valid = yield* gzip(`${note}, seen for chest pain on 2024-01-05`);
-			const corrupt = Uint8Array.from(valid, (byte, index) => (index > 12 ? 255 - byte : byte));
-			const { verdicts } = yield* judgedText(Encoding.Base64.encode(corrupt));
+			const { verdicts } = yield* judgedText(Encoding.Base64.encode(corrupted(valid)));
 
 			expect(verdicts).toEqual(sealed("undecodable"));
 		}),

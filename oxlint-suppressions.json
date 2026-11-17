@@ -614,9 +614,6 @@
     }
   },
   "src/features/claude-accounts/accounts.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 6
     },
@@ -1524,9 +1521,6 @@
     }
   },
   "src/features/phi-router/anthropic.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 4
     }
@@ -1548,9 +1542,6 @@
     }
   },
   "src/features/phi-router/border.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 6
     }
@@ -1573,9 +1564,6 @@
     }
   },
   "src/features/phi-router/codemode.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
     "oxc/no-optional-chaining": {
       "count": 2
     },
@@ -1754,9 +1742,6 @@
     }
   },
   "src/features/phi-router/corpus/generate.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 18
-    },
     "no-undefined": {
       "count": 1
     },
@@ -2058,11 +2043,6 @@
       "count": 4
     }
   },
-  "src/features/phi-router/corpus/wire.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 2
-    }
-  },
   "src/features/phi-router/corpus/wire.ts": {
     "jsdoc/require-param": {
       "count": 9
@@ -2213,9 +2193,6 @@
     }
   },
   "src/features/phi-router/pieces.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
     "oxc/no-optional-chaining": {
       "count": 1
     },
@@ -2273,9 +2250,6 @@
     }
   },
   "src/features/phi-router/policy/engine.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 3
     }
@@ -2292,9 +2266,6 @@
     }
   },
   "src/features/phi-router/policy/expand.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 6
     }
@@ -2358,9 +2329,6 @@
     }
   },
   "src/features/phi-router/route.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 4
     }
