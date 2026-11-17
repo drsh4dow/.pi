@@ -8,8 +8,8 @@ import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { Reply } from "#src/features/phi-router/anthropic.fixture.ts";
-import { fillerMark, type Plan, planOf, type Sent, Step } from "#src/features/phi-router/corpus-wire.ts";
 import type { Case, Part, Transcript, Turn } from "./manifest.ts";
+import { fillerMark, type Plan, planOf, type Sent, Step } from "./wire.ts";
 
 const text = (value: string): Part => ({ kind: "text", text: value });
 

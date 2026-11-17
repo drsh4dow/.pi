@@ -6,10 +6,10 @@ import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import { narrativeCap } from "#src/features/compaction/index.ts";
-import { Reply } from "./anthropic.fixture.ts";
+import { Reply } from "#src/features/phi-router/anthropic.fixture.ts";
 import { tokensOf } from "./canary-tokens.ts";
-import { planOf, Step } from "./corpus-wire.ts";
-import type { Case, Message, PhiStrata } from "./corpus/manifest.ts";
+import type { Case, Message, PhiStrata } from "./manifest.ts";
+import { planOf, Step } from "./wire.ts";
 
 const mrn = "MRN 4417-2290";
 

@@ -8,8 +8,8 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { sentTextsOf } from "./corpus-wire.ts";
-import type { Case } from "./corpus/manifest.ts";
+import type { Case } from "./manifest.ts";
+import { sentTextsOf } from "./wire.ts";
 
 interface Split {
 	readonly canary: string;

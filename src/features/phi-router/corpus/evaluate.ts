@@ -6,11 +6,11 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 
 import { guard } from "#src/features/phi-router/border.ts";
-import { tokensOf } from "#src/features/phi-router/canary-tokens.ts";
 import { Finding, type Judge, Verdict } from "#src/features/phi-router/policy/engine.ts";
 import { Synthetic } from "#src/features/phi-router/policy/synthetic.ts";
 import { decide } from "#src/features/phi-router/route.ts";
 import { memoryBook, type VerdictBook } from "#src/features/phi-router/store.ts";
+import { tokensOf } from "./canary-tokens.ts";
 import type { Case, Synthetic as SyntheticList } from "./manifest.ts";
 import { requestMessagesOf } from "./messages.ts";
 import { type Played, type Report, reportOf, type Sent } from "./report.ts";

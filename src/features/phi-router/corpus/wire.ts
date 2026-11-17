@@ -11,8 +11,8 @@ import * as Result from "effect/Result";
 import * as Str from "effect/String";
 
 import { narrativeCap } from "#src/features/compaction/index.ts";
-import { Reply } from "./anthropic.fixture.ts";
-import type { Case, Message } from "./corpus/manifest.ts";
+import { Reply } from "#src/features/phi-router/anthropic.fixture.ts";
+import type { Case, Message } from "./manifest.ts";
 
 /** A file the case's pi reads, at `path` under its project folder. */
 export interface Planted {

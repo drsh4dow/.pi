@@ -4,7 +4,7 @@ import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import type { Seen } from "./canary-tokens.ts";
-import type { Case } from "./corpus/manifest.ts";
+import type { Case } from "./manifest.ts";
 
 export interface Outcome extends Seen {
 	readonly id: string;
