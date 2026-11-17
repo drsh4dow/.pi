@@ -1,8 +1,5 @@
 {
   "agent/bin/gh.test.ts": {
-    "jest/prefer-each": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 5
     }
@@ -177,17 +174,11 @@
     }
   },
   "src/client/gh/view.test.ts": {
-    "jest/prefer-each": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 3
     }
   },
   "src/client/hc/index.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "jsdoc/require-param": {
       "count": 1
     },
@@ -368,9 +359,6 @@
     }
   },
   "src/client/web-cache/index.test.ts": {
-    "jest/prefer-each": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }
@@ -389,9 +377,6 @@
     }
   },
   "src/client/web/exa.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "jest/require-hook": {
       "count": 1
     },
@@ -400,9 +385,6 @@
     }
   },
   "src/client/web/github.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "jest/require-hook": {
       "count": 1
     },
@@ -428,9 +410,6 @@
     }
   },
   "src/client/web/guard.test.ts": {
-    "jest/prefer-each": {
-      "count": 3
-    },
     "no-undefined": {
       "count": 1
     },
@@ -494,9 +473,6 @@
     }
   },
   "src/client/web/search.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "jest/require-hook": {
       "count": 1
     },
@@ -2399,9 +2375,6 @@
     }
   },
   "src/features/pr/index.test.ts": {
-    "jest/prefer-each": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 5
     }
@@ -2432,9 +2405,6 @@
     }
   },
   "src/features/pr/merge-request.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }
@@ -2749,9 +2719,6 @@
     }
   },
   "src/features/web/tools.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "oxc/no-optional-chaining": {
       "count": 1
     },
@@ -2768,11 +2735,6 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 4
-    }
-  },
-  "src/features/web/view.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
     }
   },
   "src/features/web/view.ts": {

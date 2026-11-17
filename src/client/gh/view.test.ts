@@ -75,13 +75,11 @@ const rollups: ReadonlyArray<{
 	{ name: "an expected status", rollup: [context("EXPECTED")], expect: "pending" },
 ];
 
-for (const row of rollups) {
-	test(`${row.name} read as checks ${row.expect}`, () => {
-		const checks = viewOf(bare({ rollup: row.rollup })).pipe(Result.map((view) => view.checks));
+test.each(rollups)("$name read as checks $expect", (row) => {
+	const checks = viewOf(bare({ rollup: row.rollup })).pipe(Result.map((view) => view.checks));
 
-		expect(checks).toEqual(Result.succeed(row.expect));
-	});
-}
+	expect(checks).toEqual(Result.succeed(row.expect));
+});
 
 const unreadable = [
 	{ name: "text that is not JSON", stdout: "Could not resolve" },
@@ -89,8 +87,6 @@ const unreadable = [
 	{ name: "a url that is not a pull request's", stdout: bare({ url: "https://github.com/o/r" }) },
 ];
 
-for (const row of unreadable) {
-	test(`${row.name} does not read`, () => {
-		expect(viewOf(row.stdout).pipe(Result.isFailure)).toBe(true);
-	});
-}
+test.each(unreadable)("$name does not read", (row) => {
+	expect(viewOf(row.stdout).pipe(Result.isFailure)).toBe(true);
+});

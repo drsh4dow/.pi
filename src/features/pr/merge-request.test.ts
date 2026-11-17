@@ -100,11 +100,11 @@ const rows: ReadonlyArray<{ readonly argv: ReadonlyArray<string>; readonly expec
 	{ argv: ["pr", "list", "--search", "merge"], expect: "passes through" },
 ];
 
-for (const row of rows) {
-	test(`gh ${Arr.join(row.argv, " ")} ${row.expect}`, () => {
-		expect(summary(row.argv)).toBe(row.expect);
-	});
-}
+const calls = Arr.map(rows, (row) => ({ ...row, command: Arr.join(row.argv, " ") }));
+
+test.each(calls)("gh $command $expect", (row) => {
+	expect(summary(row.argv)).toBe(row.expect);
+});
 
 test("a deferred merge's refusal names a merge in the repository the call named", () => {
 	const why = Option.match(mergeRequestOf(["pr", "merge", "5", "-R", "o/r", "--auto", "--squash"]), {

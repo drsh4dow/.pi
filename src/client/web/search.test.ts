@@ -149,21 +149,19 @@ const slowRows = [
 	},
 ];
 
-for (const row of slowRows) {
+test.each(slowRows)("$name", (row) => {
 	const routes = { "POST https://api.exa.ai/search": never, "POST https://mcp.parallel.ai/mcp": row.parallel };
 	const layer = Layer.provideMerge(webFor({ withExaKey: true, routes }), TestClock.layer());
 
-	test(row.name, () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const searching = yield* Effect.forkChild(search);
+	return Effect.runPromise(
+		Effect.gen(function* () {
+			const searching = yield* Effect.forkChild(search);
 
-				yield* TestClock.adjust("10 minutes");
+			yield* TestClock.adjust("10 minutes");
 
-				const got = yield* Fiber.join(searching);
+			const got = yield* Fiber.join(searching);
 
-				expect(got).toStartWith(row.expect);
-			}).pipe(Effect.provide(layer)),
-		),
+			expect(got).toStartWith(row.expect);
+		}).pipe(Effect.provide(layer)),
 	);
-}
+});

@@ -131,17 +131,16 @@ const tokenRows: ReadonlyArray<readonly [string, Readonly<Record<string, string>
 	["with no token anywhere the API is read without one", {}, "", "auth=none"],
 ];
 
-for (const [name, env, gh, expected] of tokenRows) {
+test.each(tokenRows)("GitHub's token: %s", (_name, env, gh, expected) => {
 	const config = ConfigProvider.layer(ConfigProvider.fromUnknown(env));
 	const tokens = Layer.provide(githubTokenLayer, Layer.merge(config, ghPrinting(gh)));
 	const web = Layer.provide(webFor({ routes: readmeRoutes }), tokens);
 
-	test(`GitHub's token: ${name}`, () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const got = yield* readOutcome("https://github.com/o/r");
+	return Effect.runPromise(
+		Effect.gen(function* () {
+			const got = yield* readOutcome("https://github.com/o/r");
 
-				expect(got).toContain(expected);
-			}).pipe(Effect.provide(web)),
-		));
-}
+			expect(got).toContain(expected);
+		}).pipe(Effect.provide(web)),
+	);
+});

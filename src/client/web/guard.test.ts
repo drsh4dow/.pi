@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -30,11 +30,9 @@ const urlRows = [
 	{ url: "not a url", problem: "not a url: not a URL" },
 ];
 
-for (const { url, problem } of urlRows) {
-	test(`the guard's verdict on ${url} is ${problem}`, () => {
-		expect(Option.getOrElse(problemOf(url), () => "-")).toBe(problem);
-	});
-}
+test.each(urlRows)("the guard's verdict on $url is $problem", ({ url, problem }) => {
+	expect(Option.getOrElse(problemOf(url), () => "-")).toBe(problem);
+});
 
 const addressRows = [
 	["8.8.8.8", true],
@@ -72,13 +70,15 @@ const addressRows = [
 	["example.com", false],
 ] as const;
 
-for (const [address, isPublic] of addressRows) {
-	const is = isPublic ? "is" : "is not";
+const addressCases = Arr.map(addressRows, ([address, isPublic]) => ({
+	address,
+	isPublic,
+	is: isPublic ? "is" : "is not",
+}));
 
-	test(`${address} ${is} a public address`, () => {
-		expect(isPublicAddress(address)).toBe(isPublic);
-	});
-}
+test.each(addressCases)("$address $is a public address", ({ address, isPublic }) => {
+	expect(isPublicAddress(address)).toBe(isPublic);
+});
 
 interface LookupRow {
 	readonly name: string;
@@ -124,19 +124,17 @@ const lookedUp = (resolve: Resolve, all: boolean): Effect.Effect<string> =>
 		});
 	});
 
-for (const all of [true, false]) {
-	for (const { name, answerPerCall, expect: wanted } of lookupRows) {
-		test(`${name} (all: ${String(all)})`, () => {
-			const { calls, resolve } = resolveFrom(answerPerCall);
+describe.each([true, false])("with all: %p", (all) => {
+	test.each(lookupRows)("$name", ({ answerPerCall, expect: wanted }) => {
+		const { calls, resolve } = resolveFrom(answerPerCall);
 
-			return Effect.runPromise(
-				Effect.map(lookedUp(resolve, all), (text) => {
-					expect({ got: text, calls: calls.count }).toEqual(wanted);
-				}),
-			);
-		});
-	}
-}
+		return Effect.runPromise(
+			Effect.map(lookedUp(resolve, all), (text) => {
+				expect({ got: text, calls: calls.count }).toEqual(wanted);
+			}),
+		);
+	});
+});
 
 const hits = { count: 0 };
 
