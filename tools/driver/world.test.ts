@@ -122,15 +122,16 @@ for (const { name, human, providers, expected } of modelsRows) {
 	});
 }
 
+const { models: windowedProviders = {}, windowed } = setupOf({ model: "local/big", contextWindow: 40_000 });
+
 test("modelsOf: contextWindow's override merges into the human's custom provider, keeping its models", () => {
 	const local = { baseUrl: "http://l", models: [{ id: "big" }], modelOverrides: { big: { maxTokens: 1 } } };
-	const setup = setupOf({ model: "local/big", contextWindow: 40_000 });
 
 	expect(
 		modelsOf({
 			human: Option.some({ providers: { local } }),
-			providers: setup.models ?? {},
-			windowed: setup.windowed,
+			providers: windowedProviders,
+			windowed,
 		}),
 	).toEqual({ providers: { local: { ...local, modelOverrides: { big: { maxTokens: 1, contextWindow: 40_000 } } } } });
 });

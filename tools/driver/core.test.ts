@@ -9,6 +9,8 @@ import * as Schedule from "effect/Schedule";
 import { ran, startCore } from "./core.ts";
 import { layoutOf } from "./world.ts";
 
+const path = Bun.env["PATH"] ?? "";
+
 const isAlive = (pid: number) => {
 	try {
 		process.kill(pid, 0);
@@ -24,7 +26,7 @@ test("a timeout around ran ends a command that ignores SIGTERM", () =>
 		Effect.gen(function* () {
 			const command = {
 				argv: ["sh", "-c", "trap '' TERM; sleep 30"] as const,
-				env: { PATH: Bun.env["PATH"] ?? "" },
+				env: { PATH: path },
 				cwd: "/",
 			};
 
@@ -42,7 +44,7 @@ test("closing the core's scope ends the terminals it runs", () =>
 			const layout = layoutOf({ tmp, name: "core", stamp: "t", pid: process.pid, tag: "0abc12" });
 
 			const env = {
-				PATH: Bun.env["PATH"] ?? "",
+				PATH: path,
 				HOME: layout.home,
 				XDG_RUNTIME_DIR: layout.runtime,
 				HC_SESSION: layout.coreSession,
