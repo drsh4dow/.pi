@@ -27,7 +27,7 @@ test.each(blocked)("the codemode guard in a phi/auto session: $name is blocked",
 		Effect.map(
 			Effect.promise(() => guardedInPhiAuto(code)),
 			(result) => {
-				expect(result?.block ?? false).toBe(true);
+				expect(result?.block).toBe(true);
 			},
 		),
 	),

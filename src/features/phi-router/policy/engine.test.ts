@@ -169,11 +169,12 @@ test("a registered fixture part is skipped, and a piece of nothing else clears w
 
 const image = (index: number) => ({ mimeType: "image/png", data: `iVBORw0KGgo${String(index)}` });
 
+const sealsLoneImage: Script = { ...sealing, score: ({ images }) => (images.length === 1 ? 0.9 : 0.1) };
+
 test("images reach the judge, 128 to a call, and a seal on any call seals the piece", () =>
 	run(
 		Effect.gen(function* () {
 			const screenshot = { ...pieceOf("Why is this page blank?"), images: Arr.makeBy(129, image) };
-			const sealsLoneImage: Script = { ...sealing, score: ({ images }) => (images.length === 1 ? 0.9 : 0.1) };
 			const { found, asked, usage: spent } = yield* judgeAll({ pieces: [screenshot], script: sealsLoneImage });
 			const scored = Arr.filter(asked, ({ question }) => question === "identifier");
 
@@ -207,12 +208,13 @@ test("known keys and repeated keys are judged at most once", () =>
 		}),
 	));
 
+const failsOnBroken: Script = { score: ({ piece }) => (piece === "the call that breaks" ? "error" : 0.1) };
+
 test("a judge error seals only the piece it failed on", () =>
 	run(
 		Effect.gen(function* () {
 			const broken = pieceOf("the call that breaks");
 			const fine = pieceOf("the call that works");
-			const failsOnBroken: Script = { score: ({ piece }) => (piece === "the call that breaks" ? "error" : 0.1) };
 			const { found } = yield* judgeAll({ pieces: [broken, fine], script: failsOnBroken });
 
 			expect(found).toEqual([

@@ -141,6 +141,11 @@ test("a summary longer than compaction keeps is played as a pasted turn, so its 
 	);
 });
 
+const pageRead = (reply: Reply, path: string): ReadonlyArray<{ readonly offset: number; readonly limit: number }> =>
+	Reply.$is("ToolUse")(reply) && reply.input["path"] === path
+		? [{ offset: Number(reply.input["offset"]), limit: Number(reply.input["limit"]) }]
+		: [];
+
 test("a tool text over pi's 50 KB output limit is read a page at a time, every line once and none cut", () => {
 	const line = Str.repeat(50)("x");
 	const text = Arr.join(Arr.replicate(line, 2000), "\n");
@@ -153,11 +158,7 @@ test("a tool text over pi's 50 KB output limit is read a page at a time, every l
 		]),
 	);
 
-	const ranges = Arr.flatMap(plan.replies, (reply) =>
-		Reply.$is("ToolUse")(reply) && reply.input["path"] === "files/2.txt"
-			? [{ offset: Number(reply.input["offset"]), limit: Number(reply.input["limit"]) }]
-			: [],
-	);
+	const ranges = Arr.flatMap(plan.replies, (reply) => pageRead(reply, "files/2.txt"));
 
 	const covered = Arr.flatMap(ranges, ({ offset, limit }) => Arr.range(offset, offset + limit - 1));
 

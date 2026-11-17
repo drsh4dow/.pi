@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
 
 import type { Message } from "@earendil-works/pi-ai";
-import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
@@ -179,9 +178,9 @@ test("shadow dispatches ent and logs the account enforce would take, and no cont
 			const { text, lanes } = yield* lanesOf(world);
 
 			expect(sent).toBe("ent");
-			expect(
-				Arr.map(lanes, (line) => (line.type === "route" ? [line.mode, line.wouldBe, line.dispatched] : [])),
-			).toEqual([["shadow", homeOf(world.session), "ent"]]);
+			expect(lanes).toMatchObject([
+				{ type: "route", mode: "shadow", wouldBe: homeOf(world.session), dispatched: "ent" },
+			]);
 			expect(text).not.toContain("admissions");
 		}),
 	));

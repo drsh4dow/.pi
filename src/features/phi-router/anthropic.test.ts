@@ -59,15 +59,11 @@ test("a text reply arrives as the assistant's text, built from the last message'
 test("a tool reply arrives as its text, then a tool call with the reply's name and input, and stops for tool use", () =>
 	withMock((mock) =>
 		Effect.map(ask(mock, [userSays("use the tool")]), (answer) => {
-			const shown = Arr.map(answer.content, (block) =>
-				block.type === "toolCall" ? { name: block.name, arguments: block.arguments } : block,
-			);
-
-			expect([answer.stopReason, shown]).toEqual([
+			expect([answer.stopReason, answer.content]).toEqual([
 				"toolUse",
 				[
 					{ type: "text", text: "Looking it up." },
-					{ name: "lookup", arguments: lookup },
+					expect.objectContaining({ type: "toolCall", name: "lookup", arguments: lookup }),
 				],
 			]);
 		}),

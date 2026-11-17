@@ -16,7 +16,6 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Result from "effect/Result";
-import * as Str from "effect/String";
 
 import { guard, guardedApi, type Lookup, type Scope, type Seal } from "./border.ts";
 import { partsOf, type Slot } from "./parts.ts";
@@ -127,8 +126,10 @@ const prompt: SystemMessage = {
 const promptLookup = (held: (slot: Slot) => boolean) =>
 	lookupOf(Arr.flatMap(partsOf(prompt), ({ key, slot }) => (held(slot) ? [] : [[key, "cleared"] as const])));
 
+const projectSection = (slot: Slot): boolean => Predicate.isTagged(slot, "SystemSection") && slot.name === "project";
+
 test("an uncleared system section is stubbed while the content, other sections and tools pass", () => {
-	const lookup = promptLookup((slot) => Predicate.isTagged(slot, "SystemSection") && slot.name === "project");
+	const lookup = promptLookup(projectSection);
 
 	expect(guarded([prompt], lookup).messages).toEqual([
 		{ ...prompt, sections: { project: stubs.unknown, style: "Answer briefly." } },
@@ -202,9 +203,7 @@ test("a refused request never reaches the account and ends in an error pi record
 			const result = yield* Effect.promise(() => stream.result());
 
 			expect(sent).toEqual([]);
-			expect([result.stopReason, Str.startsWith("phi border refused:")(result.errorMessage ?? "")]).toEqual([
-				"error",
-				true,
-			]);
+			expect(result.stopReason).toBe("error");
+			expect(result.errorMessage).toStartWith("phi border refused:");
 		}),
 	));
