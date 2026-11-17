@@ -1,4 +1,5 @@
 import * as Arr from "effect/Array";
+import * as Function from "effect/Function";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
@@ -15,7 +16,6 @@ import {
 	type Handle,
 	type MonotonicNanos,
 	Outcome,
-	type Spawn,
 	type StartRequest,
 	Work,
 	WorkEntry,
@@ -70,7 +70,7 @@ const arrange = (draft: Draft, ref: WorkRef, request: StartRequest): void => {
 				draft.commands.push(Command.ArmDeadline({ ref, after }));
 			}
 		},
-		Serve: () => {},
+		Serve: Function.constVoid,
 	});
 };
 
@@ -248,11 +248,6 @@ const wentIdle = (state: LedgerState): Woke => {
 	return Draft.woke(draft);
 };
 
-const learnedBefore =
-	(subscribedAt: MonotonicNanos) =>
-	({ learnedAt }: Spawn): boolean =>
-		learnedAt < subscribedAt;
-
 const resynced = (
 	state: LedgerState,
 	terminals: ReadonlyArray<TerminalSnapshot>,
@@ -268,7 +263,7 @@ const resynced = (
 			Arr.findFirst(terminals, (seen) => seen.terminal === terminal),
 		);
 
-		const missing = Option.filter(spawn, learnedBefore(subscribedAt));
+		const missing = Option.filter(spawn, ({ learnedAt }) => learnedAt < subscribedAt);
 		const end = Option.isSome(snapshot) ? snapshot.value.end : Option.as(missing, lost);
 
 		if (Option.isSome(end)) {
