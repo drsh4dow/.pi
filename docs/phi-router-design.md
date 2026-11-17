@@ -107,12 +107,12 @@ claude-accounts wraps `ultra-a` and `ultra-b` in `accountProvider`, the module t
 
 `opencode-go` is a pi-ai builtin, so `border-scope.ts` wraps the provider the registry holds, at `session_start` and again in `before_agent_start` before each agent run. It first unwraps a guard from this load or an earlier one, so the registry holds one guard over the original even after `new_session` reloads extensions. The guard covers `stream` and `streamSimple` only, and auth passes through untouched. The wrap waits for `session_start` because a copy of a builtin registered at load replaces pi's remote catalog and drops catalog-only models in every process. In the prototype, `opencode-go` went from 34 models to 32. No chat request precedes `session_start`.
 
-| Part                           | Cleared                                                     | Sealed or unknown                                                   |
-| ------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------- |
-| user, tool result              | pass                                                        | stub text, keeping role, `toolCallId`, `toolName`, `isError`        |
-| assistant                      | pass; thinking stripped unless a personal provider wrote it | stub text, keeping each tool call's id and name with `{}` arguments |
-| system content, system section | pass                                                        | that content or section stubbed                                     |
-| system tools                   | pass                                                        | the request is refused with an error stream                         |
+| Part                           | Cleared                                                        | Sealed or unknown                                                   |
+| ------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------------------- |
+| user, tool result              | pass                                                           | stub text, keeping role, `toolCallId`, `toolName`, `isError`        |
+| assistant                      | pass; thinking stripped unless `ultra-a` or `ultra-b` wrote it | stub text, keeping each tool call's id and name with `{}` arguments |
+| system content, system section | pass                                                           | that content or section stubbed                                     |
+| system tools                   | pass                                                           | the request is refused with an error stream                         |
 
 Tool-call ids are provider-generated and tool names come from the harness, so neither carries session content.
 
