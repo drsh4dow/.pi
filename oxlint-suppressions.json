@@ -815,20 +815,17 @@
     "jest/no-conditional-in-test": {
       "count": 2
     },
-    "jest/require-hook": {
-      "count": 1
-    },
     "jsdoc/require-param": {
       "count": 2
     },
     "jsdoc/require-returns": {
-      "count": 3
+      "count": 2
     },
     "no-undefined": {
       "count": 2
     },
     "typescript/explicit-function-return-type": {
-      "count": 9
+      "count": 8
     }
   },
   "src/features/cost/index.ts": {

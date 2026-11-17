@@ -31,16 +31,11 @@ afterAll(() =>
 	),
 );
 
-let made = 0;
-
 /** A fresh sessions folder per test: the root's session goes in it, and every delegate's in `delegates/` below. */
-const sessionsDir = () => {
-	made += 1;
-
-	const dir = `${scratch}/${String(made)}`;
-
-	return { dir, delegates: `${dir}/delegates` };
-};
+const sessionsDir = Effect.map(
+	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.makeTempDirectory({ directory: scratch })),
+	(dir) => ({ dir, delegates: `${dir}/delegates` }),
+);
 
 const usageOf = (usd: number) => ({
 	input: 10,
@@ -83,7 +78,7 @@ const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.Fi
 test("the label holds the session's own spend and each delegate's, at every level", () =>
 	run(
 		Effect.gen(function* () {
-			const { dir, delegates } = sessionsDir();
+			const { dir, delegates } = yield* sessionsDir;
 
 			const { root, child, grandchild } = { root: open(dir), child: open(delegates), grandchild: open(delegates) };
 
@@ -109,7 +104,7 @@ test("the label holds the session's own spend and each delegate's, at every leve
 test("a continued delegate's one session file, with both runs, counts each reply once", () =>
 	run(
 		Effect.gen(function* () {
-			const { dir, delegates } = sessionsDir();
+			const { dir, delegates } = yield* sessionsDir;
 			const { root, child } = { root: open(dir), child: open(delegates) };
 
 			reply(root, 1);
@@ -128,7 +123,7 @@ test("a continued delegate's one session file, with both runs, counts each reply
 test("compactions and branch summaries count, since each one calls the model", () =>
 	run(
 		Effect.gen(function* () {
-			const { dir, delegates } = sessionsDir();
+			const { dir, delegates } = yield* sessionsDir;
 			const root = SessionManager.create("/work", dir);
 			const first = reply(root, 1);
 
@@ -144,7 +139,7 @@ test("compactions and branch summaries count, since each one calls the model", (
 test("a cache-warm call counts, since it calls the model", () =>
 	run(
 		Effect.gen(function* () {
-			const { dir, delegates } = sessionsDir();
+			const { dir, delegates } = yield* sessionsDir;
 			const root = SessionManager.create("/work", dir);
 
 			reply(root, 1);
@@ -171,7 +166,7 @@ const sourceWithHistory = (dir: string, delegates: string) => {
 test("a fork counts only what it spent after the fork, not its source's history", () =>
 	run(
 		Effect.gen(function* () {
-			const { dir, delegates } = sessionsDir();
+			const { dir, delegates } = yield* sessionsDir;
 			const { source, leaf } = sourceWithHistory(dir, delegates);
 
 			const repliedAt = yield* Clock.currentTimeMillis;
@@ -195,7 +190,7 @@ test("a fork counts only what it spent after the fork, not its source's history"
 test("a later read picks up new replies and a delegate whose file appears after it started", () =>
 	run(
 		Effect.gen(function* () {
-			const { dir, delegates } = sessionsDir();
+			const { dir, delegates } = yield* sessionsDir;
 			const { root, child } = { root: open(dir), child: open(delegates) };
 			const reader = readerOf(root, delegates);
 
@@ -223,7 +218,7 @@ const compactionLine =
 test("a line still being written counts once it ends", () =>
 	run(
 		Effect.gen(function* () {
-			const { dir, delegates } = sessionsDir();
+			const { dir, delegates } = yield* sessionsDir;
 			const root = SessionManager.create("/work", dir);
 			const reader = readerOf(root, delegates);
 
