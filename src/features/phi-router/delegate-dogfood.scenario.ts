@@ -120,10 +120,10 @@ const observed = (run: Run, child: Child) =>
 
 		yield* run.say({ child: child.alias, modelChanges, served, lanes });
 
-		return { child, modelChanges, served };
+		return { child, modelChanges, served, lanes };
 	});
 
-const checked = (run: Run, { child, modelChanges, served }: Effect.Success<ReturnType<typeof observed>>) =>
+const checked = (run: Run, { child, modelChanges, served, lanes }: Effect.Success<ReturnType<typeof observed>>) =>
 	Effect.gen(function* () {
 		yield* run.check(
 			Arr.isReadonlyArrayNonEmpty(modelChanges) && Arr.every(modelChanges, (key) => key === child.key),
@@ -136,7 +136,8 @@ const checked = (run: Run, { child, modelChanges, served }: Effect.Success<Retur
 
 		if (isRouted(child)) {
 			yield* run.check(
-				Arr.some(served, Str.startsWith("ent/")),
+				Arr.some(served, Str.startsWith("ent/")) &&
+					Arr.some(lanes, (lane) => lane.type === "route" && lane.why === "sealed"),
 				`a turn of the ${child.alias} child went to ent (none did: the router cleared a chart holding a name, an MRN and a DOB, a finding)`,
 			);
 		}
