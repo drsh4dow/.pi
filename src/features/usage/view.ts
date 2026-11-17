@@ -1,10 +1,9 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Box, type Component, Text, type TUI } from "@earendil-works/pi-tui";
 import * as Arr from "effect/Array";
+import * as Function from "effect/Function";
 
 import { type Block, blockLines, type Card } from "./card.ts";
-
-const nothing = () => {};
 
 const spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 
@@ -42,7 +41,7 @@ export interface LiveCard {
 export const liveCard = (initial: ReadonlyArray<Block>): LiveCard => {
 	const blocks = [...initial];
 	let frame = 0;
-	let redraw: () => void = nothing;
+	let redraw: () => void = Function.constVoid;
 
 	const title = (theme: Theme) => {
 		const read = Arr.filter(blocks, ({ body }) => body.kind !== "reading").length;

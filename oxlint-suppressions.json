@@ -2777,11 +2777,8 @@
     "jsdoc/require-returns": {
       "count": 2
     },
-    "no-empty-function": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
-      "count": 5
+      "count": 4
     }
   },
   "src/features/web/index.test.ts": {
