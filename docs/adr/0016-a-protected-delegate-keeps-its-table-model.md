@@ -23,7 +23,7 @@ A delegate of a routing parent runs `phi/<id>` when a personal provider carries 
 
 - `/model` lists three more entries under `phi`: `phi/claude-opus-5-5`, `phi/claude-fable-5-2` and `phi/glm-5.3-flash`. Each takes its limits and thinking levels from the catalog model of a personal provider.
 - OpenAI is a BAA provider by the human's ruling. `investigator` runs `openai/gpt-6.1-sol` in every standing, sealed content included. A delegate of an `openai` parent runs the sealed lane, so its `judgment` runs `ent/claude-opus-5-5`.
-- A reply that `openai` wrote is no longer a personal reply, because it may have read sealed content. The judge reads it, and its thinking is stripped before a personal provider sees it.
+- A reply that `openai` wrote is no longer a personal reply, because it may have read sealed content. The judge reads it, and its thinking is stripped before a personal provider sees it. An `opencode-go` reply is not a personal reply either, since it may come from an open session that read raw content, so a `phi/glm-5.3-flash` reply is judged too.
 - A sealed request of `phi/glm-5.3-flash` or `phi/claude-fable-5-2` runs on `ent/<settings.model>` for that one request, because no BAA provider carries `glm-5.3-flash`, and the Enterprise org cannot serve Fable, so `ent` does not offer it. It starts with no prompt cache there. The status line, the lane log and the assistant message name the substitute.
 - ADR 0013 said the border guards only the Claude personal accounts, and that a path to a non-Claude provider leaks. The border now also guards `opencode-go`, and a path to `openai` stays inside the BAA boundary.
 - `opencode-go` gets no 429 stamp, so a 429 there never moves a request to another provider. One alias names it, and pi retries.

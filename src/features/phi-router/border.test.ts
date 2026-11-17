@@ -84,7 +84,7 @@ test("cleared user, tool and reply parts pass as they are", () => {
 	expect(report).toEqual({ stubbedSealed: 0, stubbedUnknown: 0, refused: false });
 });
 
-test("a cleared reply keeps its thinking only when a personal provider wrote it", () => {
+test("a cleared reply keeps its thinking only when a personal Claude account wrote it", () => {
 	const messages = [answer("ent"), answer("openai"), answer("ultra-b"), answer("opencode-go")];
 	const { messages: sent } = guarded(messages, lookupOf(all("cleared", messages)));
 
@@ -92,7 +92,7 @@ test("a cleared reply keeps its thinking only when a personal provider wrote it"
 		reply("ent", [{ type: "text", text: "Reading the file." }, call]),
 		reply("openai", [{ type: "text", text: "Reading the file." }, call]),
 		answer("ultra-b"),
-		answer("opencode-go"),
+		reply("opencode-go", [{ type: "text", text: "Reading the file." }, call]),
 	]);
 });
 
