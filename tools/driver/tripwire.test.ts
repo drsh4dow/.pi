@@ -47,17 +47,21 @@ const homeIn = (root: string, linked: boolean) =>
 		return `${root}/home`;
 	});
 
-for (const linked of [false, true]) {
-	test(`strayed: names exactly what the run's names name${linked ? ", under a linked state folder" : ""}`, () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const fs = yield* FileSystem.FileSystem;
-				const root = yield* fs.makeTempDirectoryScoped({ directory: "/tmp" });
-				const home = yield* homeIn(root, linked);
-				const found = yield* strayed({ home, names: [run, core] });
-				const relative = Arr.map(found, Str.slice(home.length + 1));
+const homes = [
+	{ linked: false, where: "" },
+	{ linked: true, where: ", under a linked state folder" },
+];
 
-				expect(Arr.sort(relative, Order.String)).toEqual(leaked);
-			}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
-		));
-}
+test.each(homes)("strayed: names exactly what the run's names name$where", ({ linked }) =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const root = yield* fs.makeTempDirectoryScoped({ directory: "/tmp" });
+			const home = yield* homeIn(root, linked);
+			const found = yield* strayed({ home, names: [run, core] });
+			const relative = Arr.map(found, Str.slice(home.length + 1));
+
+			expect(Arr.sort(relative, Order.String)).toEqual(leaked);
+		}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+	),
+);

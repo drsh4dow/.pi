@@ -48,11 +48,9 @@ const rows = [
 	},
 ];
 
-for (const { name, carried, chunk, expected } of rows) {
-	test(`lfLines: ${name}`, () => {
-		expect(lfLines({ carried, chunk })).toEqual(expected);
-	});
-}
+test.each(rows)("lfLines: $name", ({ carried, chunk, expected }) => {
+	expect(lfLines({ carried, chunk })).toEqual(expected);
+});
 
 /**
  * A pi that answers every RPC command except `FAKE_IGNORES`. It settles 200 ms after each prompt, aborted when
@@ -134,13 +132,14 @@ test("prompt returns none when pi settles aborted, even with an earlier assistan
 		}),
 	));
 
-for (const ignored of ["prompt", "get_last_assistant_text"]) {
-	test(`prompt fails within its deadline when pi never answers ${ignored}`, () =>
+test.each(["prompt", "get_last_assistant_text"])(
+	"prompt fails within its deadline when pi never answers %s",
+	(ignored) =>
 		withRoot({ FAKE_IGNORES: ignored }, (root) =>
 			Effect.gen(function* () {
 				const failure = yield* Effect.flip(root.prompt("hi", "300 millis"));
 
 				expect(failure.message).toBe('the root did not settle within 0.3 s after "hi"');
 			}),
-		));
-}
+		),
+);
