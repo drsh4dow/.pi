@@ -1066,9 +1066,6 @@
     "no-undefined": {
       "count": 7
     },
-    "no-use-before-define": {
-      "count": 1
-    },
     "oxc/no-optional-chaining": {
       "count": 1
     },
@@ -1311,9 +1308,6 @@
     }
   },
   "src/features/owned-work/world.fixture.ts": {
-    "no-use-before-define": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 8
     },

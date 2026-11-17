@@ -89,6 +89,15 @@ const replyOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) =>
 				world.ledger.start,
 			);
 
+const replied = <Reply>(
+	reply: Effect.Effect<Reply, LedgerFailure>,
+	render: (value: Reply) => string,
+	expected: string,
+) =>
+	Effect.flatMap(Effect.match(reply, { onFailure: refusal, onSuccess: render }), (got) =>
+		checked(() => got, expected),
+	);
+
 const start = (world: World, act: Data.TaggedEnum.Value<Act, "Start">) => {
 	const request = replyOf(world, act);
 
@@ -153,15 +162,6 @@ const answer = (world: World, { terminal, text, closing, stopReason, end }: Data
 			),
 		),
 		ended(world, terminal, end),
-	);
-
-const replied = <Reply>(
-	reply: Effect.Effect<Reply, LedgerFailure>,
-	render: (value: Reply) => string,
-	expected: string,
-) =>
-	Effect.flatMap(Effect.match(reply, { onFailure: refusal, onSuccess: render }), (got) =>
-		checked(() => got, expected),
 	);
 
 const group = (world: World, act: Data.TaggedEnum.Value<Act, "Group">) => {
