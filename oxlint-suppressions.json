@@ -2575,9 +2575,6 @@
     }
   },
   "src/features/web/index.ts": {
-    "no-restricted-properties": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 4
     },
@@ -2594,9 +2591,6 @@
     }
   },
   "src/features/web/tools.ts": {
-    "no-restricted-properties": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 7
     },

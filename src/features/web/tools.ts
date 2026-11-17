@@ -1,11 +1,11 @@
 import type { JsonValue } from "@earendil-works/pi-ai";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import * as Effect from "effect/Effect";
-import type * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { type Static, Type } from "typebox";
 
+import type { PiHost } from "#src/client/pi-host/index.ts";
 import { Store } from "#src/client/web-cache/index.ts";
 import { Limit, PublicUrl, Web, WebError } from "#src/client/web/index.ts";
 import { fetchReply, hitsJson } from "./view.ts";
@@ -59,7 +59,7 @@ export const fetchCall = ({ url }: Static<typeof FetchParams>) =>
 		return fetchReply({ page, saved });
 	});
 
-type Runtime = ManagedRuntime.ManagedRuntime<Web | Store, never>;
+type Runtime = PiHost<Web | Store, never>;
 
 const resultOf = ({ text, json }: Reply, isError: boolean) => ({
 	content: [{ type: "text" as const, text }],
@@ -82,7 +82,7 @@ export const webTools = (runtime: Runtime) => [
 			"Search the web. Returns up to 10 results, each with its title, URL, date and a short excerpt. Read a result with web_fetch.",
 		annotations,
 		parameters: SearchParams,
-		execute: (_id, params, signal) => runtime.runPromise(replyOf(searchCall(params)), { signal }),
+		execute: (_id, params, signal) => runtime.run(replyOf(searchCall(params)), { signal }),
 	}),
 	defineTool({
 		name: "web_fetch",
@@ -91,6 +91,6 @@ export const webTools = (runtime: Runtime) => [
 			"Read one URL. Web pages, GitHub files, issues and trees, npm, Hacker News and Reddit come back as markdown, a PDF as a saved file plus its markdown, other files as a saved path. The whole result is saved to disk and its start is shown.",
 		annotations,
 		parameters: FetchParams,
-		execute: (_id, params, signal) => runtime.runPromise(replyOf(fetchCall(params)), { signal }),
+		execute: (_id, params, signal) => runtime.run(replyOf(fetchCall(params)), { signal }),
 	}),
 ];
