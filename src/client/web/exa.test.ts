@@ -141,10 +141,8 @@ const exaClaimRows = [
 	),
 ] as const;
 
-for (const [url, claimed] of exaClaimRows) {
-	const may = claimed ? "may" : "may not";
+const exaClaims = Arr.map(exaClaimRows, ([url, claimed]) => ({ url, claimed, may: claimed ? "may" : "may not" }));
 
-	test(`Exa ${may} read ${url}`, () => {
-		expect(exaContents.claims(new URL(url))).toBe(claimed);
-	});
-}
+test.each(exaClaims)("Exa $may read $url", ({ url, claimed }) => {
+	expect(exaContents.claims(new URL(url))).toBe(claimed);
+});

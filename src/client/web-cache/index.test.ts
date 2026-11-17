@@ -102,19 +102,21 @@ test("the same page saved twice gets two files, readable only by the user, even 
 		}).pipe(Effect.provide(services)),
 	));
 
-const cacheRootRows: ReadonlyArray<readonly [string, Readonly<Record<string, string>>, string]> = [
-	["XDG_CACHE_HOME and HOME", { XDG_CACHE_HOME: "/x", HOME: "/h" }, "/x/pi-web"],
-	["HOME only", { HOME: "/h" }, "/h/.cache/pi-web"],
-	["an empty XDG_CACHE_HOME", { XDG_CACHE_HOME: "", HOME: "/h" }, "/h/.cache/pi-web"],
-	["an empty HOME", { HOME: "" }, "none"],
-	["neither", {}, "none"],
+const cacheRootRows: ReadonlyArray<{
+	readonly name: string;
+	readonly env: Readonly<Record<string, string>>;
+	readonly expected: string;
+}> = [
+	{ name: "XDG_CACHE_HOME and HOME", env: { XDG_CACHE_HOME: "/x", HOME: "/h" }, expected: "/x/pi-web" },
+	{ name: "HOME only", env: { HOME: "/h" }, expected: "/h/.cache/pi-web" },
+	{ name: "an empty XDG_CACHE_HOME", env: { XDG_CACHE_HOME: "", HOME: "/h" }, expected: "/h/.cache/pi-web" },
+	{ name: "an empty HOME", env: { HOME: "" }, expected: "none" },
+	{ name: "neither", env: {}, expected: "none" },
 ];
 
-for (const [name, env, expected] of cacheRootRows) {
-	test(`with ${name}, saved pages go to ${expected}`, () => {
-		expect(Option.getOrElse(cacheRootOf(env), () => "none")).toBe(expected);
-	});
-}
+test.each(cacheRootRows)("with $name, saved pages go to $expected", ({ env, expected }) => {
+	expect(Option.getOrElse(cacheRootOf(env), () => "none")).toBe(expected);
+});
 
 const failedSaveRows = [
 	{
@@ -129,16 +131,14 @@ const failedSaveRows = [
 	},
 ];
 
-for (const { name, store, expect: wanted } of failedSaveRows) {
-	test(name, () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const got = yield* Effect.flatMap(Store, ({ save }) => save(page)).pipe(
-					Effect.match({ onFailure: ({ kind, message }) => `${kind}: ${message}`, onSuccess: () => "saved" }),
-				);
+test.each(failedSaveRows)("$name", ({ store, expect: wanted }) =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const got = yield* Effect.flatMap(Store, ({ save }) => save(page)).pipe(
+				Effect.match({ onFailure: ({ kind, message }) => `${kind}: ${message}`, onSuccess: () => "saved" }),
+			);
 
-				expect(got).toStartWith(wanted);
-			}).pipe(Effect.provide(store)),
-		),
-	);
-}
+			expect(got).toStartWith(wanted);
+		}).pipe(Effect.provide(store)),
+	),
+);

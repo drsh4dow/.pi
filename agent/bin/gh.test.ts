@@ -31,9 +31,17 @@ const worldIn = (root: string) =>
 		yield* fs.symlink(import.meta.dirname, `${root}/bin`);
 	});
 
-const ghWith = (folder: string, path: string) =>
+const freshRoot = Effect.gen(function* () {
+	const fs = yield* FileSystem.FileSystem;
+
+	yield* fs.makeDirectory(scratch, { recursive: true });
+
+	return yield* fs.makeTempDirectory({ directory: scratch });
+});
+
+const ghWith = (path: string) =>
 	Effect.gen(function* () {
-		const root = `${scratch}/${folder}`;
+		const root = yield* freshRoot;
 
 		yield* worldIn(root);
 
@@ -66,16 +74,15 @@ const rows = [
 	{ name: "never expands a pattern in PATH", path: "<root>/st*", expect: { code: 127, out: "" } },
 ];
 
-for (const [index, row] of rows.entries()) {
-	test(`the gh wrapper ${row.name}`, () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const got = yield* ghWith(String(index), row.path);
+test.each(rows)("the gh wrapper $name", (row) =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const got = yield* ghWith(row.path);
 
-				expect(got).toEqual(row.expect);
-			}).pipe(Effect.provide(NodeServices.layer)),
-		));
-}
+			expect(got).toEqual(row.expect);
+		}).pipe(Effect.provide(NodeServices.layer)),
+	),
+);
 
 const head = "9c1e2a0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
@@ -117,9 +124,9 @@ const gatedWorld = (root: string, verdict: boolean) =>
 		}
 	});
 
-const gatedRun = (folder: string, verdict: boolean, args: ReadonlyArray<string>) =>
+const gatedRun = (verdict: boolean, args: ReadonlyArray<string>) =>
 	Effect.gen(function* () {
-		const root = `${scratch}/gate-${folder}`;
+		const root = yield* freshRoot;
 
 		yield* gatedWorld(root, verdict);
 
@@ -155,15 +162,14 @@ const gatedRows = [
 	},
 ];
 
-for (const [index, row] of gatedRows.entries()) {
-	test(`the gh wrapper ${row.name}`, () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const got = yield* gatedRun(String(index), row.verdict, row.args);
+test.each(gatedRows)("the gh wrapper $name", (row) =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const got = yield* gatedRun(row.verdict, row.args);
 
-				expect(got).toEqual(row.expect);
-			}).pipe(Effect.provide(NodeServices.layer)),
-		));
-}
+			expect(got).toEqual(row.expect);
+		}).pipe(Effect.provide(NodeServices.layer)),
+	),
+);
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${scratch}`.quiet())));

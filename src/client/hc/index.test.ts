@@ -17,10 +17,8 @@ const rows = [
 	{ text: "!!!", name: "work" },
 ];
 
-for (const row of rows) {
-	test(`"${row.text}" becomes the terminal name ${row.name}`, () => {
-		const name: string = terminalNameOf(row.text);
+test.each(rows)('"$text" becomes the terminal name $name', (row) => {
+	const name: string = terminalNameOf(row.text);
 
-		expect({ name, accepted: accepted(name) }).toEqual({ name: row.name, accepted: true });
-	});
-}
+	expect({ name, accepted: accepted(name) }).toEqual({ name: row.name, accepted: true });
+});

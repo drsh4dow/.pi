@@ -43,13 +43,11 @@ const rows = [
 	},
 ];
 
-for (const { name, text, expect: wanted, absent } of rows) {
-	test(name, () => {
-		const got = fetchReply(savedAs(text)).text;
+test.each(rows)("$name", ({ text, expect: wanted, absent }) => {
+	const got = fetchReply(savedAs(text)).text;
 
-		expect({
-			lacking: Arr.filter(wanted, (part) => !Str.includes(part)(got)),
-			unwanted: Arr.filter(absent, (part) => Str.includes(part)(got)),
-		}).toEqual({ lacking: [], unwanted: [] });
-	});
-}
+	expect({
+		lacking: Arr.filter(wanted, (part) => !Str.includes(part)(got)),
+		unwanted: Arr.filter(absent, (part) => Str.includes(part)(got)),
+	}).toEqual({ lacking: [], unwanted: [] });
+});

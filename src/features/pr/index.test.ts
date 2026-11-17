@@ -73,11 +73,9 @@ const changeRows: ReadonlyArray<{
 	{ name: "a merge", before: open, after: { ...open, state: "MERGED" }, expect: ["state OPEN -> MERGED"] },
 ];
 
-for (const row of changeRows) {
-	test(`changes after ${row.name}`, () => {
-		expect(changes({ before: row.before, after: row.after })).toEqual(row.expect);
-	});
-}
+test.each(changeRows)("changes after $name", (row) => {
+	expect(changes({ before: row.before, after: row.after })).toEqual(row.expect);
+});
 
 type Reading = Effect.Effect<PrView, GhError>;
 
@@ -172,19 +170,17 @@ const loopRows = [
 	},
 ] as const;
 
-for (const row of loopRows) {
-	test(`prWait ${row.name}`, () => {
-		const layer = Layer.merge(scripted(row.scripts), TestClock.layer());
+test.each(loopRows)("prWait $name", (row) => {
+	const layer = Layer.merge(scripted(row.scripts), TestClock.layer());
 
-		const check = Effect.gen(function* () {
-			const got = yield* waited(row.prs);
+	const check = Effect.gen(function* () {
+		const got = yield* waited(row.prs);
 
-			expect(got).toEqual(row.expect);
-		});
-
-		return Effect.runPromise(Effect.provide(check, layer));
+		expect(got).toEqual(row.expect);
 	});
-}
+
+	return Effect.runPromise(Effect.provide(check, layer));
+});
 
 test("a pin whose head moves while it reads the diff refuses, naming both heads", () => {
 	const moved = { ...open, head: "4b7d113bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" };

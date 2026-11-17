@@ -253,24 +253,22 @@ const rows: ReadonlyArray<{
 	},
 ];
 
-for (const row of rows) {
-	test(row.name, () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const result = yield* replyOf(row.call);
-				const text = masked(textOf(result));
+test.each(rows)("$name", (row) =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const result = yield* replyOf(row.call);
+			const text = masked(textOf(result));
 
-				const lacking = Arr.filter(row.expect, (part) => !Str.includes(part)(text));
+			const lacking = Arr.filter(row.expect, (part) => !Str.includes(part)(text));
 
-				expect({ isError: result.isError, lacking, unwanted: unwantedIn(text, row.absent) }).toEqual({
-					isError: row.isError,
-					lacking: [],
-					unwanted: [],
-				});
-			}).pipe(Effect.provide(services)),
-		),
-	);
-}
+			expect({ isError: result.isError, lacking, unwanted: unwantedIn(text, row.absent) }).toEqual({
+				isError: row.isError,
+				lacking: [],
+				unwanted: [],
+			});
+		}).pipe(Effect.provide(services)),
+	),
+);
 
 const sliceJson = Schema.Struct({
 	markdown: Schema.String,
