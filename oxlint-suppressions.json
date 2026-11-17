@@ -2750,9 +2750,6 @@
     "jsdoc/require-returns": {
       "count": 4
     },
-    "no-restricted-imports": {
-      "count": 2
-    },
     "no-undefined": {
       "count": 2
     },

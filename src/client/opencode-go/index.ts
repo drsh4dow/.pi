@@ -2,6 +2,7 @@ import * as Arr from "effect/Array";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as HttpClient from "effect/http/HttpClient";
 import * as HttpClientRequest from "effect/http/HttpClientRequest";
 import * as Layer from "effect/Layer";
@@ -91,3 +92,5 @@ const make = Effect.map(HttpClient.HttpClient, (http) => {
 });
 
 export const opencodeGoLayer: Layer.Layer<OpencodeGo, never, HttpClient.HttpClient> = Layer.effect(OpencodeGo, make);
+
+export const opencodeGoFetchLayer: Layer.Layer<OpencodeGo> = Layer.provide(opencodeGoLayer, FetchHttpClient.layer);
