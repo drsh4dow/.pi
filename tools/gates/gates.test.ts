@@ -61,3 +61,31 @@ test("the boundary gate rejects a client that imports a type from a feature", ()
 		[`${bin}/depcruise`, "src", "--config", `${repo}/.dependency-cruiser.json`, "--output-type", "err-long"],
 		["error client-imports: src/client/leaky/index.ts → src/features/sample/index.ts"],
 	));
+
+test("the bans reject an Effect runner and a disk import in a feature, and a fixed sleep in test code", () =>
+	failsWith(
+		"bans",
+		"oxlint-bans",
+		[`${bin}/oxlint`, "src"],
+		[
+			"hand it to run or fork from #src/client/pi-host/index.ts",
+			"Read and write disk through the src/client/ folder that owns the file",
+			"call eventually from #src/primitives/eventually.ts",
+		],
+	));
+
+test("the delegate model ban rejects a registry lookup in owned-work outside models.ts", () =>
+	failsWith(
+		"bans",
+		"ast-grep-bans",
+		[`${bin}/ast-grep`, "scan", "--config", `${repo}/sgconfig.yml`, "src"],
+		["Call modelOf from src/features/owned-work/models.ts"],
+	));
+
+test("the ast-grep checks reject a line comment and a relative import without .ts", () =>
+	failsWith(
+		"comments",
+		"comments",
+		[`${bin}/ast-grep`, "scan", "--config", `${repo}/sgconfig.yml`, "src"],
+		["Delete this comment.", "End a relative import in .ts"],
+	));

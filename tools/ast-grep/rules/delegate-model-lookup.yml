@@ -1,0 +1,12 @@
+id: delegate-model-lookup
+language: TypeScript
+severity: error
+message: Call modelOf from src/features/owned-work/models.ts, which resolves aliases, provider/id names and the PHI gate in one place.
+files:
+   - src/features/owned-work/**
+ignores:
+   - src/features/owned-work/models.ts
+rule:
+   any:
+      - pattern: $OWNER.modelRegistry.$METHOD($$$ARGS)
+      - pattern: modelRegistry.$METHOD($$$ARGS)

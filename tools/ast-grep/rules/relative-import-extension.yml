@@ -1,0 +1,13 @@
+id: relative-import-extension
+language: TypeScript
+severity: error
+message: End a relative import in .ts, the file Bun and tsc load.
+ignores:
+   - tools/oxlint/anti-slop/**
+   - tools/oxlint/fixtures/**
+   - tools/gates/fixtures/**
+rule:
+   kind: string
+   regex: '^.\.\.?/'
+   not: { regex: '\.ts.$' }
+   inside: { any: [kind: import_statement, kind: export_statement] }

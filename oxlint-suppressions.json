@@ -11,6 +11,9 @@
     }
   },
   "agent/bin/merge-gate.ts": {
+    "no-restricted-imports": {
+      "count": 2
+    },
     "typescript/explicit-function-return-type": {
       "count": 3
     }
@@ -37,9 +40,6 @@
     }
   },
   "agent/extensions/compaction/index.ts": {
-    "node/no-process-env": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     },
@@ -80,9 +80,6 @@
     }
   },
   "agent/extensions/phi-router/index.ts": {
-    "node/no-process-env": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     },
@@ -640,6 +637,9 @@
     "jsdoc/require-returns": {
       "count": 3
     },
+    "no-restricted-properties": {
+      "count": 1
+    },
     "no-undefined": {
       "count": 1
     },
@@ -695,6 +695,9 @@
       "count": 2
     },
     "jsdoc/require-returns": {
+      "count": 2
+    },
+    "no-restricted-properties": {
       "count": 2
     },
     "no-undefined": {
@@ -778,6 +781,12 @@
     },
     "jsdoc/require-returns": {
       "count": 2
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "no-restricted-properties": {
+      "count": 1
     },
     "no-undefined": {
       "count": 1
@@ -869,6 +878,9 @@
     "jsdoc/require-returns": {
       "count": 3
     },
+    "no-restricted-imports": {
+      "count": 1
+    },
     "no-undefined": {
       "count": 2
     },
@@ -919,6 +931,9 @@
     "jsdoc/require-returns": {
       "count": 5
     },
+    "no-restricted-properties": {
+      "count": 1
+    },
     "no-undefined": {
       "count": 8
     },
@@ -964,6 +979,12 @@
   },
   "src/features/loaded/index.ts": {
     "jsdoc/require-param": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "no-restricted-properties": {
       "count": 1
     },
     "typescript/explicit-function-return-type": {
@@ -1036,6 +1057,9 @@
     }
   },
   "src/features/owned-work/brief.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "typescript/explicit-function-return-type": {
       "count": 5
     },
@@ -1172,6 +1196,9 @@
     "jsdoc/require-returns": {
       "count": 4
     },
+    "no-restricted-imports": {
+      "count": 1
+    },
     "no-undefined": {
       "count": 1
     },
@@ -1219,6 +1246,9 @@
     }
   },
   "src/features/owned-work/ledger.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "no-use-before-define": {
       "count": 3
     },
@@ -1338,6 +1368,9 @@
     "jsdoc/require-returns": {
       "count": 1
     },
+    "no-restricted-imports": {
+      "count": 1
+    },
     "node/no-process-env": {
       "count": 1
     },
@@ -1386,6 +1419,9 @@
     },
     "jsdoc/require-returns": {
       "count": 5
+    },
+    "no-restricted-properties": {
+      "count": 4
     },
     "node/no-process-env": {
       "count": 1
@@ -1437,6 +1473,12 @@
       "count": 1
     },
     "jsdoc/require-returns": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "no-restricted-properties": {
       "count": 1
     },
     "no-undefined": {
@@ -2126,6 +2168,9 @@
     "jsdoc/require-returns": {
       "count": 1
     },
+    "no-restricted-properties": {
+      "count": 1
+    },
     "no-undefined": {
       "count": 2
     },
@@ -2168,6 +2213,9 @@
     "jsdoc/require-returns": {
       "count": 1
     },
+    "no-restricted-properties": {
+      "count": 4
+    },
     "no-undefined": {
       "count": 1
     },
@@ -2179,6 +2227,9 @@
     }
   },
   "src/features/phi-router/lanes.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "typescript/explicit-function-return-type": {
       "count": 1
     },
@@ -2405,6 +2456,9 @@
     "jsdoc/require-returns": {
       "count": 1
     },
+    "no-restricted-properties": {
+      "count": 2
+    },
     "no-undefined": {
       "count": 1
     },
@@ -2434,6 +2488,9 @@
     }
   },
   "src/features/phi-router/settings.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }
@@ -2452,6 +2509,9 @@
     },
     "jsdoc/require-returns": {
       "count": 4
+    },
+    "no-restricted-imports": {
+      "count": 1
     },
     "typescript/explicit-function-return-type": {
       "count": 3
@@ -2497,6 +2557,9 @@
       "count": 1
     },
     "jsdoc/require-returns": {
+      "count": 1
+    },
+    "no-restricted-imports": {
       "count": 1
     },
     "typescript/explicit-function-return-type": {
@@ -2567,6 +2630,9 @@
     }
   },
   "src/features/pr/review-wakes.scenario.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    },
     "typescript/explicit-function-return-type": {
       "count": 4
     }
@@ -2577,6 +2643,9 @@
     },
     "jsdoc/require-returns": {
       "count": 2
+    },
+    "no-restricted-imports": {
+      "count": 1
     },
     "typescript/explicit-function-return-type": {
       "count": 5
@@ -2630,6 +2699,12 @@
     }
   },
   "src/features/prompt/index.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "no-restricted-properties": {
+      "count": 1
+    },
     "node/no-process-env": {
       "count": 1
     },
@@ -2668,6 +2743,9 @@
       "count": 1
     },
     "jsdoc/require-returns": {
+      "count": 1
+    },
+    "no-restricted-imports": {
       "count": 1
     },
     "typescript/explicit-function-return-type": {
@@ -2726,6 +2804,9 @@
     "jsdoc/require-returns": {
       "count": 3
     },
+    "no-restricted-imports": {
+      "count": 1
+    },
     "typescript/explicit-function-return-type": {
       "count": 4
     },
@@ -2756,6 +2837,12 @@
     },
     "jsdoc/require-returns": {
       "count": 2
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "no-restricted-properties": {
+      "count": 1
     },
     "oxc/no-optional-chaining": {
       "count": 1
@@ -2795,6 +2882,9 @@
     }
   },
   "src/features/state-folder/checks.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "typescript/explicit-function-return-type": {
       "count": 6
     }
@@ -2812,6 +2902,12 @@
       "count": 2
     },
     "jsdoc/require-returns": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "no-restricted-properties": {
       "count": 1
     },
     "no-undefined": {
@@ -2858,6 +2954,12 @@
     "jsdoc/require-returns": {
       "count": 4
     },
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "no-restricted-properties": {
+      "count": 1
+    },
     "no-undefined": {
       "count": 2
     },
@@ -2888,6 +2990,9 @@
     }
   },
   "src/features/web/index.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    },
     "node/no-process-env": {
       "count": 1
     },
@@ -2916,6 +3021,9 @@
     }
   },
   "src/features/web/tools.ts": {
+    "no-restricted-properties": {
+      "count": 2
+    },
     "typescript/explicit-function-return-type": {
       "count": 7
     },

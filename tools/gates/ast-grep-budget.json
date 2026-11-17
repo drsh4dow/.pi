@@ -1,0 +1,22 @@
+{
+	"src/client/gh/index.ts no-comments": 1,
+	"src/client/pi-sessions/spend.ts no-comments": 1,
+	"src/client/web-cache/index.ts no-comments": 1,
+	"src/client/web/direct.ts no-comments": 3,
+	"src/features/cache/idle-miss.scenario.ts no-comments": 4,
+	"src/features/claude-accounts/accounts.ts no-comments": 2,
+	"src/features/compaction/overflow.scenario.ts no-comments": 1,
+	"src/features/cost/index.ts no-comments": 3,
+	"src/features/cost/tally.ts no-comments": 2,
+	"src/features/footer/index.ts no-comments": 3,
+	"src/features/owned-work/preview.ts no-comments": 1,
+	"src/features/owned-work/settle.fixture.ts no-comments": 3,
+	"src/features/phi-router/border.ts no-comments": 1,
+	"src/features/phi-router/corpus/plan.ts no-comments": 3,
+	"src/features/phi-router/policy/rules.ts no-comments": 4,
+	"src/features/pr/merge-gate.scenario.ts no-comments": 2,
+	"src/features/state-folder/index.ts no-comments": 2,
+	"tools/driver/core.ts no-comments": 1,
+	"tools/driver/index.ts no-comments": 1,
+	"tools/driver/probe.ts no-comments": 1
+}
