@@ -1,12 +1,12 @@
 import { parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { agentFileText, type MarkdownFile, markdownIn } from "#src/client/agent-files/index.ts";
 import { Role, Roles } from "#src/features/owned-work/index.ts";
 
 /** A kind of prompt file the prompt lists by name and trigger: its folder under the agent dir, and the tag of its index. */
@@ -57,19 +57,20 @@ const parseEntry = Effect.fn("parseEntry")(function* (kind: Kind, file: string, 
 	return entry;
 });
 
+const byPath = Order.mapInput(Order.String, ({ path }: MarkdownFile) => path);
+
 /**
  * Every entry of `kind` in `dir`, by name: none when the folder is missing. Files in its subfolders are reference files, not
  * entries. A broken file is left out and reported, so one typo never drops the rest.
  */
 export const loadEntries = Effect.fn("loadEntries")(function* (kind: Kind, dir: string) {
-	const fs = yield* FileSystem.FileSystem;
-	const listed = (yield* fs.exists(dir)) ? yield* fs.readDirectory(dir) : [];
-	const files = Arr.sort(Arr.filter(listed, Str.endsWith(".md")), Order.String);
+	const listed = yield* markdownIn(dir);
+	const files = Arr.sort(listed, byPath);
 
-	const [entries, problems] = yield* Effect.partition(files, (name) =>
-		fs.readFileString(`${dir}/${name}`).pipe(
-			Effect.flatMap((text) => parseEntry(kind, `${dir}/${name}`, text)),
-			Effect.mapError((error): Problem => ({ file: `${dir}/${name}`, why: String(error) })),
+	const [entries, problems] = yield* Effect.partition(files, ({ path }) =>
+		agentFileText(path).pipe(
+			Effect.flatMap((text) => parseEntry(kind, path, text)),
+			Effect.mapError((error): Problem => ({ file: path, why: String(error) })),
 		),
 	);
 

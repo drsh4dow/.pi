@@ -9,10 +9,11 @@ import {
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
+
+import { agentFileText } from "#src/client/agent-files/index.ts";
 
 type AutocompleteProvider = Parameters<AutocompleteProviderFactory>[0];
 
@@ -29,13 +30,12 @@ export const hidesFromMenu = (skillFile: string) =>
 
 /** The `skill:<name>` commands whose skill sets `user-invocable: false`. A file that cannot be read stays in the menu, as pi shows it. */
 export const hiddenCommands = Effect.fn("hiddenCommands")(function* (commands: ReadonlyArray<SlashCommandInfo>) {
-	const fs = yield* FileSystem.FileSystem;
 	const skills = Arr.filter(commands, (command) => command.source === "skill");
 
 	const hidden = yield* Effect.forEach(
 		skills,
 		(command) =>
-			fs.readFileString(command.sourceInfo.path).pipe(
+			agentFileText(command.sourceInfo.path).pipe(
 				Effect.map((text) => (hidesFromMenu(text) ? [command.name] : [])),
 				Effect.orElseSucceed(() => []),
 			),
