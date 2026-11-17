@@ -14,6 +14,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { type LaneLog, laneLogLayer } from "#src/client/phi-lane-log/index.ts";
+import { type PhiSettings, phiSettingsLayer } from "#src/client/phi-settings/index.ts";
 import { type VerdictCache, verdictCacheLayer } from "#src/client/phi-verdict-cache/index.ts";
 import { type Request, type Route, routeWith } from "./dispatch.ts";
 import { LaneJson } from "./lanes.ts";
@@ -23,8 +25,11 @@ import { bookOf, type VerdictBook, type VerdictsEntry, verdictsEntryType } from 
 
 const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/phi-router-test-${String(process.pid)}`;
 
-export const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem | VerdictCache>) =>
-	Effect.runPromise(Effect.provide(effect, Layer.provideMerge(verdictCacheLayer, NodeServices.layer)));
+const clients = Layer.mergeAll(verdictCacheLayer, laneLogLayer, phiSettingsLayer);
+
+export const run = <Value, Failure>(
+	effect: Effect.Effect<Value, Failure, FileSystem.FileSystem | VerdictCache | LaneLog | PhiSettings>,
+) => Effect.runPromise(Effect.provide(effect, Layer.provideMerge(clients, NodeServices.layer)));
 
 afterAll(() =>
 	run(
@@ -187,7 +192,7 @@ interface Sent {
 }
 
 const sent = ({ world, branch, book, reason, messages, failed }: Sent) =>
-	Effect.promise(() => {
+	Effect.suspend(() => {
 		const session = {
 			book: Option.some(book),
 			appendVerdicts: (data: VerdictsEntry) => branch.push({ ...custom, customType: verdictsEntryType, data }),
@@ -210,11 +215,9 @@ const sent = ({ world, branch, book, reason, messages, failed }: Sent) =>
 			ui: { notify: (message: string) => world.notices.push(message), setStatus: Function.constVoid },
 		};
 
-		return routeWith({ env: { HOME: world.home }, judge: Layer.succeed(Judge, scriptedJudge(world)), session })(
-			request,
-			ctx,
-		);
+		return routeWith({ judge: scriptedJudge(world), session })(request, ctx);
 	}).pipe(
+		Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnvRecord({ HOME: world.home })),
 		Effect.map((routed: Route) => {
 			if (routed.state !== undefined) {
 				const data = { provider: "phi", modelId: "auto", state: routed.state };

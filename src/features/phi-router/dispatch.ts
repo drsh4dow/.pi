@@ -23,7 +23,7 @@ import { type Classify, decisionsModel, decisionsPieceJudge } from "./decisions.
 import { isPhi } from "./gate.ts";
 import { appendLane, judgedOf } from "./lanes.ts";
 import { Fixtures } from "./policy/digest.ts";
-import { type Judge, Verdict } from "./policy/engine.ts";
+import { Judge, Verdict } from "./policy/engine.ts";
 import { Synthetic } from "./policy/synthetic.ts";
 import {
 	accountFor,
@@ -245,22 +245,9 @@ const failClosed = (request: Request, ctx: RouterContext) =>
  * sees them when pi streams.
  */
 export const routeWith =
-	({
-		env,
-		judge,
-		session,
-	}: {
-		readonly env: Env;
-		readonly judge: Layer.Layer<Judge>;
-		readonly session: RouterSession;
-	}) =>
-	(request: Request, ctx: RouterContext) => {
-		const services = Layer.merge(servicesOf(env), judge);
-
-		return Effect.runPromise(
-			route({ request, ctx, session }).pipe(failClosed(request, ctx), Effect.provide(services)),
-		);
-	};
+	({ judge, session }: { readonly judge: Judge["Service"]; readonly session: RouterSession }) =>
+	(request: Request, ctx: RouterContext) =>
+		route({ request, ctx, session }).pipe(failClosed(request, ctx), Effect.provideService(Judge, judge));
 
 /**
  * Judges a new compaction's head before pi sends again. pi awaits this handler before the send that follows a

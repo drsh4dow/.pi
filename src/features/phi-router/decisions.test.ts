@@ -2,10 +2,8 @@ import { expect, test } from "bun:test";
 
 import type { ClassifierContext, ClassifierResult, ImageContent } from "@earendil-works/pi-ai";
 import * as Arr from "effect/Array";
-import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
-import * as Layer from "effect/Layer";
 
 import { decisionsPieceJudge, type Classify } from "./decisions.ts";
 import { pieceOf } from "./policy/engine.fixture.ts";
@@ -59,16 +57,11 @@ const named = (choice: string, usage = billed(40, 0.25)): Reply => ({
 });
 
 const judgedOn = (classify: Classify, piece = pieceOf("Note from the intake desk")) =>
-	Effect.gen(function* () {
-		const layer = decisionsPieceJudge(classify);
-		const judge = yield* layer.pipe(Layer.build, Effect.map(Context.get(Engine.Judge)), Effect.scoped);
-
-		return yield* Effect.provideService(
-			Engine.verdictsFor([piece], () => false),
-			Engine.Judge,
-			judge,
-		);
-	});
+	Effect.provideService(
+		Engine.verdictsFor([piece], () => false),
+		Engine.Judge,
+		decisionsPieceJudge(classify),
+	);
 
 test("a piece's images reach Decisions beside its text, and usage sums what each call billed", () =>
 	run(
