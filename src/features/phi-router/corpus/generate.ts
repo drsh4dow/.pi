@@ -47,7 +47,7 @@ class UsageError extends Schema.TaggedError<UsageError, { readonly brand: unique
 	message: Schema.String,
 }) {}
 
-const usage = "usage: bun features/phi-router/corpus/generate.ts <out.jsonl> [--seed N]";
+const usage = "usage: bun src/features/phi-router/corpus/generate.ts <out.jsonl> [--seed N]";
 
 const encodeSynthetic = Schema.encodeEffect(Schema.fromJsonString(Synthetic));
 
