@@ -110,37 +110,36 @@ const refused: Reply = {
 const failures: ReadonlyArray<
 	readonly [
 		name: string,
-		replies: Parameters<typeof replying>[0],
 		why: "judge-error" | "judge-refused" | "judge-timeout",
+		replies: Parameters<typeof replying>[0],
 	]
 > = [
-	["a refusal", { identifier: refused, kind: named("none") }, "judge-refused"],
+	["a refusal", "judge-refused", { identifier: refused, kind: named("none") }],
 	[
 		"a timeout",
+		"judge-timeout",
 		{
 			identifier: { answers: {}, stopReason: "error", errorMessage: "Request timed out after 20000ms" },
 			kind: named("none"),
 		},
-		"judge-timeout",
 	],
-	["a probability above 1", { identifier: scored(1.5), kind: named("none") }, "judge-error"],
-	["a probability below 0", { identifier: scored(-1), kind: named("none") }, "judge-error"],
-	["a missing answer", { identifier: { answers: {}, stopReason: "stop" }, kind: named("none") }, "judge-error"],
-	["a kind outside the policy", { identifier: scored(0.3), kind: named("ssn-ish") }, "judge-error"],
+	["a probability above 1", "judge-error", { identifier: scored(1.5), kind: named("none") }],
+	["a probability below 0", "judge-error", { identifier: scored(-1), kind: named("none") }],
+	["a missing answer", "judge-error", { identifier: { answers: {}, stopReason: "stop" }, kind: named("none") }],
+	["a kind outside the policy", "judge-error", { identifier: scored(0.3), kind: named("ssn-ish") }],
 ];
 
-for (const [name, replies, why] of failures) {
-	test(`${name} seals the piece as ${why}`, () =>
-		run(
-			Effect.gen(function* () {
-				const { found } = yield* judgedOn(replying(replies).classify);
+test.each(failures)("%s seals the piece as %s", (_name, why, replies) =>
+	run(
+		Effect.gen(function* () {
+			const { found } = yield* judgedOn(replying(replies).classify);
 
-				expect(Arr.map(found, ([, verdict]) => verdict)).toEqual([
-					Engine.Verdict.Sealed({ finding: Engine.Finding.Failure({ why }) }),
-				]);
-			}),
-		));
-}
+			expect(Arr.map(found, ([, verdict]) => verdict)).toEqual([
+				Engine.Verdict.Sealed({ finding: Engine.Finding.Failure({ why }) }),
+			]);
+		}),
+	),
+);
 
 test("a refused call still counts what Decisions billed for it", () =>
 	run(

@@ -80,23 +80,22 @@ const unexpiredOAuth = (access: string): Credential => ({
 
 const ids = (account: Account) => Arr.map(modelsWith({}).getModels(account.id), ({ id }) => id);
 
-for (const account of accounts) {
-	test(`${account.id} offers pi's whole Anthropic catalog under its own name`, () => {
-		const listed = modelsWith({}).getModels(account.id);
+test.each(accounts)("$id offers pi's whole Anthropic catalog under its own name", (account) => {
+	const listed = modelsWith({}).getModels(account.id);
 
-		expect(ids(account)).toEqual(Arr.map(anthropic.models, ({ id }) => id));
-		expect(Arr.filter(listed, ({ provider }) => provider !== account.id)).toEqual([]);
-	});
+	expect(ids(account)).toEqual(Arr.map(anthropic.models, ({ id }) => id));
+	expect(Arr.filter(listed, ({ provider }) => provider !== account.id)).toEqual([]);
+});
 
-	test(`${account.id} has no credential when only ANTHROPIC_* variables are set`, () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const key = yield* authOf(modelsWith({}), account.id);
+test.each(accounts)("$id has no credential when only ANTHROPIC_* variables are set", (account) =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const key = yield* authOf(modelsWith({}), account.id);
 
-				expect(key).toBeUndefined();
-			}),
-		));
-}
+			expect(key).toBeUndefined();
+		}),
+	),
+);
 
 const threadsOn = (id: string) =>
 	Arr.dedupe(
@@ -240,8 +239,6 @@ const refusals = [
 	},
 ];
 
-for (const { name, request } of refusals) {
-	test(`/account refuses ${name}`, () => {
-		expect(targetOf({ ...request, find }).kind).toBe("refuse");
-	});
-}
+test.each(refusals)("/account refuses $name", ({ request }) => {
+	expect(targetOf({ ...request, find }).kind).toBe("refuse");
+});

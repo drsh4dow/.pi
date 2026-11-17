@@ -131,14 +131,13 @@ const rows = [
 	},
 ];
 
-for (const { name, from, to, branch, asked } of rows) {
-	test(`a model switch from ${name}`, () =>
-		Effect.runPromise(
-			Effect.map(switchTo({ from, to, branch }), (pi) => {
-				expect(pi.asked).toEqual(asked);
-			}),
-		));
-}
+test.each(rows)("a model switch from $name", ({ from, to, branch, asked }) =>
+	Effect.runPromise(
+		Effect.map(switchTo({ from, to, branch }), (pi) => {
+			expect(pi.asked).toEqual(asked);
+		}),
+	),
+);
 
 const switchedFromEnt = (failing: ReadonlyArray<string>) =>
 	switchTo({ from: onAccount("ent"), to: onAccount("ultra-a"), branch: [message], failing });

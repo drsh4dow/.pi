@@ -56,10 +56,9 @@ const userCases: ReadonlyArray<Case> = [
 	],
 ];
 
-for (const [name, script, verdicts, questions] of userCases) {
-	test(`a user message: ${name}`, () =>
-		run(expectJudged(pieceOf("Follow-up for the import job."), script, { verdicts, questions })));
-}
+test.each(userCases)("a user message: %s", (_name, script, verdicts, questions) =>
+	run(expectJudged(pieceOf("Follow-up for the import job."), script, { verdicts, questions })),
+);
 
 const failingOnce = () => {
 	let calls = 0;
@@ -95,10 +94,9 @@ const systemCases: ReadonlyArray<Case> = [
 	],
 ];
 
-for (const [name, script, verdicts, questions] of systemCases) {
-	test(`a system part: ${name}`, () =>
-		run(expectJudged({ ...pieceOf("You are a coding agent."), kind: "system" }, script, { verdicts, questions })));
-}
+test.each(systemCases)("a system part: %s", (_name, script, verdicts, questions) =>
+	run(expectJudged({ ...pieceOf("You are a coding agent."), kind: "system" }, script, { verdicts, questions })),
+);
 
 const sealing: Script = { score: () => 0.9, kind: () => "patient-name" };
 

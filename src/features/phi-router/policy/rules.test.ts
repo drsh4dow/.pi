@@ -35,11 +35,9 @@ const fires: ReadonlyArray<readonly [RuleId, string]> = [
 	["x12-member", `${header}NM1*QC*1******MI*XGH492817305~`],
 ];
 
-for (const [rule, text] of fires) {
-	test(`${rule} fires on ${text}`, () => {
-		expect(Option.map(firstHit(text), (hit) => hit.rule)).toEqual(Option.some(rule));
-	});
-}
+test.each(fires)("%s fires on %s", (rule, text) => {
+	expect(Option.map(firstHit(text), (hit) => hit.rule)).toEqual(Option.some(rule));
+});
 
 const silent: ReadonlyArray<string> = [
 	"impossible SSNs 000-12-3456, 666-12-3456, 912-56-7823, 412-00-3456 and 412-56-0000",
@@ -55,8 +53,6 @@ const silent: ReadonlyArray<string> = [
 	`${header}NM1*85*2*NORTHFIELD CLINIC*****XX*1234567893~`,
 ];
 
-for (const text of silent) {
-	test(`no rule fires on ${text}`, () => {
-		expect(firstHit(text)).toEqual(Option.none());
-	});
-}
+test.each(silent)("no rule fires on %s", (text) => {
+	expect(firstHit(text)).toEqual(Option.none());
+});

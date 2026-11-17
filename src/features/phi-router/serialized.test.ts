@@ -7,13 +7,15 @@ import { asked, branchOf, done, personal, run, syntheticChart, system, worldOf }
 
 const tool = { name: "lookup", description: "Looks a row up.", parameters: { type: "object", properties: {} } };
 
-const carriers: ReadonlyArray<{ readonly field: string; readonly message: Message }> = [
+const carriers: ReadonlyArray<{ readonly field: string; readonly world: string; readonly message: Message }> = [
 	{
 		field: "a tool's description",
+		world: "serialized-0",
 		message: { role: "system", content: "", toolsAdded: [{ ...tool, description: syntheticChart }], timestamp: 0 },
 	},
 	{
 		field: "a tool's parameter schema",
+		world: "serialized-1",
 		message: {
 			role: "system",
 			content: "",
@@ -25,6 +27,7 @@ const carriers: ReadonlyArray<{ readonly field: string; readonly message: Messag
 	},
 	{
 		field: "a removed tool's name",
+		world: "serialized-2",
 		message: { role: "system", content: "", toolsRemoved: [{ name: syntheticChart }], timestamp: 0 },
 	},
 ];
@@ -41,15 +44,14 @@ test("a clean conversation with a tool on its system turn goes personal", () =>
 		}),
 	));
 
-for (const [index, { field, message }] of carriers.entries()) {
-	test(`PHI in ${field}, which Anthropic receives, sends the request to ent`, () =>
-		run(
-			Effect.gen(function* () {
-				const branch = yield* branchOf({ world: yield* worldOf({ name: `serialized-${String(index)}` }) });
-				const conversation = [system, asked("Hi."), done("ultra-a"), message, asked("Go on.")];
-				const routed = yield* branch.send("user", conversation);
+test.each(carriers)("PHI in $field, which Anthropic receives, sends the request to ent", ({ world, message }) =>
+	run(
+		Effect.gen(function* () {
+			const branch = yield* branchOf({ world: yield* worldOf({ name: world }) });
+			const conversation = [system, asked("Hi."), done("ultra-a"), message, asked("Go on.")];
+			const routed = yield* branch.send("user", conversation);
 
-				expect(routed).toBe("ent");
-			}),
-		));
-}
+			expect(routed).toBe("ent");
+		}),
+	),
+);

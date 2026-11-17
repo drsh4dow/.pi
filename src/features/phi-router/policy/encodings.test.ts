@@ -25,22 +25,21 @@ const utf16 = (text: string, littleEndian: boolean) => {
 
 const latin1 = (text: string) => Uint8Array.from(codePoints(text));
 
-for (const [encoding, text, bytes] of [
+test.each([
 	["UTF-16LE", "Marisol Quintero has HIV", utf16("Marisol Quintero has HIV", true)],
 	["UTF-16BE", "Marisol Quintero has HIV", utf16("Marisol Quintero has HIV", false)],
 	["UTF-16LE", "Пациент Иванов, ВИЧ", utf16("Пациент Иванов, ВИЧ", true)],
 	["Latin-1", "Señora Pérez tiene VIH", latin1("Señora Pérez tiene VIH")],
-] as const) {
-	test(`short ${encoding} text reaches the judge decoded: ${text}`, () =>
-		run(
-			Effect.gen(function* () {
-				const { verdicts, fresh } = yield* judged(`blob ${Encoding.Base64.encode(bytes)}`, { score: () => 0 });
+] as const)("short %s text reaches the judge decoded: %s", (_encoding, text, bytes) =>
+	run(
+		Effect.gen(function* () {
+			const { verdicts, fresh } = yield* judged(`blob ${Encoding.Base64.encode(bytes)}`, { score: () => 0 });
 
-				expect(verdicts).toEqual([Verdict.Cleared({ by: "judge" })]);
-				expect(Arr.join(fresh, "")).toContain(text);
-			}),
-		));
-}
+			expect(verdicts).toEqual([Verdict.Cleared({ by: "judge" })]);
+			expect(Arr.join(fresh, "")).toContain(text);
+		}),
+	),
+);
 
 test("long UTF-16LE text is judged, not sealed as binary", () =>
 	run(
@@ -66,7 +65,7 @@ const seesNote = (plain: string): Script => ({
 	kind: () => "patient-name",
 });
 
-for (const [label, plain, bytes] of [
+test.each([
 	["short mixed-script UTF-16LE", "Αννα HIV", utf16("Αννα HIV", true)],
 	["NUL-terminated UTF-16LE", "Marisol Quintero has HIV", utf16("Marisol Quintero has HIV\0", true)],
 	["accented Latin-1", "Íñés HIV.", latin1("Íñés HIV.")],
@@ -76,15 +75,12 @@ for (const [label, plain, bytes] of [
 		"Иван HIV",
 		utf16(`Иван HIV${Str.repeat(25)(" ")}\uE0A0`, true),
 	],
-] as const) {
-	test(`${label} text reaches the judge as written: ${plain}`, () =>
-		run(
-			Effect.gen(function* () {
-				const { verdicts } = yield* judged(`q=${percentEncoded(bytes)}`, seesNote(plain));
+] as const)("%s text reaches the judge as written: %s", (_label, plain, bytes) =>
+	run(
+		Effect.gen(function* () {
+			const { verdicts } = yield* judged(`q=${percentEncoded(bytes)}`, seesNote(plain));
 
-				expect(verdicts).toEqual([
-					Verdict.Sealed({ finding: Finding.Judge({ score: 0.9, kind: "patient-name" }) }),
-				]);
-			}),
-		));
-}
+			expect(verdicts).toEqual([Verdict.Sealed({ finding: Finding.Judge({ score: 0.9, kind: "patient-name" }) })]);
+		}),
+	),
+);
