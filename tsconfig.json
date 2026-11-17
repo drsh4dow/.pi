@@ -45,5 +45,5 @@
 		"allowUnusedLabels": false
 	},
 	"include": ["src", "tools", "agent/extensions", "agent/bin"],
-	"exclude": ["tools/oxlint/anti-slop"]
+	"exclude": ["tools/oxlint/anti-slop", "tools/gates/fixtures"]
 }

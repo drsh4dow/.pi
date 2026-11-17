@@ -1,6 +1,0 @@
-{
-	"plugins": [],
-	"categories": { "correctness": "off" },
-	"jsPlugins": [{ "name": "harness", "specifier": "../../harness/index.ts" }],
-	"rules": { "harness/import-boundaries": "error" }
-}

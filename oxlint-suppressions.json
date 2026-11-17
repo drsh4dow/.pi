@@ -3228,26 +3228,6 @@
       "count": 1
     }
   },
-  "tools/oxlint/harness/index.ts": {
-    "import/no-default-export": {
-      "count": 1
-    },
-    "jsdoc/require-param": {
-      "count": 4
-    },
-    "jsdoc/require-returns": {
-      "count": 4
-    },
-    "no-undefined": {
-      "count": 1
-    },
-    "oxc/no-optional-chaining": {
-      "count": 3
-    },
-    "typescript/explicit-function-return-type": {
-      "count": 5
-    }
-  },
   "tools/prompts/capture.ts": {
     "jsdoc/require-param": {
       "count": 2
