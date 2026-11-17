@@ -156,7 +156,8 @@ Terms from the root role (`agent/roles/root.md`) for the work the human hands th
 - **Destination.** What the end product should be, settled with the human. Only the human changes it. Its document is the **PRD**, in the human's words "the shared understanding we settle in a discussion about the end product ... it settles the destination".
 - **Approach.** How the work reaches the destination. Its document is the **TRD**, which "defines the selected approach but is more malleable", because "things has to be adapted given the discoveries of unknowns". The agent adapts it and records each change in the decision trail.
 - **Spec.** The document that joins the destination and the approach. In the human's words, "the spec armonizes both".
-- **Grant.** The human's words, such as "run until done", that let the agent work without stopping for the rest of the session. It covers pushes to work branches, PRs against shared branches, merges of PRs between work branches, and updates to the agent's own tickets.
+- **Grant.** The human's words, such as "run until done", that let the agent work without stopping for the rest of the session. It covers updates to the agent's own tickets.
+- **Handoff PR.** A PR against trunk that the human reviews, one per piece of work unless a part must deploy or revert on its own. Not to be confused with a handoff note, which one session writes for the next.
 - **Shared branch.** In the human's words, "a branch that is used by multiple people, for example staging or prod", or main. The agent's work reaches one only through PRs.
 - **Trunk.** The shared branch a PR targets. Not to be confused with main: a PR against staging has staging as its trunk.
 - **Work branch.** A branch that is not shared. It is the agent's own to create, rebase, stack, and merge PRs between.
