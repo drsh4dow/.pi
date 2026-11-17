@@ -82,71 +82,147 @@ export type Wanted =
 
 type ModelKey = `${string}/${string}`;
 
+/** How a parent session stands toward PHI: `routing` and `held` are on a `phi` model, `held` runs wholly on ent. */
+export type Standing = "open" | "routing" | "held" | "baa";
+
 export type Target =
 	| { readonly kind: "open" }
 	| { readonly kind: "run"; readonly key: ModelKey }
+	/** The whole run lands on `key` because no BAA account carries the model id `missing`. */
+	| { readonly kind: "substitute"; readonly key: ModelKey; readonly missing: string }
 	| { readonly kind: "refuse"; readonly why: string };
 
 export interface DelegateRequest {
-	readonly parent: Selection | undefined;
-	/** The parent runs wholly on the BAA account: pinned, `force-baa`, `baa-repo`, bad settings, or `shadow`. */
-	readonly held: boolean;
+	readonly standing: Standing;
 	readonly wanted: Wanted;
-	readonly dispatchModel: string;
-	readonly has: (key: ModelKey) => boolean;
+	/** `settings.model`, which the sealed lane runs when no BAA account carries the wanted id. */
+	readonly fallback: string;
+	/** Whether the registry has the model id on the provider. */
+	readonly carries: Carries;
 }
 
-const isPersonalAccount = (provider: string) => Arr.some(personalAccounts, (account) => account === provider);
-
-const fromPhi = ({ held, wanted, dispatchModel }: DelegateRequest): Target => {
-	if (wanted.kind === "key" && isBaaAccount(wanted.provider)) {
-		return { kind: "run", key: `${wanted.provider}/${wanted.id}` };
+/**
+ * A `phi` parent routes, or is held when it runs wholly on ent: pinned, `force-baa`, `baa-repo`, bad settings, or
+ * `shadow`. A parent on a BAA account is `baa`. Any other parent is open.
+ */
+export const standingOf = ({
+	parent,
+	held,
+}: {
+	readonly parent: Selection | undefined;
+	readonly held: boolean;
+}): Standing => {
+	if (isPhi(parent)) {
+		return held ? "held" : "routing";
 	}
 
-	if (wanted.kind === "alias" || wanted.provider === phiProvider || isPersonalAccount(wanted.provider)) {
-		return { kind: "run", key: held ? `ent/${dispatchModel}` : `${phiProvider}/${autoId}` };
-	}
-
-	return {
-		kind: "refuse",
-		why: `a delegate of a ${phiProvider}/${autoId} session runs on ${phiProvider}/${autoId} or a BAA account, and ${wanted.provider}/${wanted.id} is neither`,
-	};
+	return parent !== undefined && isBaaAccount(parent.provider) ? "baa" : "open";
 };
 
-const fromBaa = (account: string, { wanted, dispatchModel, has }: DelegateRequest): Target => {
-	if (wanted.kind === "alias") {
-		const own: ModelKey = `${account}/${wanted.id}`;
+type Spelled = Extract<Wanted, { readonly kind: "key" }>;
 
-		return { kind: "run", key: has(own) ? own : `${account}/${dispatchModel}` };
+const asNamed = ({ provider, id }: Spelled): Target => ({ kind: "run", key: `${provider}/${id}` });
+
+const refused = (why: string): Target => ({ kind: "refuse", why });
+
+/** The sealed lane of `id`: it runs there, or the whole run lands on the substitute. */
+const onSealedLane = (id: string, { fallback, carries }: DelegateRequest): Target => {
+	const lane = sealedLane({ id, fallback, carries });
+	const key: ModelKey = `${lane.provider}/${lane.id}`;
+
+	return lane.id === id ? { kind: "run", key } : { kind: "substitute", key, missing: id };
+};
+
+/** An alias or a personal model runs as `phi/<id>`, whose requests are judged one by one. */
+const fromRouting = (wanted: Wanted): Target => {
+	if (wanted.kind === "alias" || isPersonal(wanted.provider)) {
+		return { kind: "run", key: `${phiProvider}/${wanted.id}` };
+	}
+
+	if (wanted.provider === phiProvider || isBaaAccount(wanted.provider)) {
+		return asNamed(wanted);
+	}
+
+	return refused(
+		`a delegate of a session that routes PHI runs on a phi model, a BAA account or a provider the border guards, and ${wanted.provider}/${wanted.id} is none of them`,
+	);
+};
+
+/** A spelled personal model means that model, so it runs on ent only when ent carries the same id. */
+const keptOnEnt = (wanted: Spelled, request: DelegateRequest): Target => {
+	const kept = onSealedLane(wanted.id, request);
+
+	return kept.kind === "run"
+		? kept
+		: refused(
+				`a delegate of a session held on the BAA account runs there, and no BAA account carries ${wanted.id}, which ${wanted.provider}/${wanted.id} names`,
+			);
+};
+
+const fromHeld = (request: DelegateRequest): Target => {
+	const { wanted, fallback } = request;
+
+	if (wanted.kind === "alias" || wanted.provider === phiProvider) {
+		return onSealedLane(askedId({ selected: wanted.id, fallback }), request);
 	}
 
 	if (isBaaAccount(wanted.provider)) {
-		return { kind: "run", key: `${wanted.provider}/${wanted.id}` };
+		return asNamed(wanted);
 	}
 
-	return {
-		kind: "refuse",
-		why: `a delegate of a session on the BAA account ${account} runs on a BAA account, and ${wanted.provider}/${wanted.id} is not one`,
-	};
+	return isPersonal(wanted.provider)
+		? keptOnEnt(wanted, request)
+		: refused(
+				`a delegate of a session held on the BAA account runs on a BAA account, and ${wanted.provider}/${wanted.id} is not one`,
+			);
+};
+
+/** An ent session never routes, so only an alias or a BAA model runs. */
+const fromBaa = (request: DelegateRequest): Target => {
+	const { wanted } = request;
+
+	if (wanted.kind === "alias") {
+		return onSealedLane(wanted.id, request);
+	}
+
+	if (isBaaAccount(wanted.provider)) {
+		return asNamed(wanted);
+	}
+
+	return refused(
+		`a delegate of a session on a BAA account runs on a BAA account, and ${wanted.provider}/${wanted.id} is not one`,
+	);
 };
 
 /**
- * Where a delegate of a protected session runs. From `phi/auto`, every alias and personal or `phi` model runs on
- * `phi/auto`, where its own requests are judged, or on the BAA account when the parent is held there. From a BAA account, the delegate stays on a BAA
- * account. Nothing else is allowed, since an alias's home provider is outside the boundary.
+ * Where a delegate of a parent with this standing runs. The alias or spelled key picks the model id. A routing parent's
+ * delegate runs that id as `phi/<id>`, so the content of each request picks the account. A held or BAA parent's
+ * delegate runs the id's sealed lane, or the substitute when no BAA account carries the id.
  */
 export const delegateTarget = (request: DelegateRequest): Target => {
-	const { parent } = request;
+	switch (request.standing) {
+		case "open": {
+			return { kind: "open" };
+		}
 
-	if (parent === undefined) {
-		return { kind: "open" };
+		case "routing": {
+			return fromRouting(request.wanted);
+		}
+
+		case "held": {
+			return fromHeld(request);
+		}
+
+		case "baa": {
+			return fromBaa(request);
+		}
+
+		default: {
+			const unhandled: never = request.standing;
+
+			return unhandled;
+		}
 	}
-
-	if (isPhi(parent)) {
-		return fromPhi(request);
-	}
-
-	return isBaaAccount(parent.provider) ? fromBaa(parent.provider, request) : { kind: "open" };
 };
 
 const unicodeEscape = /(?<escape>\\u\{[\dA-Fa-f]+\}|\\u[\dA-Fa-f]{4})/u;

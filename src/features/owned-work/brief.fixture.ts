@@ -90,6 +90,7 @@ const settledOn = new Map([
 	["delegate-1", "openai/gpt-6-luna"],
 	["delegate-2", "ultra-a/claude-opus-5-5"],
 	["delegate-3", "openai/gpt-6.1-sol"],
+	["delegate-4", "phi/gpt-6.1-sol"],
 ]);
 
 const ledger = Layer.mock(Ledger)({

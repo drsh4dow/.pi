@@ -121,6 +121,28 @@ const ownBrief = (ownSession: Option.Option<OwnSession>) =>
 		),
 	);
 
+/** Runs a settled delegate again in its own session, on the model the PHI gate allows for its brief's model now. */
+const relaunched = Effect.fn("relaunched")(function* ({
+	ledger,
+	ctx,
+	table,
+	ref,
+	call,
+}: {
+	readonly ledger: (typeof Ledger)["Service"];
+	readonly ctx: Caller;
+	readonly table: ModelTable;
+	readonly ref: string;
+	readonly call: Static<DelegateParams>;
+}) {
+	const request = yield* parseContinuation(ref, call);
+	const continuation = yield* ledger.continuation(request);
+	const { model, substitution } = yield* modelOf(ctx, table, modelNameOf(continuation.brief.model));
+	const handle = yield* ledger.start({ ...continuation, brief: { ...continuation.brief, model } });
+
+	return { handle, substitution };
+});
+
 const delegateTool = (
 	runtime: Runtime,
 	roles: ReadonlyArray<ChildRole>,
@@ -145,27 +167,25 @@ const delegateTool = (
 				(ledger) =>
 					Effect.gen(function* () {
 						if (call.continues !== undefined) {
-							const request = yield* parseContinuation(call.continues, call);
-							const continuation = yield* ledger.continuation(request);
-							const model = yield* modelOf(ctx, table, modelNameOf(continuation.brief.model));
-
-							return yield* ledger.start({ ...continuation, brief: { ...continuation.brief, model } });
+							return yield* relaunched({ ledger, ctx, table, ref: call.continues, call });
 						}
 
 						const fresh = yield* freshCall(call);
 						const inherited = yield* ownBrief(ownSession);
-						const { brief, cwd } = yield* parseCall(ctx, table, roles, inherited, fresh);
+						const { brief, cwd, substitution } = yield* parseCall(ctx, table, roles, inherited, fresh);
 						const reviewed = yield* withReview(fresh.reviews)(brief);
 
-						return yield* ledger.start(
+						const handle = yield* ledger.start(
 							StartRequest.Delegate({
 								brief: reviewed,
 								childSession: { ...place, cwd: Option.getOrElse(cwd, () => place.cwd), id: uuidv7() },
 								group: Option.fromUndefinedOr(call.group),
 							}),
 						);
+
+						return { handle, substitution };
 					}),
-				Out.handle,
+				Out.delegated,
 			),
 	} satisfies ToolDefinition<DelegateParams, JsonValue>;
 };

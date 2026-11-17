@@ -6,7 +6,7 @@ import * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
-import { delegateTargetOf, type Wanted } from "#src/features/phi-router/index.ts";
+import { delegateTargetOf, type Target, type Wanted } from "#src/features/phi-router/index.ts";
 import { BadDelegate } from "./work.ts";
 
 export type ModelKey = `${string}/${string}`;
@@ -116,8 +116,9 @@ const resolvedOf = (ctx: ModelCaller, table: ModelTable, name: ModelName) =>
 		Spelled: ({ key }) => {
 			const [provider, ...id] = Str.split(key, "/");
 			const wanted: Wanted = { kind: "key", provider, id: Arr.join(id, "/") };
+			const naming = (missing: string) => `The model \`${key}\` asks for ${missing}`;
 
-			return Effect.succeed({ wanted, model: key, source: "" });
+			return Effect.succeed({ wanted, model: key, source: "", naming });
 		},
 		Alias: ({ alias }) =>
 			Effect.fromOption(Rec.get(table.aliases, alias), () =>
@@ -127,14 +128,47 @@ const resolvedOf = (ctx: ModelCaller, table: ModelTable, name: ModelName) =>
 					wanted: { kind: "alias", id: entry.id } satisfies Wanted,
 					model: aliasedModel(ctx, entry),
 					source: `, which the alias ${alias} names,`,
+					naming: () => `The alias \`${alias}\` names ${entry.provider}/${entry.id}`,
 				})),
 			),
 	});
 
+type Resolved = Effect.Success<ReturnType<typeof resolvedOf>>;
+
 const isRegistered = (ctx: ModelCaller) => (key: string) =>
 	Arr.some(ctx.modelRegistry.getAll(), ({ provider, id }) => `${provider}/${id}` === key);
 
-/** A protected session's delegate runs where the PHI router allows, so an alias never takes session content off its boundary. */
+const routerPicks = ", which the PHI router picks,";
+
+/** The model a target runs, the sentence its tool result carries for a substitute, and why it was chosen. */
+const chosenOf = (resolved: Resolved, target: Exclude<Target, { readonly kind: "refuse" }>) => {
+	switch (target.kind) {
+		case "open": {
+			return { model: resolved.model, substitution: Option.none<string>(), source: resolved.source };
+		}
+
+		case "run": {
+			return { model: target.key, substitution: Option.none<string>(), source: routerPicks };
+		}
+
+		case "substitute": {
+			const sentence = `${resolved.naming(target.missing)}, which no BAA account carries, so this delegate runs on ${target.key}.`;
+
+			return { model: target.key, substitution: Option.some(sentence), source: routerPicks };
+		}
+
+		default: {
+			const unhandled: never = target;
+
+			return unhandled;
+		}
+	}
+};
+
+/**
+ * A protected session's delegate runs where the PHI router allows, so an alias never takes session content off its
+ * boundary. `substitution` says when the whole run lands on another model because no BAA account carries the one named.
+ */
 export const modelOf = Effect.fn("modelOf")(function* (ctx: ModelCaller, table: ModelTable, name: ModelName) {
 	const resolved = yield* resolvedOf(ctx, table, name);
 
@@ -143,19 +177,18 @@ export const modelOf = Effect.fn("modelOf")(function* (ctx: ModelCaller, table: 
 		branch: ctx.sessionManager.getBranch(),
 		cwd: ctx.cwd,
 		wanted: resolved.wanted,
-		has: isRegistered(ctx),
+		carries: (provider, id) => isRegistered(ctx)(`${provider}/${id}`),
 	});
 
 	if (target.kind === "refuse") {
 		return yield* BadDelegate.make({ why: target.why });
 	}
 
-	const { model, source } =
-		target.kind === "run" ? { model: target.key, source: ", which the PHI router picks," } : resolved;
+	const { model, substitution, source } = chosenOf(resolved, target);
 
 	if (!isRegistered(ctx)(model)) {
 		return yield* BadDelegate.make({ why: `model ${model}${source} is not in the model registry` });
 	}
 
-	return model;
+	return { model, substitution };
 });

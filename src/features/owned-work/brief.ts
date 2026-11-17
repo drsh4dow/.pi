@@ -245,7 +245,7 @@ export const parseCall = Effect.fn("parseCall")(function* (
 		}),
 	);
 
-	const model = yield* modelOf(ctx, table, wanted);
+	const { model, substitution } = yield* modelOf(ctx, table, wanted);
 	const work = yield* workOf(ctx, inherited, call, role);
 
 	const brief: Brief = {
@@ -261,5 +261,5 @@ export const parseCall = Effect.fn("parseCall")(function* (
 		instructions: Option.map(profile, ({ file, text }) => ({ file, text })),
 	};
 
-	return { brief, cwd };
+	return { brief, cwd, substitution };
 });
