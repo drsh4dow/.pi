@@ -1,6 +1,8 @@
+import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
-import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
+import { getBuiltinModels } from "@earendil-works/pi-ai/providers/all";
 import {
+	type BeforeAgentStartEvent,
 	buildSessionContext,
 	convertToLlm,
 	type ExtensionAPI,
@@ -8,25 +10,31 @@ import {
 	type ExtensionVirtualModel,
 	type SessionEntry,
 } from "@earendil-works/pi-coding-agent";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Clock from "effect/Clock";
+import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
-import type * as Layer from "effect/Layer";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
-import { makePhiSettings, PhiSettings } from "#src/client/phi-settings/index.ts";
+import { laneLogLayer } from "#src/client/phi-lane-log/index.ts";
+import { makePhiSettings, PhiSettings, phiSettingsLayer } from "#src/client/phi-settings/index.ts";
+import { verdictCacheLayer } from "#src/client/phi-verdict-cache/index.ts";
 import { piHost, type PiHost } from "#src/client/pi-host/index.ts";
 import type { AccountId } from "#src/features/claude-accounts/index.ts";
 import { type BorderLink, type BorderReport, borderEvents } from "./border.ts";
-import { compactionJudged, decisionsOf, type Env, routeWith, type RouterSession, servicesOf } from "./dispatch.ts";
+import { decisionsOf } from "./decisions.ts";
+import { compactionJudged, routeWith, type RouterSession } from "./dispatch.ts";
 import {
+	autoId,
+	borderedBuiltins,
 	type DelegateRequest,
 	delegateTarget,
 	guardCodemode,
 	isPhi,
 	isProtected,
-	phiId,
 	phiProvider,
 	type Target,
 } from "./gate.ts";
@@ -40,9 +48,7 @@ import { bookOf, type VerdictBook, verdictsEntryType } from "./store.ts";
 
 export { phiBorder } from "./border.ts";
 
-export { isPhi as isPhiAuto } from "./gate.ts";
-
-export type { Wanted } from "./gate.ts";
+export { isPhi, type Wanted } from "./gate.ts";
 
 export const internalIdsOnly =
 	"Refer to patients and members only by internal ids, such as a patient_id or a row id, never by name, SSN, date of birth, address, phone, email, member number or record number.";
@@ -52,6 +58,19 @@ const bridgeSection = {
 	name: "phi-bridge",
 	text: `${internalIdsOnly} A message shown as ${stubs.sealed} was handled on the HIPAA account.`,
 } as const;
+
+/** Adds the `phi-bridge` section to the system prompt of a session on any `phi` model. */
+export const bridged = ({
+	event,
+	ctx,
+}: {
+	readonly event: { readonly systemPromptOptions: Pick<BeforeAgentStartEvent["systemPromptOptions"], "sections"> };
+	readonly ctx: Pick<ExtensionContext, "model">;
+}) => {
+	if (isPhi(ctx.model)) {
+		event.systemPromptOptions.sections[bridgeSection.name] = bridgeSection.text;
+	}
+};
 
 type DelegateCaller = Omit<DelegateRequest, "held" | "dispatchModel"> & {
 	readonly cwd: string;
@@ -96,6 +115,14 @@ const pinNotices = {
 	pin: "Pinned: this session runs wholly on ent, with nothing judged. `/phi unpin` routes it again.",
 	unpin: "Unpinned: requests are routed again, and the next one judges what the pinned stretch added.",
 } as const;
+
+type Env = Readonly<Record<string, string | undefined>>;
+
+const servicesOf = (env: Env) =>
+	Layer.merge(
+		Layer.provide(Layer.mergeAll(phiSettingsLayer, laneLogLayer, verdictCacheLayer), NodeServices.layer),
+		ConfigProvider.layer(ConfigProvider.fromEnvRecord(env)),
+	);
 
 type Host = PiHost<Layer.Success<ReturnType<typeof servicesOf>>, never>;
 
@@ -177,51 +204,88 @@ const phiCommand = (
 	},
 });
 
-const phiAuto = (host: Host, session: () => RouterSession): ExtensionVirtualModel<typeof RouterState.Encoded> => {
-	const dispatch = getBuiltinModel("anthropic", defaultModel);
+type PhiModel = ExtensionVirtualModel<typeof RouterState.Encoded>;
 
-	return {
+const catalogProviders = ["anthropic", ...borderedBuiltins] as const;
+
+const everyThinkingLevel: ReadonlyArray<ModelThinkingLevel> = [
+	"off",
+	"minimal",
+	"low",
+	"medium",
+	"high",
+	"xhigh",
+	"max",
+];
+
+/**
+ * Thinking levels and limits from the first builtin catalog model with the id. An id the catalog lacks gets every
+ * level and unknown limits.
+ */
+const limitsOf = (id: string): Pick<PhiModel, "thinkingLevels" | "contextWindow" | "maxTokens"> =>
+	Option.match(
+		Arr.findFirst(Arr.flatMap(catalogProviders, getBuiltinModels), (model) => model.id === id),
+		{
+			onNone: () => ({ thinkingLevels: everyThinkingLevel }),
+			onSome: (model) => ({
+				thinkingLevels: getSupportedThinkingLevels(model),
+				contextWindow: model.contextWindow,
+				maxTokens: model.maxTokens,
+			}),
+		},
+	);
+
+/** `phi/auto`, which runs `settings.model`, and one `phi/<id>` per distinct id, all on one `route`. */
+const phiModels = (ids: ReadonlyArray<string>, route: PhiModel["route"]): ReadonlyArray<PhiModel> => [
+	{ provider: phiProvider, id: autoId, name: "PHI router", ...limitsOf(defaultModel), route },
+	...Arr.map(Arr.dedupe(ids), (id) => ({
 		provider: phiProvider,
-		id: phiId,
-		name: "PHI router",
-		thinkingLevels: getSupportedThinkingLevels(dispatch),
-		contextWindow: dispatch.contextWindow,
-		maxTokens: dispatch.maxTokens,
-		route: (request, ctx) =>
+		id,
+		name: `PHI router (${id})`,
+		...limitsOf(id),
+		route,
+	})),
+];
+
+/**
+ * The PHI router. `ids` are the model ids a delegate can ask for; each gets its own `phi/<id>`, registered at load so
+ * `--model phi/<id>` finds it.
+ */
+export const phiRouter =
+	({ env, ids }: { readonly env: Env; readonly ids: ReadonlyArray<string> }) =>
+	(pi: Pick<ExtensionAPI, "appendEntry" | "events" | "on" | "registerCommand" | "registerVirtualModel">) => {
+		const host = piHost(servicesOf(env));
+		const { fold, session } = sessionBook(pi, host);
+
+		const route: PhiModel["route"] = (request, ctx) =>
 			host.run(
 				routeWith({
 					judge: decisionsOf({ modelRegistry: ctx.modelRegistry, signal: request.signal }),
 					session: session(),
 				})(request, ctx),
-			),
-	};
-};
+			);
 
-export const phiRouter = (env: Env) => (pi: ExtensionAPI) => {
-	const host = piHost(servicesOf(env));
-	const { fold, session } = sessionBook(pi, host);
-
-	pi.registerVirtualModel(phiAuto(host, session));
-
-	pi.on("session_start", (_event, ctx) => host.run(fold(ctx)));
-
-	pi.on("session_compact", (event, ctx) => {
-		const judged = compactionJudged({ compaction: event.compactionEntry, ctx, session: session() }).pipe(
-			Effect.catchCause((cause) => Effect.logWarning("phi-router: the compaction summary was not judged", cause)),
-		);
-
-		return host.run(Effect.provideService(judged, Judge, decisionsOf(ctx)));
-	});
-
-	pi.on("before_agent_start", (event, ctx) => {
-		if (isPhi(ctx.model)) {
-			event.systemPromptOptions.sections[bridgeSection.name] = bridgeSection.text;
+		for (const model of phiModels(ids, route)) {
+			pi.registerVirtualModel(model);
 		}
-	});
 
-	pi.registerCommand(
-		"phi",
-		phiCommand(pi, host, () => session().book),
-	);
-	pi.on("tool_call", (event, ctx) => guardCodemode({ event, ctx }));
-};
+		pi.on("session_start", (_event, ctx) => host.run(fold(ctx)));
+
+		pi.on("session_compact", (event, ctx) => {
+			const judged = compactionJudged({ compaction: event.compactionEntry, ctx, session: session() }).pipe(
+				Effect.catchCause((cause) => Effect.logWarning("phi-router: the compaction summary was not judged", cause)),
+			);
+
+			return host.run(Effect.provideService(judged, Judge, decisionsOf(ctx)));
+		});
+
+		pi.on("before_agent_start", (event, ctx) => {
+			bridged({ event, ctx });
+		});
+
+		pi.registerCommand(
+			"phi",
+			phiCommand(pi, host, () => session().book),
+		);
+		pi.on("tool_call", (event, ctx) => guardCodemode({ event, ctx }));
+	};

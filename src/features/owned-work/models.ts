@@ -71,6 +71,9 @@ const panel: ReadonlyArray<keyof typeof aliases> = ["fable", "worker", "investig
 
 export const modelTable: ModelTable = { aliases, panel };
 
+/** The model ids the aliases name, each a `phi/<id>` the PHI router registers. */
+export const delegateModelIds = Arr.map(Rec.values(aliases), ({ id }) => id);
+
 export type ModelCaller = Pick<ExtensionContext, "model" | "cwd"> & {
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getAll">;
 	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;

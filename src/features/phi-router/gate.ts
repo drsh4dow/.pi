@@ -5,16 +5,69 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { accountOf, isBaaAccount } from "#src/features/claude-accounts/index.ts";
+import { accounts, isBaaAccount } from "#src/features/claude-accounts/index.ts";
 
 export const phiProvider = "phi";
 
-export const phiId = "auto";
+/** The `phi` model whose id follows `settings.model`, read per request. */
+export const autoId = "auto";
 
 type Selection = Pick<Model<Api>, "provider" | "id">;
 
-export const isPhi = (model: Selection | undefined) =>
-	model !== undefined && model.provider === phiProvider && model.id === phiId;
+type Account = (typeof accounts)[number];
+
+type PersonalAccountOf = Extract<Account, { readonly baa: false }>;
+
+export type PersonalAccount = PersonalAccountOf["id"];
+
+const isPersonalAccountOf = (account: Account): account is PersonalAccountOf => !account.baa;
+
+/** The Claude accounts outside the BAA, in `accounts` order. */
+export const personalAccounts: ReadonlyArray<PersonalAccount> = Arr.map(
+	Arr.filter(accounts, isPersonalAccountOf),
+	({ id }) => id,
+);
+
+/** The pi-ai builtin chat providers that a protected process reaches only through the border. */
+export const borderedBuiltins = ["openai", "opencode-go"] as const;
+
+/** A provider outside the BAA that a protected process reaches only through the border. */
+export type Personal = PersonalAccount | (typeof borderedBuiltins)[number];
+
+/** The clean lane walks this order after home. */
+export const personalProviders: ReadonlyArray<Personal> = [...personalAccounts, ...borderedBuiltins];
+
+/** Where a request can land. */
+export type Carrier = Personal | "ent";
+
+/** Any model of the `phi` provider routes by content. */
+export const isPhi = (model: Selection | undefined) => model !== undefined && model.provider === phiProvider;
+
+/** The model id a `phi` selection asks for: `auto` asks for `fallback`, which is `settings.model`, any other id for itself. */
+export const askedId = ({ selected, fallback }: { readonly selected: string; readonly fallback: string }) =>
+	selected === autoId ? fallback : selected;
+
+/** One physical model. */
+export interface Placement {
+	readonly provider: Carrier;
+	readonly id: string;
+}
+
+export type Carries = (provider: Carrier, id: string) => boolean;
+
+/**
+ * Where sealed content of `id` runs: `ent/<id>` when `ent` carries it, else `ent/<fallback>`. A placement whose id
+ * differs from the asked id is a substitute.
+ */
+export const sealedLane = ({
+	id,
+	fallback,
+	carries,
+}: {
+	readonly id: string;
+	readonly fallback: string;
+	readonly carries: Carries;
+}): Placement => ({ provider: "ent", id: carries("ent", id) ? id : fallback });
 
 /** A session that may hold PHI: one that routes by content, or one already on a BAA account. */
 export const isProtected = (model: Selection | undefined) =>
@@ -40,20 +93,20 @@ export interface DelegateRequest {
 	readonly has: (key: ModelKey) => boolean;
 }
 
-const isPersonal = (provider: string) => Option.exists(accountOf(provider), ({ baa }) => !baa);
+const isPersonalAccount = (provider: string) => Arr.some(personalAccounts, (account) => account === provider);
 
 const fromPhi = ({ held, wanted, dispatchModel }: DelegateRequest): Target => {
 	if (wanted.kind === "key" && isBaaAccount(wanted.provider)) {
 		return { kind: "run", key: `${wanted.provider}/${wanted.id}` };
 	}
 
-	if (wanted.kind === "alias" || wanted.provider === phiProvider || isPersonal(wanted.provider)) {
-		return { kind: "run", key: held ? `ent/${dispatchModel}` : `${phiProvider}/${phiId}` };
+	if (wanted.kind === "alias" || wanted.provider === phiProvider || isPersonalAccount(wanted.provider)) {
+		return { kind: "run", key: held ? `ent/${dispatchModel}` : `${phiProvider}/${autoId}` };
 	}
 
 	return {
 		kind: "refuse",
-		why: `a delegate of a ${phiProvider}/${phiId} session runs on ${phiProvider}/${phiId} or a BAA account, and ${wanted.provider}/${wanted.id} is neither`,
+		why: `a delegate of a ${phiProvider}/${autoId} session runs on ${phiProvider}/${autoId} or a BAA account, and ${wanted.provider}/${wanted.id} is neither`,
 	};
 };
 

@@ -1,6 +1,6 @@
 import { afterAll } from "bun:test";
 
-import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
+import type { Api, AssistantMessage, Message, Model } from "@earendil-works/pi-ai";
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import { type SessionEntry, VIRTUAL_MODEL_STATE_ENTRY } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -43,9 +43,14 @@ afterAll(() =>
 
 const opus = getBuiltinModel("anthropic", "claude-opus-5-5");
 
-export const phiAuto = { ...opus, provider: "phi", id: "auto" };
+const modelOn = (provider: string, id: string): Model<Api> => ({ ...opus, provider, id });
 
-export const onAccount = (provider: string) => ({ ...opus, provider });
+/** The `phi` model that routes `id`. */
+export const phiModel = (id: string) => modelOn("phi", id);
+
+export const phiAuto = phiModel("auto");
+
+export const onAccount = (provider: string) => modelOn(provider, opus.id);
 
 export const syntheticChart =
 	"Patient Jane Roe, DOB 1961-03-14, MRN 4471-0932-88, admitted with diabetic ketoacidosis.";
@@ -102,8 +107,12 @@ interface World {
 	readonly home: string;
 	readonly cwd: string;
 	readonly session: string;
+	/** Whether the registry finds a `provider/id` with a login. */
+	readonly listed: (key: string) => boolean;
 	readonly judged: Array<string>;
 	readonly notices: Array<string>;
+	/** `provider/id` of each routed request, in order. */
+	readonly routed: Array<string>;
 	judge: JudgeBehavior;
 }
 
@@ -133,9 +142,11 @@ export const scriptedJudge = (world: Pick<World, "judged" | "judge">) =>
 export const worldOf = ({
 	name,
 	settings = Option.some('{ "mode": "enforce" }'),
+	catalog = Option.none(),
 }: {
 	readonly name: string;
 	readonly settings?: Option.Option<string>;
+	readonly catalog?: Option.Option<ReadonlyArray<string>>;
 }) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
@@ -148,7 +159,16 @@ export const worldOf = ({
 			yield* fs.writeFileString(`${home}/.pi/agent/phi-router.json`, Str.replace("REPO", `${home}/repo`)(text));
 		}
 
-		const world: World = { home, cwd: `${home}/repo`, session: name, judged: [], notices: [], judge: "answers" };
+		const world: World = {
+			home,
+			cwd: `${home}/repo`,
+			session: name,
+			listed: (key) => Option.match(catalog, { onNone: () => true, onSome: Arr.contains(key) }),
+			judged: [],
+			notices: [],
+			routed: [],
+			judge: "answers",
+		};
 
 		return world;
 	});
@@ -160,15 +180,18 @@ const PiStateEntry = Schema.Struct({
 	customType: Schema.Literal(VIRTUAL_MODEL_STATE_ENTRY),
 	data: Schema.Struct({
 		provider: Schema.Literal("phi"),
-		modelId: Schema.Literal("auto"),
+		modelId: Schema.String,
 		state: Schema.toEncoded(RouterState),
 	}),
 });
 
 const decodePiStateEntry = Schema.decodeUnknownOption(PiStateEntry);
 
-const piStateOf = (branch: ReadonlyArray<SessionEntry>) => {
-	const states = Arr.getSomes(Arr.map(branch, (entry) => decodePiStateEntry(entry)));
+const piStateOf = (branch: ReadonlyArray<SessionEntry>, selected: Model<Api>) => {
+	const states = Arr.filter(
+		Arr.getSomes(Arr.map(branch, (entry) => decodePiStateEntry(entry))),
+		({ data }) => data.modelId === selected.id,
+	);
 
 	return Option.map(Arr.last(states), ({ data }) => data.state);
 };
@@ -184,6 +207,7 @@ const foldedBook = (world: World, branch: ReadonlyArray<SessionEntry>) => {
 
 interface Sent {
 	readonly world: World;
+	readonly selected: Model<Api>;
 	readonly branch: Array<SessionEntry>;
 	readonly book: VerdictBook;
 	readonly reason: Request["reason"];
@@ -191,16 +215,19 @@ interface Sent {
 	readonly failed: AssistantMessage | undefined;
 }
 
-const sent = ({ world, branch, book, reason, messages, failed }: Sent) =>
+const found = (world: World) => (provider: string, id: string) =>
+	world.listed(`${provider}/${id}`) ? modelOn(provider, id) : undefined;
+
+const sent = ({ world, selected, branch, book, reason, messages, failed }: Sent) =>
 	Effect.suspend(() => {
 		const session = {
 			book: Option.some(book),
 			appendVerdicts: (data: VerdictsEntry) => branch.push({ ...custom, customType: verdictsEntryType, data }),
 		};
 
-		const request: Request = { model: phiAuto, thinkingLevel: "high", reason, messages };
+		const request: Request = { model: selected, thinkingLevel: "high", reason, messages };
 
-		for (const state of Option.toArray(piStateOf(branch))) {
+		for (const state of Option.toArray(piStateOf(branch, selected))) {
 			request.state = state;
 		}
 
@@ -211,7 +238,7 @@ const sent = ({ world, branch, book, reason, messages, failed }: Sent) =>
 		const ctx = {
 			cwd: world.cwd,
 			sessionManager: { getSessionId: () => world.session, getBranch: () => [...branch] },
-			modelRegistry: { find: (provider: string) => onAccount(provider), hasConfiguredAuth: () => true },
+			modelRegistry: { find: found(world), hasConfiguredAuth: () => true },
 			ui: { notify: (message: string) => world.notices.push(message), setStatus: Function.constVoid },
 		};
 
@@ -220,10 +247,12 @@ const sent = ({ world, branch, book, reason, messages, failed }: Sent) =>
 		Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnvRecord({ HOME: world.home })),
 		Effect.map((routed: Route) => {
 			if (routed.state !== undefined) {
-				const data = { provider: "phi", modelId: "auto", state: routed.state };
+				const data = { provider: "phi", modelId: selected.id, state: routed.state };
 
 				branch.push({ ...custom, customType: VIRTUAL_MODEL_STATE_ENTRY, data });
 			}
+
+			world.routed.push(`${routed.model.provider}/${routed.model.id}`);
 
 			return routed.model.provider;
 		}),
@@ -232,16 +261,19 @@ const sent = ({ world, branch, book, reason, messages, failed }: Sent) =>
 export const branchOf = ({
 	world,
 	entries = [],
+	selected = phiAuto,
 }: {
 	readonly world: World;
 	readonly entries?: ReadonlyArray<SessionEntry>;
+	/** The `phi` model the session runs on. */
+	readonly selected?: Model<Api>;
 }) =>
 	Effect.gen(function* () {
 		const branch = [...entries];
 		let book = yield* foldedBook(world, branch);
 
 		const send = (reason: Request["reason"], messages: ReadonlyArray<Message>, failed?: AssistantMessage) =>
-			sent({ world, branch, book, reason, messages, failed });
+			sent({ world, selected, branch, book, reason, messages, failed });
 
 		const restart = Effect.map(foldedBook(world, branch), (folded) => {
 			book = folded;

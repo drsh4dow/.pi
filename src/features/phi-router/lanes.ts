@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import { LaneLog } from "#src/client/phi-lane-log/index.ts";
+import { personalProviders } from "./gate.ts";
 import { type ClearedBy, Finding, Usage, Verdict } from "./policy/engine.ts";
 import type { Decision } from "./route.ts";
 import { Why } from "./store.ts";
@@ -15,6 +16,11 @@ import { Why } from "./store.ts";
 const Id = Schema.String.check(Schema.isPattern(/^[\w-]{1,64}$/u));
 
 const AccountId = Schema.Literals(["ultra-a", "ultra-b", "ent"]);
+
+const Carrier = Schema.Literals([...personalProviders, "ent"]);
+
+/** A model id. Ids contain dots, such as `gpt-6.1-sol`. */
+const ModelId = Schema.String.check(Schema.isPattern(/^[\w.-]{1,64}$/u));
 
 const Count = Schema.Finite;
 
@@ -44,8 +50,10 @@ const RouteLine = Schema.Struct({
 	reason: Schema.Literals(["user", "continuation", "retry", "direct"]),
 	mode: Schema.Literals(["shadow", "enforce", "force-baa", "baa-repo", "bad-settings"]),
 	why: Schema.Literals(["cleared", "sealed", "direct", "pinned", "force-baa", "baa-repo", "bad-settings"]),
-	wouldBe: AccountId,
-	dispatched: AccountId,
+	wouldBe: Carrier,
+	dispatched: Carrier,
+	/** The physical model id the request ran on. */
+	model: ModelId,
 	sources: Sources,
 	findings: Schema.Array(LineFinding),
 	judge: Usage,

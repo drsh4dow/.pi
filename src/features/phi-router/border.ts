@@ -25,7 +25,7 @@ import * as Predicate from "effect/Predicate";
 import * as Result from "effect/Result";
 
 import type { AccountId } from "#src/features/claude-accounts/index.ts";
-import { phiId, phiProvider } from "./gate.ts";
+import { isPhi } from "./gate.ts";
 import { partsOf, type Slot, writtenOnPersonal } from "./parts.ts";
 import type { ContentKey } from "./policy/engine.ts";
 import { stubs } from "./policy/policy.ts";
@@ -253,10 +253,10 @@ const isBorderLink = (data: unknown): data is BorderLink =>
 	Predicate.hasProperty(data, "report") &&
 	Predicate.isFunction(data.report);
 
-const selectsPhi = (model: Model<Api> | undefined) => model?.provider === phiProvider && model.id === phiId;
+const selectsPhi = (model: Model<Api> | undefined) => isPhi(model);
 
 /**
- * The process's scope and link. The process is protected while its selection is `phi/auto`. A switch to any other
+ * The process's scope and link. The process is protected while its selection is a `phi` model. A switch to any other
  * model is the human's choice to break the seal, so it ends the protection (ADR 0017).
  */
 export const phiBorder = (pi: Pick<ExtensionAPI, "on" | "events">) => {

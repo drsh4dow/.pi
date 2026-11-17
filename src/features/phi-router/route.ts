@@ -12,7 +12,16 @@ import * as Hash from "effect/Hash";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { type AccountId, fallbackChain, isBaaAccount } from "#src/features/claude-accounts/index.ts";
+import { isBaaAccount } from "#src/features/claude-accounts/index.ts";
+import {
+	type Carrier,
+	type Carries,
+	type PersonalAccount,
+	personalAccounts,
+	personalProviders,
+	type Placement,
+	sealedLane,
+} from "./gate.ts";
 import { partsOf } from "./parts.ts";
 import { piecesOf } from "./pieces.ts";
 import { type ContentKey, Finding, type Piece, type Usage, Verdict, verdictsFor } from "./policy/engine.ts";
@@ -207,31 +216,29 @@ export const holdOf = ({ mode, pinned }: { readonly mode: Mode; readonly pinned:
 	return pinned ? Option.some("pinned") : Option.none();
 };
 
-const Personal = Schema.Literals(["ultra-a", "ultra-b"]);
+const HomeAccount = Schema.Literals(personalAccounts);
 
-type Personal = typeof Personal.Type;
-
-const Stamp = Schema.Struct({ account: Personal, at: Schema.Finite });
+const Stamp = Schema.Struct({ account: HomeAccount, at: Schema.Finite });
 
 export const RouterState = Schema.Struct({
 	/** The personal account the session starts on, from a hash of its id, so sessions spread over both subscriptions. */
-	home: Personal,
+	home: HomeAccount,
 	/** When each personal account last answered 429. */
 	limited: Schema.Array(Stamp),
 });
 
 export type RouterState = typeof RouterState.Type;
 
-export const homeOf = (session: string): Personal =>
-	Personal.literals[Math.abs(Hash.string(session)) % Personal.literals.length] ?? "ultra-a";
+export const homeOf = (session: string): PersonalAccount =>
+	personalAccounts[Math.abs(Hash.string(session)) % personalAccounts.length] ?? "ultra-a";
 
 const limitedForMs = 30 * 60 * 1000;
 
-/** Whether an account answered 429 within the last 30 minutes. */
+/** Whether a provider answered 429 within the last 30 minutes. Only personal Claude accounts are stamped. */
 export const limitedAt =
 	({ limited, now }: { readonly limited: RouterState["limited"]; readonly now: number }) =>
-	(account: AccountId) =>
-		Arr.some(limited, (stamp) => stamp.account === account && now - stamp.at < limitedForMs);
+	(provider: Carrier) =>
+		Arr.some(limited, (stamp) => stamp.account === provider && now - stamp.at < limitedForMs);
 
 /** The stamps after a 429 on a personal account, none when the failure was anything else. */
 export const stampedAfter = ({
@@ -245,33 +252,48 @@ export const stampedAfter = ({
 }) =>
 	Option.filter(failed, ({ rateLimited }) => rateLimited).pipe(
 		Option.map(({ account }) => account),
-		Option.filter(Schema.is(Personal)),
+		Option.filter(Schema.is(HomeAccount)),
 		Option.map((account) => [...Arr.filter(limited, (stamp) => stamp.account !== account), { account, at: now }]),
 	);
 
-interface AccountChoice {
+interface PlacementChoice {
+	/** The model id this request asks for. */
+	readonly id: string;
 	readonly lane: Lane;
-	readonly home: Personal;
-	readonly limited: (account: AccountId) => boolean;
-	/** Whether the account has the dispatch model and a login. */
-	readonly usable: (account: AccountId) => boolean;
+	readonly home: PersonalAccount;
+	/** `settings.model`, which the sealed lane runs when `ent` lacks `id`. */
+	readonly fallback: string;
+	readonly limited: (provider: Carrier) => boolean;
+	/** Whether the provider has the model id and a login. */
+	readonly usable: Carries;
 	/** The request retries one that failed on `ent`. */
 	readonly failedOnBaa: boolean;
 }
 
 /**
- * The account for a lane. `personal` takes home, then the other personal account, then `ent`, skipping a limited or
- * unusable one. `ent` never fails over to a personal account, and a retry after a failure on `ent` stays there.
+ * The physical model for a lane. `personal` takes home, then the other personal providers in order, skipping one that
+ * is limited or cannot run the id, then the sealed lane. `ent` never fails over to a personal provider, and a retry
+ * after a failure on `ent` stays on the sealed lane.
  */
-export const accountFor = ({ lane, home, limited, usable, failedOnBaa }: AccountChoice): AccountId => {
+export const placementFor = ({
+	id,
+	lane,
+	home,
+	fallback,
+	limited,
+	usable,
+	failedOnBaa,
+}: PlacementChoice): Placement => {
+	const sealed = sealedLane({ id, fallback, carries: usable });
+
 	if (lane === "ent" || failedOnBaa) {
-		return "ent";
+		return sealed;
 	}
 
-	const chain = [home, ...Arr.map(fallbackChain(home), ({ id }) => id)];
+	const chain = [home, ...Arr.filter(personalProviders, (provider) => provider !== home)];
 
-	return Option.getOrElse(
-		Arr.findFirst(chain, (account) => usable(account) && !limited(account)),
-		(): AccountId => "ent",
+	return Option.match(
+		Arr.findFirst(chain, (provider) => usable(provider, id) && !limited(provider)),
+		{ onNone: () => sealed, onSome: (provider): Placement => ({ provider, id }) },
 	);
 };

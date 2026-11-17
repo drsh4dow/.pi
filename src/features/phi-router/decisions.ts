@@ -1,12 +1,14 @@
 import type { ClassifierContext, ClassifierResult, ImageContent } from "@earendil-works/pi-ai";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
 import { type Image, Judge, JudgeFailed, type JudgeInput, type Usage } from "./policy/engine.ts";
-import { identifierQuestion, judgeLimits, kindQuestion, type IdentifierKind } from "./policy/policy.ts";
+import { identifierQuestion, judgeLimits, judgeModel, kindQuestion, type IdentifierKind } from "./policy/policy.ts";
 
 /** `signal` aborts the call when the asking fiber is interrupted. */
 export type Classify = (
@@ -116,4 +118,18 @@ export const decisionsPieceJudge = (classify: Classify) => {
 			return { kind: answer.choice, usage };
 		}),
 	});
+};
+
+/** The Decisions judge on the registry's classifier. */
+export const decisionsOf = ({ modelRegistry, signal }: Pick<ExtensionContext, "modelRegistry" | "signal">) => {
+	const classifier = Option.fromUndefinedOr(modelRegistry.findOfType("classifier", "openai", judgeModel));
+
+	const classify: Classify = (context, options) =>
+		Option.match(classifier, {
+			onNone: () => Promise.reject(new Error(`no classifier openai/${judgeModel}`)),
+			onSome: (model) =>
+				modelRegistry.classify(model, context, signal === undefined ? options : { ...options, signal }),
+		});
+
+	return decisionsPieceJudge(classify);
 };

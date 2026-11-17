@@ -92,7 +92,7 @@ const forced = <State>(model: ExtensionVirtualModel<State>): ExtensionVirtualMod
 export default function borderFixtureExtension(pi: ExtensionAPI) {
 	return Effect.runPromise(
 		Effect.map(Config.String("HOME"), (home) => {
-			phiRouter({ HOME: home })({
+			phiRouter({ env: { HOME: home }, ids: [] })({
 				...pi,
 				registerVirtualModel: (model) => {
 					pi.registerVirtualModel(forced(model));

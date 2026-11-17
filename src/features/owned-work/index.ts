@@ -2,6 +2,8 @@ export { childExtensions, inheritedEnv, levels, Role, Roles, Self, selfFromEnv }
 
 export { type StagedLaunch, stagedLaunches } from "./preview.ts";
 
+export { delegateModelIds } from "./models.ts";
+
 export { entryKind } from "./recorded.ts";
 
 export { ownedWork } from "./session.ts";
