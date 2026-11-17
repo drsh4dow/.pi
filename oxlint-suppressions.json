@@ -11,9 +11,6 @@
     }
   },
   "agent/bin/merge-gate.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 3
     }

@@ -5,9 +5,8 @@ import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import * as ChildProcess from "effect/process/ChildProcess";
-import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
+import { ghPassthrough } from "#src/client/gh/index.ts";
 import { Authorization, gate, ghLayer, mergeRequestOf, verdictsFolder } from "#src/features/pr/index.ts";
 
 const [real = "gh", ...args] = process.argv.slice(2);
@@ -17,14 +16,7 @@ const exitWith = (code: number) =>
 		process.exitCode = code;
 	});
 
-const runReal = (argv: ReadonlyArray<string>) =>
-	Effect.gen(function* () {
-		const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-		const command = ChildProcess.make(real, argv, { stdin: "inherit", stdout: "inherit", stderr: "inherit" });
-		const code = yield* Effect.scoped(Effect.flatMap(spawner.spawn(command), (handle) => handle.exitCode));
-
-		yield* exitWith(code);
-	});
+const runReal = (argv: ReadonlyArray<string>) => Effect.flatMap(ghPassthrough({ binary: real, args: argv }), exitWith);
 
 const gated = (request: Parameters<ReturnType<typeof gate>>[0]) =>
 	Effect.gen(function* () {
