@@ -1,6 +1,7 @@
 import * as Arr from "effect/Array";
 import * as Brand from "effect/Brand";
 import * as Clock from "effect/Clock";
+import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Data from "effect/Data";
 import * as Duration from "effect/Duration";
@@ -202,8 +203,16 @@ const follow = (socket: string, own: typeof Labels.Type, feed: Feed) =>
 		Effect.forever,
 	);
 
-const socketOf = ({ HC_TERMINAL_SOCKET, XDG_RUNTIME_DIR = "/tmp", HC_SESSION = "default" }: NodeJS.ProcessEnv) =>
-	HC_TERMINAL_SOCKET ?? `${XDG_RUNTIME_DIR}/herdr-core/${HC_SESSION}.sock`;
+const socketConfig = Config.all({
+	socket: Config.option(Config.String("HC_TERMINAL_SOCKET")),
+	runtimeDir: Config.withDefault(Config.String("XDG_RUNTIME_DIR"), "/tmp"),
+	session: Config.withDefault(Config.String("HC_SESSION"), "default"),
+});
+
+/** Every variable is optional and any string parses, so reading the socket path cannot fail. */
+const socketPath = Effect.map(Effect.orDie(socketConfig), ({ socket, runtimeDir, session }) =>
+	Option.getOrElse(socket, () => `${runtimeDir}/herdr-core/${session}.sock`),
+);
 
 /** Sets labels on any terminal, outside the owned-work service, which needs an agent key. An empty value removes one. */
 export const labelTerminal = ({
@@ -212,7 +221,7 @@ export const labelTerminal = ({
 }: {
 	readonly terminal: TerminalAddress;
 	readonly labels: Readonly<Record<string, string>>;
-}) => change(socketOf(process.env), "terminal.label", { terminal, labels });
+}) => Effect.flatMap(socketPath, (socket) => change(socket, "terminal.label", { terminal, labels }));
 
 const lastLines = (count: number) => (text: string) => Arr.join(Arr.takeRight(Str.split(text, "\n"), count), "\n");
 
@@ -230,7 +239,7 @@ export const hcLayer = (options: HcOptions): Layer.Layer<Hc> =>
 	Layer.effect(
 		Hc,
 		Effect.gen(function* () {
-			const socket = socketOf(process.env);
+			const socket = yield* socketPath;
 			const feed = yield* makeFeed;
 			const scope = yield* Effect.scope;
 			const agent = { "ow.agent": options.agentKey };

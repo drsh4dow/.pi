@@ -217,11 +217,8 @@
     "no-undefined": {
       "count": 1
     },
-    "node/no-process-env": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
-      "count": 14
+      "count": 13
     },
     "typescript/explicit-module-boundary-types": {
       "count": 1
@@ -2788,9 +2785,6 @@
   },
   "src/features/web/index.ts": {
     "no-restricted-properties": {
-      "count": 1
-    },
-    "node/no-process-env": {
       "count": 1
     },
     "typescript/explicit-function-return-type": {
