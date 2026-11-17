@@ -73,7 +73,9 @@ const addressRows = [
 ] as const;
 
 for (const [address, isPublic] of addressRows) {
-	test(`${address} ${isPublic ? "is" : "is not"} a public address`, () => {
+	const is = isPublic ? "is" : "is not";
+
+	test(`${address} ${is} a public address`, () => {
 		expect(isPublicAddress(address)).toBe(isPublic);
 	});
 }
@@ -113,21 +115,22 @@ const resolveFrom = (answerPerCall: ReadonlyArray<ReadonlyArray<string>>) => {
 	return { calls, resolve };
 };
 
+const lookedUp = (resolve: Resolve, all: boolean): Effect.Effect<string> =>
+	Effect.callback<string>((resume) => {
+		lookupWith(resolve)("pinned.test", { all }, (error, address) => {
+			const addresses = Arr.isArray(address) ? Arr.map(address, (one) => one.address) : [address];
+
+			resume(Effect.succeed(error === null ? Arr.join(addresses, ",") : error.message));
+		});
+	});
+
 for (const all of [true, false]) {
 	for (const { name, answerPerCall, expect: wanted } of lookupRows) {
 		test(`${name} (all: ${String(all)})`, () => {
 			const { calls, resolve } = resolveFrom(answerPerCall);
 
-			const got = Effect.callback<string>((resume) => {
-				lookupWith(resolve)("pinned.test", { all }, (error, address) => {
-					const addresses = Arr.isArray(address) ? Arr.map(address, (one) => one.address) : [address];
-
-					resume(Effect.succeed(error === null ? Arr.join(addresses, ",") : error.message));
-				});
-			});
-
 			return Effect.runPromise(
-				Effect.map(got, (text) => {
+				Effect.map(lookedUp(resolve, all), (text) => {
 					expect({ got: text, calls: calls.count }).toEqual(wanted);
 				}),
 			);

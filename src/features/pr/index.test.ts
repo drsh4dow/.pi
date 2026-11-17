@@ -28,28 +28,32 @@ const octoApproved = { author: "octo", state: "APPROVED", submittedAt: "2026-11-
 
 const changeRows: ReadonlyArray<{
 	readonly name: string;
-	readonly before?: PrView;
+	readonly before: PrView;
 	readonly after: PrView;
 	readonly expect: ReadonlyArray<string>;
 }> = [
-	{ name: "an identical reading", after: open, expect: [] },
+	{ name: "an identical reading", before: open, after: open, expect: [] },
 	{
 		name: "a new head",
+		before: open,
 		after: { ...open, head: "4b7d113bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
 		expect: ["head 9c1e2a0 -> 4b7d113"],
 	},
 	{
 		name: "a new head that shares the short sha",
+		before: open,
 		after: { ...open, head: "9c1e2a0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
 		expect: ["head 9c1e2a0 -> 9c1e2a0"],
 	},
 	{
 		name: "a first decision",
+		before: open,
 		after: { ...open, reviewDecision: Option.some("APPROVED") },
 		expect: ["review decision none -> APPROVED"],
 	},
 	{
 		name: "a new review",
+		before: open,
 		after: { ...open, reviews: [...open.reviews, octoApproved] },
 		expect: ["review by octo: APPROVED"],
 	},
@@ -65,13 +69,13 @@ const changeRows: ReadonlyArray<{
 		after: { ...open, reviews: [{ ...octoApproved, state: "DISMISSED" }] },
 		expect: ["review by octo: DISMISSED"],
 	},
-	{ name: "new checks", after: { ...open, checks: "pass" }, expect: ["checks pending -> pass"] },
-	{ name: "a merge", after: { ...open, state: "MERGED" }, expect: ["state OPEN -> MERGED"] },
+	{ name: "new checks", before: open, after: { ...open, checks: "pass" }, expect: ["checks pending -> pass"] },
+	{ name: "a merge", before: open, after: { ...open, state: "MERGED" }, expect: ["state OPEN -> MERGED"] },
 ];
 
 for (const row of changeRows) {
 	test(`changes after ${row.name}`, () => {
-		expect(changes({ before: row.before ?? open, after: row.after })).toEqual(row.expect);
+		expect(changes({ before: row.before, after: row.after })).toEqual(row.expect);
 	});
 }
 

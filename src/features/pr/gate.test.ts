@@ -64,89 +64,24 @@ const ghOf = ({ views, stack }: World) => {
 
 const pr5 = viewOf(5);
 
-const rows: ReadonlyArray<{
+interface Case {
 	readonly name: string;
 	readonly argv: ReadonlyArray<string>;
 	readonly world: World;
-	readonly expect: { readonly pin: ReadonlyArray<string> } | { readonly says: ReadonlyArray<string> };
-}> = [
+}
+
+const allowedRows: ReadonlyArray<Case & { readonly pin: ReadonlyArray<string> }> = [
 	{
 		name: "lets a merge through on a pass at the head, pinned to it",
 		argv: ["pr", "merge", "5", "--squash"],
 		world: { views: [pr5], verdicts: [verdict(5, "pass")] },
-		expect: { pin: ["--match-head-commit", pr5.head] },
+		pin: ["--match-head-commit", pr5.head],
 	},
 	{
 		name: "carries a pass with notes from an older head with the same patch",
 		argv: ["pr", "merge", "5", "--squash"],
 		world: { views: [pr5], verdicts: [verdict(5, "pass+notes", oldHead)] },
-		expect: { pin: ["--match-head-commit", pr5.head] },
-	},
-	{
-		name: "refuses a pass at an older head whose patch differs",
-		argv: ["pr", "merge", "5", "--squash"],
-		world: { views: [pr5], verdicts: [verdict(5, "pass", oldHead, "patch-with-a-space")] },
-		expect: { says: ["o/r#5 has no pass at its head 5555555", "- pass by verify 5 at bbbbbbb, another patch."] },
-	},
-	{
-		name: "refuses a fail at the head",
-		argv: ["pr", "merge", "5", "--squash"],
-		world: { views: [pr5], verdicts: [verdict(5, "fail")] },
-		expect: { says: ["Verdicts found:", "- fail by verify 5 at 5555555, this head."] },
-	},
-	{
-		name: "refuses an incomplete verdict at the head",
-		argv: ["pr", "merge", "5", "--squash"],
-		world: { views: [pr5], verdicts: [verdict(5, "incomplete")] },
-		expect: { says: ["- incomplete by verify 5 at 5555555, this head."] },
-	},
-	{
-		name: "refuses changes requested on GitHub over a pass at the head",
-		argv: ["pr", "merge", "5", "--squash"],
-		world: {
-			views: [{ ...pr5, reviewDecision: Option.some("CHANGES_REQUESTED") }],
-			verdicts: [verdict(5, "pass")],
-		},
-		expect: { says: ["o/r#5 has changes requested on GitHub."] },
-	},
-	{
-		name: "refuses a pull request with no verdict, naming the call that fixes it",
-		argv: ["pr", "merge", "5", "--squash"],
-		world: { views: [pr5], verdicts: [verdict(6, "pass", headOf(5))] },
-		expect: {
-			says: ["No verdict is recorded for it.", 'with role "leaf" and reviews "https://github.com/o/r/pull/5"'],
-		},
-	},
-	{
-		name: "refuses a docs-only merge between work branches with --admin and no verdict",
-		argv: ["pr", "merge", "5", "--admin", "--delete-branch"],
-		world: { views: [pr5], verdicts: [] },
-		expect: { says: ["No verdict is recorded for it."] },
-	},
-	{
-		name: "refuses --auto on a pull request with a pass at its head",
-		argv: ["pr", "merge", "5", "--auto", "--squash"],
-		world: { views: [pr5], verdicts: [verdict(5, "pass")] },
-		expect: { says: ["Wait for the checks with `gh pr checks 5 --watch`"] },
-	},
-	{
-		name: "refuses auto-merge enabled through gh api",
-		argv: ["api", "graphql", "-f", "query=mutation { enablePullRequestAutoMerge(input: {}) { clientMutationId } }"],
-		world: { views: [pr5], verdicts: [verdict(5, "pass")] },
-		expect: { says: ["merge gate: a deferred merge is refused."] },
-	},
-	{
-		name: "refuses a stack merge whose ceiling has a pass and a lower pull request none, naming the lower one",
-		argv: ["stack", "merge", "7", "--yes", "--squash"],
-		world: {
-			views: [viewOf(6), viewOf(7)],
-			verdicts: [verdict(7, "pass")],
-			stack: [
-				{ number: "6", state: "open" },
-				{ number: "7", state: "open" },
-			],
-		},
-		expect: { says: ["It lands o/r#6, o/r#7.", "o/r#6 has no pass at its head 6666666"] },
+		pin: ["--match-head-commit", pr5.head],
 	},
 	{
 		name: "lets a stack merge through when every open pull request up to the ceiling has a pass",
@@ -160,7 +95,74 @@ const rows: ReadonlyArray<{
 				{ number: "8", state: "open" },
 			],
 		},
-		expect: { pin: [] },
+		pin: [],
+	},
+];
+
+const refusedRows: ReadonlyArray<Case & { readonly says: ReadonlyArray<string> }> = [
+	{
+		name: "refuses a pass at an older head whose patch differs",
+		argv: ["pr", "merge", "5", "--squash"],
+		world: { views: [pr5], verdicts: [verdict(5, "pass", oldHead, "patch-with-a-space")] },
+		says: ["o/r#5 has no pass at its head 5555555", "- pass by verify 5 at bbbbbbb, another patch."],
+	},
+	{
+		name: "refuses a fail at the head",
+		argv: ["pr", "merge", "5", "--squash"],
+		world: { views: [pr5], verdicts: [verdict(5, "fail")] },
+		says: ["Verdicts found:", "- fail by verify 5 at 5555555, this head."],
+	},
+	{
+		name: "refuses an incomplete verdict at the head",
+		argv: ["pr", "merge", "5", "--squash"],
+		world: { views: [pr5], verdicts: [verdict(5, "incomplete")] },
+		says: ["- incomplete by verify 5 at 5555555, this head."],
+	},
+	{
+		name: "refuses changes requested on GitHub over a pass at the head",
+		argv: ["pr", "merge", "5", "--squash"],
+		world: {
+			views: [{ ...pr5, reviewDecision: Option.some("CHANGES_REQUESTED") }],
+			verdicts: [verdict(5, "pass")],
+		},
+		says: ["o/r#5 has changes requested on GitHub."],
+	},
+	{
+		name: "refuses a pull request with no verdict, naming the call that fixes it",
+		argv: ["pr", "merge", "5", "--squash"],
+		world: { views: [pr5], verdicts: [verdict(6, "pass", headOf(5))] },
+		says: ["No verdict is recorded for it.", 'with role "leaf" and reviews "https://github.com/o/r/pull/5"'],
+	},
+	{
+		name: "refuses a docs-only merge between work branches with --admin and no verdict",
+		argv: ["pr", "merge", "5", "--admin", "--delete-branch"],
+		world: { views: [pr5], verdicts: [] },
+		says: ["No verdict is recorded for it."],
+	},
+	{
+		name: "refuses --auto on a pull request with a pass at its head",
+		argv: ["pr", "merge", "5", "--auto", "--squash"],
+		world: { views: [pr5], verdicts: [verdict(5, "pass")] },
+		says: ["Wait for the checks with `gh pr checks 5 --watch`"],
+	},
+	{
+		name: "refuses auto-merge enabled through gh api",
+		argv: ["api", "graphql", "-f", "query=mutation { enablePullRequestAutoMerge(input: {}) { clientMutationId } }"],
+		world: { views: [pr5], verdicts: [verdict(5, "pass")] },
+		says: ["merge gate: a deferred merge is refused."],
+	},
+	{
+		name: "refuses a stack merge whose ceiling has a pass and a lower pull request none, naming the lower one",
+		argv: ["stack", "merge", "7", "--yes", "--squash"],
+		world: {
+			views: [viewOf(6), viewOf(7)],
+			verdicts: [verdict(7, "pass")],
+			stack: [
+				{ number: "6", state: "open" },
+				{ number: "7", state: "open" },
+			],
+		},
+		says: ["It lands o/r#6, o/r#7.", "o/r#6 has no pass at its head 6666666"],
 	},
 	{
 		name: "checks every pull request of a stack merged by its stack number",
@@ -173,49 +175,60 @@ const rows: ReadonlyArray<{
 				{ number: "7", state: "open" },
 			],
 		},
-		expect: { says: ["It lands o/r#6, o/r#7.", "o/r#7 has no pass"] },
+		says: ["It lands o/r#6, o/r#7.", "o/r#7 has no pass"],
 	},
 	{
 		name: "refuses a stack merge it cannot enumerate",
 		argv: ["stack", "merge", "7", "--yes"],
 		world: { views: [viewOf(7)], verdicts: [verdict(7, "pass")] },
-		expect: { says: ["could not read what it lands", "stacks/7 failed: HTTP 404"] },
+		says: ["could not read what it lands", "stacks/7 failed: HTTP 404"],
 	},
 	{
 		name: "refuses a merge when it cannot read the pull request",
 		argv: ["pr", "merge", "8", "--squash"],
 		world: { views: [pr5], verdicts: [] },
-		expect: { says: ["gh pr view 8 failed: HTTP 404"] },
+		says: ["gh pr view 8 failed: HTTP 404"],
 	},
 ];
 
 const whyOf = Authorization.$match({ Allow: () => "allowed", Refuse: ({ why }) => why });
 
-for (const [index, row] of rows.entries()) {
-	test(`the merge gate ${row.name}`, () => {
-		const root = `${scratch}/${String(index)}`;
+test.each(allowedRows)("the merge gate $name", (row) => {
+	const root = `${scratch}/${row.name}`;
 
-		const check = Effect.gen(function* () {
-			yield* Effect.forEach(row.world.verdicts, recordVerdict(root));
+	const check = Effect.gen(function* () {
+		yield* Effect.forEach(row.world.verdicts, recordVerdict(root));
 
-			const request = Option.getOrThrow(mergeRequestOf(row.argv));
-			const authorization = yield* gate(root)(request);
+		const request = Option.getOrThrow(mergeRequestOf(row.argv));
+		const authorization = yield* gate(root)(request);
 
-			if ("pin" in row.expect) {
-				expect(authorization).toEqual(Authorization.Allow({ pin: row.expect.pin }));
-			} else {
-				const why = whyOf(authorization);
-
-				for (const line of row.expect.says) {
-					expect(why).toContain(line);
-				}
-			}
-		});
-
-		const world = Layer.merge(ghOf(row.world), NodeServices.layer);
-
-		return Effect.runPromise(Effect.provide(check, world));
+		expect(authorization).toEqual(Authorization.Allow({ pin: row.pin }));
 	});
-}
+
+	const world = Layer.merge(ghOf(row.world), NodeServices.layer);
+
+	return Effect.runPromise(Effect.provide(check, world));
+});
+
+test.each(refusedRows)("the merge gate $name", (row) => {
+	const root = `${scratch}/${row.name}`;
+
+	const check = Effect.gen(function* () {
+		yield* Effect.forEach(row.world.verdicts, recordVerdict(root));
+
+		const request = Option.getOrThrow(mergeRequestOf(row.argv));
+		const authorization = yield* gate(root)(request);
+
+		const why = whyOf(authorization);
+
+		for (const line of row.says) {
+			expect(why).toContain(line);
+		}
+	});
+
+	const world = Layer.merge(ghOf(row.world), NodeServices.layer);
+
+	return Effect.runPromise(Effect.provide(check, world));
+});
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${scratch}`.quiet())));

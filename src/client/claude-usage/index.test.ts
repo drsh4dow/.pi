@@ -161,9 +161,9 @@ test("a probe the weekly limit rejects still reads the limit from the headers, a
 			expect(limited.sent).toHaveLength(1);
 			expect(limited.sent[0]?.url).toBe("https://api.anthropic.com/v1/messages");
 
-			const body = yield* decodeSent(limited.sent[0]?.body ?? "");
+			const bodies = yield* Effect.forEach(limited.sent, ({ body }) => decodeSent(body));
 
-			expect(body).toEqual({ model: "claude-opus-5-5", max_tokens: 1 });
+			expect(bodies).toEqual([{ model: "claude-opus-5-5", max_tokens: 1 }]);
 		}).pipe(Effect.provide(limited.layer)),
 	));
 

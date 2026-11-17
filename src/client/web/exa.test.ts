@@ -142,7 +142,9 @@ const exaClaimRows = [
 ] as const;
 
 for (const [url, claimed] of exaClaimRows) {
-	test(`Exa ${claimed ? "may" : "may not"} read ${url}`, () => {
+	const may = claimed ? "may" : "may not";
+
+	test(`Exa ${may} read ${url}`, () => {
 		expect(exaContents.claims(new URL(url))).toBe(claimed);
 	});
 }
