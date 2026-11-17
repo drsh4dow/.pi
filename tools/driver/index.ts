@@ -279,8 +279,9 @@ export const scenario = <Failure>(spec: Scenario<Failure>): void => {
 	if (inService()) {
 		NodeRuntime.runMain(Effect.provide(program, NodeServices.layer), {
 			disableErrorReporting: true,
-			// Exits on success too, which runMain leaves to the event loop: `stdinEnded` keeps stdin open.
-			teardown: (exit) => process.exit(exit.pipe(codeOf)),
+			teardown: (exit, onExit) => {
+				onExit(codeOf(exit));
+			},
 		});
 	} else {
 		runAsService({ name, argv: process.argv });

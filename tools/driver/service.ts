@@ -9,6 +9,7 @@
  * every delegate with, refuses the user manager from inside one.
  */
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
+import * as NodeStream from "@effect/platform-node/NodeStream";
 import * as Arr from "effect/Array";
 import * as Cause from "effect/Cause";
 import * as Console from "effect/Console";
@@ -18,7 +19,6 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Rec from "effect/Record";
 import type * as Runtime from "effect/Runtime";
-import * as Stdio from "effect/Stdio";
 import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
 
@@ -27,12 +27,14 @@ const marker = "PI_DRIVER_SERVICE";
 /** Whether this process is the driver inside the run's service. */
 export const inService = (): boolean => Bun.env[marker] === "1";
 
-/** Interrupts once stdin ends: the process the human started closed it, or died. */
-export const stdinEnded = Effect.gen(function* () {
-	const stdio = yield* Stdio.Stdio;
-
-	yield* Stream.runDrain(stdio.stdin);
-}).pipe(Effect.ignore, Effect.andThen(Effect.interrupt));
+/**
+ * Interrupts once stdin ends: the process the human started closed it, or died. It closes stdin when it ends or is
+ * interrupted, so an open stdin never keeps the driver's process alive.
+ */
+export const stdinEnded = Stream.runDrain(NodeStream.fromReadable({ evaluate: () => process.stdin })).pipe(
+	Effect.ignore,
+	Effect.andThen(Effect.interrupt),
+);
 
 /** Pure. The `systemd-run` command that runs `argv` as the run's service, in the caller's folder and environment. */
 const serviceArgv = (command: {

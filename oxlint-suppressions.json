@@ -3066,9 +3066,6 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 6
-    },
-    "unicorn/no-process-exit": {
-      "count": 1
     }
   },
   "tools/driver/lines.ts": {

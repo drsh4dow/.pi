@@ -17,6 +17,5 @@
 	"src/features/pr/merge-gate.scenario.ts no-comments": 2,
 	"src/features/state-folder/index.ts no-comments": 2,
 	"tools/driver/core.ts no-comments": 1,
-	"tools/driver/index.ts no-comments": 1,
 	"tools/driver/probe.ts no-comments": 1
 }
