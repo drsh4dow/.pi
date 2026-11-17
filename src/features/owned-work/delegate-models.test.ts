@@ -118,17 +118,16 @@ const rows: ReadonlyArray<Row> = [
 	},
 ];
 
-for (const row of rows) {
-	test(`a delegate of ${row.from} that names ${row.name} runs on ${row.runs}`, () =>
-		Effect.runPromise(
-			Effect.map(
-				Effect.promise(() => delegateModel(row)),
-				(model) => {
-					expect(model).toBe(row.runs);
-				},
-			),
-		));
-}
+test.each(rows)("a delegate of $from that names $name runs on $runs", (row) =>
+	Effect.runPromise(
+		Effect.map(
+			Effect.promise(() => delegateModel(row)),
+			(model) => {
+				expect(model).toBe(row.runs);
+			},
+		),
+	),
+);
 
 const continuedFrom = (parent: Model<Api>, ref: string) => {
 	const caller = { ...callerOf(), model: parent, modelRegistry: { getAll: () => registry } };
@@ -179,13 +178,15 @@ const continuations = [
 	},
 ];
 
-for (const { from, parent, ref, expect: expected } of continuations) {
-	const outcome = expected.isError ? "is refused, and nothing starts" : `relaunches on ${String(expected.started[0])}`;
+const outcomeOf = ({ expect: expected }: (typeof continuations)[number]): string =>
+	expected.isError ? "is refused, and nothing starts" : `relaunches on ${String(expected.started[0])}`;
 
-	test(`continuing ${ref} from ${from} ${outcome}`, () =>
+test.each(Arr.map(continuations, (row) => ({ ...row, outcome: outcomeOf(row) })))(
+	"continuing $ref from $from $outcome",
+	({ parent, ref, expect: expected }) =>
 		runtime.runPromise(
 			Effect.map(continuedFrom(parent, ref), (got) => {
 				expect(got).toEqual(expected);
 			}),
-		));
-}
+		),
+);
