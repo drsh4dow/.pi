@@ -2660,9 +2660,6 @@
     }
   },
   "src/features/prompt/index.ts": {
-    "node/no-process-env": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 2
     },
