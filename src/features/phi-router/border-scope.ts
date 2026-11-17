@@ -6,12 +6,11 @@
  */
 import type { Api, Model, Provider, ProviderStreams } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 
 import { type BorderLink, guardedApi, type Scope } from "./border.ts";
-import { borderedBuiltins, isPhi, type Personal, phiProvider } from "./gate.ts";
+import { borderedBuiltins, isPhi, type Personal } from "./gate.ts";
 
 type Selection = Pick<Model<Api>, "provider" | "id">;
 
@@ -24,12 +23,7 @@ const isBorderLink = (data: unknown): data is BorderLink =>
 	Predicate.hasProperty(data, "report") &&
 	Predicate.isFunction(data.report);
 
-const selectsPhi = (model: Selection | undefined, ctx: BorderContext) =>
-	isPhi(model) ||
-	Arr.some(ctx.sessionManager.getBranch(), (entry) => entry.type === "model_change" && entry.provider === phiProvider);
-
 type BorderContext = Pick<ExtensionContext, "model"> & {
-	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;
 	readonly modelRegistry: Pick<ExtensionContext["modelRegistry"], "getProvider">;
 };
 
@@ -76,8 +70,8 @@ const guardBuiltins = ({
 };
 
 /**
- * The process's scope and link, and the bordered builtins. A session that selects a `phi` model, or whose branch ever
- * did, stays protected until the next session starts, so a later switch to a raw personal model is still guarded.
+ * The process's scope and link, and the bordered builtins. The process is protected while its selection is a `phi`
+ * model. A switch to any other model is the human's choice to break the seal, so it ends the protection (ADR 0017).
  */
 export const borderOf = ({
 	events,
@@ -103,11 +97,11 @@ export const borderOf = ({
 	return {
 		wrap: (account: Personal) => (api: ProviderStreams) => guardedApi({ api, account, scope }),
 		sessionStarted: (ctx: BorderContext) => {
-			protectedSession = selectsPhi(ctx.model, ctx);
+			protectedSession = isPhi(ctx.model);
 			guardBuiltins({ registry: ctx.modelRegistry, mine, scope, register });
 		},
-		modelSelected: (model: Selection, ctx: BorderContext) => {
-			protectedSession ||= selectsPhi(model, ctx);
+		modelSelected: (model: Selection) => {
+			protectedSession = isPhi(model);
 		},
 		agentStarting: (ctx: BorderContext) => {
 			guardBuiltins({ registry: ctx.modelRegistry, mine, scope, register });
@@ -127,8 +121,8 @@ export const phiBorder = (pi: Pick<ExtensionAPI, "on" | "events" | "registerProv
 		border.sessionStarted(ctx);
 	});
 
-	pi.on("model_select", (event, ctx) => {
-		border.modelSelected(event.model, ctx);
+	pi.on("model_select", (event) => {
+		border.modelSelected(event.model);
 	});
 
 	pi.on("before_agent_start", (_event, ctx) => {

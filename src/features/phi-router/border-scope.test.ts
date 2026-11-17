@@ -245,23 +245,30 @@ const personalSees = (start: (border: ReturnType<typeof borderOf>, world: World)
 
 const stubbed: Array<Array<Message>> = [[{ role: "user", content: stubs.unknown, timestamp: 1 }]];
 
-test("a session on any phi model, or whose branch ever selected one, is protected", () => {
+test("a session is protected while its selection is a phi model", () => {
 	const onFable = personalSees((border, world) => {
 		border.sessionStarted(sessionOn({ model: phiModel("claude-fable-5-2"), world }));
 	});
 
-	const switchedAway = personalSees((border, world) => {
+	const selectedLater = personalSees((border, world) => {
+		border.sessionStarted(sessionOn({ model: onAccount("ultra-a"), world }));
+		border.modelSelected(phiModel("glm-5.3-flash"));
+	});
+
+	expect([onFable, selectedLater]).toEqual([stubbed, stubbed]);
+});
+
+test("a switch away from a phi model breaks the seal: the personal account gets the request untouched", () => {
+	const resumedAway = personalSees((border, world) => {
 		border.sessionStarted(sessionOn({ model: onAccount("ultra-a"), world, branch: [modelChange("gpt-6.1-sol")] }));
 	});
 
-	const selectedLater = personalSees((border, world) => {
-		const session = sessionOn({ model: onAccount("ultra-a"), world });
-
-		border.sessionStarted(session);
-		border.modelSelected(phiModel("glm-5.3-flash"), session);
+	const switchedAway = personalSees((border, world) => {
+		border.sessionStarted(sessionOn({ model: phiModel("auto"), world }));
+		border.modelSelected(onAccount("ultra-a"));
 	});
 
-	expect([onFable, switchedAway, selectedLater]).toEqual([stubbed, stubbed, stubbed]);
+	expect([resumedAway, switchedAway]).toEqual([[[asked]], [[asked]]]);
 });
 
 test("a session that never selected a phi model is open", () => {

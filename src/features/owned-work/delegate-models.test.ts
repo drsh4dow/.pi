@@ -59,6 +59,15 @@ const pinned: SessionEntry = {
 	data: { pinned: true },
 };
 
+const selectedPhiAuto: SessionEntry = {
+	type: "model_change",
+	id: "m0000001",
+	parentId: "",
+	timestamp: "2026-05-14T10:00:00.000Z",
+	provider: "phi",
+	modelId: "auto",
+};
+
 /** What a delegate runs: a model, a model with the sentence its tool result carries, or a refusal. */
 type Runs = string | { readonly model: string; readonly substituted: string };
 
@@ -144,6 +153,13 @@ const rows: ReadonlyArray<Row> = [
 	{ from: "an ent parent", parent: onEnt, name: "phi/auto", runs: "refused" },
 	{ from: "an ultra-a parent", parent: on("ultra-a", opus.id), name: "investigator", runs: "openai/gpt-6.1-sol" },
 	{ from: "an ultra-a parent", parent: on("ultra-a", opus.id), name: "fable", runs: "ultra-a/claude-fable-5-2" },
+	{
+		from: "a parent switched from phi/auto to ultra-a",
+		parent: on("ultra-a", opus.id),
+		branch: [selectedPhiAuto],
+		name: "investigator",
+		runs: "openai/gpt-6.1-sol",
+	},
 ];
 
 test.each(rows)("a delegate of $from that names $name runs on $runs", (row) =>
