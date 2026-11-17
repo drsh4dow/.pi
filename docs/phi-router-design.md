@@ -123,30 +123,30 @@ In a `phi/auto` session the router adds a `phi-bridge` prompt section through `b
 - **Modes.** `enforce` dispatches the decision. `shadow` judges, records verdicts, dispatches `ent` and logs `wouldBe` and `wouldStub`. `force-baa` holds.
 - **Lane log.** `~/.local/state/pi-phi-router/lanes/<session>.jsonl`. A `route` line holds reason, mode, `wouldBe`, `dispatched`, `why`, piece counts by source (cache, rule, judge, personal reply, fixture, failure), findings as rule ids, kinds, quotes or failure reasons, judge calls, input tokens, cost, milliseconds and `wouldStub`. A `border` line holds the wrapper's counts. No content and no keys, since the hash of a short value such as a bare SSN can be reversed.
 - **429.** v1's `limited` stamps stay in the router's virtual-model state. Home is the session's hashed personal account, then the other personal account, then `ent`. `fallbackChain` still sends nothing from `ent` to a personal account.
-- **Model switches.** `selection.ts` stays, because the border guards only the Claude accounts. A switch to a raw personal model is safe at the border but would stub every new message.
+- **Model switches.** The human's pick stands (ADR 0015). A switch to a raw personal Claude model still passes the border, which stubs every sealed or unjudged message.
 - **Codemode.** v1's guard stays. It now matters only for classifier and image models of other providers.
 - **Threads.** BAA accounts set `supportsMessageThreads: false`, since the BAA org rejects threads.
 
 ## Module map
 
-| File                                      | Owns                                                                                                                                      |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `policy/policy.ts`                        | Kinds, defaults, questions, counter-examples, synthetic list, thresholds, window, limits, `policyVersion`.                                |
-| `policy/rules.ts`                         | The five rules, each one pattern with its validation inside it, `firstHit`.                                                               |
-| `policy/quotes.ts`                        | `quotingReplies`: the `ent` replies that repeat a line of sealed content.                                                                 |
-| `policy/synthetic.ts`                     | The caller's synthetic list (`Synthetic`) and blanking to `[synthetic-id]`.                                                               |
-| `policy/expand.ts`                        | Decoders, unchanged from v1.                                                                                                              |
-| `policy/engine.ts`                        | `ContentKey`, `Piece`, `Verdict`, `Judge`, `verdictsFor`, band logic, failure sealing, synthetic blanking, fixtures.                      |
-| `parts.ts`                                | `partsOf` and the key function: pi-ai `Message` to stub-able parts. The border reads only this.                                           |
-| `pieces.ts`                               | `piecesOf`: each part's kind, rendering and the window.                                                                                   |
-| `border.ts`                               | `guard`, stubs, `guardedApi`, `phiBorder` (scope and link).                                                                               |
-| `store.ts`                                | `VerdictBook`, the fold, the entry schema, the system cache file.                                                                         |
-| `decisions.ts`                            | The `Judge` layer over OpenAI Decisions, with images and usage.                                                                           |
-| `route.ts`                                | `decide`, `laneOf`, `accountFor`.                                                                                                         |
-| `dispatch.ts`                             | pi's `route()` (`routeWith`), the account and router state, the fail-closed path, the `session_compact` judge, the Decisions judge layer. |
-| `gate.ts`                                 | `delegateTarget` with `held`, the codemode guard and `unsafeReach`.                                                                       |
-| `selection.ts`, `settings.ts`, `lanes.ts` | Switch restore, settings, the log.                                                                                                        |
-| `index.ts`                                | The virtual model, the `phi-bridge` section, `/phi`, the fold at `session_start`, the border link, `delegateTargetOf`, and the hooks.     |
+| File                      | Owns                                                                                                                                      |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `policy/policy.ts`        | Kinds, defaults, questions, counter-examples, synthetic list, thresholds, window, limits, `policyVersion`.                                |
+| `policy/rules.ts`         | The five rules, each one pattern with its validation inside it, `firstHit`.                                                               |
+| `policy/quotes.ts`        | `quotingReplies`: the `ent` replies that repeat a line of sealed content.                                                                 |
+| `policy/synthetic.ts`     | The caller's synthetic list (`Synthetic`) and blanking to `[synthetic-id]`.                                                               |
+| `policy/expand.ts`        | Decoders, unchanged from v1.                                                                                                              |
+| `policy/engine.ts`        | `ContentKey`, `Piece`, `Verdict`, `Judge`, `verdictsFor`, band logic, failure sealing, synthetic blanking, fixtures.                      |
+| `parts.ts`                | `partsOf` and the key function: pi-ai `Message` to stub-able parts. The border reads only this.                                           |
+| `pieces.ts`               | `piecesOf`: each part's kind, rendering and the window.                                                                                   |
+| `border.ts`               | `guard`, stubs, `guardedApi`, `phiBorder` (scope and link).                                                                               |
+| `store.ts`                | `VerdictBook`, the fold, the entry schema, the system cache file.                                                                         |
+| `decisions.ts`            | The `Judge` layer over OpenAI Decisions, with images and usage.                                                                           |
+| `route.ts`                | `decide`, `laneOf`, `accountFor`.                                                                                                         |
+| `dispatch.ts`             | pi's `route()` (`routeWith`), the account and router state, the fail-closed path, the `session_compact` judge, the Decisions judge layer. |
+| `gate.ts`                 | `delegateTarget` with `held`, the codemode guard and `unsafeReach`.                                                                       |
+| `settings.ts`, `lanes.ts` | Settings, the log.                                                                                                                        |
+| `index.ts`                | The virtual model, the `phi-bridge` section, `/phi`, the fold at `session_start`, the border link, `delegateTargetOf`, and the hooks.     |
 
 claude-accounts gains a `wrap` on `accountProvider` and `supportsMessageThreads: false` for BAA accounts. The compaction feature gains one sentence in a `phi/auto` session. A request flows from `index.ts` to `dispatch.ts` to `route.ts` to `policy/engine.ts`. The border flows from pi-ai to `border.ts`.
 
@@ -179,8 +179,8 @@ Grafts and fixes:
 Rejected:
 
 - Candidate 2's border-owned classification and `ent` redirect, for the reasons above.
+- Candidate 3's removal of `selection.ts`. The border guards only the Claude accounts, so a switch to another provider would carry sealed content. ADR 0015 later removed it, because a switch is the human's call.
 - Candidate 3's global cross-session verdict cache. It would put hashes of conversation content in a new file, and the hash of a short value can be reversed.
-- Candidate 3's removal of `selection.ts`. The border guards only the Claude accounts, so a switch to another provider would carry sealed content.
 - Candidate 1's clean-session summaries on `ultra`. They relied on judging a blob `route()` never sees.
 
 ## Changes to the plan

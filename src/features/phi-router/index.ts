@@ -35,7 +35,6 @@ import { partsOf } from "./parts.ts";
 import { Judge } from "./policy/engine.ts";
 import { stubs } from "./policy/policy.ts";
 import { holdOf, pinEntryType, pinnedOn, type RouterState } from "./route.ts";
-import { keepProtected, keepProtectedOnStart } from "./selection.ts";
 import { defaultModel, readSettings } from "./settings.ts";
 import { bookOf, type VerdictBook, verdictsEntryType } from "./store.ts";
 
@@ -201,13 +200,10 @@ const phiAuto = (host: Host, session: () => RouterSession): ExtensionVirtualMode
 export const phiRouter = (env: Env) => (pi: ExtensionAPI) => {
 	const host = piHost(servicesOf(env));
 	const { fold, session } = sessionBook(pi, host);
-	const setModel = (model: Parameters<ExtensionAPI["setModel"]>[0]) => pi.setModel(model);
 
 	pi.registerVirtualModel(phiAuto(host, session));
 
-	pi.on("session_start", (_event, ctx) =>
-		host.run(Effect.andThen(fold(ctx), keepProtectedOnStart({ ctx, setModel }))),
-	);
+	pi.on("session_start", (_event, ctx) => host.run(fold(ctx)));
 
 	pi.on("session_compact", (event, ctx) => {
 		const judged = compactionJudged({ compaction: event.compactionEntry, ctx, session: session() }).pipe(
@@ -228,5 +224,4 @@ export const phiRouter = (env: Env) => (pi: ExtensionAPI) => {
 		phiCommand(pi, host, () => session().book),
 	);
 	pi.on("tool_call", (event, ctx) => guardCodemode({ event, ctx }));
-	pi.on("model_select", (event, ctx) => host.run(keepProtected({ event, ctx, setModel })));
 };
