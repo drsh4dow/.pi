@@ -907,9 +907,6 @@
     "no-undefined": {
       "count": 6
     },
-    "node/no-top-level-await": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 5
     }
@@ -920,9 +917,6 @@
     },
     "no-undefined": {
       "count": 5
-    },
-    "node/no-top-level-await": {
-      "count": 2
     },
     "typescript/explicit-function-return-type": {
       "count": 7
