@@ -14,9 +14,7 @@ import { storeLayer } from "#src/client/web-cache/index.ts";
 import { Body, type Hits, type Page, type PublicUrl, Web, WebError } from "#src/client/web/index.ts";
 import { fetchCall, replyOf, searchCall } from "./tools.ts";
 
-const root = await Effect.runPromise(
-	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.makeTempDirectory()).pipe(Effect.provide(NodeServices.layer)),
-);
+const root = `${Bun.env["TMPDIR"] ?? "/tmp"}/web-tools-${String(process.pid)}`;
 
 afterAll(() =>
 	Effect.runPromise(

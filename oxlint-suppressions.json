@@ -299,9 +299,6 @@
     }
   },
   "src/client/pi-sessions/branch.test.ts": {
-    "node/no-top-level-await": {
-      "count": 1
-    },
     "oxc/no-optional-chaining": {
       "count": 1
     },
@@ -329,9 +326,6 @@
     },
     "jsdoc/require-returns": {
       "count": 2
-    },
-    "node/no-top-level-await": {
-      "count": 1
     },
     "typescript/explicit-function-return-type": {
       "count": 3
@@ -382,9 +376,6 @@
   "src/client/web-cache/index.test.ts": {
     "jest/prefer-each": {
       "count": 2
-    },
-    "node/no-top-level-await": {
-      "count": 3
     },
     "typescript/explicit-function-return-type": {
       "count": 1
@@ -835,9 +826,6 @@
     },
     "no-undefined": {
       "count": 2
-    },
-    "node/no-top-level-await": {
-      "count": 1
     },
     "typescript/explicit-function-return-type": {
       "count": 9
@@ -2792,9 +2780,6 @@
       "count": 1
     },
     "jest/prefer-each": {
-      "count": 1
-    },
-    "node/no-top-level-await": {
       "count": 1
     },
     "oxc/no-optional-chaining": {

@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import { type SessionEntry, SessionManager } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -12,8 +12,17 @@ import { PiSessions, piSessionsLayer } from "./index.ts";
 
 const piSessions = Layer.provide(piSessionsLayer, NodeServices.layer);
 
-const scratch = await Effect.runPromise(
-	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.makeTempDirectory()).pipe(Effect.provide(NodeServices.layer)),
+const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/pi-sessions-branch-${String(process.pid)}`;
+
+beforeAll(() =>
+	Effect.runPromise(
+		Effect.flatMap(FileSystem.FileSystem, (fs) =>
+			Effect.andThen(
+				fs.remove(scratch, { recursive: true, force: true }),
+				fs.makeDirectory(scratch, { recursive: true }),
+			),
+		).pipe(Effect.provide(NodeServices.layer)),
+	),
 );
 
 afterAll(() =>
