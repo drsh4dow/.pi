@@ -4,6 +4,7 @@ import * as Arr from "effect/Array";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import * as Predicate from "effect/Predicate";
 import * as Rec from "effect/Record";
 import * as Str from "effect/String";
 
@@ -128,7 +129,10 @@ export const decisionsOf = ({ modelRegistry, signal }: Pick<ExtensionContext, "m
 		Option.match(classifier, {
 			onNone: () => Promise.reject(new Error(`no classifier openai/${judgeModel}`)),
 			onSome: (model) =>
-				modelRegistry.classify(model, context, signal === undefined ? options : { ...options, signal }),
+				modelRegistry.classify(model, context, {
+					...options,
+					signal: AbortSignal.any(Arr.filter([options.signal, signal], Predicate.isNotUndefined)),
+				}),
 		});
 
 	return decisionsPieceJudge(classify);

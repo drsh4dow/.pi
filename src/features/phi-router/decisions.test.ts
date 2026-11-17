@@ -1,11 +1,13 @@
 import { expect, test } from "bun:test";
 
 import type { ClassifierContext, ClassifierResult, ImageContent } from "@earendil-works/pi-ai";
+import { ModelRegistry, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
+import * as Fiber from "effect/Fiber";
 
-import { decisionsPieceJudge, type Classify } from "./decisions.ts";
+import { decisionsOf, decisionsPieceJudge, type Classify } from "./decisions.ts";
 import { pieceOf } from "./policy/engine.fixture.ts";
 import * as Engine from "./policy/engine.ts";
 
@@ -150,5 +152,48 @@ test("an aborted call interrupts the judging instead of sealing the piece", () =
 			const exit = yield* judgedOn(replying({ identifier: aborted, kind: aborted }).classify).pipe(Effect.exit);
 
 			expect(exit.pipe(Exit.hasInterrupts)).toBe(true);
+		}),
+	));
+
+const stalled: Promise<ClassifierResult> = Effect.runPromise(Effect.never);
+
+/** A registry whose classifier never answers and records the signal of each call. */
+const stalledRegistry = (signals: Array<AbortSignal | undefined>) =>
+	Effect.map(
+		Effect.promise(() => ModelRuntime.create({ authPath: "/nonexistent/auth.json" })),
+		(runtime) => {
+			const registry = new ModelRegistry(runtime);
+
+			registry.classify = (_model, _context, options) => {
+				signals.push(options?.signal);
+
+				return stalled;
+			};
+
+			return registry;
+		},
+	);
+
+const liveSignal = new AbortController().signal;
+
+test("an interrupted judge aborts its classifier request while the extension's own signal stays live", () =>
+	run(
+		Effect.gen(function* () {
+			const signals: Array<AbortSignal | undefined> = [];
+			const modelRegistry = yield* stalledRegistry(signals);
+			const judge = decisionsOf({ modelRegistry, signal: liveSignal });
+
+			const verdicts = Effect.provideService(
+				Engine.verdictsFor([pieceOf("x")], () => false),
+				Engine.Judge,
+				judge,
+			);
+
+			const fiber = yield* Effect.forkDetach(verdicts);
+
+			yield* Effect.yieldNow;
+			yield* Fiber.interrupt(fiber);
+
+			expect(Arr.map(signals, (signal) => signal?.aborted)).toEqual([true]);
 		}),
 	));
