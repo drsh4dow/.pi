@@ -7,7 +7,7 @@ import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
 import { githubTokenLayer } from "./github.ts";
 import { bytes, docsPage, missing, plain, prose } from "./transport.fixture.ts";
-import { type ReadRow, readOutcome, readRows, webFor } from "./web.fixture.ts";
+import { type ReadRow, readOutcome, readRow, webFor } from "./web.fixture.ts";
 
 const issue = {
 	title: "bun install hangs behind a proxy",
@@ -109,7 +109,7 @@ const rows: ReadonlyArray<ReadRow> = [
 	},
 ];
 
-readRows(rows);
+test.each(rows)("$name", readRow);
 
 const readmeRoutes = {
 	"GET https://api.github.com/repos/o/r/readme": (_body: string, headers: Readonly<Record<string, string>>) =>

@@ -9,7 +9,7 @@ import * as TestClock from "effect/testing/TestClock";
 
 import { exaContents } from "./sites.ts";
 import { inTurn, plain, prose, type Reply } from "./transport.fixture.ts";
-import { readOutcome, readRows, webFor } from "./web.fixture.ts";
+import { type ReadRow, readOutcome, readRow, webFor } from "./web.fixture.ts";
 
 const broken = () => new Response("", { status: 500 });
 
@@ -57,7 +57,7 @@ test("Exa is asked again after it answers 503", () =>
 
 const huge = plain(Str.repeat(26 * 1024 * 1024)("x"));
 
-readRows([
+test.each<ReadRow>([
 	{
 		name: "an Exa answer over 25 MB is refused, and Exa is not asked again",
 		url: "https://docs.example/broken",
@@ -69,7 +69,7 @@ readRows([
 		expect: ["https://api.exa.ai/contents is over 25 MB"],
 		absent: ["via exa"],
 	},
-]);
+])("$name", readRow);
 
 const exaClaimRows = [
 	["https://bun.sh/docs?q=bun", true],
