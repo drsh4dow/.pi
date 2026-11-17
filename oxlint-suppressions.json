@@ -2,6 +2,9 @@
   "agent/bin/gh.test.ts": {
     "typescript/explicit-function-return-type": {
       "count": 5
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "agent/bin/merge-gate.ts": {
@@ -130,6 +133,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 4
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/client/claude-usage/index.ts": {
@@ -157,6 +163,9 @@
   "src/client/gh/index.test.ts": {
     "typescript/explicit-function-return-type": {
       "count": 7
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/client/gh/index.ts": {
@@ -264,6 +273,11 @@
       "count": 3
     }
   },
+  "src/client/phi-verdict-cache/index.ts": {
+    "unicorn/no-array-for-each": {
+      "count": 1
+    }
+  },
   "src/client/pi-cli/index.test.ts": {
     "typescript/explicit-function-return-type": {
       "count": 2
@@ -278,6 +292,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 5
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/client/pi-sessions/branch.test.ts": {
@@ -300,6 +317,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 6
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/client/pi-sessions/spend.test.ts": {
@@ -311,6 +331,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 3
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/client/pi-sessions/spend.ts": {
@@ -324,6 +347,19 @@
       "count": 5
     },
     "typescript/explicit-module-boundary-types": {
+      "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
+    }
+  },
+  "src/client/source-stamp/index.ts": {
+    "unicorn/no-array-for-each": {
+      "count": 1
+    }
+  },
+  "src/client/state-folder/index.ts": {
+    "unicorn/no-array-for-each": {
       "count": 1
     }
   },
@@ -339,6 +375,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/client/verdicts/index.ts": {
@@ -353,16 +392,25 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 3
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/client/web-cache/index.test.ts": {
     "typescript/explicit-function-return-type": {
       "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 3
     }
   },
   "src/client/web-cache/index.ts": {
     "typescript/explicit-function-return-type": {
       "count": 8
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/client/web/direct.ts": {
@@ -646,11 +694,17 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 12
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/features/compaction/edited-guide.scenario.ts": {
     "typescript/explicit-function-return-type": {
       "count": 10
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/features/compaction/guide.fixture.ts": {
@@ -675,6 +729,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 9
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/compaction/guides.ts": {
@@ -738,6 +795,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 10
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/compaction/summary.ts": {
@@ -783,6 +843,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 2
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/cost/tally.ts": {
@@ -877,6 +940,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 2
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/owned-work/answer.test.ts": {
@@ -1013,6 +1079,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/owned-work/groups.test.ts": {
@@ -1074,6 +1143,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/features/owned-work/ledger.ts": {
@@ -1084,6 +1156,9 @@
       "count": 3
     },
     "typescript/explicit-module-boundary-types": {
+      "count": 2
+    },
+    "unicorn/no-array-for-each": {
       "count": 2
     }
   },
@@ -1190,6 +1265,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 2
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/features/owned-work/recorded.ts": {
@@ -1228,6 +1306,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 9
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/features/owned-work/settle.fixture.ts": {
@@ -1327,11 +1408,17 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 2
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/phi-router/anthropic.test.ts": {
     "typescript/explicit-function-return-type": {
       "count": 4
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/phi-router/border.fixture.ts": {
@@ -1345,6 +1432,9 @@
   "src/features/phi-router/border.scenario.ts": {
     "typescript/explicit-function-return-type": {
       "count": 14
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/features/phi-router/border.test.ts": {
@@ -1394,6 +1484,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 9
+    },
+    "unicorn/no-array-for-each": {
+      "count": 11
     }
   },
   "src/features/phi-router/corpus/canary-tokens.test.ts": {
@@ -1405,6 +1498,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 6
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/features/phi-router/corpus/canary-tokens.ts": {
@@ -1424,6 +1520,9 @@
       "count": 23
     },
     "typescript/explicit-module-boundary-types": {
+      "count": 1
+    },
+    "unicorn/no-array-for-each": {
       "count": 1
     }
   },
@@ -1486,6 +1585,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 3
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/phi-router/corpus/evaluate.test.ts": {
@@ -1501,6 +1603,9 @@
       "count": 1
     },
     "typescript/explicit-function-return-type": {
+      "count": 2
+    },
+    "unicorn/no-array-for-each": {
       "count": 2
     }
   },
@@ -1548,6 +1653,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 8
+    },
+    "unicorn/no-array-for-each": {
+      "count": 3
     }
   },
   "src/features/phi-router/corpus/generate.ts": {
@@ -1564,6 +1672,9 @@
       "count": 2
     },
     "typescript/explicit-module-boundary-types": {
+      "count": 1
+    },
+    "unicorn/no-array-for-each": {
       "count": 1
     }
   },
@@ -1626,11 +1737,17 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/phi-router/corpus/latency.ts": {
     "typescript/explicit-function-return-type": {
       "count": 2
+    },
+    "unicorn/no-array-for-each": {
+      "count": 4
     }
   },
   "src/features/phi-router/corpus/live.ts": {
@@ -1753,6 +1870,9 @@
       "count": 8
     },
     "typescript/explicit-module-boundary-types": {
+      "count": 1
+    },
+    "unicorn/no-array-for-each": {
       "count": 1
     }
   },
@@ -1957,6 +2077,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/phi-router/lanes.ts": {
@@ -2002,6 +2125,9 @@
   },
   "src/features/phi-router/policy/boundary.test.ts": {
     "oxc/no-optional-chaining": {
+      "count": 1
+    },
+    "unicorn/no-array-for-each": {
       "count": 1
     }
   },
@@ -2052,6 +2178,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 4
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/phi-router/policy/expand.test.ts": {
@@ -2074,6 +2203,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 16
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/phi-router/policy/quotes.test.ts": {
@@ -2151,6 +2283,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 8
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/phi-router/selection.ts": {
@@ -2205,6 +2340,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 3
+    },
+    "unicorn/no-array-for-each": {
+      "count": 3
     }
   },
   "src/features/phi-router/switch.test.ts": {
@@ -2215,6 +2353,9 @@
   "src/features/phi-router/wire.scenario.ts": {
     "typescript/explicit-function-return-type": {
       "count": 16
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/pr/bin-on-path.scenario.ts": {
@@ -2228,6 +2369,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 5
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/features/pr/gate.ts": {
@@ -2239,6 +2383,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 6
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/pr/index.test.ts": {
@@ -2255,6 +2402,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 5
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/features/pr/merge-gate.scenario.ts": {
@@ -2269,6 +2419,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 37
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/pr/merge-request.test.ts": {
@@ -2293,6 +2446,9 @@
   "src/features/pr/patch-id.scenario.ts": {
     "typescript/explicit-function-return-type": {
       "count": 15
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/pr/review-wakes.scenario.ts": {
@@ -2301,6 +2457,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 4
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/pr/verdict.ts": {
@@ -2342,6 +2501,9 @@
   "src/features/prompt/foreign-names.test.ts": {
     "typescript/explicit-function-return-type": {
       "count": 2
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "src/features/prompt/index.test.ts": {
@@ -2372,6 +2534,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 5
+    },
+    "unicorn/no-array-for-each": {
+      "count": 3
     }
   },
   "src/features/prompt/kinds.ts": {
@@ -2391,6 +2556,9 @@
   "src/features/prompt/routing.test.ts": {
     "no-undefined": {
       "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 3
     }
   },
   "src/features/prompt/routing.ts": {
@@ -2419,6 +2587,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 6
+    },
+    "unicorn/no-array-for-each": {
+      "count": 7
     }
   },
   "src/features/prompt/skills.ts": {
@@ -2464,6 +2635,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 2
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/state-folder/action-items.test.ts": {
@@ -2493,6 +2667,9 @@
   "src/features/state-folder/checks.ts": {
     "typescript/explicit-function-return-type": {
       "count": 6
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/state-folder/index.test.ts": {
@@ -2515,6 +2692,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 4
     }
   },
   "src/features/state-folder/state-cap.scenario.ts": {
@@ -2556,6 +2736,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 2
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/usage/view.ts": {
@@ -2572,6 +2755,9 @@
   "src/features/web/index.test.ts": {
     "typescript/explicit-function-return-type": {
       "count": 2
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "src/features/web/index.ts": {
@@ -2606,8 +2792,16 @@
       "count": 1
     }
   },
+  "tools/driver/compaction.scenario.ts": {
+    "unicorn/no-array-for-each": {
+      "count": 1
+    }
+  },
   "tools/driver/core.test.ts": {
     "typescript/explicit-function-return-type": {
+      "count": 1
+    },
+    "unicorn/no-array-for-each": {
       "count": 1
     }
   },
@@ -2667,6 +2861,9 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "tools/driver/report.ts": {
@@ -2683,6 +2880,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 2
+    },
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "tools/driver/root.ts": {
@@ -2736,6 +2936,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 4
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "tools/driver/setup.ts": {
@@ -2753,6 +2956,11 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 1
+    }
+  },
+  "tools/driver/spawn.ts": {
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "tools/driver/took.test.ts": {
@@ -2785,6 +2993,9 @@
       "count": 1
     },
     "typescript/explicit-function-return-type": {
+      "count": 1
+    },
+    "unicorn/no-array-for-each": {
       "count": 1
     }
   },
@@ -2825,6 +3036,14 @@
     },
     "typescript/explicit-module-boundary-types": {
       "count": 1
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
+    }
+  },
+  "tools/gates/budget.ts": {
+    "unicorn/no-array-for-each": {
+      "count": 1
     }
   },
   "tools/harness.ts": {
@@ -2862,6 +3081,9 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 8
+    },
+    "unicorn/no-array-for-each": {
+      "count": 2
     }
   },
   "tools/oxlint/fixtures/effect-pi-idioms.ts": {
@@ -2869,6 +3091,9 @@
       "count": 3
     },
     "typescript/explicit-module-boundary-types": {
+      "count": 1
+    },
+    "unicorn/no-array-for-each": {
       "count": 1
     }
   },
@@ -2897,6 +3122,9 @@
       "count": 1
     },
     "typescript/explicit-function-return-type": {
+      "count": 3
+    },
+    "unicorn/no-array-for-each": {
       "count": 3
     }
   },
