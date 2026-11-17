@@ -8,7 +8,6 @@ import * as Fiber from "effect/Fiber";
 import type * as FileSystem from "effect/FileSystem";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as Layer from "effect/Layer";
-import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Redacted from "effect/Redacted";
@@ -17,6 +16,7 @@ import * as Schema from "effect/Schema";
 
 import { ClaudeUsage, claudeUsageLayer, type Window } from "#src/client/claude-usage/index.ts";
 import { OpencodeGo, opencodeGoLayer } from "#src/client/opencode-go/index.ts";
+import { piHost } from "#src/client/pi-host/index.ts";
 import { spendSince } from "#src/client/pi-sessions/index.ts";
 import { accounts, type Login } from "#src/features/claude-accounts/index.ts";
 import { type Block, blockOf, Card, type Meter, type Outcome, readAtOf } from "./card.ts";
@@ -208,7 +208,7 @@ const showUsage = (pi: Host, ctx: ExtensionCommandContext) =>
 /** Registers `/usage`, which shows what every account has used in a card. */
 export const usage = (pi: Host) => {
 	const clients = Layer.mergeAll(claudeUsageLayer, opencodeGoLayer).pipe(Layer.provide(FetchHttpClient.layer));
-	const runtime = ManagedRuntime.make(Layer.merge(clients, NodeServices.layer));
+	const host = piHost(Layer.merge(clients, NodeServices.layer));
 
 	pi.registerEntryRenderer(cardType, (entry, _options, theme) =>
 		Option.getOrUndefined(Option.map(decodeCard(entry.data), (card) => cardComponent({ card, theme }))),
@@ -216,8 +216,8 @@ export const usage = (pi: Host) => {
 
 	pi.registerCommand("usage", {
 		description: "Show what every account has used: Claude plans, extra usage, OpenCode Go, OpenAI spend",
-		handler: (_args, ctx) => runtime.runPromise(showUsage(pi, ctx)),
+		handler: (_args, ctx) => host.run(showUsage(pi, ctx)),
 	});
 
-	return { shutdown: () => runtime.dispose() };
+	return { shutdown: () => host.dispose() };
 };
