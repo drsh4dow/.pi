@@ -195,7 +195,7 @@ test("the skills section lists each skill the model may invoke as one line under
 		skill("tdd", "Red, then green."),
 	];
 
-	const section = composed(options({}), { ...root, skills }).sections["skills"] ?? "";
+	const section = composed(options({}), { ...root, skills }).sections["skills"];
 
 	expect(section).toStartWith("Skills are workflows, not suggestions.");
 

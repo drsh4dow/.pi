@@ -86,6 +86,8 @@ test.each(["manual", "overflow"] as const)("a delegate's %s compaction gets the 
 	),
 );
 
+const fed = (narrative: string) => `<previous-narrative>\n${narrative}\n</previous-narrative>`;
+
 test("three compactions keep the union of their file lists and feed each narrative, alone, to the next", () =>
 	run(
 		Effect.gen(function* () {
@@ -115,12 +117,12 @@ test("three compactions keep the union of their file lists and feed each narrati
 				ctx,
 			);
 
-			const fed = (index: number) => `<previous-narrative>\n${narratives[index] ?? ""}\n</previous-narrative>`;
-
 			expect({
 				narratives: Arr.map([first, second, third], ({ details }) => details.narrative),
 				files: { readFiles: third.details.readFiles, modifiedFiles: third.details.modifiedFiles },
-				fedPrior: Arr.map(prompts, (prompt) => [Str.includes(fed(0))(prompt), Str.includes(fed(1))(prompt)]),
+				fedPrior: Arr.map(prompts, (prompt) =>
+					Arr.map(Arr.take(narratives, 2), (narrative) => Str.includes(fed(narrative))(prompt)),
+				),
 			}).toEqual({
 				narratives,
 				files: { readFiles: ["c.ts", "e.ts"], modifiedFiles: ["a.ts", "b.ts", "d.ts"] },

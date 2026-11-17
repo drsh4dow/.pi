@@ -60,6 +60,21 @@ const write = Effect.fn("write")(function* (dir: string, file: string, text: str
 const run = <Success, Failure>(effect: Effect.Effect<Success, Failure, FileSystem.FileSystem>) =>
 	Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
 
+interface Outcome {
+	readonly loaded: Array<Pick<Entry, "name" | "roles">>;
+	readonly problems: number;
+}
+
+const outcomeOf = ({ kind, row }: { readonly kind: Kind; readonly row: (typeof rows)[number] }): Outcome => {
+	if (row.roles === undefined) {
+		return { loaded: [], problems: 1 };
+	}
+
+	const roles = row.roles === "default" ? withoutFor[kind] : row.roles;
+
+	return { loaded: [{ name: Str.replace(/\.md$/u, "")(row.file), roles }], problems: 0 };
+};
+
 test.each(Arr.flatMap(kinds, (kind) => Arr.map(rows, (row, index) => ({ ...row, kind, index }))))(
 	"$kind: $name",
 	({ kind, index, ...row }) =>
@@ -71,16 +86,8 @@ test.each(Arr.flatMap(kinds, (kind) => Arr.map(rows, (row, index) => ({ ...row, 
 
 				const { entries, problems } = yield* loadEntries(kind, dir);
 				const loaded = Arr.map(entries, ({ name, roles }) => ({ name, roles }));
-				const name = Str.replace(/\.md$/u, "")(row.file);
 
-				expect({ loaded, problems: problems.length }).toEqual(
-					row.roles === undefined
-						? { loaded: [], problems: 1 }
-						: {
-								loaded: [{ name, roles: row.roles === "default" ? withoutFor[kind] : row.roles }],
-								problems: 0,
-							},
-				);
+				expect({ loaded, problems: problems.length }).toEqual(outcomeOf({ kind, row }));
 			}),
 		),
 );
