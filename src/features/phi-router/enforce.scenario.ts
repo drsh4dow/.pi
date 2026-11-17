@@ -74,6 +74,7 @@ const checked = (run: Run, { providers, sealing, last }: Seen) =>
 	});
 
 scenario({
+	env: process.env,
 	model: "phi/auto",
 	play: (run) => Effect.flatMap(played(run), (seen) => checked(run, seen)),
 });

@@ -155,6 +155,7 @@ const readThenEdit = (run: Run) =>
 	});
 
 scenario({
+	env: process.env,
 	model,
 	contextWindow: 40_000,
 	play: (run) =>

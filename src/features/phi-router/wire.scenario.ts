@@ -242,6 +242,7 @@ const verdict = (run: Run, { canaries, atSeal }: Pick<Seen, "canaries" | "atSeal
 	});
 
 scenario({
+	env: process.env,
 	model: "phi/auto",
 	settings: { compaction: { enabled: true, keepRecentTokens: 1000 } },
 	models: mockedModels(mocks),

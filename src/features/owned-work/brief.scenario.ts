@@ -117,6 +117,7 @@ const checkLeaf = (run: Run, leaf: Effect.Success<ReturnType<typeof settled>>) =
 };
 
 scenario({
+	env: process.env,
 	model: "ultra-a/claude-fable-5-2",
 	play: (run) =>
 		Effect.gen(function* () {

@@ -88,6 +88,7 @@ export const stagedLaunches = Effect.fn("stagedLaunches")(function* (
 	dir: string,
 	message: string,
 	state: string,
+	env: Readonly<Record<string, string | undefined>>,
 ) {
 	const services = yield* Layer.build(Layer.merge(piCliLayer(childExtensions), briefSourcesLayer));
 	const cli = Context.get(services, PiCli);
@@ -104,7 +105,7 @@ export const stagedLaunches = Effect.fn("stagedLaunches")(function* (
 				brief,
 				level,
 				childSession: { cwd, dir: `${dir}/${brief.name}`, id: uuidv7() },
-				passEnv: inheritedEnv(process.env),
+				passEnv: inheritedEnv(env),
 			});
 
 			// In a real launch the systemd client's `wrap` sets the slice. A child without one fails to start.

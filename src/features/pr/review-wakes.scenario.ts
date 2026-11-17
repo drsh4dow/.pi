@@ -63,6 +63,7 @@ const untilFirstReading = Effect.sleep("20 seconds");
 const numberOf = (url: string) => Str.replace(/^.*\/pull\//u, "")(url);
 
 scenario({
+	env: process.env,
 	model: "ultra-a/claude-fable-5-2",
 	play: (run) =>
 		Effect.gen(function* () {

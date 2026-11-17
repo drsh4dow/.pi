@@ -284,6 +284,7 @@ const gated = (run: Run, prs: Prs, realGh: string) =>
 	});
 
 scenario({
+	env: process.env,
 	model,
 	play: (run) =>
 		Effect.gen(function* () {

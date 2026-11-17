@@ -103,6 +103,7 @@ const sentAll = (session: Session, text: string) =>
 	Arr.isReadonlyArrayNonEmpty(session.requests) && Arr.every(session.requests, Str.includes(text));
 
 scenario({
+	env: process.env,
 	model,
 	play: (run) =>
 		Effect.gen(function* () {

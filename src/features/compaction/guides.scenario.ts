@@ -120,6 +120,7 @@ const readGuide = (run: Run) =>
 	});
 
 scenario({
+	env: process.env,
 	model: "ultra-a/claude-fable-5-2",
 	contextWindow: window,
 	play: (run) =>

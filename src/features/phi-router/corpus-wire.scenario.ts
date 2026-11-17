@@ -253,6 +253,7 @@ const verdict = Effect.fn("verdict")(function* (run: Run, outcomes: ReadonlyArra
 });
 
 scenario({
+	env: process.env,
 	model: "phi/auto",
 	settings: { compaction: { enabled: true, keepRecentTokens: 1000 } },
 	play: (run) =>

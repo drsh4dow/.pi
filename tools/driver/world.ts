@@ -235,7 +235,7 @@ type Needs = Scope.Scope | FileSystem.FileSystem | ChildProcessSpawner.ChildProc
  * The run's environment from the driver's own, with the human's git and gh config when they exist, and the run's
  * runtime folder with its link to your `systemd/`. Closing the scope removes the folder.
  */
-const envOf = Effect.fn("envOf")(function* (layout: Layout) {
+const envOf = Effect.fn("envOf")(function* (layout: Layout, own: Readonly<Record<string, string | undefined>>) {
 	const fs = yield* FileSystem.FileSystem;
 	const humanHome = yield* Config.String("HOME");
 	const humanRuntime = yield* Config.String("XDG_RUNTIME_DIR");
@@ -246,7 +246,7 @@ const envOf = Effect.fn("envOf")(function* (layout: Layout) {
 	yield* Effect.addFinalizer(() => Effect.ignore(fs.remove(layout.runtime, { recursive: true })));
 	yield* fs.symlink(`${humanRuntime}/systemd`, `${layout.runtime}/systemd`);
 
-	return { humanHome, env: runEnv({ own: process.env, humanHome, layout, borrowed: Rec.fromEntries(borrowed) }) };
+	return { humanHome, env: runEnv({ own, humanHome, layout, borrowed: Rec.fromEntries(borrowed) }) };
 });
 
 /**
@@ -256,11 +256,12 @@ const envOf = Effect.fn("envOf")(function* (layout: Layout) {
 export const openWorld = (input: {
 	readonly layout: Layout;
 	readonly setup: RunSetup;
+	readonly own: Readonly<Record<string, string | undefined>>;
 }): Effect.Effect<World, SetupFailed, Needs> =>
 	Effect.gen(function* () {
 		const { layout } = input;
 		const fs = yield* FileSystem.FileSystem;
-		const { humanHome, env } = yield* envOf(layout);
+		const { humanHome, env } = yield* envOf(layout, input.own);
 
 		yield* Effect.forEach([layout.agent, layout.bin, layout.probe, layout.project, layout.sessions], (folder) =>
 			fs.makeDirectory(folder, { recursive: true }),

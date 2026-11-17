@@ -173,6 +173,7 @@ const carried = (run: Run, stack: Stack) =>
 	});
 
 scenario({
+	env: process.env,
 	model,
 	play: (run) =>
 		Effect.gen(function* () {
