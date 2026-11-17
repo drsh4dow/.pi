@@ -48,12 +48,9 @@ export const fallbackChain = (from: AccountId): ReadonlyArray<Account> => {
 	return [...Arr.filter(others, ({ baa }) => !baa), ...Arr.filter(others, ({ baa }) => baa)];
 };
 
-export class NotASetupToken extends Schema.TaggedError<NotASetupToken, { readonly brand: unique symbol }>()(
-	"NotASetupToken",
-	{
-		message: Schema.String,
-	},
-) {}
+class NotASetupToken extends Schema.TaggedError<NotASetupToken, { readonly brand: unique symbol }>()("NotASetupToken", {
+	message: Schema.String,
+}) {}
 
 /** Pi sends a key with this prefix as a subscription token, with the same headers as an OAuth login. */
 const subscriptionTokenPrefix = "sk-ant-oat";

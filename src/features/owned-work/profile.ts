@@ -16,7 +16,7 @@ const Frontmatter = Schema.Struct({
 
 const decodeFrontmatter = Schema.decodeUnknownEffect(Frontmatter, { onExcessProperty: "error" });
 
-export interface Profile {
+interface Profile {
 	readonly model: Option.Option<ModelName>;
 	readonly thinking: Option.Option<string>;
 	readonly readOnly: boolean;

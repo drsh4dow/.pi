@@ -69,7 +69,7 @@ export interface Settled {
 	readonly log: Option.Option<string>;
 }
 
-export interface Settlement {
+interface Settlement {
 	readonly outcome: Outcome;
 	readonly delivered: boolean;
 }

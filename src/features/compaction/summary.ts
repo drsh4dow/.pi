@@ -68,7 +68,7 @@ const anchorBlock = (anchor: Option.Option<Anchor>) =>
 const listBlock = (tag: string, paths: ReadonlyArray<string>) =>
 	Arr.isReadonlyArrayNonEmpty(paths) ? `<${tag}>\n${Arr.join(paths, "\n")}\n</${tag}>` : "";
 
-export const restoredNote =
+const restoredNote =
 	"These guides were in your context before this compaction. Each is its file as it reads now. Follow them as before.";
 
 export const rereadNote =

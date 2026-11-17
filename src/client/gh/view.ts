@@ -6,7 +6,7 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-export type PrState = "OPEN" | "MERGED" | "CLOSED";
+type PrState = "OPEN" | "MERGED" | "CLOSED";
 
 export type ReviewDecision = "APPROVED" | "CHANGES_REQUESTED" | "REVIEW_REQUIRED";
 

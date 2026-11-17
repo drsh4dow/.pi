@@ -22,7 +22,7 @@ type Sessions = ExtensionContext["sessionManager"];
 const spaceLabel = "herdr.space";
 
 /** Set on a fork's pi, whose owned-work puts it back in the editor when the fork starts. */
-export const draftVariable = "PI_OWNED_WORK_DRAFT";
+const draftVariable = "PI_OWNED_WORK_DRAFT";
 
 /**
  * What `/fork` or `/clone` copies: the path to `leaf`, or nothing when that path holds no message yet, and for `/fork`

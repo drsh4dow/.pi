@@ -132,7 +132,7 @@ export type Brief =
 			readonly review?: ReviewTarget;
 	  });
 
-export const stagedOf = (brief: Brief): StagedBrief => {
+const stagedOf = (brief: Brief): StagedBrief => {
 	const common = {
 		goal: brief.goal,
 		state: brief.state,
