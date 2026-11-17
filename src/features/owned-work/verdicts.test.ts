@@ -174,8 +174,6 @@ const rows: ReadonlyArray<Row> = [
 	},
 ];
 
-for (const row of rows) {
-	test(row.name, () => Effect.runPromise(runRow(row)));
-}
+test.each(rows)("$name", (row) => Effect.runPromise(runRow(row)));
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${sessionRoot}`.quiet())));

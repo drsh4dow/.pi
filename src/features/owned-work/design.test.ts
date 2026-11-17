@@ -47,6 +47,4 @@ const designRows: ReadonlyArray<BriefRow> = [
 	},
 ];
 
-for (const row of designRows) {
-	test(row.name, () => runBriefRow(row));
-}
+test.each(designRows)("$name", (row) => runBriefRow(row));

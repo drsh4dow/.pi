@@ -12,11 +12,9 @@ const whole = [
 	{ name: "an answer of exactly 6,000 characters", text: Str.repeat(6000)("a") },
 ];
 
-for (const { name, text } of whole) {
-	test(`${name} reaches the parent whole`, () => {
-		expect(answerOf(file)(text)).toEqual({ text, cut: false, file });
-	});
-}
+test.each(whole)("$name reaches the parent whole", ({ text }) => {
+	expect(answerOf(file)(text)).toEqual({ text, cut: false, file });
+});
 
 test("a 20,000-character answer with no paragraph break is cut inside the bound, with the closing line", () => {
 	const answer = answerOf(file)(Str.repeat(20_000)("a"));
@@ -31,16 +29,14 @@ const paragraphList = Arr.makeBy(20, (index) => `${String(index)}${Str.repeat(99
 
 const paragraphs = (blank: string) => Arr.join(paragraphList, blank);
 
-for (const [name, blank] of [
+test.each([
 	["CRLF", "\r\n\r\n"],
 	["a blank line holding spaces", "\n  \n"],
-] as const) {
-	test(`an answer whose paragraphs part with ${name} is cut at a paragraph`, () => {
-		const { text } = answerOf(file)(paragraphs(blank));
+] as const)("an answer whose paragraphs part with %s is cut at a paragraph", (_name, blank) => {
+	const { text } = answerOf(file)(paragraphs(blank));
 
-		expect(text).toStartWith(`${Arr.join(Arr.take(paragraphList, 5), blank)}\n\n[The answer is cut at`);
-	});
-}
+	expect(text).toStartWith(`${Arr.join(Arr.take(paragraphList, 5), blank)}\n\n[The answer is cut at`);
+});
 
 test("a cut never splits a character outside the basic plane", () => {
 	const { text } = answerOf(file)(Str.repeat(4000)("😀"));

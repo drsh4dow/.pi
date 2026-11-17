@@ -883,9 +883,6 @@
     }
   },
   "src/features/owned-work/answer.test.ts": {
-    "jest/prefer-each": {
-      "count": 2
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }
@@ -896,9 +893,6 @@
     }
   },
   "src/features/owned-work/bin.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 1
     }
@@ -931,9 +925,6 @@
     }
   },
   "src/features/owned-work/brief.test.ts": {
-    "jest/prefer-each": {
-      "count": 2
-    },
     "no-undefined": {
       "count": 2
     }
@@ -947,9 +938,6 @@
     }
   },
   "src/features/owned-work/child.test.ts": {
-    "jest/prefer-each": {
-      "count": 3
-    },
     "no-undefined": {
       "count": 5
     },
@@ -991,9 +979,6 @@
     }
   },
   "src/features/owned-work/continue.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 2
     },
@@ -1015,9 +1000,6 @@
     }
   },
   "src/features/owned-work/design.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "node/no-top-level-await": {
       "count": 1
     }
@@ -1042,9 +1024,6 @@
     }
   },
   "src/features/owned-work/groups.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }
@@ -1057,11 +1036,6 @@
       "count": 1
     },
     "no-undefined": {
-      "count": 2
-    }
-  },
-  "src/features/owned-work/handover.test.ts": {
-    "jest/prefer-each": {
       "count": 2
     }
   },
@@ -1113,11 +1087,6 @@
       "count": 1
     }
   },
-  "src/features/owned-work/ledger.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    }
-  },
   "src/features/owned-work/ledger.ts": {
     "no-use-before-define": {
       "count": 1
@@ -1132,11 +1101,6 @@
   "src/features/owned-work/levels.scenario.ts": {
     "typescript/explicit-function-return-type": {
       "count": 10
-    }
-  },
-  "src/features/owned-work/lifetime.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
     }
   },
   "src/features/owned-work/lifetime.ts": {
@@ -1204,12 +1168,6 @@
     }
   },
   "src/features/owned-work/polling.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
-    "jest/prefer-each": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }
@@ -1254,9 +1212,6 @@
     }
   },
   "src/features/owned-work/review.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 2
     },
@@ -1295,9 +1250,6 @@
     }
   },
   "src/features/owned-work/settled.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 2
     }
@@ -1349,9 +1301,6 @@
     }
   },
   "src/features/owned-work/verdicts.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 5
     }

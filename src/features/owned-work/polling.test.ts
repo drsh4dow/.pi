@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 
+import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 
 import { warnedResult } from "./polling.ts";
@@ -35,10 +36,12 @@ const rows = [
 	{ tool: "bash", command: "sleep 30", waking: [], expect: Option.none() },
 ];
 
-for (const row of rows) {
-	const jobs = `${String(row.waking.length)} jobs`;
+const cases = Arr.map(rows, (row) => ({
+	...row,
+	jobs: `${String(row.waking.length)} jobs`,
+	outcome: Option.isSome(row.expect) ? "warns" : "does not warn",
+}));
 
-	test(`${row.tool} \`${row.command}\` while ${jobs} run ${Option.isSome(row.expect) ? "warns" : "does not warn"}`, () => {
-		expect<Option.Option<unknown>>(warnedResult(row.waking)(call(row.tool, row.command))).toEqual(row.expect);
-	});
-}
+test.each(cases)("$tool `$command` while $jobs run $outcome", (row) => {
+	expect<Option.Option<unknown>>(warnedResult(row.waking)(call(row.tool, row.command))).toEqual(row.expect);
+});
