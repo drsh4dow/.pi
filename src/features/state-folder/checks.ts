@@ -1,8 +1,8 @@
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
 import * as Str from "effect/String";
 
+import { StateFolder } from "#src/client/state-folder/index.ts";
 import {
 	actionItemProblems,
 	type FormatProblem,
@@ -24,7 +24,7 @@ export interface Check {
 	readonly problems: (
 		file: Uint8Array,
 		place: Place,
-	) => Effect.Effect<ReadonlyArray<FormatProblem>, never, FileSystem.FileSystem>;
+	) => Effect.Effect<ReadonlyArray<FormatProblem>, never, StateFolder>;
 	readonly fix: string;
 }
 
@@ -68,15 +68,11 @@ const resolvePath = (path: string, { home, folder }: Place) => {
 };
 
 const actionItemsProblems = Effect.fn("actionItemsProblems")(function* (file: Uint8Array, place: Place) {
-	const fs = yield* FileSystem.FileSystem;
+	const stateFolder = yield* StateFolder;
 	const text = textOf(file);
 	const { problems, denials } = onlyYouReasons(text);
 
-	const isFile = (path: string) =>
-		fs.stat(resolvePath(path, place)).pipe(
-			Effect.map(({ type }) => type === "File"),
-			Effect.orElseSucceed(() => false),
-		);
+	const isFile = (path: string) => stateFolder.isFile(resolvePath(path, place));
 
 	const missing = yield* Effect.filter(denials, ({ paths }) =>
 		Effect.map(Effect.forEach(paths, isFile), (found) => !Arr.contains(found, true)),

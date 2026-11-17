@@ -773,9 +773,6 @@
     "jsdoc/require-returns": {
       "count": 2
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "no-restricted-properties": {
       "count": 1
     },
@@ -2819,9 +2816,6 @@
     }
   },
   "src/features/state-folder/checks.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 6
     }
@@ -2838,16 +2832,10 @@
     "jsdoc/require-returns": {
       "count": 1
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "no-restricted-properties": {
       "count": 1
     },
     "no-undefined": {
-      "count": 1
-    },
-    "oxc/no-optional-chaining": {
       "count": 1
     },
     "typescript/explicit-function-return-type": {
