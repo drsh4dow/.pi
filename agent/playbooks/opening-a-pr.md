@@ -4,11 +4,7 @@ when: Opening a PR, a pull request that puts a branch up for review, invoked at 
 
 ### Opening a PR
 
-Invoked at the end of every other playbook.
-
-**Worktree.** Work from a git worktree off main. Delegates inherit it. Multiple delegates on the same branch each get their own worktree, or `git fetch && git reset --hard origin/<branch>` between them. Dirty branch with unrelated work: patch out, fresh worktree, apply. Snarled worktree: reset from main, redo minimally.
-
-**Commits.** Commit liberally. Rebase into small, ordered commits before opening PRs. Each commit is a future PR: landable, ordered to tell the story. Amend when the fix belongs in a just-made commit. New commit when separable. Commit bodies don't restate the subject.
+**Commits.** Commit liberally. Rebase into small, ordered commits before opening PRs. Each commit is landable and ordered to tell the story. Amend when the fix belongs in a just-made commit. New commit when separable. Commit bodies don't restate the subject.
 
 **PRs.** Run `playbooks/code-simplification.md` over the diff before commit and the **no-comments** skill before review. Write every PR title, description, and commit body with the **technical-writing** skill (every layer except Diátaxis, and apply the STE vocabulary rules: one word per action, keep articles, a plain verb over `-ing` where one works), then apply the **unslop** skill.
 
@@ -18,7 +14,7 @@ Invoked at the end of every other playbook.
 
 **Forge.** Use GitHub CLI (`gh`) for create, edit, view, watch, and merge, and `gh stack` for a stack.
 
-**Size and stacks.** Work branches are yours. Create, push, rebase, and merge PRs between them as you need. A shared branch is one several people use, such as staging, prod, or main. PRs against a shared branch are few, self-contained, and easy to review without losing context. Weigh the number of PRs against how self-contained each one is, and fewer usually wins. A stack is a base-branch chain. The root PR targets trunk. Each child branch rebases onto its parent's exact tip and its PR targets the parent branch. As a parent merges, move its child onto trunk per `playbooks/shipping.md` step 4. Track the branches with `gh stack init --base <trunk> <branch>...` (bottom to top) or add one on top with `gh stack add <branch>`, then cascade a rebase with `gh stack rebase` and push with `gh stack push`. Create a child with `gh pr create --base <parent-branch>`, retarget one with `gh pr edit <pr> --base <parent-branch>`, and link the PRs into a stack with `gh stack link <bottom-pr> ... <top-pr>`. Branch from trunk only for independent work. Rebase on trunk before substantial stack work.
+**Stacks.** A stack is a base-branch chain. The root PR targets trunk. Each child branch rebases onto its parent's exact tip and its PR targets the parent branch. As a parent merges, move its child onto trunk per `playbooks/shipping.md` step 4. Track the branches with `gh stack init --base <trunk> <branch>...` (bottom to top) or add one on top with `gh stack add <branch>`, then cascade a rebase with `gh stack rebase` and push with `gh stack push`. Create a child with `gh pr create --base <parent-branch>`, retarget one with `gh pr edit <pr> --base <parent-branch>`, and link the PRs into a stack with `gh stack link <bottom-pr> ... <top-pr>`. Branch from trunk only for independent work. Rebase on trunk before substantial stack work.
 
 **Readiness.** Open every PR ready, never as a draft. With `gh`, omit `--draft`. If a PR still opens as a draft, run `gh pr ready <number>`. Run `gh pr view <number>` before you refer to PR status.
 

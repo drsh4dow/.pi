@@ -15,6 +15,7 @@
 !/agent/keybindings.json
 
 node_modules/
+/.worktrees/
 __pycache__/
 .env*
 
