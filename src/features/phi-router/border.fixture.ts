@@ -88,7 +88,7 @@ const forced = <State>(model: ExtensionVirtualModel<State>): ExtensionVirtualMod
 	},
 });
 
-export default function (pi: ExtensionAPI) {
+export default function borderFixtureExtension(pi: ExtensionAPI) {
 	phiRouter(process.env)({
 		...pi,
 		registerVirtualModel: (model) => {

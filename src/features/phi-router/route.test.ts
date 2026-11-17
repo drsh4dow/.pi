@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-import { type Message } from "@earendil-works/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";

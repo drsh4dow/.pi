@@ -17,7 +17,18 @@
 			{
 				"name": "@effect/language-service",
 				"diagnostics": false,
-				"namespaceImportPackages": ["effect", "@effect/*"]
+				"namespaceImportPackages": ["effect", "@effect/*"],
+				"allowedUnstableApis": [
+					"@effect/platform-node",
+					"@effect/platform-node-shared",
+					"effect/FileSystem",
+					"effect/Path",
+					"effect/PlatformError",
+					"effect/Stdio",
+					"effect/http",
+					"effect/process",
+					"effect/socket"
+				]
 			}
 		],
 
@@ -33,18 +44,6 @@
 		"allowUnreachableCode": false,
 		"allowUnusedLabels": false
 	},
-	"include": ["**/*.ts"],
-	"exclude": [
-		"node_modules",
-		"agent/git",
-		"agent/tmp",
-		"tools/oxlint/anti-slop",
-		"herdr",
-		"agent/skills/making-videos/scripts",
-		"agent/skills/making-videos/templates",
-		"agent/skills/writing-good-prs/scripts",
-		"agent/skills/dumpfile/cli",
-		"agent/skills/statechart/scripts",
-		"agent/playbooks/scripts"
-	]
+	"include": ["src", "tools", "agent/extensions", "agent/bin"],
+	"exclude": ["tools/oxlint/anti-slop"]
 }

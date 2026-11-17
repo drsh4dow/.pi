@@ -1,22 +1,18 @@
 {
 	"$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
-	"extends": [
-		"./node_modules/@effect/tsgo/oxlint-presets/correctness.json",
-		"./node_modules/@effect/tsgo/oxlint-presets/antipattern.json",
-		"./node_modules/@effect/tsgo/oxlint-presets/effect-native.json",
-		"./node_modules/@effect/tsgo/oxlint-presets/style.json",
-		"./node_modules/@effect/tsgo/oxlint-presets/maintainers.json",
-	],
-	"plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node"],
+	"extends": ["./oxlint-effect.json"],
+	"plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node", "jsdoc"],
 	"categories": {
 		"correctness": "error",
 		"suspicious": "error",
 		"pedantic": "error",
 		"perf": "error",
 		"style": "error",
+		"restriction": "error",
 	},
 	"options": {
 		"typeAware": true,
+		"typeCheck": true,
 		"denyWarnings": true,
 		"reportUnusedDisableDirectives": "error",
 	},
@@ -33,17 +29,7 @@
 		".roo/**",
 		".windsurf/**",
 		"tools/oxlint/anti-slop/**",
-		// herdr-app mods run in its gpui-shell, not Node, and ow-tabs is a clone of Herdr's own tabs mod
-		"herdr/**",
 		"tools/oxlint/fixtures/harness-layout/**",
-		"agent/skills/making-videos/scripts/**",
-		"agent/skills/making-videos/templates/**",
-		"agent/skills/writing-good-prs/scripts/**",
-		"agent/skills/dumpfile/cli/**",
-		"agent/skills/statechart/scripts/**",
-		"agent/playbooks/constraint-driven-development/scripts/**",
-		"agent/playbooks/idea-refine/scripts/**",
-		"agent/playbooks/scripts/**",
 	],
 	"jsPlugins": [
 		{
@@ -102,10 +88,8 @@
 		"eslint/no-ternary": "off",
 		// Effect APIs take inline literals, e.g. Schedule.recurs(3)
 		"eslint/no-magic-numbers": "off",
-		// Effect.gen(function* () {}) and pi's `export default function (pi)` are anonymous by convention
+		// Effect.gen(function* () {}) is anonymous by convention
 		"eslint/func-names": "off",
-		// pi loads an extension from its anonymous default export
-		"import/no-anonymous-default-export": "off",
 		// misreads Effect combinator callbacks such as catchTag handlers
 		"promise/prefer-await-to-callbacks": "off",
 		// Effect and pi order keys by meaning, e.g. a pi tool's name, label, description
@@ -114,6 +98,7 @@
 		"typescript/prefer-readonly-parameter-types": "off",
 		// tsconfig's namespaceImportPackages, copied from Effect's own config, makes effecttsgo/prefer-namespace-import require `import * as`
 		"import/no-namespace": "off",
+		// Effect's namespace imports give each module its own import line, so a feature passes ten at once
 		"import/max-dependencies": "off",
 		// Effect code exports each value by name, inline
 		"import/no-named-export": "off",
@@ -129,22 +114,33 @@
 		// misread Effect's Array module functions as native array methods
 		"unicorn/no-array-callback-reference": "off",
 		"unicorn/no-array-method-this-argument": "off",
+		// misreads Effect.forEach as Array.prototype.forEach
+		"unicorn/no-array-for-each": "off",
+		// The user chose Effect platform modules, which Effect marks unstable (tsconfig allowedUnstableApis lists them), and this rule guards a published package's API, which the harness has none of
+		"effecttsgo/api-stability-leak": "off",
+		// collides with effecttsgo/async-function, oxc/no-async-await and eslint/require-await: a function that returns a promise fails it without async and the others with it
+		"typescript/promise-function-async": "off",
+		// collides with eslint/prefer-object-spread: an object spread fails it, and Object.assign fails the other
+		"oxc/no-rest-spread-properties": "off",
+		// collides with oxfmt, which lowercases a hex literal's digits
+		"unicorn/number-literal-case": "off",
 	},
 	"overrides": [
 		{
-			// The user chose Effect platform (FileSystem, Path, Socket, ChildProcess) over Node built-ins, and Effect marks those modules `@stability unstable`: the Effect convention wins, per AGENTS.md
+			"files": ["**/*.test.ts"],
+			"plugins": ["jest"],
+		},
+		{
+			// pi and oxlint load these files' default export, so no other export form works
 			"files": [
-				"agent/bin/**",
-				"agent/extensions/**",
-				"src/**",
-				"tools/prompts/**",
-				"tools/loaded/**",
-				"tools/driver/**",
+				"agent/extensions/*/index.ts",
+				"src/features/phi-router/border.fixture.ts",
+				"tools/driver/probe.ts",
+				"tools/prompts/capture.ts",
 				"tools/oxlint/fixtures/effect-pi-idioms.ts",
 			],
 			"rules": {
-				"effecttsgo/unstable-api-usage": "off",
-				"effecttsgo/api-stability-leak": "off",
+				"import/no-default-export": "off",
 			},
 		},
 		{
