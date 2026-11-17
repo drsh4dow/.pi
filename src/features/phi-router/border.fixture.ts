@@ -8,6 +8,7 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { ExtensionAPI, ExtensionVirtualModel } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
+import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
@@ -89,23 +90,27 @@ const forced = <State>(model: ExtensionVirtualModel<State>): ExtensionVirtualMod
 });
 
 export default function borderFixtureExtension(pi: ExtensionAPI) {
-	phiRouter(process.env)({
-		...pi,
-		registerVirtualModel: (model) => {
-			pi.registerVirtualModel(forced(model));
-		},
-	});
+	return Effect.runPromise(
+		Effect.map(Config.String("HOME"), (home) => {
+			phiRouter({ HOME: home })({
+				...pi,
+				registerVirtualModel: (model) => {
+					pi.registerVirtualModel(forced(model));
+				},
+			});
 
-	pi.on("context", (event) => {
-		const messages = Arr.map(event.messages, edited);
+			pi.on("context", (event) => {
+				const messages = Arr.map(event.messages, edited);
 
-		pi.appendEntry(fixtureEntryType, {
-			messages: messages.length,
-			ssn: holding(messages, planted.ssn),
-			neverJudged: holding(messages, planted.neverJudged),
-			cleared: holding(messages, planted.cleared),
-		} satisfies typeof ContextSeen.Type);
+				pi.appendEntry(fixtureEntryType, {
+					messages: messages.length,
+					ssn: holding(messages, planted.ssn),
+					neverJudged: holding(messages, planted.neverJudged),
+					cleared: holding(messages, planted.cleared),
+				} satisfies typeof ContextSeen.Type);
 
-		return { messages };
-	});
+				return { messages };
+			});
+		}),
+	);
 }
