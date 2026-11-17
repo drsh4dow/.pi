@@ -137,6 +137,9 @@ const masked = (text: string) =>
 
 const today = DateTime.formatIsoDateUtc(DateTime.nowUnsafe());
 
+const unwantedIn = (text: string, absent: ReadonlyArray<string> = []): Array<string> =>
+	Arr.filter(absent, (part) => Str.includes(part)(text));
+
 const rows: ReadonlyArray<{
 	readonly name: string;
 	readonly call: ReturnType<typeof fetchCall> | ReturnType<typeof searchCall>;
@@ -258,9 +261,8 @@ for (const row of rows) {
 				const text = masked(textOf(result));
 
 				const lacking = Arr.filter(row.expect, (part) => !Str.includes(part)(text));
-				const unwanted = Arr.filter(row.absent ?? [], (part) => Str.includes(part)(text));
 
-				expect({ isError: result.isError, lacking, unwanted }).toEqual({
+				expect({ isError: result.isError, lacking, unwanted: unwantedIn(text, row.absent) }).toEqual({
 					isError: row.isError,
 					lacking: [],
 					unwanted: [],

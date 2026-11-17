@@ -69,8 +69,9 @@ const startDelegate = (parent: SessionManager, child: SessionManager, name: stri
 		child_session_id: child.getSessionId(),
 	});
 
-const readerOf = (root: SessionManager, delegates: string) =>
-	treeReader({ root: root.getSessionFile() ?? "", delegates });
+const fileOf = (session: SessionManager): string => session.getSessionFile() ?? "";
+
+const readerOf = (root: SessionManager, delegates: string) => treeReader({ root: fileOf(root), delegates });
 
 const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem>) =>
 	Effect.runPromise(Effect.provide(effect, NodeServices.layer));
@@ -176,7 +177,7 @@ test("a fork counts only what it spent after the fork, not its source's history"
 				"1 second",
 			);
 
-			const fork = SessionManager.open(source.getSessionFile() ?? "", dir);
+			const fork = SessionManager.open(fileOf(source), dir);
 
 			fork.createBranchedSession(leaf);
 			reply(fork, 0.5);
@@ -223,9 +224,7 @@ test("a line still being written counts once it ends", () =>
 			const reader = readerOf(root, delegates);
 
 			const append = (text: string) =>
-				Effect.flatMap(FileSystem.FileSystem, (fs) =>
-					fs.writeFileString(root.getSessionFile() ?? "", text, { flag: "a" }),
-				);
+				Effect.flatMap(FileSystem.FileSystem, (fs) => fs.writeFileString(fileOf(root), text, { flag: "a" }));
 
 			reply(root, 1);
 			yield* append(Str.slice(0, 40)(compactionLine));

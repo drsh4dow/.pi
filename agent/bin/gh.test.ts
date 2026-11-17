@@ -131,7 +131,7 @@ const gatedRun = (folder: string, verdict: boolean, args: ReadonlyArray<string>)
 		const out = yield* Effect.promise(() => new Response(run.stdout).text());
 		const err = yield* Effect.promise(() => new Response(run.stderr).text());
 
-		return { code: yield* Effect.promise(() => run.exited), out, err: Str.trim(err) };
+		return { code: yield* Effect.promise(() => run.exited), out, firstLine: Str.split(Str.trim(err), "\n")[0] ?? "" };
 	});
 
 const gatedRows = [
@@ -159,9 +159,9 @@ for (const [index, row] of gatedRows.entries()) {
 	test(`the gh wrapper ${row.name}`, () =>
 		Effect.runPromise(
 			Effect.gen(function* () {
-				const { code, out, err } = yield* gatedRun(String(index), row.verdict, row.args);
+				const got = yield* gatedRun(String(index), row.verdict, row.args);
 
-				expect({ code, out, firstLine: Str.split(err, "\n")[0] ?? "" }).toEqual(row.expect);
+				expect(got).toEqual(row.expect);
 			}).pipe(Effect.provide(NodeServices.layer)),
 		));
 }
