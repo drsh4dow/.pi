@@ -30,7 +30,7 @@ export const HandleOut = Type.Object({
 	group: Type.Optional(Type.String()),
 	ready: Type.Optional(Type.Boolean()),
 	next: Type.Optional(Type.String()),
-	/** Set when the whole delegate run lands on another model, because no BAA account carries the one named. */
+	/** Set when the whole delegate run lands on another model, because no BAA provider carries the one named. */
 	substituted: Type.Optional(Type.String()),
 });
 

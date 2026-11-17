@@ -85,13 +85,14 @@ test("cleared user, tool and reply parts pass as they are", () => {
 });
 
 test("a cleared reply keeps its thinking only when a personal provider wrote it", () => {
-	const messages = [answer("ent"), answer("ultra-b"), answer("openai")];
+	const messages = [answer("ent"), answer("openai"), answer("ultra-b"), answer("opencode-go")];
 	const { messages: sent } = guarded(messages, lookupOf(all("cleared", messages)));
 
 	expect(sent).toEqual([
 		reply("ent", [{ type: "text", text: "Reading the file." }, call]),
+		reply("openai", [{ type: "text", text: "Reading the file." }, call]),
 		answer("ultra-b"),
-		answer("openai"),
+		answer("opencode-go"),
 	]);
 });
 

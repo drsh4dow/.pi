@@ -18,7 +18,7 @@ import { entryKind } from "#src/features/owned-work/index.ts";
 import { type Run, type Session, scenario } from "#tools/driver/index.ts";
 import { type Asked, mockedModels, Reply, serveMock } from "./anthropic.fixture.ts";
 import { foundIn } from "./corpus/canary-tokens.ts";
-import type { Carrier, Personal } from "./gate.ts";
+import type { Carrier } from "./gate.ts";
 import { serveOpenAi } from "./openai.fixture.ts";
 import { stubs } from "./policy/policy.ts";
 import { providersOf } from "./session.fixture.ts";
@@ -26,7 +26,7 @@ import { providersOf } from "./session.fixture.ts";
 /** What the design promises for one alias: where its clean turns land and the id they name, and the id on ent. */
 interface Child {
 	readonly alias: "fable" | "investigator" | "divergent";
-	readonly clean: { readonly on: ReadonlyArray<Personal>; readonly id: string };
+	readonly clean: { readonly on: ReadonlyArray<Carrier>; readonly id: string };
 	readonly sealedId: string;
 }
 

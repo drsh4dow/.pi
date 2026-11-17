@@ -71,7 +71,7 @@ const panel: ReadonlyArray<keyof typeof aliases> = ["fable", "worker", "investig
 
 export const modelTable: ModelTable = { aliases, panel };
 
-/** The model ids the aliases name, each a `phi/<id>` the PHI router registers. */
+/** The model ids the aliases name, which the PHI router registers as `phi/<id>` when a personal provider carries them. */
 export const delegateModelIds = Arr.map(Rec.values(aliases), ({ id }) => id);
 
 export type ModelCaller = Pick<ExtensionContext, "model" | "cwd"> & {
@@ -152,7 +152,7 @@ const chosenOf = (resolved: Resolved, target: Exclude<Target, { readonly kind: "
 		}
 
 		case "substitute": {
-			const sentence = `${resolved.naming(target.missing)}, which no BAA account carries, so this delegate runs on ${target.key}.`;
+			const sentence = `${resolved.naming(target.missing)}, which no BAA provider carries, so this delegate runs on ${target.key}.`;
 
 			return { model: target.key, substitution: Option.some(sentence), source: routerPicks };
 		}
@@ -167,7 +167,7 @@ const chosenOf = (resolved: Resolved, target: Exclude<Target, { readonly kind: "
 
 /**
  * A protected session's delegate runs where the PHI router allows, so an alias never takes session content off its
- * boundary. `substitution` says when the whole run lands on another model because no BAA account carries the one named.
+ * boundary. `substitution` says when the whole run lands on another model because no BAA provider carries the one named.
  */
 export const modelOf = Effect.fn("modelOf")(function* (ctx: ModelCaller, table: ModelTable, name: ModelName) {
 	const resolved = yield* resolvedOf(ctx, table, name);

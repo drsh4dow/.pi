@@ -1,8 +1,8 @@
 /**
  * Which processes the border protects, and where its guard sits. claude-accounts wraps the personal accounts' api with
- * `wrap` where it registers them, so no later `registerProvider` can drop it. `openai` and `opencode-go` are pi's own
+ * `wrap` where it registers them, so no later `registerProvider` can drop it. The bordered builtins are pi's own
  * providers, so the border wraps the ones the registry holds at `session_start`, which keeps pi's remote catalog, and
- * again before each agent run. `classify` and auth pass through, so the Decisions judge still reads raw content.
+ * again before each agent run, with auth passed through. `openai` is a BAA provider, so the border leaves it alone.
  */
 import type { Api, Model, Provider, ProviderStreams } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
