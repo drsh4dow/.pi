@@ -1,0 +1,11 @@
+id: no-suppression
+language: TypeScript
+severity: error
+message: Fix the code the rule caught. A rule that is wrong for this repo goes to the user, and its off line goes in .oxlintrc.jsonc with the reason.
+ignores:
+   - tools/oxlint/anti-slop/**
+   - tools/oxlint/fixtures/**
+   - tools/gates/fixtures/**
+rule:
+   kind: comment
+   regex: "(oxlint|eslint)-disable|@ts-(expect-error|ignore|nocheck)"

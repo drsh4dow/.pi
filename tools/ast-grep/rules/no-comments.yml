@@ -19,7 +19,6 @@ rule:
                       - inside: { kind: program }
                       - precedes: { regex: '^(if|for|while|do|try|switch|throw)\b|^[{;]', stopBy: neighbor }
          - regex: '^(//|/\*)\s*(oxlint|oxfmt)-'
-         - regex: '^//\s*@ts-expect-error'
          - regex: '^///\s*<reference '
          - all:
               - regex: '^(//|/\*)[\s\S]*(Copyright|SPDX-License-Identifier)'

@@ -1,0 +1,15 @@
+id: no-dynamic-import
+language: TypeScript
+severity: error
+message: Import at the top of the file, so dependency-cruiser and knip see the edge.
+ignores:
+   - tools/oxlint/anti-slop/**
+   - tools/oxlint/fixtures/**
+   - tools/gates/fixtures/**
+rule:
+   any:
+      - pattern: import($$$ARGS)
+      - kind: type_query
+        has: { kind: call_expression, has: { kind: import } }
+      - kind: generic_type
+        has: { kind: import }

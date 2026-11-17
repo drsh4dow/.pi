@@ -82,10 +82,15 @@ test("the delegate model ban rejects a registry lookup in owned-work outside mod
 		["Call modelOf from src/features/owned-work/models.ts"],
 	));
 
-test("the ast-grep checks reject a line comment and a relative import without .ts", () =>
+test("the ast-grep checks reject a comment, a suppression, a dynamic import and a relative import without .ts", () =>
 	failsWith(
 		"comments",
 		"comments",
 		[`${bin}/ast-grep`, "scan", "--config", `${repo}/sgconfig.yml`, "src"],
-		["Delete this comment.", "End a relative import in .ts"],
+		[
+			"Delete this comment.",
+			"Fix the code the rule caught.",
+			"Import at the top of the file",
+			"End a relative import in .ts",
+		],
 	));
