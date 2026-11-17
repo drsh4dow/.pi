@@ -773,9 +773,6 @@
     "jsdoc/require-returns": {
       "count": 2
     },
-    "no-restricted-properties": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 1
     },
@@ -961,9 +958,6 @@
   },
   "src/features/loaded/index.ts": {
     "jsdoc/require-param": {
-      "count": 1
-    },
-    "no-restricted-properties": {
       "count": 1
     },
     "typescript/explicit-function-return-type": {
@@ -2666,9 +2660,6 @@
     }
   },
   "src/features/prompt/index.ts": {
-    "no-restricted-properties": {
-      "count": 1
-    },
     "node/no-process-env": {
       "count": 1
     },
@@ -2778,9 +2769,6 @@
     "jsdoc/require-returns": {
       "count": 2
     },
-    "no-restricted-properties": {
-      "count": 1
-    },
     "oxc/no-optional-chaining": {
       "count": 1
     },
@@ -2830,9 +2818,6 @@
       "count": 2
     },
     "jsdoc/require-returns": {
-      "count": 1
-    },
-    "no-restricted-properties": {
       "count": 1
     },
     "no-undefined": {

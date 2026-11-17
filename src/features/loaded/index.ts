@@ -14,6 +14,7 @@ import * as Str from "effect/String";
 
 import { agentFileText, markdownIn } from "#src/client/agent-files/index.ts";
 import { labelTerminal, TerminalAddress } from "#src/client/hc/index.ts";
+import { piHost } from "#src/client/pi-host/index.ts";
 import { type GuideKind, guidesOf, type Index, indexOf, inContext, Loaded } from "./context.ts";
 
 export { type GuideKind, guidesOf, type Index, indexOf, inContext, Loaded } from "./context.ts";
@@ -134,9 +135,6 @@ const clear = Effect.fn("clear")(function* (publisher: Publisher) {
 	}
 });
 
-const run = <Failure>(effect: Effect.Effect<void, Failure, NodeServices.NodeServices>) =>
-	Effect.runPromise(effect.pipe(Effect.ignore({ log: "Warn" }), Effect.provide(NodeServices.layer)));
-
 /**
  * Keeps the `pi.context` label on this agent's hc terminal equal to the skills, principles and playbooks its model sees now. It
  * recomputes after each turn, a `/tree` move and a compaction, and clears the label when the session ends. Outside
@@ -144,6 +142,10 @@ const run = <Failure>(effect: Effect.Effect<void, Failure, NodeServices.NodeServ
  */
 export const loaded = (pi: Pick<ExtensionAPI, "on" | "getCommands">) => {
 	const publisher: Publisher = { index: Option.none(), published: "" };
+	const host = piHost(NodeServices.layer);
+
+	const run = <Failure>(effect: Effect.Effect<void, Failure, NodeServices.NodeServices>) =>
+		host.run(Effect.ignore(effect, { log: "Warn" }));
 
 	const reload = (ctx: ExtensionContext) => {
 		const loadThenRefresh = Effect.andThen(load(publisher, pi.getCommands()), refresh(publisher, ctx));

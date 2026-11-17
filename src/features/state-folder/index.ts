@@ -17,6 +17,7 @@ import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { labelTerminal, TerminalAddress } from "#src/client/hc/index.ts";
+import { piHost } from "#src/client/pi-host/index.ts";
 import { type Fingerprint, StateFolder, stateFolderLayer } from "#src/client/state-folder/index.ts";
 import type { FormatProblem } from "./action-items.ts";
 import { checks, type Place } from "./checks.ts";
@@ -186,16 +187,6 @@ const finish = Effect.fn("finish")(function* (
 	return Option.getOrUndefined(checked);
 });
 
-const services = Layer.provide(stateFolderLayer, NodeServices.layer);
-
-const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, StateFolder>) =>
-	Effect.runPromise(
-		effect.pipe(
-			Effect.catchCause((cause) => Effect.logWarning(cause)),
-			Effect.provide(services),
-		),
-	);
-
 /**
  * Keeps the `pi.state` label on this agent's hc terminal equal to the state folder its session last wrote to, found by
  * watching its own tool calls, and records each new folder in the session so `/resume`, `/reload` and `/tree` restore
@@ -203,6 +194,10 @@ const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, StateFolder>)
  */
 export const stateFolder = (pi: Pick<ExtensionAPI, "on" | "appendEntry">) => {
 	const tracker: Tracker = { watched: new Map(), folder: Option.none(), published: "" };
+	const host = piHost(Layer.provide(stateFolderLayer, NodeServices.layer));
+
+	const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, StateFolder>) =>
+		host.run(Effect.catchCause(effect, (cause) => Effect.logWarning(cause)));
 
 	const restore = (ctx: ExtensionContext) => {
 		tracker.folder = lastFolder(ctx.sessionManager.getBranch());

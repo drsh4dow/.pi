@@ -14,6 +14,7 @@ import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { agentFileText } from "#src/client/agent-files/index.ts";
+import { type PiHost, piHost } from "#src/client/pi-host/index.ts";
 
 type AutocompleteProvider = Parameters<AutocompleteProviderFactory>[0];
 
@@ -52,10 +53,16 @@ const isSkillCommand = Str.startsWith("skill:");
  * the skill files on each lookup that suggests a skill, so a frontmatter edit shows on the next keystroke.
  */
 export const withoutHiddenSkills =
-	(commands: () => ReadonlyArray<SlashCommandInfo>) =>
+	({
+		host,
+		commands,
+	}: {
+		readonly host: PiHost<NodeServices.NodeServices, never>;
+		readonly commands: () => ReadonlyArray<SlashCommandInfo>;
+	}) =>
 	(current: AutocompleteProvider): AutocompleteProvider => ({
 		getSuggestions: (lines, cursorLine, cursorCol, options) =>
-			Effect.runPromise(
+			host.run(
 				Effect.gen(function* () {
 					const suggestions = yield* Effect.promise(() =>
 						current.getSuggestions(lines, cursorLine, cursorCol, options),
@@ -68,7 +75,7 @@ export const withoutHiddenSkills =
 					const names = yield* hiddenCommands(commands());
 
 					return { ...suggestions, items: Arr.filter(suggestions.items, (item) => !names.has(item.value)) };
-				}).pipe(Effect.provide(NodeServices.layer)),
+				}),
 			),
 		applyCompletion: (lines, cursorLine, cursorCol, item, prefix) =>
 			current.applyCompletion(lines, cursorLine, cursorCol, item, prefix),
@@ -76,9 +83,12 @@ export const withoutHiddenSkills =
 			current.shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol) ?? true,
 	});
 
-export const skillMenu =
-	(pi: Pick<ExtensionAPI, "getCommands">) => (_event: SessionStartEvent, ctx: ExtensionContext) => {
+export const skillMenu = (pi: Pick<ExtensionAPI, "getCommands">) => {
+	const host = piHost(NodeServices.layer);
+
+	return (_event: SessionStartEvent, ctx: ExtensionContext) => {
 		if (ctx.hasUI) {
-			ctx.ui.addAutocompleteProvider(withoutHiddenSkills(() => pi.getCommands()));
+			ctx.ui.addAutocompleteProvider(withoutHiddenSkills({ host, commands: () => pi.getCommands() }));
 		}
 	};
+};
