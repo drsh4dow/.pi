@@ -5,7 +5,7 @@ import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-import { ghLayer, prWait } from "../../features/pr/index.ts";
+import { ghLayer, prWait } from "#src/features/pr/index.ts";
 
 const reportFailure = (message: string) =>
 	Effect.andThen(

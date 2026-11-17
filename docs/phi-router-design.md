@@ -46,7 +46,7 @@ const view = guard({ messages, lookup: book.lookup }); // exactly what a persona
 
 ### The policy module
 
-`features/phi-router/policy/` has no `@earendil-works/*` import (`policy/boundary.test.ts`). `policy/policy.ts` is the one written source for the identifier kinds of the plan's table, the defaults the human can change, the judge's question and counter-examples, the exact synthetic-identity list, the thresholds, the judge window and the judge limits. `policyVersion` hashes all of it together with each rule's pattern source and the judge model id, so a change to any of them retires every stored verdict. The rule ids are derived from the rule table, never listed twice.
+`src/features/phi-router/policy/` has no `@earendil-works/*` import (`policy/boundary.test.ts`). `policy/policy.ts` is the one written source for the identifier kinds of the plan's table, the defaults the human can change, the judge's question and counter-examples, the exact synthetic-identity list, the thresholds, the judge window and the judge limits. `policyVersion` hashes all of it together with each rule's pattern source and the judge model id, so a change to any of them retires every stored verdict. The rule ids are derived from the rule table, never listed twice.
 
 ### Rules
 

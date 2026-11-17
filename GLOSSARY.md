@@ -6,12 +6,12 @@ See `docs/adr/0001-harness-layout.md`.
 
 - **Host.** The program that loads an entrypoint: pi.
 - **Entrypoint.** The file pi loads for one extension, `agent/extensions/<name>/index.ts`. It only wires a feature into pi.
-- **Feature.** One piece of harness behavior, in `features/<name>/`, used only through its `index.ts`.
-- **Client.** A typed adapter to one outside system, such as hc, systemd or pi's session store, in `clients/<system>/index.ts`.
+- **Feature.** One piece of harness behavior, in `src/features/<name>/`, used only through its `index.ts`.
+- **Client.** A typed adapter to one outside system, such as hc, systemd or pi's session store, in `src/client/<system>/index.ts`.
 
 ## Prompt
 
-Terms from the prompt feature (`features/prompt/`), which builds every agent's system prompt. The root and every delegate load it.
+Terms from the prompt feature (`src/features/prompt/`), which builds every agent's system prompt. The root and every delegate load it.
 
 - **Shared layer.** `agent/SYSTEM.md`: how to operate inside this harness, the same for every agent. pi puts it first.
 - **Role layer.** The `<role>` and `<collaboration>` blocks from the role file of the agent's **role**, then a delegate's **brief**: `<work>` with its goal and state folder, `<project-facts>`, an owner's `<owner-rules>`, and `<instructions>`. It comes right after the shared layer.
@@ -28,7 +28,7 @@ Terms from the prompt feature (`features/prompt/`), which builds every agent's s
 
 ## Owned work
 
-Terms from the owned-work feature (`features/owned-work/`).
+Terms from the owned-work feature (`src/features/owned-work/`).
 
 - **Owned work.** Every delegate, serve, watch and group a pi process started. It survives a reload, and stops when the process quits or leaves its session: `/new`, `/resume`, or a fork outside herdr-app. See ADR 0002.
 - **Handover.** What a reload passes from one load of the owned-work extension to the next in the same process: the ledger's state and the agent key, so the work keeps running. A reload that changed the ledger's own types refuses it and stops the work.
@@ -43,8 +43,8 @@ Terms from the owned-work feature (`features/owned-work/`).
 - **Profile.** Who a delegate is, from the frontmatter of its instructions file: `model`, `thinking`, `readonly` and `role`, each optional. The call's `model` and `role` win over the profile's. Without a profile's thinking level, a delegate starts at `high`, whatever its parent's. An unknown key fails the call, and so does a frontmatter block that never closes or starts below the first line.
 - **Model alias.** A name for one model and the work it is for, `judgment`, `investigator` or `divergent`, that a `delegate` call or a profile gives as its `model`, so a skill never spells a model id. It runs on the caller's provider when that provider has the model id, so a delegate stays on its parent's **Claude account**, and on the alias's own provider otherwise. Not a **role**.
 - **Panel.** One model per provider, for work a skill runs once on each, such as competing designs or a review. Each entry is an alias or a `provider/id`. Two models come from different providers when their `provider/` prefixes differ.
-- **Model table.** The aliases and the panel, in `features/owned-work/models.ts`. The `delegate` tool's `model` parameter lists them, so every agent that can delegate sees them.
-- **Claude account.** One Claude login as its own provider: `ultra-a`, `ultra-b` or `ent`, each with Anthropic's models and its own credential in `auth.json`. `/account <name>` moves a session to another account and keeps the model. `ultra-a` and `ultra-b` are personal subscriptions. `ent` is the **BAA account**. A run that ends on a 429 moves the session, root or delegate, to the same model on the next account that takes it, in the order `ultra-a`, `ultra-b`, `ent`, so pi's own retry goes there. Nothing moves a session off `ent`, and nothing moves a **protected session**. From `features/claude-accounts/`.
+- **Model table.** The aliases and the panel, in `src/features/owned-work/models.ts`. The `delegate` tool's `model` parameter lists them, so every agent that can delegate sees them.
+- **Claude account.** One Claude login as its own provider: `ultra-a`, `ultra-b` or `ent`, each with Anthropic's models and its own credential in `auth.json`. `/account <name>` moves a session to another account and keeps the model. `ultra-a` and `ultra-b` are personal subscriptions. `ent` is the **BAA account**. A run that ends on a 429 moves the session, root or delegate, to the same model on the next account that takes it, in the order `ultra-a`, `ultra-b`, `ent`, so pi's own retry goes there. Nothing moves a session off `ent`, and nothing moves a **protected session**. From `src/features/claude-accounts/`.
 - **Role.** What an agent is for: `root`, `owner` or `leaf`. It picks the agent's role file, whether it has the `delegate` tool, and which skills, principles and playbooks its prompt lists. The root is the pi at the human's terminal. A delegate's parent names its role in the `delegate` call or through the profile, and a call where neither does fails.
 - **Owner.** A delegate handed one slice to build, verify, commit and report on. Its prompt lists the playbooks, and at every level it can hand parts of its slice to delegates of its own. At the last level it starts leaves only. Its parent hands it a **design** with the slice. See ADR 0008.
 - **Design.** Who settled the shape of an owner's slice, named when its parent starts it. It is either a sketch made before the hand-off, which the owner builds to, or the owner's own to choose before it builds. A start that names neither fails. A sketch counts only when it exists and records its synthesis decision, and nothing deeper in it is checked. An owner at the last level can be handed the choice too, and then works out its design with leaves.
@@ -69,13 +69,13 @@ Terms from the owned-work feature (`features/owned-work/`).
 
 ## Skill menu
 
-Terms from the skill-menu feature (`features/skill-menu/`).
+Terms from the skill-menu feature (`src/features/skill-menu/`).
 
 - **User-invocable.** Whether a skill shows in the `/` menu. The feature leaves out every skill whose frontmatter sets `user-invocable: false`. Pi reads no such key, so the skill still loads, the model still sees it, and typing its `/skill:<name>` in full still runs it.
 
 ## Web
 
-Terms from the web client (`clients/web/`) and feature (`features/web/`).
+Terms from the web client (`src/client/web/`) and feature (`src/features/web/`).
 
 - **Page.** What reading one URL gives back: the URL asked for, the final URL after redirects, a title, the source that read it, an optional caveat, and a body. The body is markdown, or a file such as a PDF with the markdown extracted from it.
 - **Source.** One way to read a URL, such as GitHub's API, npm, Hacker News, Reddit, Docsify, a direct fetch, or Exa's copy. The sources sit in one ordered table. The first source that claims a URL and answers reads it.
@@ -87,7 +87,7 @@ Terms from the web client (`clients/web/`) and feature (`features/web/`).
 
 ## Usage
 
-Terms from the usage feature (`features/usage/`), which shows `/usage`.
+Terms from the usage feature (`src/features/usage/`), which shows `/usage`.
 
 - **Card.** What `/usage` shows: one block per account and the time it read them. While it reads, the card sits under the transcript and fills in as each account answers. Then the session stores it as a custom entry, so it shows the same after a reload.
 - **Block.** One account in a card: the account, where its numbers came from (its **via**), and its rows, the reason it could not be read, or that it is still being read. An account `/usage` cannot read still gets a block.
@@ -97,7 +97,7 @@ Terms from the usage feature (`features/usage/`), which shows `/usage`.
 
 ## Cost
 
-Terms from the cost feature (`features/cost/`), the cache feature (`features/cache/`) and herdr-app's status bar (`herdr/mods/ow-status/`).
+Terms from the cost feature (`src/features/cost/`), the cache feature (`src/features/cache/`) and herdr-app's status bar (`herdr/mods/ow-status/`).
 
 - **Spend.** What a session priced its model calls at: replies, tool results that called a model, compactions, branch summaries and cache-warm calls, at the list price pi stored on each. A fork's spend starts at its own header. Unlike an **Estimate**, it covers one session tree, delegates included.
 - **Cache miss.** A reply that rewrote at full price at least 50,000 tokens of the prompt the session's last model call, a reply or a cache-warm call, had sent, once some call in the session has read or written the cache. The root and every delegate record each one as a `pi.cache-miss` entry just before the reply, with the missed tokens and every cause that held: idle past 5 minutes since that last call, a model change, a compaction, a context edit, a changed system prompt, changed tools. The prompt and tool causes come from the system messages pi saves, so a change made only in the request, such as a forced `systemPrompt` or a hidden declaration, names none. An empty list is a miss nothing there explains. The model never sees the entry.
@@ -105,7 +105,7 @@ Terms from the cost feature (`features/cost/`), the cache feature (`features/cac
 
 ## Loaded
 
-Terms from the loaded feature (`features/loaded/`) and herdr-app's Skills panel (`herdr/mods/ow-skills/`).
+Terms from the loaded feature (`src/features/loaded/`) and herdr-app's Skills panel (`herdr/mods/ow-skills/`).
 
 - **Guide.** A skill's `SKILL.md`, a principle's `<name>.md`, or a playbook's `<name>.md`: a file of instructions an agent reads into its context when its trigger matches.
 - **In context.** A guide is in context when the lines of its body that no other guide shares appear in text the model sees now: a tool result, a user message, a summary. pi's session projection decides what the model sees, after the branch, the latest compaction and context edits. A guide is **partial** when fewer than 90% of those lines appear, and at least three do, or all of them when it has fewer.

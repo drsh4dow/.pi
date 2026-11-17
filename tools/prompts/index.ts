@@ -16,8 +16,8 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
 
-import { inheritedEnv, levels, type StagedLaunch, stagedLaunches } from "../../features/owned-work/index.ts";
-import { harnessEntries, withoutPackageBins } from "../harness.ts";
+import { inheritedEnv, levels, type StagedLaunch, stagedLaunches } from "#src/features/owned-work/index.ts";
+import { harnessEntries, withoutPackageBins } from "#tools/harness.ts";
 import { type Capture, Payload, render } from "./render.ts";
 
 const captureExtension = `${import.meta.dirname}/capture.ts`;

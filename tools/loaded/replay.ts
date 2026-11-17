@@ -17,7 +17,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
-import { type GuideFile, guideFilesIn, inContext, type Index, loadGuides } from "../../features/loaded/index.ts";
+import { type GuideFile, guideFilesIn, inContext, type Index, loadGuides } from "#src/features/loaded/index.ts";
 
 const root = Str.replace(/\/tools\/loaded$/u, "")(import.meta.dirname);
 const since = Date.parse(process.argv[2] ?? "1970-01-01");
@@ -135,7 +135,7 @@ const compare =
 
 const program = Effect.gen(function* () {
 	const home = yield* Config.String("HOME");
-	const skills = yield* Effect.forEach([`${root}/agent/skills`, `${root}/features/web`], skillFilesIn);
+	const skills = yield* Effect.forEach([`${root}/agent/skills`, `${root}/src/features/web`], skillFilesIn);
 	const principles = yield* guideFilesIn("principle", `${root}/agent/principles`);
 	const playbooks = yield* guideFilesIn("playbook", `${root}/agent/playbooks`);
 	const files = [...Arr.flatten(skills), ...principles, ...playbooks];

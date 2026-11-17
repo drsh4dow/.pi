@@ -8,7 +8,7 @@ state folders fails. It costs real model calls, so nothing runs it for you.
 ## Run one
 
 ```sh
-bun features/owned-work/leaf-wake.scenario.ts
+bun src/features/owned-work/leaf-wake.scenario.ts
 ```
 
 ```
@@ -74,7 +74,7 @@ can never run one.
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 
-import { scenario } from "../../tools/driver/index.ts";
+import { scenario } from "#tools/driver/index.ts";
 
 scenario({
 	model: "ultra-a/claude-fable-5-2",
@@ -128,7 +128,7 @@ The run's name is the file name without `.scenario.ts`.
 A session is `{ id, file, entries, loaded, requests }`. `entries` are pi's `SessionEntry` values, header left out.
 `sessions.root` is the root's; `sessions.delegates` holds every delegate's at any depth, oldest first. Decode the
 entries you assert on with a `Schema` whose literals come from the feature that writes them, such as `entryKind` from
-`features/owned-work/recorded.ts`, so a change to the shape breaks the scenario at compile time or as a timeout that
+`src/features/owned-work/recorded.ts`, so a change to the shape breaks the scenario at compile time or as a timeout that
 names it.
 
 The other two fields come from a probe extension the run's `pi` wrapper loads into every pi, delegates included:
@@ -183,6 +183,6 @@ Of the rest of `models`, it confirms only that pi kept the file, not that pi app
 
 - `tools/driver/smoke.scenario.ts`: the run uses pi 1.5.2, the worktree's extensions, and the context window `contextWindow` sets.
 - `tools/driver/compaction.scenario.ts`: `contextWindow` makes pi compact.
-- `features/owned-work/leaf-wake.scenario.ts`: the root starts a leaf and wakes with its result, and the leaf runs the
+- `src/features/owned-work/leaf-wake.scenario.ts`: the root starts a leaf and wakes with its result, and the leaf runs the
   same pi on the worktree's extensions.
 - `tools/driver/false-fact.scenario.ts`: a false claim exits 1.
