@@ -115,20 +115,21 @@ Terms from the loaded feature (`src/features/loaded/`) and herdr-app's Skills pa
 
 ## PHI routing
 
-Terms for sending each request to a personal provider or the BAA account by what it holds. See ADRs 0012, 0013 and 0016.
+Terms for sending each request to a personal provider or a BAA provider by what it holds. See ADRs 0012, 0013, 0016 and 0017.
 
-- **PHI.** For routing, content that holds a complete direct identifier of a real patient or member: a full name, SSN, full date of birth, street address, personal phone or email, an insurance member, Medicare or Medicaid number, an MRN, a driver license or passport number, or a face photo. Internal ids, health facts tied only to one, staff and vendor contacts, fragments and counts are not. It may reach only the **BAA account**. `policy/policy.ts` is the written source.
+- **PHI.** For routing, content that holds a complete direct identifier of a real patient or member: a full name, SSN, full date of birth, street address, personal phone or email, an insurance member, Medicare or Medicaid number, an MRN, a driver license or passport number, or a face photo. Internal ids, health facts tied only to one, staff and vendor contacts, fragments and counts are not. It may reach only a **BAA provider**. `policy/policy.ts` is the written source.
 - **BAA account.** A Claude account covered by the Anthropic business associate agreement, today `ent`.
-- **`phi/<id>`.** A model a session or delegate selects to run the model `<id>` with each request routed by content. A request goes to the **sealed lane** when its own new content holds a **sealed** message, and to the **clean lane** otherwise. One sealed message does not keep the session on the BAA account. There is one for each model in the **model table**, and **`phi/auto`**.
+- **BAA provider.** A provider whose models may read PHI: `ent`, the BAA account, then `openai`, by the human's ruling that "openai chat models can handle sealed content".
+- **`phi/<id>`.** A model a session or delegate selects to run the model `<id>` with each request routed by content. A request goes to the **sealed lane** when its own new content holds a **sealed** message, and to the **clean lane** otherwise. One sealed message does not keep the session on the sealed lane. There is one for each model in the **model table** that a personal provider carries, and **`phi/auto`**.
 - **`phi/auto`.** The `phi/<id>` whose model is the one `~/.pi/agent/phi-router.json` names, `claude-opus-5-5` by default.
-- **Personal provider.** A provider outside the BAA that a protected session reaches only through the **border**: the personal Claude accounts `ultra-a` and `ultra-b`, `openai`, and `opencode-go`. OpenAI counts as one until the human decides otherwise.
+- **Personal provider.** A provider outside the BAA that the clean lane may use and the **border** guards: the personal Claude accounts `ultra-a` and `ultra-b`, and `opencode-go`.
 - **Home account.** The personal Claude account a `phi` session's clean lane tries first, picked from its session id.
 - **Clean lane.** Where a request with no sealed new content runs: its model on the home account, else on the first other personal provider that has it and is not rate-limited, else the sealed lane.
-- **Sealed lane.** Where sealed content of a model runs: that model on the BAA account when the BAA account carries it, else the **substitute**.
-- **Substitute.** The model in `~/.pi/agent/phi-router.json` on the BAA account, which runs sealed content when no BAA account carries the model asked for. A delegate whose whole run lands on it says so in its tool result.
-- **Protected session.** A session whose selected model is a `phi/<id>` or one on a BAA account. Its delegates and scripts stay inside the BAA boundary or behind the border. A delegate keeps the model it asks for, as a `phi/<id>` or on the sealed lane. The human may still switch it to any model, which ends the protection.
+- **Sealed lane.** Where sealed content of a model runs: that model on the first BAA provider that carries it, `ent` before `openai`, else the **substitute**.
+- **Substitute.** The model in `~/.pi/agent/phi-router.json` on `ent`, which runs sealed content when no BAA provider carries the model asked for. A delegate whose whole run lands on it says so in its tool result.
+- **Protected session.** A session whose selected model is a `phi/<id>` or one on a BAA provider. Its delegates and scripts stay inside the BAA boundary or behind the border. A delegate keeps the model it asks for, as a `phi/<id>` or on the sealed lane. The human may still switch it to any model. A switch to a model that is neither a `phi/<id>` nor on a BAA provider ends the protection.
 - **Verdict.** What the router concluded about one message part, kept by its content hash in the session: **sealed**, it holds a complete direct identifier of a real patient or member, or cleared, it does not. A part is judged once.
-- **Stub.** The constant text a personal account sees in place of a part that is sealed or not yet judged.
+- **Stub.** The constant text a personal provider sees in place of a part that is sealed or not yet judged.
 - **Border.** The check on every request bound for a **personal provider** in a process while its selected model is a `phi/<id>`. It passes cleared parts, stubs the rest, and refuses a request whose tool list never cleared.
 - **Pin.** `/phi pin`: the session runs wholly on the BAA account, with nothing judged, until `/phi unpin`.
 - **Fixture.** A turn part whose exact text has a SHA-256 listed under `fixtures` in `~/.pi/agent/phi-router.json`. The policy engine skips it, rules and judge alike. It is the only exemption the engine applies: no rule excuses an identifier for looking like a placeholder or for sitting near one.
