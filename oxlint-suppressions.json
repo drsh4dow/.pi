@@ -850,9 +850,6 @@
     "jsdoc/require-returns": {
       "count": 3
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 2
     },
