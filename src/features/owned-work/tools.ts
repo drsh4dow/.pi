@@ -10,13 +10,13 @@ import * as Arr from "effect/Array";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import type * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
 import { type Static, Type } from "typebox";
 
 import { type BriefSources, briefSourcesLayer } from "#src/client/brief-sources/index.ts";
 import { type Gh, ghLayer } from "#src/client/gh/index.ts";
 import { makeSessionFolder, readStagedBrief } from "#src/client/pi-cli/index.ts";
+import type { PiHost } from "#src/client/pi-host/index.ts";
 import type { SessionAddress } from "#src/client/pi-sessions/index.ts";
 import { type Caller, type DelegateParams, delegateParams, parseCall } from "./brief.ts";
 import { type ChildRole, type ChildSession, childRoles, Self } from "./child.ts";
@@ -91,22 +91,42 @@ const resultOf = (json: JsonValue, isError: boolean) =>
 
 type CallServices = Gh | BriefSources | NodeServices.NodeServices;
 
-type Runtime = ManagedRuntime.ManagedRuntime<Ledger | CallServices, never>;
+type Runtime = PiHost<Ledger | CallServices, never>;
 
 type Call<Reply> = (
 	ledger: (typeof Ledger)["Service"],
 ) => Effect.Effect<Reply, LedgerFailure | BadDelegate, CallServices>;
 
+const interruptOnAbort = (signal: AbortSignal): Effect.Effect<never> =>
+	signal.aborted
+		? Effect.interrupt
+		: Effect.callback((resume) => {
+				const abort = (): void => {
+					resume(Effect.interrupt);
+				};
+
+				signal.addEventListener("abort", abort, { once: true });
+
+				return Effect.sync(() => {
+					signal.removeEventListener("abort", abort);
+				});
+			});
+
 const runTool =
 	(runtime: Runtime, signal: AbortSignal | undefined) =>
-	<Reply>(call: Call<Reply>, render: (reply: Reply) => JsonValue) =>
-		runtime.runPromise(
-			Effect.matchEffect(Effect.flatMap(Ledger, call), {
-				onFailure: (error) => resultOf(Out.error(error), true),
-				onSuccess: (reply) => resultOf(render(reply), false),
+	<Reply>(call: Call<Reply>, render: (reply: Reply) => JsonValue) => {
+		const tool = Effect.matchEffect(Effect.flatMap(Ledger, call), {
+			onFailure: (error) => resultOf(Out.error(error), true),
+			onSuccess: (reply) => resultOf(render(reply), false),
+		});
+
+		return runtime.run(
+			Option.match(Option.fromUndefinedOr(signal), {
+				onNone: () => tool,
+				onSome: (aborting) => Effect.raceFirst(tool, interruptOnAbort(aborting)),
 			}),
-			{ signal },
 		);
+	};
 
 const refsOf = (of: ReadonlyArray<Static<typeof HandleRef>>) => Arr.map(of, ({ ref }) => WorkRef(ref));
 

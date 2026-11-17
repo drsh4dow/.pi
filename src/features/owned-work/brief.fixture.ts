@@ -14,6 +14,7 @@ import type { Static } from "typebox";
 import { briefSourcesLayer } from "#src/client/brief-sources/index.ts";
 import { Gh, GhError } from "#src/client/gh/index.ts";
 import type { Design } from "#src/client/pi-cli/index.ts";
+import { piHost } from "#src/client/pi-host/index.ts";
 import type { DelegateParams } from "./brief.ts";
 import type { Brief, ChildRole } from "./child.ts";
 import { continueMessage } from "./continuation.ts";
@@ -144,12 +145,14 @@ const gh = Layer.succeed(
 	}),
 );
 
-export const runtime = ManagedRuntime.make(
-	Layer.mergeAll(Layer.provideMerge(briefSourcesLayer, NodeServices.layer), ledger, home, gh),
-);
+const services = Layer.mergeAll(Layer.provideMerge(briefSourcesLayer, NodeServices.layer), ledger, home, gh);
+
+export const runtime = ManagedRuntime.make(services);
+
+export const host = piHost(services);
 
 const delegateStarting = (roles: ReadonlyArray<ChildRole>) =>
-	Tools.delegate(runtime, roles, { cwd: "/", dir: "/d" }, table, Option.none());
+	Tools.delegate(host, roles, { cwd: "/", dir: "/d" }, table, Option.none());
 
 export const delegate = delegateStarting(["owner", "leaf"]);
 

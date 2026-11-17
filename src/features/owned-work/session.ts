@@ -16,8 +16,8 @@ import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
-import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
@@ -25,23 +25,13 @@ import * as Str from "effect/String";
 import { type Hc, hcLayer, TerminalAddress } from "#src/client/hc/index.ts";
 import { type HerdrApp, herdrAppLayer } from "#src/client/herdr-app/index.ts";
 import { type PiCli, piCliLayer, unwrapMessage } from "#src/client/pi-cli/index.ts";
+import { type PiHost, piHost } from "#src/client/pi-host/index.ts";
 import { type PiSessions, piSessionsLayer } from "#src/client/pi-sessions/index.ts";
 import { sourceStampLayer } from "#src/client/source-stamp/index.ts";
 import { type Slices, slicesLayer } from "#src/client/systemd/index.ts";
 import { inheritedEnv, Self, selfFromEnv, withAgentBin } from "./child.ts";
 import { forkInTab, restoreDraft } from "./fork.ts";
-import {
-	type Inheritance,
-	inheritanceOf,
-	newAgentKey,
-	leave,
-	ledgerStamp,
-	type Lineage,
-	rootSlices,
-	stateOf,
-	stopStale,
-	take,
-} from "./handover.ts";
+import * as Handover from "./handover.ts";
 import { Host, Ledger, ledgerLayer } from "./ledger.ts";
 import { Out } from "./out.ts";
 import { warnPolling } from "./polling.ts";
@@ -56,8 +46,8 @@ interface Relay {
 }
 
 interface Session {
-	readonly runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>;
-	readonly lineage: Lineage;
+	readonly host: PiHost<RuntimeServices, never>;
+	readonly lineage: Handover.Lineage;
 	readonly relay: Relay;
 	/** The hc terminal pi runs in, when it runs in one. */
 	readonly terminal: Option.Option<TerminalAddress>;
@@ -103,7 +93,7 @@ const runtimeOf = (pi: ExtensionAPI, { ctx, env, childExtensions, inheritance, s
 	const relay: Relay = { waiter: Option.none() };
 	const firstRef = firstRefAfter(ctx.sessionManager.getEntries());
 	const passEnv = inheritedEnv(env);
-	const ledger = ledgerLayer({ self, cwd: ctx.cwd, passEnv, firstRef, carried: stateOf(inheritance) });
+	const ledger = ledgerLayer({ self, cwd: ctx.cwd, passEnv, firstRef, carried: Handover.stateOf(inheritance) });
 
 	const slices = Self.$is("Root")(self)
 		? slicesLayer({ slice: sliceOf(agentKey), rootPid: Option.some(process.pid) })
@@ -121,9 +111,9 @@ const runtimeOf = (pi: ExtensionAPI, { ctx, env, childExtensions, inheritance, s
 		Layer.provideMerge(Tools.layer, NodeServices.layer),
 	);
 
-	const runtime = ManagedRuntime.make(Layer.provideMerge(ledger, services));
+	const host = piHost(Layer.provideMerge(ledger, services));
 
-	return { runtime, lineage: { agentKey, stamp }, relay, terminal: parent, passEnv };
+	return { host, lineage: { agentKey, stamp }, relay, terminal: parent, passEnv };
 };
 
 /**
@@ -144,7 +134,7 @@ interface Start {
 	readonly ctx: ExtensionContext;
 	readonly env: Env;
 	readonly childExtensions: ReadonlyArray<string>;
-	readonly inheritance: Inheritance;
+	readonly inheritance: Handover.Inheritance;
 	readonly stamp: number;
 	readonly sliceOf: (agentKey: string) => string;
 }
@@ -154,7 +144,7 @@ const sessionOf = (pi: ExtensionAPI, start: Start) =>
 		const { ctx, env } = start;
 		const session = runtimeOf(pi, start, self);
 
-		Tools.register(pi, session.runtime, self, placeOf(self, ctx, env), ctx.sessionManager);
+		Tools.register(pi, session.host, self, placeOf(self, ctx, env), ctx.sessionManager);
 
 		return session;
 	});
@@ -216,14 +206,13 @@ const forkOrAsk =
 			opened ? Effect.succeed({ cancel: true }) : cancelUnless(ledger, ctx),
 		);
 
-export const runHook =
-	<Services>(runtime: ManagedRuntime.ManagedRuntime<Services, never>) =>
-	<Reply>(hook: Effect.Effect<Reply, never, Services>): Promise<Reply | undefined> =>
-		Effect.promise(() => runtime.runPromiseExit(hook)).pipe(
+export const awaitOn =
+	<Services>(host: PiHost<Services, never>) =>
+	<Reply>(hook: Effect.Effect<Reply, never, Services>): Effect.Effect<Reply | undefined> =>
+		Effect.suspend(() => Fiber.await(host.fork(hook))).pipe(
 			Effect.flatMap((exit) =>
 				Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) ? Effect.undefined : exit,
 			),
-			Effect.runPromise,
 		);
 
 interface Current {
@@ -234,15 +223,16 @@ const begin =
 	(pi: ExtensionAPI, env: Env, childExtensions: ReadonlyArray<string>, current: Current) =>
 	(event: SessionStartEvent, ctx: ExtensionContext) =>
 		Effect.gen(function* () {
-			const stamp = yield* ledgerStamp;
-			const sliceOf = yield* rootSlices;
-			const inheritance = inheritanceOf({ stamp, agentKey: newAgentKey() })(event.reason, take());
+			const stamp = yield* Handover.ledgerStamp;
+			const sliceOf = yield* Handover.rootSlices;
+			const lineage = { stamp, agentKey: Handover.newAgentKey() };
+			const inheritance = Handover.inheritanceOf(lineage)(event.reason, Handover.take());
 			const session = yield* sessionOf(pi, { ctx, env, childExtensions, inheritance, stamp, sliceOf });
 
 			current.session = Option.some(session);
 			restoreDraft({ event, ctx, env });
-			yield* Effect.promise(() => runHook(session.runtime)(stopStale({ ui: ctx.ui, sliceOf })(inheritance)));
-		}).pipe(Effect.provide(Layer.provideMerge(sourceStampLayer, NodeServices.layer)), Effect.runPromise);
+			yield* awaitOn(session.host)(Handover.stopStale({ ui: ctx.ui, sliceOf })(inheritance));
+		});
 
 /** Forgets the session before it stops, so no hook reaches a ledger that froze for a reload. */
 const end = (current: Current) => (event: SessionShutdownEvent) => {
@@ -251,13 +241,11 @@ const end = (current: Current) => (event: SessionShutdownEvent) => {
 	current.session = Option.none();
 
 	return Option.match(ending, {
-		onNone: () => Promise.resolve(),
+		onNone: () => Effect.void,
 		onSome: (session) =>
-			Effect.runPromise(
-				Effect.andThen(
-					Effect.promise(() => runHook(session.runtime)(leave(session.lineage)(event))),
-					Effect.promise(() => session.runtime.dispose()),
-				),
+			Effect.andThen(
+				awaitOn(session.host)(Handover.leave(session.lineage)(event)),
+				Effect.promise(() => session.host.dispose()),
 			),
 	});
 };
@@ -265,6 +253,7 @@ const end = (current: Current) => (event: SessionShutdownEvent) => {
 /** `childExtensions` are the entrypoints each delegate loads: this feature's own, plus any the harness wants in every child. */
 export const ownedWork = (childExtensions: ReadonlyArray<string>) => (agentDir: string) => (pi: ExtensionAPI) => {
 	const env = withAgentBin(agentDir)({ ...process.env });
+	const host = piHost(Layer.provideMerge(sourceStampLayer, NodeServices.layer));
 	const current: Current = { session: Option.none() };
 
 	const withLedger = <Reply>(
@@ -272,11 +261,16 @@ export const ownedWork = (childExtensions: ReadonlyArray<string>) => (agentDir: 
 	) =>
 		Option.match(current.session, {
 			onNone: () => Promise.resolve(),
-			onSome: (session) => runHook(session.runtime)(Effect.flatMap(Ledger, use(session))),
+			onSome: (session) => {
+				const hook = Effect.flatMap(Ledger, use(session));
+
+				return host.run(awaitOn(session.host)(hook));
+			},
 		});
 
 	return {
-		sessionStart: begin(pi, env, childExtensions, current),
+		sessionStart: (event: SessionStartEvent, ctx: ExtensionContext): Promise<void> =>
+			host.run(begin(pi, env, childExtensions, current)(event, ctx)),
 		input: ({ text }: InputEvent, ctx: ExtensionContext) => {
 			const session = { dir: ctx.sessionManager.getSessionDir(), id: ctx.sessionManager.getSessionId() };
 
@@ -294,6 +288,6 @@ export const ownedWork = (childExtensions: ReadonlyArray<string>) => (agentDir: 
 			withLedger(() => (ledger) => cancelUnless(ledger, ctx)),
 		beforeFork: (event: SessionBeforeForkEvent, ctx: ExtensionContext) =>
 			withLedger((session) => forkOrAsk(session, event, ctx)),
-		shutdown: end(current),
+		shutdown: (event: SessionShutdownEvent): Promise<void> => host.run(end(current)(event)),
 	};
 };

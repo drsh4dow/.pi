@@ -15,7 +15,7 @@ import type { Static } from "typebox";
 
 import { Design, PiCli, piCliLayer, readStagedBrief } from "#src/client/pi-cli/index.ts";
 import { entryKind } from "#src/features/state-folder/index.ts";
-import { callerOf, delegate, pinned, runtime, started, table } from "./brief.fixture.ts";
+import { callerOf, delegate, host, pinned, runtime, started, table } from "./brief.fixture.ts";
 import type { DelegateParams } from "./brief.ts";
 import { type Brief, launch } from "./child.ts";
 import { Tools } from "./tools.ts";
@@ -150,7 +150,7 @@ test("each call reads the state folder's facts afresh, so an edit reaches the ne
 const delegatesFolder = `${root}/delegates`;
 
 const ownerTool = (own: { readonly dir: string; readonly id: string }) =>
-	Tools.delegate(runtime, ["owner", "leaf"], { cwd: "/", dir: "/d" }, table, Option.some(own));
+	Tools.delegate(host, ["owner", "leaf"], { cwd: "/", dir: "/d" }, table, Option.some(own));
 
 const stagedAs = (id: string, level: number) => (briefs: ReadonlyArray<Brief>) =>
 	Effect.gen(function* () {
