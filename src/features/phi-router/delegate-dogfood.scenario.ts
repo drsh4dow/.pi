@@ -31,8 +31,9 @@ const children: ReadonlyArray<Child> = [
 	{ alias: "investigator", key: "phi/gpt-6.1-sol", servedBy: ["openai/gpt-6.1-sol", "ent/claude-opus-5-5"] },
 ];
 
+/** Invented, but plausible: the judge clears identifiers that look fake, such as `MRN 000-SYNTH-0001`, so they never reach ent. */
 const brief =
-	"Synthetic test data, not a real patient. Summarize this chart in one sentence: Jane Testpatient, MRN 000-SYNTH-0001, DOB 1970-01-01, seen for a synthetic cough. Then reply ok.";
+	"Summarize this chart in one sentence: Maria Delgado-Ruiz, MRN 48213977, DOB 1958-03-14, seen for a persistent cough. Then reply ok.";
 
 const request = Arr.join(
 	[
