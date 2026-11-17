@@ -97,21 +97,6 @@ type Call<Reply> = (
 	ledger: (typeof Ledger)["Service"],
 ) => Effect.Effect<Reply, LedgerFailure | BadDelegate, CallServices>;
 
-const interruptOnAbort = (signal: AbortSignal): Effect.Effect<never> =>
-	signal.aborted
-		? Effect.interrupt
-		: Effect.callback((resume) => {
-				const abort = (): void => {
-					resume(Effect.interrupt);
-				};
-
-				signal.addEventListener("abort", abort, { once: true });
-
-				return Effect.sync(() => {
-					signal.removeEventListener("abort", abort);
-				});
-			});
-
 const runTool =
 	(runtime: Runtime, signal: AbortSignal | undefined) =>
 	<Reply>(call: Call<Reply>, render: (reply: Reply) => JsonValue) => {
@@ -120,12 +105,7 @@ const runTool =
 			onSuccess: (reply) => resultOf(render(reply), false),
 		});
 
-		return runtime.run(
-			Option.match(Option.fromUndefinedOr(signal), {
-				onNone: () => tool,
-				onSome: (aborting) => Effect.raceFirst(tool, interruptOnAbort(aborting)),
-			}),
-		);
+		return runtime.run(tool, { signal });
 	};
 
 const refsOf = (of: ReadonlyArray<Static<typeof HandleRef>>) => Arr.map(of, ({ ref }) => WorkRef(ref));
