@@ -2,11 +2,12 @@ import { afterAll, expect, test } from "bun:test";
 
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
-import type * as PlatformError from "effect/PlatformError";
 import * as Str from "effect/String";
 
+import { eventually } from "#src/primitives/eventually.ts";
 import { treeReader } from "./index.ts";
 
 const scratch = await Effect.runPromise(
@@ -67,7 +68,7 @@ const startDelegate = (parent: SessionManager, child: SessionManager, name: stri
 const readerOf = (root: SessionManager, delegates: string) =>
 	treeReader({ root: root.getSessionFile() ?? "", delegates });
 
-const run = <Value>(effect: Effect.Effect<Value, PlatformError.PlatformError, FileSystem.FileSystem>) =>
+const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem>) =>
 	Effect.runPromise(Effect.provide(effect, NodeServices.layer));
 
 test("the label holds the session's own spend and each delegate's, at every level", () =>
@@ -164,8 +165,12 @@ test("a fork counts only what it spent after the fork, not its source's history"
 			const { dir, delegates } = sessionsDir();
 			const { source, leaf } = sourceWithHistory(dir, delegates);
 
-			// A real fork comes at least a keystroke after the last reply, never in the same millisecond.
-			yield* Effect.sleep("2 millis");
+			const repliedAt = yield* Clock.currentTimeMillis;
+
+			yield* eventually(
+				Effect.map(Clock.currentTimeMillis, (now) => now > repliedAt),
+				"1 second",
+			);
 
 			const fork = SessionManager.open(source.getSessionFile() ?? "", dir);
 
