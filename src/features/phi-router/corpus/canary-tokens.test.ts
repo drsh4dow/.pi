@@ -8,9 +8,9 @@ import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { foundIn, seenOn, tokensOf } from "./canary-tokens.ts";
-import { cleanReachOf, failed, type Outcome } from "./corpus-wire-table.ts";
-import { gzip } from "./corpus/encodings.ts";
-import type { Case, Message } from "./corpus/manifest.ts";
+import { gzip } from "./encodings.ts";
+import type { Case, Message } from "./manifest.ts";
+import { cleanReachOf, failed, type Outcome } from "./wire-table.ts";
 
 const mrn = "MRN 4417-2290";
 

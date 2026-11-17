@@ -10,7 +10,7 @@ import * as Str from "effect/String";
 import { entryKind } from "#src/features/owned-work/index.ts";
 import { type Run, scenario } from "#tools/driver/index.ts";
 import { type Asked, compactionPrompt, mockedModels, Reply, serveMock } from "./anthropic.fixture.ts";
-import { foundIn } from "./canary-tokens.ts";
+import { foundIn } from "./corpus/canary-tokens.ts";
 import { stubs } from "./policy/policy.ts";
 import { providersOf } from "./session.fixture.ts";
 

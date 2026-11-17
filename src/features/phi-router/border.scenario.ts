@@ -16,7 +16,7 @@ import * as Str from "effect/String";
 import { type Run, scenario } from "#tools/driver/index.ts";
 import { lastMessageText, mockedModels, Reply, serveMock } from "./anthropic.fixture.ts";
 import { ContextSeen, fixtureEntryType, forcedAccount, planted } from "./border.fixture.ts";
-import { foundIn } from "./canary-tokens.ts";
+import { foundIn } from "./corpus/canary-tokens.ts";
 import { LaneJson } from "./lanes.ts";
 import { sha256 } from "./policy/digest.ts";
 import { stubs } from "./policy/policy.ts";

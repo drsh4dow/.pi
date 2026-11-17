@@ -13,18 +13,18 @@ import * as Str from "effect/String";
 
 import { type Run, scenario, type Spawned } from "#tools/driver/index.ts";
 import { type Asked, compactionPrompt, mockedModels, Reply, serveMock } from "./anthropic.fixture.ts";
-import { seenOn, tokensOf } from "./canary-tokens.ts";
-import { cleanReachOf, failed, type Outcome, strataOf, tableOf } from "./corpus-wire-table.ts";
-import { fillerMark, type Plan, planOf, Step } from "./corpus-wire.ts";
+import { seenOn, tokensOf } from "./corpus/canary-tokens.ts";
 import { decodeJsonLines } from "./corpus/jsonl.ts";
 import { type Case, CaseFromJsonLine, Synthetic } from "./corpus/manifest.ts";
+import { cleanReachOf, failed, type Outcome, strataOf, tableOf } from "./corpus/wire-table.ts";
+import { fillerMark, type Plan, planOf, Step } from "./corpus/wire.ts";
 
 class Usage extends Schema.TaggedError<Usage, { readonly brand: unique symbol }>()("Usage", {
 	message: Schema.String,
 }) {}
 
 const usage =
-	"usage: bun features/phi-router/corpus-wire.scenario.ts <manifest.jsonl> [--concurrency N] [--only id,id]\nsynthetic.json must sit beside the manifest, as generate.ts writes it.";
+	"usage: bun src/features/phi-router/corpus-wire.scenario.ts <manifest.jsonl> [--concurrency N] [--only id,id]\nsynthetic.json must sit beside the manifest, as generate.ts writes it.";
 
 interface Args {
 	readonly manifest: string;

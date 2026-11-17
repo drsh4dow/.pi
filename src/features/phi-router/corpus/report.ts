@@ -1,9 +1,9 @@
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 
-import { type Seen, seenOn, type Tracked } from "#src/features/phi-router/canary-tokens.ts";
 import type { Usage } from "#src/features/phi-router/policy/engine.ts";
 import type { Lane } from "#src/features/phi-router/route.ts";
+import { type Seen, seenOn, type Tracked } from "./canary-tokens.ts";
 import { Carrier, type Case, Entry, Identifier, Negative, type PhiStrata, Transform } from "./manifest.ts";
 
 export interface Sent {
