@@ -18,7 +18,7 @@ import { piHost } from "#src/client/pi-host/index.ts";
 import { StateFolder, stateFolderLayer } from "#src/client/state-folder/index.ts";
 import { guideFiles, readGuides } from "#src/features/loaded/index.ts";
 import { selfFromEnv } from "#src/features/owned-work/index.ts";
-import { internalIdsOnly, isPhiAuto } from "#src/features/phi-router/index.ts";
+import { internalIdsOnly, isPhi } from "#src/features/phi-router/index.ts";
 import { lastFolder } from "#src/features/state-folder/index.ts";
 import { guidesToRestore, noGuides } from "./guides.ts";
 import {
@@ -98,8 +98,8 @@ const guidesFor = Effect.fn("guidesFor")(
 	),
 );
 
-/** In a `phi/auto` session a clean summary goes on to a personal account, so it names patients by internal id only. */
-const systemPromptFor = (model: Model<Api>) => (isPhiAuto(model) ? `${systemPrompt} ${internalIdsOnly}` : systemPrompt);
+/** In a `phi` session a clean summary goes on to a personal account, so it names patients by internal id only. */
+const systemPromptFor = (model: Model<Api>) => (isPhi(model) ? `${systemPrompt} ${internalIdsOnly}` : systemPrompt);
 
 interface Attempt {
 	readonly reply: Reply;

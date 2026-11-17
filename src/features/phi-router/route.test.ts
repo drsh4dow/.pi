@@ -7,7 +7,7 @@ import * as Result from "effect/Result";
 
 import { guard, type Lookup } from "./border.ts";
 import { stubs } from "./policy/policy.ts";
-import { accountFor, homeOf } from "./route.ts";
+import { homeOf } from "./route.ts";
 import {
 	asked,
 	branchOf,
@@ -199,22 +199,6 @@ test("a 429 moves the retry to the other personal account, and a failure on ent 
 			expect(afterEnt).toBe("ent");
 		}),
 	));
-
-test("the personal lane skips a limited or unusable account, and ent never fails over to one", () => {
-	const choice = {
-		lane: "personal" as const,
-		home: "ultra-a" as const,
-		limited: () => false,
-		usable: () => true,
-		failedOnBaa: false,
-	};
-
-	expect(accountFor(choice)).toBe("ultra-a");
-	expect(accountFor({ ...choice, limited: (account) => account === "ultra-a" })).toBe("ultra-b");
-	expect(accountFor({ ...choice, usable: (account) => account === "ent" })).toBe("ent");
-	expect(accountFor({ ...choice, failedOnBaa: true })).toBe("ent");
-	expect(accountFor({ ...choice, lane: "ent" })).toBe("ent");
-});
 
 test("a judge that dies sends the request to ent", () =>
 	run(

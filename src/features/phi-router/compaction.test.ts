@@ -2,14 +2,28 @@ import { expect, test } from "bun:test";
 
 import { type CompactionEntry, convertToLlm, SessionManager } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
+import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
+import * as Function from "effect/Function";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 
 import { guard } from "./border.ts";
+import { compactionJudged } from "./dispatch.ts";
 import { Judge } from "./policy/engine.ts";
 import { compactionHead, decide, homeOf } from "./route.ts";
-import { asked, branchOf, done, run, scriptedJudge, syntheticChart, system, worldOf } from "./router.fixture.ts";
+import {
+	asked,
+	branchOf,
+	done,
+	onAccount,
+	phiModel,
+	run,
+	scriptedJudge,
+	syntheticChart,
+	system,
+	worldOf,
+} from "./router.fixture.ts";
 
 const question = "Why does the admissions import drop rows?";
 
@@ -80,5 +94,46 @@ test("a sealed compaction summary goes to ent on each request until ent has answ
 			const answered = yield* afterSealedSummary({ name: "summary-answered", replies: ["ent"] });
 
 			expect([manual.lane, threshold.lane, answered.lane]).toEqual(["ent", "ent", answered.home]);
+		}),
+	));
+
+const judgedOn = (model: ReturnType<typeof phiModel>) =>
+	Effect.gen(function* () {
+		const world = yield* worldOf({ name: `compaction-on-${model.provider}-${model.id}` });
+		const book = (yield* branchOf({ world })).book();
+		const { session, entry } = compacted();
+		const compaction = yield* Effect.fromOption(entry);
+
+		const ctx = {
+			model,
+			cwd: world.cwd,
+			sessionManager: { getBranch: () => session.getBranch() },
+			ui: { notify: (message: string) => world.notices.push(message) },
+		};
+
+		yield* compactionJudged({
+			compaction,
+			ctx,
+			session: { book: Option.some(book), appendVerdicts: Function.constVoid },
+		}).pipe(
+			Effect.provideService(Judge, scriptedJudge(world)),
+			Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnvRecord({ HOME: world.home })),
+		);
+
+		return { judged: world.judged.length > 0, warned: world.notices.length };
+	});
+
+test("a new compaction summary is judged in a session on any phi model, and in no other", () =>
+	run(
+		Effect.gen(function* () {
+			const onAuto = yield* judgedOn(phiModel("auto"));
+			const onFable = yield* judgedOn(phiModel("claude-fable-5-2"));
+			const onPersonal = yield* judgedOn(onAccount("ultra-a"));
+
+			expect([onAuto, onFable, onPersonal]).toEqual([
+				{ judged: true, warned: 1 },
+				{ judged: true, warned: 1 },
+				{ judged: false, warned: 0 },
+			]);
 		}),
 	));

@@ -3,7 +3,7 @@ import { expect, test } from "bun:test";
 import * as Effect from "effect/Effect";
 
 import { guardCodemode } from "./gate.ts";
-import { onAccount, phiAuto } from "./router.fixture.ts";
+import { onAccount, phiAuto, phiModel } from "./router.fixture.ts";
 
 const codemode = (code: string) => ({
 	type: "tool_call" as const,
@@ -43,18 +43,20 @@ test("the codemode guard in a phi/auto session: a script that only calls tools i
 		),
 	));
 
-const scriptIn = (provider: string) => {
-	const ctx = { model: onAccount(provider) };
+const scriptIn = (model: ReturnType<typeof phiModel>) =>
+	Effect.promise(() => guardCodemode({ event: codemode("models.x"), ctx: { model } }));
 
-	return Effect.promise(() => guardCodemode({ event: codemode("models.x"), ctx }));
-};
+const sessions = Effect.all([
+	scriptIn(onAccount("ent")),
+	scriptIn(phiModel("claude-fable-5-2")),
+	scriptIn(onAccount("ultra-a")),
+]);
 
-const bothSessions = Effect.all([scriptIn("ent"), scriptIn("ultra-a")]);
-
-test("the codemode guard covers a BAA-account session and leaves a personal one alone", () =>
+test("the codemode guard covers a BAA-account session and a phi/<id> one, and leaves a personal one alone", () =>
 	Effect.runPromise(
-		Effect.map(bothSessions, ([ent, personalSession]) => {
+		Effect.map(sessions, ([ent, phiFable, personalSession]) => {
 			expect(ent?.block).toBe(true);
+			expect(phiFable?.block).toBe(true);
 			expect(personalSession).toBeUndefined();
 		}),
 	));

@@ -6,27 +6,19 @@ import type {
 	ModelRouteRequest,
 	SessionEntry,
 } from "@earendil-works/pi-coding-agent";
-import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Clock from "effect/Clock";
-import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { laneLogLayer } from "#src/client/phi-lane-log/index.ts";
-import { phiSettingsLayer } from "#src/client/phi-settings/index.ts";
-import { verdictCacheLayer } from "#src/client/phi-verdict-cache/index.ts";
-import { type AccountId, isBaaAccount, isRateLimited } from "#src/features/claude-accounts/index.ts";
-import { type Classify, decisionsModel, decisionsPieceJudge } from "./decisions.ts";
-import { isPhi } from "./gate.ts";
+import { isBaaAccount, isRateLimited } from "#src/features/claude-accounts/index.ts";
+import { askedId, type Carries, isPhi, type Placement, sealedLane } from "./gate.ts";
 import { appendLane, judgedOf } from "./lanes.ts";
 import { Fixtures } from "./policy/digest.ts";
 import { Judge, Verdict } from "./policy/engine.ts";
 import { Synthetic } from "./policy/synthetic.ts";
 import {
-	accountFor,
 	compactionHead,
 	decide,
 	type Decision,
@@ -34,18 +26,17 @@ import {
 	homeOf,
 	limitedAt,
 	pinnedOn,
+	placementFor,
 	RouterState,
 	stampedAfter,
 	undeliveredSummary,
 } from "./route.ts";
-import { defaultModel, readSettings, type Settings } from "./settings.ts";
+import { readSettings, type Settings } from "./settings.ts";
 import type { VerdictBook, VerdictsEntry } from "./store.ts";
 
 export type Request = ModelRouteRequest<typeof RouterState.Encoded>;
 
 export type Route = ModelRoute<typeof RouterState.Encoded>;
-
-export type Env = Readonly<Record<string, string | undefined>>;
 
 type RouterContext = Pick<ExtensionContext, "cwd"> & {
 	readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getSessionId" | "getBranch">;
@@ -57,25 +48,6 @@ export interface RouterSession {
 	readonly book: Option.Option<VerdictBook>;
 	readonly appendVerdicts: (entry: VerdictsEntry) => void;
 }
-
-export const servicesOf = (env: Env) =>
-	Layer.merge(
-		Layer.provide(Layer.mergeAll(phiSettingsLayer, laneLogLayer, verdictCacheLayer), NodeServices.layer),
-		ConfigProvider.layer(ConfigProvider.fromEnvRecord(env)),
-	);
-
-export const decisionsOf = ({ modelRegistry, signal }: Pick<ExtensionContext, "modelRegistry" | "signal">) => {
-	const classifier = Option.fromUndefinedOr(modelRegistry.findOfType("classifier", "openai", decisionsModel));
-
-	const classify: Classify = (context, options) =>
-		Option.match(classifier, {
-			onNone: () => Promise.reject(new Error(`no classifier openai/${decisionsModel}`)),
-			onSome: (model) =>
-				modelRegistry.classify(model, context, signal === undefined ? options : { ...options, signal }),
-		});
-
-	return decisionsPieceJudge(classify);
-};
 
 const decideIn = Effect.fn("decideIn")(function* ({
 	messages,
@@ -118,13 +90,36 @@ const failureOf = (failed: Request["failed"]) =>
 		rateLimited: isRateLimited(message),
 	}));
 
-const usableIn = (ctx: RouterContext, model: string) => (account: AccountId) => {
-	const found = ctx.modelRegistry.find(account, model);
+const usableIn =
+	(ctx: RouterContext): Carries =>
+	(provider, id) => {
+		const found = ctx.modelRegistry.find(provider, id);
 
-	return found !== undefined && ctx.modelRegistry.hasConfiguredAuth(found);
+		return found !== undefined && ctx.modelRegistry.hasConfiguredAuth(found);
+	};
+
+/** The router state after this request's failure, and the state to store when it changed. */
+const stateAfter = ({
+	request,
+	ctx,
+	failed,
+	now,
+}: {
+	readonly request: Request;
+	readonly ctx: RouterContext;
+	readonly failed: ReturnType<typeof failureOf>;
+	readonly now: number;
+}) => {
+	const stored = decodeState(request.state);
+	const prior = Option.getOrElse(stored, () => ({ home: homeOf(ctx.sessionManager.getSessionId()), limited: [] }));
+	const stamped = stampedAfter({ limited: prior.limited, failed, now });
+	const limited = Option.getOrElse(stamped, () => prior.limited);
+	const changed = Option.isNone(stored) || Option.isSome(stamped);
+
+	return { home: prior.home, limited, state: changed ? Option.some({ ...prior, limited }) : Option.none() };
 };
 
-const accountOf = ({
+const placementOf = ({
 	request,
 	ctx,
 	settings,
@@ -139,22 +134,25 @@ const accountOf = ({
 }) => {
 	const shadow = settings.mode === "shadow";
 	const failed = shadow ? Option.none() : failureOf(request.failed);
-	const stored = decodeState(request.state);
-	const prior = Option.getOrElse(stored, () => ({ home: homeOf(ctx.sessionManager.getSessionId()), limited: [] }));
-	const stamped = stampedAfter({ limited: prior.limited, failed, now });
-	const limited = Option.getOrElse(stamped, () => prior.limited);
+	const { home, limited, state } = stateAfter({ request, ctx, failed, now });
+	const id = askedId({ selected: request.model.id, fallback: settings.model });
+	const usable = usableIn(ctx);
 
-	const wouldBe = accountFor({
+	const wouldBe = placementFor({
+		id,
 		lane: decision.lane,
-		home: prior.home,
+		home,
+		fallback: settings.model,
 		limited: limitedAt({ limited, now }),
-		usable: usableIn(ctx, settings.model),
+		usable,
 		failedOnBaa: Option.exists(failed, ({ account }) => isBaaAccount(account)),
 	});
 
-	const state = Option.isSome(stored) && Option.isNone(stamped) ? Option.none() : Option.some({ ...prior, limited });
-
-	return { wouldBe, dispatched: shadow ? ("ent" as const) : wouldBe, state };
+	return {
+		wouldBe,
+		dispatched: shadow ? sealedLane({ id, fallback: settings.model, carries: usable }) : wouldBe,
+		state,
+	};
 };
 
 const statusKey = "phi";
@@ -172,12 +170,12 @@ const shown = ({
 }: {
 	readonly ctx: RouterContext;
 	readonly decision: Decision;
-	readonly dispatched: AccountId;
+	readonly dispatched: Placement;
 	readonly shadow: boolean;
 }) => {
 	const sealed = Arr.filter(decision.found, ([, verdict]) => Verdict.$is("Sealed")(verdict)).length;
 
-	ctx.ui.setStatus(statusKey, `phi → ${dispatched}`);
+	ctx.ui.setStatus(statusKey, `phi → ${dispatched.provider}/${dispatched.id}`);
 
 	if (sealed > 0 && !shadow) {
 		ctx.ui.notify(sealNotice(sealed), "info");
@@ -204,7 +202,7 @@ const route = Effect.fn("route")(function* ({
 	});
 
 	const now = yield* Clock.currentTimeMillis;
-	const { wouldBe, dispatched, state } = accountOf({ request, ctx, settings, decision, now });
+	const { wouldBe, dispatched, state } = placementOf({ request, ctx, settings, decision, now });
 
 	yield* appendLane({
 		type: "route",
@@ -212,12 +210,13 @@ const route = Effect.fn("route")(function* ({
 		session: ctx.sessionManager.getSessionId(),
 		reason,
 		mode: settings.mode,
-		wouldBe,
-		dispatched,
+		wouldBe: wouldBe.provider,
+		dispatched: dispatched.provider,
+		model: dispatched.id,
 		...judgedOf(decision),
 	});
 
-	const model = yield* Effect.fromNullishOr(ctx.modelRegistry.find(dispatched, settings.model));
+	const model = yield* Effect.fromNullishOr(ctx.modelRegistry.find(dispatched.provider, dispatched.id));
 
 	shown({ ctx, decision, dispatched, shadow: settings.mode === "shadow" });
 
@@ -226,23 +225,35 @@ const route = Effect.fn("route")(function* ({
 	return Option.isSome(state) ? { ...routed, state: yield* encodeState(state.value) } : routed;
 });
 
-const failClosed = (request: Request, ctx: RouterContext) =>
-	Effect.catchCause((cause) => {
-		const ent = Effect.fromNullishOr(ctx.modelRegistry.find("ent", defaultModel));
+/** The sealed lane of the selected id. `readSettings` never fails: settings it cannot read give the default model. */
+const sealedRoute = Effect.fn("sealedRoute")(function* (request: Request, ctx: RouterContext) {
+	const settings = yield* readSettings(ctx.cwd);
 
-		const routed = Effect.map(ent, (model): Route => {
-			ctx.ui.setStatus(statusKey, "phi → ent");
-
-			return { model, thinkingLevel: request.thinkingLevel };
-		});
-
-		return Effect.andThen(Effect.logWarning("phi-router failed, so this request goes to ent", cause), routed);
+	const lane = sealedLane({
+		id: askedId({ selected: request.model.id, fallback: settings.model }),
+		fallback: settings.model,
+		carries: usableIn(ctx),
 	});
 
+	const model = yield* Effect.fromNullishOr(ctx.modelRegistry.find(lane.provider, lane.id));
+
+	ctx.ui.setStatus(statusKey, `phi → ${lane.provider}/${lane.id}`);
+
+	return { model, thinkingLevel: request.thinkingLevel } satisfies Route;
+});
+
+const failClosed = (request: Request, ctx: RouterContext) =>
+	Effect.catchCause((cause) =>
+		Effect.andThen(
+			Effect.logWarning("phi-router failed, so this request goes to ent", cause),
+			sealedRoute(request, ctx),
+		),
+	);
+
 /**
- * `phi/auto`'s `route()`, on the given judge. It never throws, since pi turns a throw into an error response: any
- * failure dispatches `ent`. The request's verdicts are in the book and the session before it returns, so the border
- * sees them when pi streams.
+ * Every `phi` model's `route()`, on the given judge. It never throws, since pi turns a throw into an error response:
+ * any failure dispatches the selected id's sealed lane. The request's verdicts are in the book and the session before
+ * it returns, so the border sees them when pi streams.
  */
 export const routeWith =
 	({ judge, session }: { readonly judge: Judge["Service"]; readonly session: RouterSession }) =>
@@ -259,7 +270,10 @@ export const compactionJudged = Effect.fn("compactionJudged")(function* ({
 	session,
 }: {
 	readonly compaction: CompactionEntry;
-	readonly ctx: ExtensionContext;
+	readonly ctx: Pick<ExtensionContext, "model" | "cwd"> & {
+		readonly sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch">;
+		readonly ui: Pick<ExtensionContext["ui"], "notify">;
+	};
 	readonly session: RouterSession;
 }) {
 	if (!isPhi(ctx.model) || Option.isNone(session.book)) {
