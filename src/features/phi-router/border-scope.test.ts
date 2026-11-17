@@ -2,7 +2,6 @@ import { expect, test } from "bun:test";
 
 import {
 	type Api,
-	type ClassifierContext,
 	createAssistantMessageEventStream,
 	type Message,
 	type Model,
@@ -11,7 +10,7 @@ import {
 	type TranscriptContext,
 	type UserMessage,
 } from "@earendil-works/pi-ai";
-import { builtinProviders, getBuiltinClassifierModel, getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
+import { builtinProviders, getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import { normalizeContext } from "@earendil-works/pi-ai/utils/transcript";
 import { createEventBus, type SessionEntry } from "@earendil-works/pi-coding-agent";
 import * as Arr from "effect/Array";
@@ -38,20 +37,13 @@ const tools = [{ name: "read", description: "Read a file", parameters: { type: "
 
 const withTools: SystemMessage = { ...plain, toolsAdded: tools };
 
+const glm = getBuiltinModel("opencode-go", "glm-5.3-flash");
+
 const sol = getBuiltinModel("openai", "gpt-6.1-sol");
 
-const judgeContext: ClassifierContext = {
-	state: { text: member },
-	questions: {
-		name: { type: "bool", instructions: "Does it name a patient?", criteria: { true: "yes", false: "no" } },
-	},
-};
-
-/** The pi openai provider, with stream, streamSimple and classify that record what reaches them. */
+/** The pi openai and opencode-go providers, with stream and streamSimple that record what reaches them. */
 const registryWorld = () => {
 	const sent: Array<TranscriptContext> = [];
-	const judged: Array<ClassifierContext> = [];
-	const builtin = Option.getOrThrow(Arr.findFirst(builtinProviders(), ({ id }) => id === "openai"));
 
 	const recorded = (_model: Model<Api>, context: TranscriptContext) => {
 		sent.push(context);
@@ -59,30 +51,17 @@ const registryWorld = () => {
 		return createAssistantMessageEventStream();
 	};
 
-	const original: Provider = {
-		...builtin,
+	const recording = (id: string): Provider => ({
+		...Option.getOrThrow(Arr.findFirst(builtinProviders(), (provider) => provider.id === id)),
 		stream: recorded,
 		streamSimple: recorded,
-		classify: (model, context) => {
-			judged.push(context);
+	});
 
-			return Promise.resolve({
-				api: model.api,
-				provider: "openai",
-				model: model.id,
-				answers: {},
-				stopReason: "stop",
-				timestamp: 0,
-			});
-		},
-	};
-
-	const providers = new Map([["openai", original]]);
+	const providers = new Map(Arr.map(["openai", "opencode-go"], (id) => [id, recording(id)] as const));
 
 	return {
 		sent,
-		judged,
-		registered: () => Option.getOrThrow(Option.fromUndefinedOr(providers.get("openai"))),
+		registered: (id: string) => Option.getOrThrow(Option.fromUndefinedOr(providers.get(id))),
 		register: (provider: Provider) => {
 			providers.set(provider.id, provider);
 		},
@@ -131,8 +110,8 @@ const linkedBorder = (world: World, verdicts: ReadonlyArray<readonly [Message, S
 
 const sentMessages = (world: World) => Arr.map(world.sent, ({ messages }) => messages);
 
-/** The registry's openai after a `phi/gpt-6.1-sol` session starts, with verdicts for the system prompt and two parts. */
-const protectedOpenai = () => {
+/** The registry after a `phi/glm-5.3-flash` session starts, with verdicts for the system prompt and two parts. */
+const protectedWorld = () => {
 	const world = registryWorld();
 
 	const { border } = linkedBorder(world, [
@@ -141,21 +120,22 @@ const protectedOpenai = () => {
 		[pasted, "sealed"],
 	]);
 
-	border.sessionStarted(sessionOn({ model: phiModel("gpt-6.1-sol"), world }));
+	border.sessionStarted(sessionOn({ model: phiModel("glm-5.3-flash"), world }));
 
-	return { world, openai: world.registered() };
+	return world;
 };
 
-test("in a protected session openai receives stubs for sealed and unjudged parts and refuses uncleared tools", () =>
+test("in a protected session opencode-go receives stubs for sealed and unjudged parts and refuses uncleared tools", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const { world, openai } = protectedOpenai();
+			const world = protectedWorld();
+			const opencodeGo = world.registered("opencode-go");
 
-			openai.streamSimple(sol, normalizeContext({ messages: [plain, asked, pasted] }));
-			openai.stream(sol, normalizeContext({ messages: [plain, unjudged] }));
+			opencodeGo.streamSimple(glm, normalizeContext({ messages: [plain, asked, pasted] }));
+			opencodeGo.stream(glm, normalizeContext({ messages: [plain, unjudged] }));
 
 			const refused = yield* Effect.promise(() =>
-				openai.stream(sol, normalizeContext({ messages: [withTools, asked] })).result(),
+				opencodeGo.stream(glm, normalizeContext({ messages: [withTools, asked] })).result(),
 			);
 
 			expect(sentMessages(world)).toEqual([
@@ -166,26 +146,32 @@ test("in a protected session openai receives stubs for sealed and unjudged parts
 		}),
 	));
 
-test("in a protected session the Decisions judge on openai reads raw content", () =>
-	Effect.runPromise(
-		Effect.gen(function* () {
-			const { world, openai } = protectedOpenai();
+test("in a protected session openai, a BAA provider, stays unwrapped and receives sealed parts as they are", () => {
+	const world = registryWorld();
+	const original = world.registered("openai");
 
-			yield* Effect.promise(() =>
-				Promise.resolve(openai.classify?.(getBuiltinClassifierModel("openai", "gpt-6-luna"), judgeContext)),
-			);
+	const { border } = linkedBorder(world, [
+		[plain, "cleared"],
+		[pasted, "sealed"],
+	]);
 
-			expect(world.judged).toEqual([judgeContext]);
-		}),
-	));
+	const session = sessionOn({ model: phiModel("auto"), world });
 
-test("in an open session openai receives the request untouched", () => {
+	border.sessionStarted(session);
+	border.agentStarting(session);
+	world.registered("openai").streamSimple(sol, normalizeContext({ messages: [plain, pasted, unjudged] }));
+
+	expect(world.registered("openai")).toBe(original);
+	expect(sentMessages(world)).toEqual([[plain, pasted, unjudged]]);
+});
+
+test("in an open session opencode-go receives the request untouched", () => {
 	const world = registryWorld();
 	const border = borderOf({ events: createEventBus(), register: world.register });
 	const context = normalizeContext({ messages: [plain, pasted] });
 
 	border.sessionStarted(sessionOn({ model: onAccount("ultra-a"), world }));
-	world.registered().streamSimple(sol, context);
+	world.registered("opencode-go").streamSimple(glm, context);
 
 	expect(world.sent).toEqual([context]);
 });
@@ -206,19 +192,19 @@ const wrappedThrice = (world: World) => {
 	return reports;
 };
 
-test("wrapping again, by the same border or after a reload, leaves one guard over the original openai", () => {
+test("wrapping again, by the same border or after a reload, leaves one guard over the original opencode-go", () => {
 	const world = registryWorld();
 	const reports = wrappedThrice(world);
 
-	world.registered().stream(sol, normalizeContext({ messages: [plain, asked] }));
+	world.registered("opencode-go").stream(glm, normalizeContext({ messages: [plain, asked] }));
 
 	const reloaded = borderOf({ events: createEventBus(), register: world.register });
 	const context = normalizeContext({ messages: [plain, pasted] });
 
 	reloaded.sessionStarted(sessionOn({ model: onAccount("ultra-a"), world }));
-	world.registered().stream(sol, context);
+	world.registered("opencode-go").stream(glm, context);
 
-	expect(reports).toEqual([{ stubbedSealed: 0, stubbedUnknown: 0, refused: false, account: "openai" }]);
+	expect(reports).toEqual([{ stubbedSealed: 0, stubbedUnknown: 0, refused: false, account: "opencode-go" }]);
 	expect(world.sent[1]).toBe(context);
 });
 
@@ -235,10 +221,10 @@ const modelChange = (modelId: string): SessionEntry => ({
 const personalSees = (start: (border: ReturnType<typeof borderOf>, world: World) => void) => {
 	const world = registryWorld();
 	const border = borderOf({ events: createEventBus(), register: world.register });
-	const ultraA = border.wrap("ultra-a")(world.registered());
+	const ultraA = border.wrap("ultra-a")(world.registered("opencode-go"));
 
 	start(border, world);
-	ultraA.stream(sol, normalizeContext({ messages: [asked] }));
+	ultraA.stream(glm, normalizeContext({ messages: [asked] }));
 
 	return sentMessages(world);
 };
@@ -260,7 +246,9 @@ test("a session is protected while its selection is a phi model", () => {
 
 test("a switch away from a phi model breaks the seal: the personal account gets the request untouched", () => {
 	const resumedAway = personalSees((border, world) => {
-		border.sessionStarted(sessionOn({ model: onAccount("ultra-a"), world, branch: [modelChange("gpt-6.1-sol")] }));
+		border.sessionStarted(
+			sessionOn({ model: onAccount("ultra-a"), world, branch: [modelChange("claude-fable-5-2")] }),
+		);
 	});
 
 	const switchedAway = personalSees((border, world) => {

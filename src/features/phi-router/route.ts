@@ -12,10 +12,10 @@ import * as Hash from "effect/Hash";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { isBaaAccount } from "#src/features/claude-accounts/index.ts";
 import {
 	type Carrier,
 	type Carries,
+	isBaa,
 	type PersonalAccount,
 	personalAccounts,
 	personalProviders,
@@ -187,12 +187,12 @@ export const pinnedOn = (branch: ReadonlyArray<SessionEntry>) => {
 export const compactionHead = (entry: CompactionEntry) => convertToLlm(sessionEntryToContextMessages(entry));
 
 const answeredOnBaa = (entry: SessionEntry) =>
-	entry.type === "message" && entry.message.role === "assistant" && isBaaAccount(entry.message.provider);
+	entry.type === "message" && entry.message.role === "assistant" && isBaa(entry.message.provider);
 
 /**
- * The parts of the branch's latest compaction head while no `ent` reply follows it. A personal account receives a
- * sealed summary only as a stub, so until `ent` answers after it no model has read it, and it is new content of each
- * request, though it sits before every kept reply.
+ * The parts of the branch's latest compaction head while no BAA reply follows it. A personal provider receives a
+ * sealed summary only as a stub, so until a BAA provider answers after it no model has read it, and it is new content
+ * of each request, though it sits before every kept reply.
  */
 export const undeliveredSummary = (branch: ReadonlyArray<SessionEntry>): ReadonlyArray<ContentKey> => {
 	for (const entry of Arr.reverse(branch)) {
@@ -261,19 +261,19 @@ interface PlacementChoice {
 	readonly id: string;
 	readonly lane: Lane;
 	readonly home: PersonalAccount;
-	/** `settings.model`, which the sealed lane runs when `ent` lacks `id`. */
+	/** `settings.model`, which the sealed lane runs when no BAA provider carries `id`. */
 	readonly fallback: string;
 	readonly limited: (provider: Carrier) => boolean;
 	/** Whether the provider has the model id and a login. */
 	readonly usable: Carries;
-	/** The request retries one that failed on `ent`. */
+	/** The request retries one that failed on a BAA provider. */
 	readonly failedOnBaa: boolean;
 }
 
 /**
  * The physical model for a lane. `personal` takes home, then the other personal providers in order, skipping one that
  * is limited or cannot run the id, then the sealed lane. `ent` never fails over to a personal provider, and a retry
- * after a failure on `ent` stays on the sealed lane.
+ * after a failure on a BAA provider stays on the sealed lane.
  */
 export const placementFor = ({
 	id,

@@ -35,7 +35,7 @@ export type AccountId = Account["id"];
 
 export const accountOf = (id: string) => Arr.findFirst(accounts, (account) => account.id === id);
 
-export const isBaaAccount = (id: string) => Option.exists(accountOf(id), ({ baa }) => baa);
+const isBaaAccount = (id: string) => Option.exists(accountOf(id), ({ baa }) => baa);
 
 /**
  * Where a request that `from` cannot answer goes next: the other personal accounts, then the BAA accounts. A BAA account

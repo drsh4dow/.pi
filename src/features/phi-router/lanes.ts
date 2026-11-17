@@ -8,14 +8,14 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import { LaneLog } from "#src/client/phi-lane-log/index.ts";
-import { personalProviders } from "./gate.ts";
+import { baaProviders, personalProviders } from "./gate.ts";
 import { type ClearedBy, Finding, Usage, Verdict } from "./policy/engine.ts";
 import type { Decision } from "./route.ts";
 import { Why } from "./store.ts";
 
 const Id = Schema.String.check(Schema.isPattern(/^[\w-]{1,64}$/u));
 
-const Carrier = Schema.Literals([...personalProviders, "ent"]);
+const Carrier = Schema.Literals([...personalProviders, ...baaProviders]);
 
 /** A model id. Ids contain dots, such as `gpt-6.1-sol`. */
 const ModelId = Schema.String.check(Schema.isPattern(/^[\w.-]{1,64}$/u));

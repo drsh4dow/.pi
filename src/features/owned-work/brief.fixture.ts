@@ -90,7 +90,7 @@ const settledOn = new Map([
 	["delegate-1", "openai/gpt-6-luna"],
 	["delegate-2", "ultra-a/claude-opus-5-5"],
 	["delegate-3", "openai/gpt-6.1-sol"],
-	["delegate-4", "phi/gpt-6.1-sol"],
+	["delegate-4", "phi/glm-5.3-flash"],
 ]);
 
 const ledger = Layer.mock(Ledger)({
@@ -170,7 +170,7 @@ export const delegate = delegateStarting(["owner", "leaf"]);
 export const callerOf = (): Parameters<typeof delegate.execute>[4] => {
 	const caller = {
 		cwd: `${fixtures}/work`,
-		model: luna,
+		model: opus,
 		thinkingLevel: "low",
 		modelRegistry: { getAll: () => [luna, opus, proxied] },
 		sessionManager: { getBranch: () => [] },

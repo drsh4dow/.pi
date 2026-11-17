@@ -12,8 +12,8 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { isBaaAccount, isRateLimited } from "#src/features/claude-accounts/index.ts";
-import { askedId, type Carries, isPhi, type Placement, sealedLane } from "./gate.ts";
+import { isRateLimited } from "#src/features/claude-accounts/index.ts";
+import { askedId, type Carries, isBaa, isPhi, type Placement, sealedLane } from "./gate.ts";
 import { appendLane, judgedOf } from "./lanes.ts";
 import { Fixtures } from "./policy/digest.ts";
 import { Judge, Verdict } from "./policy/engine.ts";
@@ -145,7 +145,7 @@ const placementOf = ({
 		fallback: settings.model,
 		limited: limitedAt({ limited, now }),
 		usable,
-		failedOnBaa: Option.exists(failed, ({ account }) => isBaaAccount(account)),
+		failedOnBaa: Option.exists(failed, ({ account }) => isBaa(account)),
 	});
 
 	return {
@@ -245,7 +245,7 @@ const sealedRoute = Effect.fn("sealedRoute")(function* (request: Request, ctx: R
 const failClosed = (request: Request, ctx: RouterContext) =>
 	Effect.catchCause((cause) =>
 		Effect.andThen(
-			Effect.logWarning("phi-router failed, so this request goes to ent", cause),
+			Effect.logWarning("phi-router failed, so this request goes to its sealed lane", cause),
 			sealedRoute(request, ctx),
 		),
 	);

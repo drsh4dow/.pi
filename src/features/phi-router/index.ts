@@ -1,7 +1,6 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
-import { getBuiltinModels } from "@earendil-works/pi-ai/providers/all";
-import { MODEL_THINKING_LEVELS } from "@earendil-works/pi-ai/providers/model-schema";
+import { getBuiltinModel, getBuiltinModels } from "@earendil-works/pi-ai/providers/all";
 import {
 	type BeforeAgentStartEvent,
 	buildSessionContext,
@@ -215,40 +214,47 @@ const phiCommand = (
 
 type PhiModel = ExtensionVirtualModel<typeof RouterState.Encoded>;
 
-const catalogProviders = ["anthropic", ...borderedBuiltins] as const;
+/** The static catalogs of the personal providers: the Claude accounts copy `anthropic`'s. */
+const personalCatalogs = ["anthropic", ...borderedBuiltins] as const;
+
+const limitsOf = (model: Model<Api>): Pick<PhiModel, "thinkingLevels" | "contextWindow" | "maxTokens"> => ({
+	thinkingLevels: getSupportedThinkingLevels(model),
+	contextWindow: model.contextWindow,
+	maxTokens: model.maxTokens,
+});
 
 /**
- * Thinking levels and limits from the first builtin catalog model with the id. An id the catalog lacks gets every
- * level and unknown limits.
+ * `phi/auto`, which runs `settings.model`, and one `phi/<id>` per distinct id a personal catalog carries, all on one
+ * `route`. Content routing picks between a personal provider and a BAA one, so an id no personal provider carries has
+ * nothing to route.
  */
-const limitsOf = (id: string): Pick<PhiModel, "thinkingLevels" | "contextWindow" | "maxTokens"> =>
-	Option.match(
-		Arr.findFirst(Arr.flatMap(catalogProviders, getBuiltinModels), (model) => model.id === id),
-		{
-			onNone: () => ({ thinkingLevels: MODEL_THINKING_LEVELS }),
-			onSome: (model) => ({
-				thinkingLevels: getSupportedThinkingLevels(model),
-				contextWindow: model.contextWindow,
-				maxTokens: model.maxTokens,
-			}),
-		},
+const phiModels = (ids: ReadonlyArray<string>, route: PhiModel["route"]): ReadonlyArray<PhiModel> => {
+	const catalog = Arr.flatMap(personalCatalogs, getBuiltinModels);
+
+	const routed = Arr.flatMap(Arr.dedupe(ids), (id) =>
+		Option.toArray(
+			Option.map(
+				Arr.findFirst(catalog, (model) => model.id === id),
+				(model): PhiModel => ({ provider: phiProvider, id, name: `PHI router (${id})`, ...limitsOf(model), route }),
+			),
+		),
 	);
 
-/** `phi/auto`, which runs `settings.model`, and one `phi/<id>` per distinct id, all on one `route`. */
-const phiModels = (ids: ReadonlyArray<string>, route: PhiModel["route"]): ReadonlyArray<PhiModel> => [
-	{ provider: phiProvider, id: autoId, name: "PHI router", ...limitsOf(defaultModel), route },
-	...Arr.map(Arr.dedupe(ids), (id) => ({
-		provider: phiProvider,
-		id,
-		name: `PHI router (${id})`,
-		...limitsOf(id),
-		route,
-	})),
-];
+	return [
+		{
+			provider: phiProvider,
+			id: autoId,
+			name: "PHI router",
+			...limitsOf(getBuiltinModel("anthropic", defaultModel)),
+			route,
+		},
+		...routed,
+	];
+};
 
 /**
- * The PHI router. `ids` are the model ids a delegate can ask for; each gets its own `phi/<id>`, registered at load so
- * `--model phi/<id>` finds it.
+ * The PHI router. `ids` are the model ids a delegate can ask for; each one a personal provider carries gets its own
+ * `phi/<id>`, registered at load so `--model phi/<id>` finds it.
  */
 export const phiRouter =
 	({ env, ids }: { readonly env: Env; readonly ids: ReadonlyArray<string> }) =>

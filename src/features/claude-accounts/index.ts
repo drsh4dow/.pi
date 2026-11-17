@@ -9,7 +9,7 @@ import * as Str from "effect/String";
 import { type Account, accountOf, accountProvider, accounts, accountsHost, anthropicOf } from "./accounts.ts";
 import { endedOnRateLimit, failOver } from "./failover.ts";
 
-export { type AccountId, accountOf, accounts, isBaaAccount, type Login } from "./accounts.ts";
+export { type AccountId, accountOf, accounts, type Login } from "./accounts.ts";
 
 export { isRateLimited } from "./failover.ts";
 

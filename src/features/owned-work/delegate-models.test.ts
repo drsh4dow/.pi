@@ -29,7 +29,6 @@ const registry = [
 	on("phi", "auto"),
 	on("phi", opus.id),
 	on("phi", fable),
-	on("phi", "gpt-6.1-sol"),
 	on("phi", "glm-5.3-flash"),
 	on("openai", "gpt-6.1-sol"),
 	on("openai", "gpt-6-luna"),
@@ -109,34 +108,58 @@ const phiAuto = on("phi", "auto");
 
 const onEnt = on("ent", opus.id);
 
-const investigatorOnOpus = {
+const onOpenai = on("openai", "gpt-6.1-sol");
+
+const divergentOnOpus = {
 	model: "ent/claude-opus-5-5",
 	substituted:
-		"The alias `investigator` names openai/gpt-6.1-sol, which no BAA account carries, so this delegate runs on ent/claude-opus-5-5.",
+		"The alias `divergent` names opencode-go/glm-5.3-flash, which no BAA provider carries, so this delegate runs on ent/claude-opus-5-5.",
 };
 
-/** The rows of a routing parent: the alias or key picks the id, and the delegate runs it as `phi/<id>`. */
+/** The rows of a routing parent: an id a personal provider carries runs as `phi/<id>`, any other on its sealed lane. */
 const routingRows = (from: string, parent: Model<Api>): ReadonlyArray<Row> => [
 	{ from, parent, name: "judgment", runs: "phi/claude-opus-5-5" },
 	{ from, parent, name: "worker", runs: "phi/claude-opus-5-5" },
 	{ from, parent, name: "fable", runs: "phi/claude-fable-5-2" },
 	{ from, parent, name: "ultra-b/claude-fable-5-2", runs: "phi/claude-fable-5-2" },
-	{ from, parent, name: "investigator", runs: "phi/gpt-6.1-sol" },
-	{ from, parent, name: "openai/gpt-6.1-sol", runs: "phi/gpt-6.1-sol" },
+	{ from, parent, name: "investigator", runs: "openai/gpt-6.1-sol" },
+	{ from, parent, name: "openai/gpt-6.1-sol", runs: "openai/gpt-6.1-sol" },
 	{ from, parent, name: "divergent", runs: "phi/glm-5.3-flash" },
 	{ from, parent, name: "phi/auto", runs: "phi/auto" },
 	{ from, parent, name: "ent/claude-opus-5-5", runs: "ent/claude-opus-5-5" },
 	{ from, parent, name: "elsewhere/claude-opus-5-5", runs: "refused" },
 ];
 
-/** The rows of a parent held on ent: the id's sealed lane, or the substitute when ent lacks the id. */
+/** The rows of a parent held on ent: the id's sealed lane, or the substitute when no BAA provider carries the id. */
 const heldRows = (from: string, held: Pick<Row, "mode" | "branch">): ReadonlyArray<Row> => [
 	{ from, parent: phiAuto, ...held, name: "judgment", runs: "ent/claude-opus-5-5" },
 	{ from, parent: phiAuto, ...held, name: "fable", runs: "ent/claude-fable-5-2" },
-	{ from, parent: phiAuto, ...held, name: "investigator", runs: investigatorOnOpus },
+	{ from, parent: phiAuto, ...held, name: "investigator", runs: "openai/gpt-6.1-sol" },
+	{ from, parent: phiAuto, ...held, name: "divergent", runs: divergentOnOpus },
 	{ from, parent: phiAuto, ...held, name: "ultra-b/claude-opus-5-5", runs: "ent/claude-opus-5-5" },
-	{ from, parent: phiAuto, ...held, name: "openai/gpt-6.1-sol", runs: "refused" },
+	{ from, parent: phiAuto, ...held, name: "openai/gpt-6.1-sol", runs: "openai/gpt-6.1-sol" },
+	{ from, parent: phiAuto, ...held, name: "opencode-go/glm-5.3-flash", runs: "refused" },
 	{ from, parent: phiAuto, ...held, name: "phi/auto", runs: "ent/claude-opus-5-5" },
+];
+
+/** The rows of a parent on a BAA provider: an alias runs on its id's sealed lane, a spelled model only on a BAA one. */
+const baaRows = (from: string, parent: Model<Api>): ReadonlyArray<Row> => [
+	{ from, parent, name: "judgment", runs: "ent/claude-opus-5-5" },
+	{ from, parent, name: "fable", runs: "ent/claude-fable-5-2" },
+	{ from, parent, name: "investigator", runs: "openai/gpt-6.1-sol" },
+	{ from, parent, name: "divergent", runs: divergentOnOpus },
+	{ from, parent, name: "ent/claude-opus-5-5", runs: "ent/claude-opus-5-5" },
+	{ from, parent, name: "openai/gpt-6.1-sol", runs: "openai/gpt-6.1-sol" },
+	{ from, parent, name: "ultra-a/claude-opus-5-5", runs: "refused" },
+	{ from, parent, name: "opencode-go/glm-5.3-flash", runs: "refused" },
+	{ from, parent, name: "phi/auto", runs: "refused" },
+];
+
+/** The rows of an open parent: the alias's model, on the parent's provider when that provider has the id. */
+const openRows = (from: string, branch: ReadonlyArray<SessionEntry>): ReadonlyArray<Row> => [
+	{ from, parent: on("ultra-a", opus.id), branch, name: "investigator", runs: "openai/gpt-6.1-sol" },
+	{ from, parent: on("ultra-a", opus.id), branch, name: "fable", runs: "ultra-a/claude-fable-5-2" },
+	{ from, parent: on("ultra-a", opus.id), branch, name: "divergent", runs: "opencode-go/glm-5.3-flash" },
 ];
 
 const rows: ReadonlyArray<Row> = [
@@ -144,22 +167,10 @@ const rows: ReadonlyArray<Row> = [
 	...routingRows("a routing phi/claude-fable-5-2 parent", on("phi", fable)),
 	...heldRows("a pinned phi/auto parent", { branch: [pinned] }),
 	...heldRows("a shadow phi/auto parent", { mode: "shadow" }),
-	{ from: "an ent parent", parent: onEnt, name: "judgment", runs: "ent/claude-opus-5-5" },
-	{ from: "an ent parent", parent: onEnt, name: "fable", runs: "ent/claude-fable-5-2" },
-	{ from: "an ent parent", parent: onEnt, name: "investigator", runs: investigatorOnOpus },
-	{ from: "an ent parent", parent: onEnt, name: "ent/claude-opus-5-5", runs: "ent/claude-opus-5-5" },
-	{ from: "an ent parent", parent: onEnt, name: "openai/gpt-6.1-sol", runs: "refused" },
-	{ from: "an ent parent", parent: onEnt, name: "ultra-a/claude-opus-5-5", runs: "refused" },
-	{ from: "an ent parent", parent: onEnt, name: "phi/auto", runs: "refused" },
-	{ from: "an ultra-a parent", parent: on("ultra-a", opus.id), name: "investigator", runs: "openai/gpt-6.1-sol" },
-	{ from: "an ultra-a parent", parent: on("ultra-a", opus.id), name: "fable", runs: "ultra-a/claude-fable-5-2" },
-	{
-		from: "a parent switched from phi/auto to ultra-a",
-		parent: on("ultra-a", opus.id),
-		branch: [selectedPhiAuto],
-		name: "investigator",
-		runs: "openai/gpt-6.1-sol",
-	},
+	...baaRows("an ent parent", onEnt),
+	...baaRows("an openai parent", onOpenai),
+	...openRows("an ultra-a parent", []),
+	...openRows("a parent switched from phi/auto to ultra-a", [selectedPhiAuto]),
 ];
 
 test.each(rows)("a delegate of $from that names $name runs on $runs", (row) =>
@@ -222,12 +233,18 @@ interface CallRow {
 
 const calls: ReadonlyArray<CallRow> = [
 	{
-		title: "naming quick from a shadow phi/auto parent starts on ent/claude-opus-5-5 and says so",
+		title: "naming quick from a shadow phi/auto parent starts on openai/gpt-6-luna with no substitution",
 		parent: phiAuto,
 		call: fresh("quick"),
+		expect: relaunched("openai/gpt-6-luna"),
+	},
+	{
+		title: "naming phi/glm-5.3-flash from a shadow phi/auto parent starts on ent/claude-opus-5-5 and says so",
+		parent: phiAuto,
+		call: fresh("phi/glm-5.3-flash"),
 		expect: substitutedOn(
 			"ent/claude-opus-5-5",
-			"The alias `quick` names openai/gpt-6-luna, which no BAA account carries, so this delegate runs on ent/claude-opus-5-5.",
+			"The model `phi/glm-5.3-flash` asks for glm-5.3-flash, which no BAA provider carries, so this delegate runs on ent/claude-opus-5-5.",
 		),
 	},
 	{
@@ -237,12 +254,12 @@ const calls: ReadonlyArray<CallRow> = [
 		expect: relaunched("ent/claude-opus-5-5"),
 	},
 	{
-		title: "continuing a phi/gpt-6.1-sol delegate from a shadow phi/auto parent starts on ent/claude-opus-5-5 and says so",
+		title: "continuing a phi/glm-5.3-flash delegate from a shadow phi/auto parent starts on ent/claude-opus-5-5 and says so",
 		parent: phiAuto,
 		call: { continues: "delegate-4" },
 		expect: substitutedOn(
 			"ent/claude-opus-5-5",
-			"The model `phi/gpt-6.1-sol` asks for gpt-6.1-sol, which no BAA account carries, so this delegate runs on ent/claude-opus-5-5.",
+			"The model `phi/glm-5.3-flash` asks for glm-5.3-flash, which no BAA provider carries, so this delegate runs on ent/claude-opus-5-5.",
 		),
 	},
 	{
@@ -252,19 +269,17 @@ const calls: ReadonlyArray<CallRow> = [
 		expect: relaunched("ent/claude-opus-5-5"),
 	},
 	{
-		title: "continuing an openai/gpt-6.1-sol delegate from a shadow phi/auto parent is refused",
+		title: "continuing an openai/gpt-6.1-sol delegate from a shadow phi/auto parent starts on it",
 		parent: phiAuto,
 		call: { continues: "delegate-3" },
-		expect: refused(
-			"a delegate of a session held on the BAA account runs there, and no BAA account carries gpt-6.1-sol, which openai/gpt-6.1-sol names",
-		),
+		expect: relaunched("openai/gpt-6.1-sol"),
 	},
 	{
 		title: "continuing an ultra-a/claude-opus-5-5 delegate from an ent parent is refused",
 		parent: onEnt,
 		call: { continues: "delegate-2" },
 		expect: refused(
-			"a delegate of a session on a BAA account runs on a BAA account, and ultra-a/claude-opus-5-5 is not one",
+			"a delegate of a session on a BAA provider runs on a BAA provider, and ultra-a/claude-opus-5-5 is not one",
 		),
 	},
 	{

@@ -3,9 +3,7 @@ import { expect, test } from "bun:test";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import { createEventBus } from "@earendil-works/pi-coding-agent";
-import * as Arr from "effect/Array";
 import * as Function from "effect/Function";
-import * as Option from "effect/Option";
 import * as Rec from "effect/Record";
 
 import { bridged, phiRouter } from "./index.ts";
@@ -41,7 +39,7 @@ const catalogLimits = (model: Parameters<typeof getSupportedThinkingLevels>[0]) 
 	maxTokens: model.maxTokens,
 });
 
-test("phi/auto and one phi/<id> per distinct id register at load, each with its own catalog model's limits", () => {
+test("phi/auto and one phi/<id> per distinct id a personal catalog carries register at load, with its limits", () => {
 	const registered = registeredFor(["claude-opus-5-5", "gpt-6.1-sol", "claude-opus-5-5", "glm-5.3-flash"]);
 
 	expect(registered).toEqual([
@@ -52,29 +50,11 @@ test("phi/auto and one phi/<id> per distinct id register at load, each with its 
 			...catalogLimits(getBuiltinModel("anthropic", "claude-opus-5-5")),
 		},
 		{
-			id: "gpt-6.1-sol",
-			name: "PHI router (gpt-6.1-sol)",
-			...catalogLimits(getBuiltinModel("openai", "gpt-6.1-sol")),
-		},
-		{
 			id: "glm-5.3-flash",
 			name: "PHI router (glm-5.3-flash)",
 			...catalogLimits(getBuiltinModel("opencode-go", "glm-5.3-flash")),
 		},
 	]);
-});
-
-test("an id the builtin catalog lacks registers with unknown limits and every thinking level", () => {
-	const fable = Arr.findFirst(registeredFor(["claude-fable-5-2"]), ({ id }) => id === "claude-fable-5-2");
-
-	expect(fable.pipe(Option.getOrUndefined)).toEqual({
-		provider: "phi",
-		id: "claude-fable-5-2",
-		name: "PHI router (claude-fable-5-2)",
-		thinkingLevels: ["off", "minimal", "low", "medium", "high", "xhigh", "max"],
-		contextWindow: undefined,
-		maxTokens: undefined,
-	});
 });
 
 const sectionsOn = (model: ReturnType<typeof phiModel>) => {
