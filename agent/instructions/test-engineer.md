@@ -1,5 +1,5 @@
 ---
-model: investigator
+model: worker
 role: leaf
 ---
 

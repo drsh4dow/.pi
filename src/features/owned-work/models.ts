@@ -32,7 +32,7 @@ export interface Alias {
 
 export interface ModelTable {
 	readonly aliases: Readonly<Record<string, Alias>>;
-	/** Model names, aliases or `provider/id`, one per provider. */
+	/** Model names, aliases or `provider/id`, one per seat. */
 	readonly panel: ReadonlyArray<string>;
 }
 
@@ -43,21 +43,31 @@ export const aliases = {
 	judgment: {
 		provider: "ultra-a",
 		id: "claude-opus-5-5",
-		use: "implementation, design, synthesis, and anything that needs taste",
+		use: "implementation, design, synthesis, prose, and anything that needs taste",
+	},
+	worker: {
+		provider: "ultra-a",
+		id: "claude-opus-5-5",
+		use: "swarm workers, verification lanes, mechanical edits, research, web search, investigation, scouting, and fan-out aggregation",
 	},
 	investigator: {
 		provider: "openai",
 		id: "gpt-6.1-sol",
-		use: "research, web search, code review, audits, investigation, mechanical scouting, fan-out aggregation, and a second opinion from another model family",
+		use: "a second opinion from another vendor: code review, audits, and the arena judge for a Claude parent",
+	},
+	fable: {
+		provider: "ultra-a",
+		id: "claude-fable-5-2",
+		use: "a panel seat. Outside a panel only when the user names it for the task or two `judgment` runs of the same brief failed their check, and say which. Difficulty alone never qualifies",
 	},
 	divergent: {
 		provider: "opencode-go",
 		id: "glm-5.3-flash",
-		use: "the arena skill's third candidate, and nothing else",
+		use: "the arena skill's extra runner, and nothing else",
 	},
 } as const satisfies Aliases;
 
-const panel: ReadonlyArray<keyof typeof aliases> = ["judgment", "investigator"];
+const panel: ReadonlyArray<keyof typeof aliases> = ["fable", "worker", "investigator"];
 
 export const modelTable: ModelTable = { aliases, panel };
 
