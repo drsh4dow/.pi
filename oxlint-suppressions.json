@@ -2667,9 +2667,6 @@
     }
   },
   "src/features/prompt/index.test.ts": {
-    "node/no-top-level-await": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }
@@ -2832,9 +2829,6 @@
     }
   },
   "src/features/state-folder/checks.test.ts": {
-    "node/no-top-level-await": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 3
     }
@@ -2848,9 +2842,6 @@
     }
   },
   "src/features/state-folder/index.test.ts": {
-    "node/no-top-level-await": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 6
     }

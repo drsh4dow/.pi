@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
@@ -20,7 +20,7 @@ const files = {
 	"playbooks/review-lane.md": "---\nwhen: Reviewing one lane.\nfor: [leaf]\n---\nBody.",
 };
 
-await Promise.all(Arr.map(Rec.toEntries(files), ([file, text]) => Bun.write(`${agentDir}/${file}`, text)));
+beforeAll(() => Promise.all(Arr.map(Rec.toEntries(files), ([file, text]) => Bun.write(`${agentDir}/${file}`, text))));
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${agentDir}`.quiet())));
 

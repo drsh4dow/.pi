@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
@@ -14,14 +14,16 @@ const folder = `${home}/.local/state/pi-agent/pi/work`;
 const runTest = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem>) =>
 	Effect.runPromise(Effect.provide(effect, NodeServices.layer));
 
-await runTest(
-	Effect.gen(function* () {
-		const fs = yield* FileSystem.FileSystem;
+beforeAll(() =>
+	runTest(
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
 
-		yield* fs.makeDirectory(folder, { recursive: true });
-		yield* fs.writeFileString(`${folder}/ruleset.log`, "403\n");
-		yield* fs.writeFileString(`${home}/denied.log`, "403\n");
-	}),
+			yield* fs.makeDirectory(folder, { recursive: true });
+			yield* fs.writeFileString(`${folder}/ruleset.log`, "403\n");
+			yield* fs.writeFileString(`${home}/denied.log`, "403\n");
+		}),
+	),
 );
 
 const problemsIn = Effect.fn("problemsIn")(function* (name: string, file: Uint8Array) {

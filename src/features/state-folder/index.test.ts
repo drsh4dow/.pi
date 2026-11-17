@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import { SessionManager, type ToolResultEventResult } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -66,17 +66,19 @@ const resolve = Effect.fn("resolve")(function* (calls: ReadonlyArray<Call>) {
 const runTest = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem>) =>
 	Effect.runPromise(Effect.provide(effect, NodeServices.layer));
 
-await runTest(
-	Effect.gen(function* () {
-		const fs = yield* FileSystem.FileSystem;
+beforeAll(() =>
+	runTest(
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
 
-		for (const work of ["alpha", "beta", "gamma", "delta", "epsilon"]) {
-			yield* fs.makeDirectory(folder(work), { recursive: true });
-			yield* fs.writeFileString(`${folder(work)}/STATE.md`, `# ${work}\n`);
-		}
+			for (const work of ["alpha", "beta", "gamma", "delta", "epsilon"]) {
+				yield* fs.makeDirectory(folder(work), { recursive: true });
+				yield* fs.writeFileString(`${folder(work)}/STATE.md`, `# ${work}\n`);
+			}
 
-		yield* fs.writeFileString(`${folder("delta")}/STATE.md`, `# delta\n${Str.repeat(20_000)("x")}\n`);
-	}),
+			yield* fs.writeFileString(`${folder("delta")}/STATE.md`, `# delta\n${Str.repeat(20_000)("x")}\n`);
+		}),
+	),
 );
 
 const writeState = (work: string): Call => ({
