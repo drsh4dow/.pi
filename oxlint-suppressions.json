@@ -3093,11 +3093,6 @@
       "count": 1
     }
   },
-  "tools/driver/probe.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    }
-  },
   "tools/driver/probe.ts": {
     "jsdoc/require-param": {
       "count": 3
@@ -3121,9 +3116,6 @@
     }
   },
   "tools/driver/root.test.ts": {
-    "jest/prefer-each": {
-      "count": 2
-    },
     "jsdoc/require-param": {
       "count": 1
     },
@@ -3202,9 +3194,6 @@
     }
   },
   "tools/driver/took.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "no-undefined": {
       "count": 2
     }
@@ -3227,12 +3216,6 @@
     }
   },
   "tools/driver/tripwire.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
-    "jest/prefer-each": {
-      "count": 1
-    },
     "jsdoc/require-param": {
       "count": 1
     },
@@ -3258,14 +3241,8 @@
     }
   },
   "tools/driver/world.test.ts": {
-    "jest/no-conditional-in-test": {
-      "count": 1
-    },
-    "jest/prefer-each": {
-      "count": 3
-    },
     "no-undefined": {
-      "count": 6
+      "count": 1
     }
   },
   "tools/driver/world.ts": {
@@ -3362,9 +3339,6 @@
     }
   },
   "tools/prompts/render.test.ts": {
-    "jest/prefer-each": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }

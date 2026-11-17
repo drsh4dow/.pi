@@ -20,7 +20,7 @@ const own = {
 
 const env = runEnv({ own, humanHome: "/h", layout, borrowed: { GIT_CONFIG_GLOBAL: "/h/.gitconfig" } });
 
-const envRows = [
+const setRows = [
 	{
 		name: "PATH starts with the wrapper, without package bins or the live harness",
 		key: "PATH",
@@ -40,24 +40,25 @@ const envRows = [
 	},
 	{ name: "owned-work reaches the run's core", key: "HC_TERMINAL_SOCKET", value: layout.socket },
 	{ name: "the probe writes into the run", key: "PI_DRIVER_PROBE", value: layout.probe },
-	{ name: "the caller's slice is dropped", key: "PI_OWNED_WORK_SLICE", value: undefined },
-	{ name: "the state folder follows the scratch home", key: "XDG_STATE_HOME", value: undefined },
-	{ name: "the config folder follows the scratch home", key: "XDG_CONFIG_HOME", value: undefined },
 	{ name: "the runtime folder is the run's", key: "XDG_RUNTIME_DIR", value: layout.runtime },
 	{ name: "other keys stay", key: "LANG", value: "C.UTF-8" },
 	{ name: "borrowed config is added", key: "GIT_CONFIG_GLOBAL", value: "/h/.gitconfig" },
-	{ name: "an unset key stays unset", key: "UNSET", value: undefined },
 ] as const;
 
-for (const { name, key, value } of envRows) {
-	test(`runEnv: ${name}`, () => {
-		if (value === undefined) {
-			expect(env).not.toHaveProperty(key);
-		} else {
-			expect(env).toHaveProperty(key, value);
-		}
-	});
-}
+test.each(setRows)("runEnv: $name", ({ key, value }) => {
+	expect(env).toHaveProperty(key, value);
+});
+
+const unsetRows = [
+	{ name: "the caller's slice is dropped", key: "PI_OWNED_WORK_SLICE" },
+	{ name: "the state folder follows the scratch home", key: "XDG_STATE_HOME" },
+	{ name: "the config folder follows the scratch home", key: "XDG_CONFIG_HOME" },
+	{ name: "an unset key stays unset", key: "UNSET" },
+] as const;
+
+test.each(unsetRows)("runEnv: $name", ({ key }) => {
+	expect(env).not.toHaveProperty(key);
+});
 
 const settingsRows = [
 	{
@@ -87,11 +88,9 @@ const settingsRows = [
 	},
 ] as const;
 
-for (const { name, human, overrides, expected } of settingsRows) {
-	test(`settingsOf: ${name}`, () => {
-		expect(settingsOf({ human, overrides })).toEqual(expected);
-	});
-}
+test.each(settingsRows)("settingsOf: $name", ({ human, overrides, expected }) => {
+	expect(settingsOf({ human, overrides })).toEqual(expected);
+});
 
 const override = { modelOverrides: { "claude-fable-5-2": { contextWindow: 40_000 } } };
 
@@ -116,11 +115,9 @@ const modelsRows = [
 	},
 ] as const;
 
-for (const { name, human, providers, expected } of modelsRows) {
-	test(`modelsOf: ${name}`, () => {
-		expect(modelsOf({ human, providers })).toEqual(expected);
-	});
-}
+test.each(modelsRows)("modelsOf: $name", ({ human, providers, expected }) => {
+	expect(modelsOf({ human, providers })).toEqual(expected);
+});
 
 const { models: windowedProviders = {}, windowed } = setupOf({ model: "local/big", contextWindow: 40_000 });
 

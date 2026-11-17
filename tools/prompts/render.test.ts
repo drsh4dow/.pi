@@ -40,12 +40,10 @@ const payloadRows = [
 	},
 ];
 
-for (const row of payloadRows) {
-	test(row.name, () =>
-		Effect.runPromise(
-			Effect.map(Schema.decodeEffect(Payload)(row.payload), (payload) => {
-				expect(render(reportOf(payload))).toContain(`## Root agent\n\nThe pi you start.\n\n${fenced}`);
-			}),
-		),
-	);
-}
+test.each(payloadRows)("$name", (row) =>
+	Effect.runPromise(
+		Effect.map(Schema.decodeEffect(Payload)(row.payload), (payload) => {
+			expect(render(reportOf(payload))).toContain(`## Root agent\n\nThe pi you start.\n\n${fenced}`);
+		}),
+	),
+);

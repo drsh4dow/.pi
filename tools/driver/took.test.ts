@@ -90,10 +90,8 @@ const rows: ReadonlyArray<{
 	},
 ];
 
-for (const row of rows) {
-	test(`unmetOf: ${row.name}`, () => {
-		expect(unmetOf({ asked: { ...asked, ...row.asked }, loaded: { ...taken, ...row.loaded } })).toEqual([
-			...row.expected,
-		]);
-	});
-}
+test.each(rows)("unmetOf: $name", (row) => {
+	expect(unmetOf({ asked: { ...asked, ...row.asked }, loaded: { ...taken, ...row.loaded } })).toEqual([
+		...row.expected,
+	]);
+});

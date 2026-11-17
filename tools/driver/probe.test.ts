@@ -22,11 +22,10 @@ const rows = [
 	{ name: "an empty payload has no text", payload: "{}", expected: "" },
 ] as const;
 
-for (const { name, payload, expected } of rows) {
-	test(`textOf: ${name}`, () =>
-		Effect.runPromise(
-			Effect.map(decodeJson(payload), (json) => {
-				expect(textOf(json)).toBe(expected);
-			}),
-		));
-}
+test.each(rows)("textOf: $name", ({ payload, expected }) =>
+	Effect.runPromise(
+		Effect.map(decodeJson(payload), (json) => {
+			expect(textOf(json)).toBe(expected);
+		}),
+	),
+);
