@@ -6,6 +6,7 @@ import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
+import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
 import * as TestClock from "effect/testing/TestClock";
 
@@ -70,18 +71,21 @@ const parallelResults = [
 	{ url: "https://bun.sh/undated", title: "Undated", excerpts: [] },
 ];
 
-const parallelEvent = await Effect.runPromise(
-	Effect.gen(function* () {
-		const text = yield* jsonText({ search_id: "s", results: parallelResults });
-		const data = yield* jsonText({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text }] } });
+const parallelEvent = Effect.gen(function* () {
+	const text = yield* jsonText({ search_id: "s", results: parallelResults });
+	const data = yield* jsonText({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text }] } });
 
-		return `event: message\ndata: ${data}\n\n`;
-	}),
-);
+	return `event: message\ndata: ${data}\n\n`;
+});
+
+const parallelBody = (): ReadableStream<Uint8Array> =>
+	parallelEvent.pipe(Effect.orDie, Stream.fromEffect, Stream.encodeText, Stream.toReadableStream());
 
 const parallelHits = (body: string) =>
 	Str.includes("bun serve site:bun.sh OR site:github.com")(body)
-		? new Response(parallelEvent, { headers: { "content-type": "text/event-stream" } })
+		? new Response(parallelBody(), {
+				headers: { "content-type": "text/event-stream" },
+			})
 		: new Response("", { status: 400 });
 
 const unauthorized = () => new Response("", { status: 401 });
