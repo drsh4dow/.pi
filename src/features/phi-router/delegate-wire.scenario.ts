@@ -39,7 +39,7 @@ const children: ReadonlyArray<Child> = [
 		alias: "fable",
 		key: "phi/claude-fable-5-2",
 		clean: ["ultra-a/claude-fable-5-2", "ultra-b/claude-fable-5-2"],
-		sealed: "ent/claude-fable-5-2",
+		sealed: "ent/claude-opus-5-5",
 	},
 	{ alias: "investigator", key: "openai/gpt-6.1-sol", clean: ["openai/gpt-6.1-sol"], sealed: "openai/gpt-6.1-sol" },
 	{ alias: "divergent", key: "phi/glm-5.3-flash", clean: ["opencode-go/glm-5.3-flash"], sealed: substitute },

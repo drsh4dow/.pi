@@ -80,11 +80,35 @@ const unexpiredOAuth = (access: string): Credential => ({
 
 const ids = (account: Account) => Arr.map(modelsWith({}).getModels(account.id), ({ id }) => id);
 
-test.each(accounts)("$id offers pi's whole Anthropic catalog under its own name", (account) => {
+test.each(accounts)("$id offers pi's Anthropic catalog, less the models it lacks, under its own name", (account) => {
 	const listed = modelsWith({}).getModels(account.id);
+	const lacks: ReadonlyArray<string> = account.lacks;
 
-	expect(ids(account)).toEqual(Arr.map(anthropic.models, ({ id }) => id));
+	expect(ids(account)).toEqual(
+		Arr.filter(
+			Arr.map(anthropic.models, ({ id }) => id),
+			(id) => !Arr.contains(lacks, id),
+		),
+	);
 	expect(Arr.filter(listed, ({ provider }) => provider !== account.id)).toEqual([]);
+});
+
+test("ent never offers Fable, which the Enterprise org cannot serve, while the personal accounts do", () => {
+	const withFable = { ...anthropic, models: [...anthropic.models, { ...opus, id: "claude-fable-5-2" }] };
+
+	const offersFable = (account: Account) => {
+		const models = createModels({ credentials: memoryStore({}) });
+
+		models.setProvider(accountProvider({ anthropic: withFable, account, wrap: Function.identity }));
+
+		return Arr.some(models.getModels(account.id), ({ id }) => id === "claude-fable-5-2");
+	};
+
+	expect(Arr.map(accounts, (account) => [account.id, offersFable(account)])).toEqual([
+		["ultra-a", true],
+		["ultra-b", true],
+		["ent", false],
+	]);
 });
 
 test.each(accounts)("$id has no credential when only ANTHROPIC_* variables are set", (account) =>

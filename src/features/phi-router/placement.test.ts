@@ -36,7 +36,7 @@ const carried = [
 	`ent/${opus}`,
 	"ultra-a/claude-fable-5-2",
 	"ultra-b/claude-fable-5-2",
-	"ent/claude-fable-5-2",
+	"ent/claude-haiku-5-5",
 	"openai/gpt-6.1-sol",
 	"opencode-go/glm-5.3-flash",
 ];
@@ -46,7 +46,7 @@ test("the sealed lane of an id is the first BAA provider that carries it, else e
 
 	expect(Arr.map(["gpt-6.1-sol", "claude-fable-5-2", "glm-5.3-flash"], laneOf)).toEqual([
 		{ provider: "openai", id: "gpt-6.1-sol" },
-		{ provider: "ent", id: "claude-fable-5-2" },
+		{ provider: "ent", id: opus },
 		{ provider: "ent", id: opus },
 	]);
 });
@@ -123,7 +123,7 @@ test("a phi/<id> model sends a clean request to the id on its personal provider 
 			const fable = yield* dispatchedFor({ name: "phi-fable", selected: "claude-fable-5-2" });
 
 			expect(glm.world.routed).toEqual(["opencode-go/glm-5.3-flash", `ent/${opus}`]);
-			expect(fable.world.routed).toEqual([`${fable.home}/claude-fable-5-2`, "ent/claude-fable-5-2"]);
+			expect(fable.world.routed).toEqual([`${fable.home}/claude-fable-5-2`, `ent/${opus}`]);
 		}),
 	));
 
@@ -138,15 +138,15 @@ test("shadow sends a phi/<id> request to its sealed lane, and the lane log names
 
 			const { lanes } = yield* lanesOf(world);
 
-			expect(world.routed).toEqual(["ent/claude-fable-5-2", "ent/claude-fable-5-2"]);
-			expect(lanes[0]).toMatchObject({ wouldBe: home, dispatched: "ent", model: "claude-fable-5-2" });
+			expect(world.routed).toEqual([`ent/${opus}`, `ent/${opus}`]);
+			expect(lanes[0]).toMatchObject({ wouldBe: home, dispatched: "ent", model: opus });
 		}),
 	));
 
 test("a router failure sends the selected id's sealed lane, with settings.model as the fallback", () =>
 	run(
 		Effect.gen(function* () {
-			const settings = Option.some('{ "mode": "enforce", "model": "claude-fable-5-2" }');
+			const settings = Option.some('{ "mode": "enforce", "model": "claude-haiku-5-5" }');
 			const world = yield* worldOf({ name: "phi-fails", settings, catalog: Option.some(carried) });
 
 			world.judge = "dies";
@@ -154,7 +154,7 @@ test("a router failure sends the selected id's sealed lane, with settings.model 
 			yield* (yield* branchOf({ world, selected: phiModel("glm-5.3-flash") })).send("user", opening);
 			yield* (yield* branchOf({ world, selected: phiModel(opus) })).send("user", opening);
 
-			expect(world.routed).toEqual(["ent/claude-fable-5-2", `ent/${opus}`]);
+			expect(world.routed).toEqual(["ent/claude-haiku-5-5", `ent/${opus}`]);
 		}),
 	));
 
