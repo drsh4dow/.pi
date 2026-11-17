@@ -2,22 +2,9 @@
 
 Next-gen coding harness, built on pi + Herdr-Core. This folder is also pi's live config dir (`~/.pi`), so `.gitignore` is an allowlist: credentials (`agent/auth.json`) and session history (`agent/sessions/`) must never be committed.
 
-## Rules
+Run `bun run check` before every commit. It must exit 0.
 
-- Run `bun run check` before every commit. It must exit clean.
-- `bun run test` and `bun run check` run test files at the same time in separate workers. A test waits on a condition, never a fixed sleep, and shares no fixed path, port, or process with another file.
-- Before you change the harness itself (an extension, `SYSTEM.md`, a role file, or a principle), read pi's docs: `node_modules/@earendil-works/pi-coding-agent/README.md`, and its `docs/` and `examples/`.
-- Use bun as the package manager. `bun install` runs `effect-tsgo patch --oxlint`, which swaps the TypeScript, oxlint, and tsgolint binaries for Effect's builds.
-- Fix the code, never the gate. Don't disable or downgrade lint rules, and don't add `oxlint-disable` or `@ts-expect-error` to get green.
-- Relative imports end in `.ts`. Use only erasable TypeScript syntax: no `enum`, `namespace`, or parameter properties.
-- Top-level imports only. No `await import()` or `import("pkg").Type`.
-- An extension with its own `package.json` lists the packages pi supplies at runtime (`@earendil-works/pi-*`, `typebox`) in `peerDependencies` with `"*"`, never `dependencies`.
-- When an Effect or pi convention conflicts with a lint rule, the Effect or pi convention wins. Turn the rule off in `.oxlintrc.jsonc` with a one-line reason, and add the idiom to `tools/oxlint/fixtures/effect-pi-idioms.ts`.
-- After changing `SYSTEM.md`, a role file, a principle, an extension's prompt guidelines, or an instructions file in `agent/instructions/`, run `bun run prompts [project-dir]`. It writes `system-prompts.md` (gitignored): the full system prompt stock pi, the root, a level-2 delegate on each instructions file in the role its profile names, a bare owner at level 2 and at the last level, and a bare leaf get. Every agent but stock pi runs on this checkout's `agent/`, so a git worktree shows its own prompts. For the run, the command links into it what the harness does not ship, such as `auth.json` and `settings.json`, from your own agent folder.
-- Prove a fact about how the harness behaves in a running pi with a `*.scenario.ts` run by the runtime driver, as `tools/driver/README.md` describes, not with a unit test or a reading of the code.
-- `tools/oxlint/anti-slop/` is vendored. Update it with the `install-anti-slop` skill and record changes in its `UPSTREAM.md`.
-- The code inside skills (`making-videos/scripts/` and `templates/`, `writing-good-prs/scripts/`, `dumpfile/cli/`, `statechart/scripts/`) and playbooks (`scripts/`, `constraint-driven-development/scripts/`, `idea-refine/scripts/`) is vendored: oxfmt, oxlint and tsc skip it, and `bun test` still runs its tests.
-- Before modifying Herdr-App or Herdr-Core review its dedicated instructions at `~/.config/herdr-app/AGENTS.md`
+Read `CODING_STANDARDS.md` before you write code, change a gate's config, or change the harness's prompts.
 
 ## Agent skills
 
