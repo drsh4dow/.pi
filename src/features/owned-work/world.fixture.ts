@@ -194,6 +194,41 @@ const blankWorld = (
 const selfOf = (role: Role) =>
 	role === "root" ? Self.Root({ role, level: 1 }) : Self.Delegate({ role, level: 2, slice: "pi-ow" });
 
+const reloaded = (
+	current: Load,
+	load: (carried: Option.Option<LedgerState>) => Effect.Effect<Load>,
+	listening: Latch.Latch,
+) =>
+	Effect.gen(function* () {
+		const state = yield* current.ledger.freeze;
+
+		yield* current.cli.release;
+		yield* Scope.close(current.scope, Exit.void);
+		yield* listening.close;
+
+		return yield* load(Option.some(state));
+	});
+
+/** One load of the extension: what a reload rebuilds, while hc, systemd and the host outlive it. */
+interface Load {
+	readonly ledger: (typeof Ledger)["Service"];
+	readonly cli: (typeof PiCli)["Service"];
+	readonly scope: Scope.Closeable;
+}
+
+const loadOf =
+	(self: Self, kept: Context.Context<Hc | Host | Slices | NodeServices.NodeServices>, scope: Scope.Scope) =>
+	(carried: Option.Option<LedgerState>): Effect.Effect<Load> =>
+		Effect.gen(function* () {
+			const own = yield* Scope.fork(scope);
+			const clients = Layer.mergeAll(piSessionsLayer, piCliLayer(["/entrypoint.ts"]));
+			const ledger = ledgerLayer({ self, cwd: sessionRoot, passEnv: { HOME: sessionRoot }, firstRef: 1, carried });
+			const layer = Layer.provide(Layer.provideMerge(ledger, clients), Layer.succeedContext(kept));
+			const context = yield* Layer.buildWithScope(layer, own);
+
+			return { ledger: Context.get(context, Ledger), cli: Context.get(context, PiCli), scope: own };
+		});
+
 export const worldOf = (pacing: Pacing) => (role: Role) =>
 	Effect.gen(function* () {
 		const scope = yield* Scope.make();
@@ -231,41 +266,6 @@ export const worldOf = (pacing: Pacing) => (role: Role) =>
 
 		return full;
 	});
-
-const reloaded = (
-	current: Load,
-	load: (carried: Option.Option<LedgerState>) => Effect.Effect<Load>,
-	listening: Latch.Latch,
-) =>
-	Effect.gen(function* () {
-		const state = yield* current.ledger.freeze;
-
-		yield* current.cli.release;
-		yield* Scope.close(current.scope, Exit.void);
-		yield* listening.close;
-
-		return yield* load(Option.some(state));
-	});
-
-/** One load of the extension: what a reload rebuilds, while hc, systemd and the host outlive it. */
-interface Load {
-	readonly ledger: (typeof Ledger)["Service"];
-	readonly cli: (typeof PiCli)["Service"];
-	readonly scope: Scope.Closeable;
-}
-
-const loadOf =
-	(self: Self, kept: Context.Context<Hc | Host | Slices | NodeServices.NodeServices>, scope: Scope.Scope) =>
-	(carried: Option.Option<LedgerState>): Effect.Effect<Load> =>
-		Effect.gen(function* () {
-			const own = yield* Scope.fork(scope);
-			const clients = Layer.mergeAll(piSessionsLayer, piCliLayer(["/entrypoint.ts"]));
-			const ledger = ledgerLayer({ self, cwd: sessionRoot, passEnv: { HOME: sessionRoot }, firstRef: 1, carried });
-			const layer = Layer.provide(Layer.provideMerge(ledger, clients), Layer.succeedContext(kept));
-			const context = yield* Layer.buildWithScope(layer, own);
-
-			return { ledger: Context.get(context, Ledger), cli: Context.get(context, PiCli), scope: own };
-		});
 
 export const leftovers = (world: World) =>
 	Effect.gen(function* () {
