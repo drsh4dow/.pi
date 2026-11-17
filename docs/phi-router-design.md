@@ -100,7 +100,7 @@ A request seals exactly the pieces that got `Sealed`. Its other new pieces clear
 
 Tool-call ids are provider-generated and tool names come from the harness, so neither carries session content.
 
-**Scope.** claude-accounts marks the process protected on `session_start` and `model_select` when the selection is `phi/auto` or the branch ever selected it. Protection lasts for the session. A protected process guards every request to a personal account: routed, failover, `direct` or a raw selection. An unprotected process is untouched, so non-PHI sessions and their `judgment` delegates pay nothing. A protected process with no link from the router treats every part as unknown, which fails closed.
+**Scope.** claude-accounts marks the process protected on `session_start` and `model_select` when the selection is `phi/auto`, and clears it on a switch to any other model (ADR 0017). A protected process guards every request to a personal account: routed, failover, `direct` or a raw selection. An unprotected process is untouched, so non-PHI sessions and their `judgment` delegates pay nothing. A protected process with no link from the router treats every part as unknown, which fails closed.
 
 **What it proves.** In a protected process, no part reaches a personal account unless the router cleared its key, or it is a constant stub. That holds when `route()` dispatches wrongly, when pi compacts at send time, and when the router never loaded. It does not hold when the judge clears PHI. The leak gate tests the judge, and the border test tests dispatch.
 
