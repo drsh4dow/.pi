@@ -5,19 +5,19 @@ import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Layer from "effect/Layer";
-import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { briefSourcesLayer } from "#src/client/brief-sources/index.ts";
 import { Gh } from "#src/client/gh/index.ts";
+import { piHost } from "#src/client/pi-host/index.ts";
 import { Self } from "./child.ts";
 import { Ledger } from "./ledger.ts";
 import { modelTable } from "./models.ts";
 import { Tools } from "./tools.ts";
 
-const runtime = ManagedRuntime.make(
+const runtime = piHost(
 	Layer.mergeAll(
 		Layer.provideMerge(briefSourcesLayer, NodeServices.layer),
 		Layer.mock(Ledger)({}),

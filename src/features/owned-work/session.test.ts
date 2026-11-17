@@ -2,9 +2,9 @@ import { expect, test } from "bun:test";
 
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import * as ManagedRuntime from "effect/ManagedRuntime";
 
-import { delegatesDirOf, exitsWhenPromptResolves, runHook } from "./session.ts";
+import { piHost } from "#src/client/pi-host/index.ts";
+import { awaitOn, delegatesDirOf, exitsWhenPromptResolves } from "./session.ts";
 
 const rows = [
 	{ mode: "print", exits: true },
@@ -22,12 +22,13 @@ for (const { mode, exits } of rows) {
 test("a hook still waiting when the session shuts down ends with no reply, and a hook that dies still rejects", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
-			const runtime = ManagedRuntime.make(Layer.empty);
-			const run = runHook(runtime);
+			const host = piHost(Layer.empty);
+			const waiter = piHost(Layer.empty);
+			const run = <Reply>(hook: Effect.Effect<Reply>): Promise<Reply | undefined> => waiter.run(awaitOn(host)(hook));
 			const died = yield* Effect.exit(Effect.tryPromise({ try: () => run(Effect.die("boom")), catch: String }));
 			const waiting = run(Effect.never);
 
-			yield* Effect.promise(() => runtime.dispose());
+			yield* Effect.promise(() => host.dispose());
 
 			const reply = yield* Effect.promise(() => waiting);
 

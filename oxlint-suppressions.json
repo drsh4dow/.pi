@@ -1296,9 +1296,6 @@
     "jsdoc/require-returns": {
       "count": 5
     },
-    "no-restricted-properties": {
-      "count": 4
-    },
     "node/no-process-env": {
       "count": 1
     },
@@ -1349,9 +1346,6 @@
       "count": 1
     },
     "jsdoc/require-returns": {
-      "count": 1
-    },
-    "no-restricted-properties": {
       "count": 1
     },
     "no-undefined": {
