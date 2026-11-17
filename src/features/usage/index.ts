@@ -5,8 +5,6 @@ import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
-import type * as FileSystem from "effect/FileSystem";
-import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
@@ -14,15 +12,15 @@ import * as Redacted from "effect/Redacted";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 
-import { ClaudeUsage, claudeUsageLayer, type Window } from "#src/client/claude-usage/index.ts";
-import { OpencodeGo, opencodeGoLayer } from "#src/client/opencode-go/index.ts";
+import { ClaudeUsage, claudeUsageFetchLayer, type Window } from "#src/client/claude-usage/index.ts";
+import { OpencodeGo, opencodeGoFetchLayer } from "#src/client/opencode-go/index.ts";
 import { piHost } from "#src/client/pi-host/index.ts";
 import { spendSince } from "#src/client/pi-sessions/index.ts";
 import { accounts, type Login } from "#src/features/claude-accounts/index.ts";
 import { type Block, blockOf, Card, type Meter, type Outcome, readAtOf } from "./card.ts";
 import { cardComponent, liveCard } from "./view.ts";
 
-type Services = ClaudeUsage | OpencodeGo | FileSystem.FileSystem;
+type Services = ClaudeUsage | OpencodeGo | Effect.Services<ReturnType<typeof spendSince>>;
 
 /** One account `/usage` reads, and how. A failure is the reason it could not, as the user reads it. */
 interface Source {
@@ -207,7 +205,7 @@ const showUsage = (pi: Host, ctx: ExtensionCommandContext) =>
 
 /** Registers `/usage`, which shows what every account has used in a card. */
 export const usage = (pi: Host) => {
-	const clients = Layer.mergeAll(claudeUsageLayer, opencodeGoLayer).pipe(Layer.provide(FetchHttpClient.layer));
+	const clients = Layer.mergeAll(claudeUsageFetchLayer, opencodeGoFetchLayer);
 	const host = piHost(Layer.merge(clients, NodeServices.layer));
 
 	pi.registerEntryRenderer(cardType, (entry, _options, theme) =>
