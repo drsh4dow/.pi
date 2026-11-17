@@ -18,13 +18,10 @@ import { entryKind } from "#src/features/owned-work/index.ts";
 import { type Run, type Session, scenario } from "#tools/driver/index.ts";
 import { type Asked, mockedModels, Reply, serveMock } from "./anthropic.fixture.ts";
 import { foundIn } from "./corpus/canary-tokens.ts";
+import type { Carrier, Personal } from "./gate.ts";
 import { serveOpenAi } from "./openai.fixture.ts";
 import { stubs } from "./policy/policy.ts";
 import { providersOf } from "./session.fixture.ts";
-
-type Personal = "ultra-a" | "ultra-b" | "openai" | "opencode-go";
-
-type Carrier = Personal | "ent";
 
 /** What the design promises for one alias: where its clean turns land and the id they name, and the id on ent. */
 interface Child {

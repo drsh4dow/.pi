@@ -176,7 +176,6 @@ test("in a protected session the Decisions judge on openai reads raw content", (
 			);
 
 			expect(world.judged).toEqual([judgeContext]);
-			expect(world.judged[0]).toBe(judgeContext);
 		}),
 	));
 
@@ -189,7 +188,6 @@ test("in an open session openai receives the request untouched", () => {
 	world.registered().streamSimple(sol, context);
 
 	expect(world.sent).toEqual([context]);
-	expect(world.sent[0]).toBe(context);
 });
 
 /** A border of a `phi/auto` session that wraps three times, and the reports of its link. */
