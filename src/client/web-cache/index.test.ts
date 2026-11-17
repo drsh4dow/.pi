@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
@@ -7,13 +7,24 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import * as Schema from "effect/Schema";
 
 import { Body, type Page, PublicUrl } from "#src/client/web/index.ts";
 import { cacheRootOf, noStoreLayer, Store, storeLayer } from "./index.ts";
 
-const root = await Effect.runPromise(
-	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.makeTempDirectory()).pipe(Effect.provide(NodeServices.layer)),
+const root = `${Bun.env["TMPDIR"] ?? "/tmp"}/web-cache-${String(process.pid)}`;
+
+const notAFolder = `${root}/a-file`;
+
+beforeAll(() =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+
+			yield* fs.remove(root, { recursive: true, force: true });
+			yield* fs.makeDirectory(root, { recursive: true });
+			yield* fs.writeFileString(notAFolder, "");
+		}).pipe(Effect.provide(NodeServices.layer)),
+	),
 );
 
 afterAll(() =>
@@ -26,7 +37,7 @@ afterAll(() =>
 
 const services = Layer.merge(storeLayer(root).pipe(Layer.provide(NodeServices.layer)), NodeServices.layer);
 
-const url = await Effect.runPromise(Schema.decodeEffect(PublicUrl)("https://bun.sh/docs/api/http"));
+const url = PublicUrl.make("https://bun.sh/docs/api/http");
 
 const page: Page = {
 	url,
@@ -104,14 +115,6 @@ for (const [name, env, expected] of cacheRootRows) {
 		expect(Option.getOrElse(cacheRootOf(env), () => "none")).toBe(expected);
 	});
 }
-
-const notAFolder = `${root}/a-file`;
-
-await Effect.runPromise(
-	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.writeFileString(notAFolder, "")).pipe(
-		Effect.provide(NodeServices.layer),
-	),
-);
 
 const failedSaveRows = [
 	{

@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
@@ -10,8 +10,17 @@ import * as Rec from "effect/Record";
 
 import { spendSince } from "./index.ts";
 
-const scratch = await Effect.runPromise(
-	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.makeTempDirectory()).pipe(Effect.provide(NodeServices.layer)),
+const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/pi-sessions-spend-${String(process.pid)}`;
+
+beforeAll(() =>
+	Effect.runPromise(
+		Effect.flatMap(FileSystem.FileSystem, (fs) =>
+			Effect.andThen(
+				fs.remove(scratch, { recursive: true, force: true }),
+				fs.makeDirectory(scratch, { recursive: true }),
+			),
+		).pipe(Effect.provide(NodeServices.layer)),
+	),
 );
 
 afterAll(() =>
