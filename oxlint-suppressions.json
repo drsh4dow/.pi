@@ -2157,9 +2157,6 @@
     }
   },
   "src/features/phi-router/lanes.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     },
@@ -2390,9 +2387,6 @@
     }
   },
   "src/features/phi-router/settings.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 1
     }
@@ -2411,9 +2405,6 @@
     },
     "jsdoc/require-returns": {
       "count": 4
-    },
-    "no-restricted-imports": {
-      "count": 1
     },
     "typescript/explicit-function-return-type": {
       "count": 3

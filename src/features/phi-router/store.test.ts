@@ -6,15 +6,19 @@ import * as Arr from "effect/Array";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
+import { type VerdictCache, verdictCacheLayer } from "#src/client/phi-verdict-cache/index.ts";
 import { ContentKey, Finding, Verdict } from "./policy/engine.ts";
 import { policyVersion } from "./policy/policy.ts";
 import { bookOf, type VerdictBook, verdictsEntryType } from "./store.ts";
 
 const key = (name: string) => ContentKey.make(name);
 
-const inHome = <Value, Failure>(body: (home: string) => Effect.Effect<Value, Failure, FileSystem.FileSystem>) => {
+const inHome = <Value, Failure>(
+	body: (home: string) => Effect.Effect<Value, Failure, FileSystem.FileSystem | VerdictCache>,
+) => {
 	const run = Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 		const home = yield* fs.makeTempDirectory();
@@ -23,7 +27,7 @@ const inHome = <Value, Failure>(body: (home: string) => Effect.Effect<Value, Fai
 		return yield* Effect.provideService(body(home), ConfigProvider.ConfigProvider, config);
 	});
 
-	return Effect.runPromise(Effect.provide(run, NodeServices.layer));
+	return Effect.runPromise(Effect.provide(run, Layer.provideMerge(verdictCacheLayer, NodeServices.layer)));
 };
 
 const verdicts = (...stored: ReadonlyArray<readonly [string, "c" | "s", string]>) => ({

@@ -15,6 +15,9 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
+import { laneLogLayer } from "#src/client/phi-lane-log/index.ts";
+import { phiSettingsLayer } from "#src/client/phi-settings/index.ts";
+import { verdictCacheLayer } from "#src/client/phi-verdict-cache/index.ts";
 import { type AccountId, isBaaAccount, isRateLimited } from "#src/features/claude-accounts/index.ts";
 import { type Classify, decisionsModel, decisionsPieceJudge } from "./decisions.ts";
 import { isPhi } from "./gate.ts";
@@ -56,7 +59,10 @@ export interface RouterSession {
 }
 
 export const servicesOf = (env: Env) =>
-	Layer.merge(NodeServices.layer, ConfigProvider.layer(ConfigProvider.fromEnvRecord(env)));
+	Layer.merge(
+		Layer.provide(Layer.mergeAll(phiSettingsLayer, laneLogLayer, verdictCacheLayer), NodeServices.layer),
+		ConfigProvider.layer(ConfigProvider.fromEnvRecord(env)),
+	);
 
 export const decisionsOf = ({ modelRegistry, signal }: Pick<ExtensionContext, "modelRegistry" | "signal">) => {
 	const classifier = Option.fromUndefinedOr(modelRegistry.findOfType("classifier", "openai", decisionsModel));

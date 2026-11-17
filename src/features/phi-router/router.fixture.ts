@@ -14,6 +14,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
+import { type VerdictCache, verdictCacheLayer } from "#src/client/phi-verdict-cache/index.ts";
 import { type Request, type Route, routeWith } from "./dispatch.ts";
 import { LaneJson } from "./lanes.ts";
 import { Judge, JudgeFailed } from "./policy/engine.ts";
@@ -22,8 +23,8 @@ import { bookOf, type VerdictBook, type VerdictsEntry, verdictsEntryType } from 
 
 const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/phi-router-test-${String(process.pid)}`;
 
-export const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem>) =>
-	Effect.runPromise(Effect.provide(effect, NodeServices.layer));
+export const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem | VerdictCache>) =>
+	Effect.runPromise(Effect.provide(effect, Layer.provideMerge(verdictCacheLayer, NodeServices.layer)));
 
 afterAll(() =>
 	run(
