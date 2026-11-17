@@ -8,9 +8,9 @@ import * as Option from "effect/Option";
 import * as Str from "effect/String";
 
 import { Gh, GhError, type PrView, type StackMember } from "#src/client/gh/index.ts";
+import { recordVerdict, type VerdictRecord, type VerdictResult } from "#src/client/verdicts/index.ts";
 import { Authorization, gate } from "./gate.ts";
 import { mergeRequestOf } from "./merge-request.ts";
-import { recordVerdict, type VerdictRecord, type VerdictResult } from "./verdict.ts";
 
 const scratch = `${Bun.env["TMPDIR"] ?? "/tmp"}/merge-gate-test-${String(process.pid)}`;
 

@@ -365,6 +365,20 @@
       "count": 1
     }
   },
+  "src/client/verdicts/index.ts": {
+    "jsdoc/require-param": {
+      "count": 1
+    },
+    "jsdoc/require-returns": {
+      "count": 1
+    },
+    "typescript/explicit-function-return-type": {
+      "count": 4
+    },
+    "typescript/explicit-module-boundary-types": {
+      "count": 3
+    }
+  },
   "src/client/web-cache/index.test.ts": {
     "jest/prefer-each": {
       "count": 2
@@ -2419,9 +2433,6 @@
     "jsdoc/require-returns": {
       "count": 1
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/explicit-function-return-type": {
       "count": 6
     }
@@ -2499,19 +2510,16 @@
   },
   "src/features/pr/verdict.ts": {
     "jsdoc/require-param": {
-      "count": 2
+      "count": 1
     },
     "jsdoc/require-returns": {
-      "count": 2
-    },
-    "no-restricted-imports": {
       "count": 1
     },
     "typescript/explicit-function-return-type": {
-      "count": 5
+      "count": 1
     },
     "typescript/explicit-module-boundary-types": {
-      "count": 4
+      "count": 1
     }
   },
   "src/features/prompt/compose.test.ts": {
