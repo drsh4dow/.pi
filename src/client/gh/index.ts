@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import type * as PlatformError from "effect/PlatformError";
 import * as ChildProcess from "effect/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 import type * as Result from "effect/Result";
@@ -58,6 +59,19 @@ const output = (command: string, args: ReadonlyArray<string>, input = "") =>
 			),
 			Effect.map(({ stdout }) => stdout),
 		);
+	});
+
+export const ghPassthrough = ({
+	binary,
+	args,
+}: {
+	readonly binary: string;
+	readonly args: ReadonlyArray<string>;
+}): Effect.Effect<ChildProcessSpawner.ExitCode, PlatformError.PlatformError, ChildProcessSpawner.ChildProcessSpawner> =>
+	Effect.flatMap(ChildProcessSpawner.ChildProcessSpawner, (spawner) => {
+		const command = ChildProcess.make(binary, args, { stdin: "inherit", stdout: "inherit", stderr: "inherit" });
+
+		return Effect.scoped(Effect.flatMap(spawner.spawn(command), (handle) => handle.exitCode));
 	});
 
 /**
