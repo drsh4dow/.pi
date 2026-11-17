@@ -5,10 +5,12 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import type * as PlatformError from "effect/PlatformError";
 import * as Str from "effect/String";
 
+import { type StateFolder, stateFolderLayer } from "#src/client/state-folder/index.ts";
 import { entryKind, finishCall, lastFolder, type Watched, watchCall } from "./index.ts";
 
 const home = `${Bun.env["TMPDIR"] ?? "/tmp"}/state-folder-test-${String(process.pid)}`;
@@ -63,8 +65,8 @@ const resolve = Effect.fn("resolve")(function* (calls: ReadonlyArray<Call>) {
 	return last;
 });
 
-const runTest = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem>) =>
-	Effect.runPromise(Effect.provide(effect, NodeServices.layer));
+const runTest = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem | StateFolder>) =>
+	Effect.runPromise(Effect.provide(effect, Layer.provideMerge(stateFolderLayer, NodeServices.layer)));
 
 beforeAll(() =>
 	runTest(

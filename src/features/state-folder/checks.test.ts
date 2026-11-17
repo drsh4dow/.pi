@@ -4,15 +4,17 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import * as Str from "effect/String";
 
+import { type StateFolder, stateFolderLayer } from "#src/client/state-folder/index.ts";
 import { checks } from "./checks.ts";
 
 const home = `${Bun.env["TMPDIR"] ?? "/tmp"}/state-checks-test-${String(process.pid)}`;
 const folder = `${home}/.local/state/pi-agent/pi/work`;
 
-const runTest = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem>) =>
-	Effect.runPromise(Effect.provide(effect, NodeServices.layer));
+const runTest = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem | StateFolder>) =>
+	Effect.runPromise(Effect.provide(effect, Layer.provideMerge(stateFolderLayer, NodeServices.layer)));
 
 beforeAll(() =>
 	runTest(

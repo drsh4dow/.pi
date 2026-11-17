@@ -11,9 +11,10 @@ import {
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
+import { StateFolder, stateFolderLayer } from "#src/client/state-folder/index.ts";
 import { guideFiles, readGuides } from "#src/features/loaded/index.ts";
 import { selfFromEnv } from "#src/features/owned-work/index.ts";
 import { internalIdsOnly, isPhiAuto } from "#src/features/phi-router/index.ts";
@@ -42,6 +43,8 @@ export { narrativeCap } from "./summary.ts";
 
 type Env = Readonly<Record<string, string | undefined>>;
 
+const services = Layer.provideMerge(stateFolderLayer, NodeServices.layer);
+
 type StreamSimple = ExtensionContext["modelRegistry"]["streamSimple"];
 
 /** `streamSimple`, unlike `complete`, routes a virtual model, as `direct`, so a PHI router sends the summary to its BAA account. */
@@ -66,9 +69,9 @@ const anchorOf = Effect.fn("anchorOf")(
 			return Option.none();
 		}
 
-		const fs = yield* FileSystem.FileSystem;
+		const stateFolder = yield* StateFolder;
 		const path = `${folder.value}/STATE.md`;
-		const text = yield* fs.readFileString(path);
+		const text = yield* stateFolder.text(path);
 
 		return Option.some(Anchor.State({ path, text }));
 	},
@@ -245,8 +248,6 @@ export const compaction =
 		readonly getCommands: () => ReadonlyArray<SlashCommandInfo>;
 	}) => {
 		pi.on("session_before_compact", (event, ctx) =>
-			Effect.runPromise(
-				compact({ env, commands: pi.getCommands(), event, ctx }).pipe(Effect.provide(NodeServices.layer)),
-			),
+			Effect.runPromise(compact({ env, commands: pi.getCommands(), event, ctx }).pipe(Effect.provide(services))),
 		);
 	};

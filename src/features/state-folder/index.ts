@@ -10,13 +10,14 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { labelTerminal, TerminalAddress } from "#src/client/hc/index.ts";
+import { type Fingerprint, StateFolder, stateFolderLayer } from "#src/client/state-folder/index.ts";
 import type { FormatProblem } from "./action-items.ts";
 import { checks, type Place } from "./checks.ts";
 
@@ -47,23 +48,6 @@ const foldersIn = ({ home, input }: { readonly home: string; readonly input: str
 	return Arr.dedupe(Arr.map(named, (folder) => `${home}${statePath}${folder}`));
 };
 
-type Fingerprint = ReadonlyMap<string, string>;
-
-const fingerprint = Effect.fn("fingerprint")(function* (folder: string) {
-	const fs = yield* FileSystem.FileSystem;
-	const names = yield* fs.readDirectory(folder).pipe(Effect.orElseSucceed((): ReadonlyArray<string> => []));
-
-	const stamps = yield* Effect.forEach(names, (name) =>
-		fs.stat(`${folder}/${name}`).pipe(
-			Effect.map((info) => `${String(info.size)} ${String(Option.getOrUndefined(info.mtime)?.getTime())}`),
-			Effect.orElseSucceed(() => ""),
-			Effect.map((stamp) => [name, stamp] as const),
-		),
-	);
-
-	return new Map(stamps);
-});
-
 /** Each running tool call's named state folders, with each folder's fingerprint from before the call ran. */
 export type Watched = Map<string, ReadonlyArray<readonly [folder: string, before: Fingerprint]>>;
 
@@ -72,8 +56,10 @@ export const watchCall = Effect.fn("watchCall")(function* (
 	watched: Watched,
 	{ home, toolCallId, input }: { readonly home: string; readonly toolCallId: string; readonly input: string },
 ) {
+	const stateFolder = yield* StateFolder;
+
 	const seen = yield* Effect.forEach(foldersIn({ home, input }), (folder) =>
-		Effect.map(fingerprint(folder), (before) => [folder, before] as const),
+		Effect.map(stateFolder.fingerprint(folder), (before) => [folder, before] as const),
 	);
 
 	if (seen.length > 0) {
@@ -87,7 +73,7 @@ const changedNames = (before: Fingerprint, after: Fingerprint) =>
 const byLine = Order.mapInput(Order.Number, ({ line }: FormatProblem) => line);
 
 const reportOn = Effect.fn("reportOn")(function* (place: Place, name: string) {
-	const fs = yield* FileSystem.FileSystem;
+	const stateFolder = yield* StateFolder;
 	const path = `${place.folder}/${name}`;
 	const check = checks.get(name);
 
@@ -95,7 +81,7 @@ const reportOn = Effect.fn("reportOn")(function* (place: Place, name: string) {
 		return Option.none<string>();
 	}
 
-	const file = yield* Effect.option(fs.readFile(path));
+	const file = yield* Effect.option(stateFolder.bytes(path));
 
 	if (Option.isNone(file)) {
 		return Option.none<string>();
@@ -123,12 +109,13 @@ export const finishCall = Effect.fn("finishCall")(function* (
 	watched: Watched,
 	{ home, result }: { readonly home: string; readonly result: Pick<ToolResultEvent, "toolCallId" | "content"> },
 ) {
+	const stateFolder = yield* StateFolder;
 	const seen = watched.get(result.toolCallId) ?? [];
 
 	watched.delete(result.toolCallId);
 
 	const changes = yield* Effect.forEach(seen, ([folder, before]) =>
-		Effect.map(fingerprint(folder), (after) => ({ folder, names: changedNames(before, after) })),
+		Effect.map(stateFolder.fingerprint(folder), (after) => ({ folder, names: changedNames(before, after) })),
 	);
 
 	const changed = Arr.filter(changes, ({ names }) => names.length > 0);
@@ -199,11 +186,13 @@ const finish = Effect.fn("finish")(function* (
 	return Option.getOrUndefined(checked);
 });
 
-const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, FileSystem.FileSystem>) =>
+const services = Layer.provide(stateFolderLayer, NodeServices.layer);
+
+const run = <Value, Failure>(effect: Effect.Effect<Value, Failure, StateFolder>) =>
 	Effect.runPromise(
 		effect.pipe(
 			Effect.catchCause((cause) => Effect.logWarning(cause)),
-			Effect.provide(NodeServices.layer),
+			Effect.provide(services),
 		),
 	);
 
