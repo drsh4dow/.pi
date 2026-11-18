@@ -133,13 +133,16 @@ test("pi refuses an owner from a last-level owner's delegate tool", () => {
 	expect(validated(lastLevel, { name: "review", message: "Review it.", role: "leaf" })).not.toThrow();
 });
 
-const group = Arr.findFirst(toolsOf(Self.Root({ role: "root", level: 1 })), ({ name }) => name === "group");
+const rootTools = toolsOf(Self.Root({ role: "root", level: 1 }));
 
-test("pi refuses a group call with no name or a blank one, and passes one with a name", () => {
-	const tool = Option.getOrThrow(group);
-	const args = { of: [{ ref: "delegate-1" }] };
+const toolNamed = (wanted: string) => Option.getOrThrow(Arr.findFirst(rootTools, ({ name }) => name === wanted));
 
-	expect(validated(tool, args)).toThrow();
-	expect(validated(tool, { ...args, name: " " })).toThrow();
-	expect(validated(tool, { ...args, name: "review auth" })).not.toThrow();
+test.each([
+	{ tool: "group", args: { of: [{ ref: "delegate-1" }] } },
+	{ tool: "serve", args: { command: "bun run dev" } },
+	{ tool: "watch", args: { command: "bun test" } },
+])("pi refuses a $tool call with no name or a blank one, and passes one with a name", ({ tool, args }) => {
+	expect(validated(toolNamed(tool), args)).toThrow();
+	expect(validated(toolNamed(tool), { ...args, name: " " })).toThrow();
+	expect(validated(toolNamed(tool), { ...args, name: "review auth" })).not.toThrow();
 });

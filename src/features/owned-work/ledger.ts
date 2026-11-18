@@ -112,7 +112,7 @@ export const commandSpec =
 	(options: Pick<LedgerOptions, "cwd" | "passEnv">) =>
 	(ref: WorkRef, request: CommandRequest): Omit<RunSpec, "labels"> => ({
 		ref,
-		name: terminalNameOf(request.command),
+		name: terminalNameOf(request.name),
 		argv: ["choom", "-n", commandChild.oomScoreAdj, "--", "sh", ...framedArgv({ ref, cwd: options.cwd, request })],
 		cwd: options.cwd,
 		env: { ...options.passEnv, ...commandChild.env },

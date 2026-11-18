@@ -77,7 +77,7 @@ const extrasOf = (shown: PaneCommand): ReadonlyArray<string> =>
 
 const headerOf = ({ ref, cwd, shown }: Frame): ReadonlyArray<string> => {
 	const [first, ...rest] = Arr.map(Str.split(shown.command, "\n"), visible);
-	const where = Arr.join([ref, cwd, `started ${shown.startTime}`, ...extrasOf(shown)], " · ");
+	const where = Arr.join([shown.name, ref, cwd, `started ${shown.startTime}`, ...extrasOf(shown)], " · ");
 
 	return Arr.map([`$ ${first}`, ...Arr.map(rest, (line) => `  ${line}`), visible(where)], Str.trimEnd);
 };

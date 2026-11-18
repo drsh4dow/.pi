@@ -22,10 +22,18 @@ const passEnv = { PATH: Bun.env["PATH"] ?? "/bin" };
 
 const startTime = "10:00:00";
 
-const serve = (command: string) => ({ ...StartRequest.Serve({ command, ready: Option.none() }), startTime });
+const serve = (command: string) => ({
+	...StartRequest.Serve({ name: "dev server", command, ready: Option.none() }),
+	startTime,
+});
 
-const watch = (command: string) => ({
-	...StartRequest.Watch({ command, deadline: Option.none(), log: `${sessionRoot}/${String(Bun.hash(command))}.log` }),
+const watch = (command: string, name = "unit tests") => ({
+	...StartRequest.Watch({
+		name,
+		command,
+		deadline: Option.none(),
+		log: `${sessionRoot}/${String(Bun.hash(`${name}${command}`))}.log`,
+	}),
 	startTime,
 });
 
@@ -66,7 +74,7 @@ const exited = (code: number) => TerminalEnd.Exited({ code: Option.some(code), s
 const outputOf = (ref: string, request: CommandRequest, code: number) => (screen: string) =>
 	watchOutputOf({ frame: { ref: WorkRef(ref), cwd: "/", shown: request }, end: exited(code), screen });
 
-test("a watch's pane shows its command and ref above the output and how it ended below, and its log and tail hold the output alone", () =>
+test("a watch's pane shows its command, name and ref above the output and how it ended below, and its log and tail hold the output alone", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
 			const request = watch("echo one; echo two >&2; exit 3");
@@ -77,7 +85,7 @@ test("a watch's pane shows its command and ref above the output and how it ended
 			expect({ head: Arr.take(lines, 5), code, log }).toEqual({
 				head: [
 					"$ echo one; echo two >&2; exit 3",
-					`watch-1 · / · started 10:00:00 · log ${request.log}`,
+					`unit tests · watch-1 · / · started 10:00:00 · log ${request.log}`,
 					"one",
 					"two",
 					"",
@@ -90,7 +98,7 @@ test("a watch's pane shows its command and ref above the output and how it ended
 		}),
 	));
 
-test("a serve's pane shows its command and ref above the output, and nothing after it", () =>
+test("a serve's pane shows its command, name and ref above the output, and nothing after it", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
 			const { screen, code } = yield* ran("serve-2", serve("echo up\necho again\t# tabbed"));
@@ -98,7 +106,7 @@ test("a serve's pane shows its command and ref above the output, and nothing aft
 			expect(Str.split(screen, "\n")).toEqual([
 				"$ echo up",
 				"  echo again?# tabbed",
-				"serve-2 · / · started 10:00:00",
+				"dev server · serve-2 · / · started 10:00:00",
 				"up",
 				"again",
 			]);
@@ -108,7 +116,10 @@ test("a serve's pane shows its command and ref above the output, and nothing aft
 
 const polling = watch("echo polling; sleep 60; echo done");
 
-const header = ["$ echo polling; sleep 60; echo done", `watch-5 · / · started 10:00:00 · log ${polling.log}`];
+const header = [
+	"$ echo polling; sleep 60; echo done",
+	`unit tests · watch-5 · / · started 10:00:00 · log ${polling.log}`,
+];
 
 const output = [
 	"polling",
@@ -148,7 +159,7 @@ test.each([
 	expect(outputOf("watch-5", polling, code)(Arr.join(lines, "\n"))).toBe(Arr.join(tail, "\n"));
 });
 
-const headerEnd = "serve-3 · / · started 10:00:00";
+const headerEnd = "dev server · serve-3 · / · started 10:00:00";
 
 test.each([
 	{ kind: "serve", request: serve("echo up; exit 7"), code: 7, signal: undefined, last: "up" },
@@ -239,9 +250,9 @@ const outside = Layer.mergeAll(
 	piSessionsLayer,
 );
 
-const readyAfter = (command: string, ready: string) =>
+const readyAfter = (command: string, ready: string, name = "dev server") =>
 	Effect.gen(function* () {
-		const request = StartRequest.Serve({ command, ready: Option.some(ready) });
+		const request = StartRequest.Serve({ name, command, ready: Option.some(ready) });
 		const self = Self.Root({ role: "root", level: 1 });
 		const ledger = ledgerLayer({ self, cwd: "/", passEnv, firstRef: 1, carried: Option.none() });
 		const layer = Layer.provide(ledger, Layer.merge(hcRunning(), outside));
@@ -251,15 +262,33 @@ const readyAfter = (command: string, ready: string) =>
 		return handle.ready;
 	}).pipe(Effect.scoped);
 
-test("a serve whose command holds its ready text is not ready from the header that shows that command", () =>
+test("a serve whose command or name holds its ready text is not ready from the header that shows them", () =>
 	Effect.runPromise(
 		Effect.gen(function* () {
+			const named = "Listening on 4000 · serve-1 · /";
 			const echoed = yield* readyAfter("true # Listening on 4000", "Listening on 4000");
-			const printed = yield* readyAfter("echo Listening on 4000", "Listening on 4000");
+			const inName = yield* readyAfter("true", "Listening on 4000", named);
+			const printed = yield* readyAfter("echo Listening on 4000", "Listening on 4000", named);
 
-			expect(echoed).toEqual(Option.some(false));
-			expect(printed).toEqual(Option.some(true));
+			expect({ echoed, inName, printed }).toEqual({
+				echoed: Option.some(false),
+				inName: Option.some(false),
+				printed: Option.some(true),
+			});
 		}).pipe(Effect.provide(node)),
+	));
+
+test("a watch's header shows a name with control characters on one line, and its tail leaves that header out", () =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const name = "tests · watch-6 · /\n\u001B[2J";
+			const request = watch("echo one", name);
+			const { screen, code } = yield* ran("watch-6", request);
+			const [, refLine] = Str.split(screen, "\n");
+
+			expect(refLine).toStartWith("tests · watch-6 · /??[2J · watch-6 · / · started ");
+			expect(outputOf("watch-6", request, code)(screen)).toBe("one");
+		}),
 	));
 
 afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${sessionRoot}`.quiet())));

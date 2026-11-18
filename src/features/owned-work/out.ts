@@ -212,7 +212,7 @@ const entryOut = (entry: WorkEntry) =>
 			instructions_file: Option.getOrNull(instructionsFile),
 			child_session_id: childSessionId,
 		}),
-		CommandStarted: ({ handle, kind, command }) => ({ type: "command-started", handle, kind, command }),
+		CommandStarted: ({ handle, kind, name, command }) => ({ type: "command-started", handle, kind, name, command }),
 		GroupStarted: ({ handle, name, members }) => ({ type: "group-started", handle, name, members }),
 		JobSettled: ({ handle, outcome, log, end, durationMs }) => ({
 			type: "job-settled",
