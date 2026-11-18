@@ -24,6 +24,7 @@ import { freshCall, parseContinuation } from "./continuation.ts";
 import { Ledger, type LedgerFailure } from "./ledger.ts";
 import { modelNameOf, modelOf, type ModelTable, modelTable } from "./models.ts";
 import { HandleOut, Out, ResultsOut } from "./out.ts";
+import { stdoutRedirectOf } from "./redirect.ts";
 import { withReview } from "./review.ts";
 import { BadDelegate, StartRequest, WorkRef } from "./work.ts";
 
@@ -199,7 +200,7 @@ const delegateTool = (
 };
 
 const serveTool = (runtime: Runtime) =>
-	defineTool({
+	({
 		name: "serve",
 		label: "serve",
 		description:
@@ -210,13 +211,13 @@ const serveTool = (runtime: Runtime) =>
 		execute: (_id, { name, command, ready }, signal) =>
 			runTool(runtime, signal)(
 				(ledger) => ledger.start(StartRequest.Serve({ name, command, ready: Option.fromUndefinedOr(ready) })),
-				Out.handle,
+				(handle) => Out.command({ handle, redirect: stdoutRedirectOf(command) }),
 			),
-	});
+	}) satisfies ToolDefinition<typeof ServeParams, JsonValue>;
 
 /** A watch's log sits beside the delegate sessions of the session that started it, and stays as long as they do. */
 const watchTool = (runtime: Runtime, place: Omit<ChildSession, "id">) =>
-	defineTool({
+	({
 		name: "watch",
 		label: "watch",
 		description: "Start a command that wakes you once it exits, with its exit code, last lines, and log path.",
@@ -228,10 +229,10 @@ const watchTool = (runtime: Runtime, place: Omit<ChildSession, "id">) =>
 
 			return runTool(runtime, signal)(
 				(ledger) => Effect.andThen(makeSessionFolder(place.dir), ledger.start(request)),
-				Out.handle,
+				(handle) => Out.command({ handle, redirect: stdoutRedirectOf(command) }),
 			);
 		},
-	});
+	}) satisfies ToolDefinition<typeof WatchParams, JsonValue>;
 
 const groupTool = (runtime: Runtime) =>
 	defineTool({
@@ -284,4 +285,10 @@ const register = (
 
 export type ToolServices = Gh | BriefSources;
 
-export const Tools = { register, delegate: delegateTool, layer: Layer.merge(ghLayer, briefSourcesLayer) };
+export const Tools = {
+	register,
+	delegate: delegateTool,
+	serve: serveTool,
+	watch: watchTool,
+	layer: Layer.merge(ghLayer, briefSourcesLayer),
+};
