@@ -17,6 +17,7 @@ import {
 	type MonotonicNanos,
 	Outcome,
 	type StartRequest,
+	type TimedRequest,
 	Work,
 	WorkEntry,
 	WorkRef,
@@ -32,7 +33,7 @@ const initial = (role: Role, next: number, now: MonotonicNanos): LedgerState => 
 
 type Started = readonly [Work, WorkEntry];
 
-const startedOf = (request: StartRequest, ref: WorkRef, now: MonotonicNanos): Started => {
+const startedOf = (request: TimedRequest, ref: WorkRef, now: MonotonicNanos): Started => {
 	const job = { ref, heldBy: Option.none(), startedAt: now, settled: Option.none(), spawn: Option.none() };
 
 	return Match.valueTags(request, {
@@ -46,8 +47,8 @@ const startedOf = (request: StartRequest, ref: WorkRef, now: MonotonicNanos): St
 				childSessionId: childSession.id,
 			}),
 		],
-		Watch: ({ command, deadline, log }): Started => [
-			Work.Watch({ ...job, command, deadline, log }),
+		Watch: ({ command, startTime, deadline, log }): Started => [
+			Work.Watch({ ...job, command, startTime, deadline, log }),
 			WorkEntry.CommandStarted({ handle: ref, kind: "watch", command }),
 		],
 		Serve: ({ command }): Started => [
@@ -74,7 +75,7 @@ const arrange = (draft: Draft, ref: WorkRef, request: StartRequest): void => {
 	});
 };
 
-const started = (state: LedgerState, request: StartRequest): Step<WorkRef> => {
+const started = (state: LedgerState, request: TimedRequest): Step<WorkRef> => {
 	const draft = Draft.of(state);
 	const ref = WorkRef(`${Draft.kindOf(request)}-${String(state.next)}`);
 	const [work, entry] = startedOf(request, ref, state.now);
@@ -87,7 +88,7 @@ const started = (state: LedgerState, request: StartRequest): Step<WorkRef> => {
 	return Draft.finish(draft, ref);
 };
 
-const start = (state: LedgerState, request: StartRequest) =>
+const start = (state: LedgerState, request: TimedRequest) =>
 	Option.match(nameTaken(state)(request), {
 		onSome: Result.fail,
 		onNone: () => Result.succeed(started(state, request)),
@@ -136,7 +137,7 @@ const endWork = (draft: Draft, work: Work, end: TerminalEnd): void => {
 		Watch: (watch) =>
 			Option.map(
 				Option.filter(watch.spawn, () => Draft.isLive(watch)),
-				({ terminal }) => Command.ReadTail({ ref: watch.ref, terminal, end }),
+				({ terminal }) => Command.ReadTail({ watch, terminal, end }),
 			),
 		Serve: (serve) => {
 			Draft.settle(draft, serve, Draft.failure(end), Option.some(end));

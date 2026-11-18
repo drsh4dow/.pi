@@ -70,12 +70,14 @@ export class Hc extends Context.Service<
 		readonly follow: Effect.Effect<void>;
 		readonly kill: (terminal: TerminalAddress) => Effect.Effect<void>;
 		readonly label: (terminal: TerminalAddress, labels: Readonly<Record<string, string>>) => Effect.Effect<void>;
+		/** True once the program prints `pattern` after the wait starts, false when it ends or `timeout` passes first. */
 		readonly waitForOutput: (
 			terminal: TerminalAddress,
 			pattern: string,
 			timeout: Duration.Duration,
 		) => Effect.Effect<boolean, HcError>;
-		readonly tail: (terminal: TerminalAddress, lines: number) => Effect.Effect<string, HcError>;
+		/** The screen and `history` lines above it, one line per printed line however wide. */
+		readonly read: (terminal: TerminalAddress, history: number) => Effect.Effect<string, HcError>;
 		readonly notices: Stream.Stream<HcNotice>;
 	}
 >()("pi-harness/client/hc/Hc") {}
@@ -162,18 +164,15 @@ const read = (socket: string, terminal: TerminalAddress, history: number) =>
 		Effect.map(({ text }) => Str.trimEnd(text)),
 	);
 
-/** Checks what is already printed, then waits, then reads once more after a miss, so no print slips between. */
-const waitForOutput = (socket: string, terminal: TerminalAddress, pattern: string, timeout: Duration.Duration) => {
-	const printed = Effect.map(read(socket, terminal, 1000), Str.includes(pattern));
-	const params = { terminal, output: pattern, timeout: Duration.toSeconds(timeout) };
-
-	const wait = call(socket)("terminal.wait", params, Schema.Struct({ reason: Schema.String })).pipe(
+const waitForOutput = (socket: string, terminal: TerminalAddress, pattern: string, timeout: Duration.Duration) =>
+	call(socket)(
+		"terminal.wait",
+		{ terminal, output: pattern, timeout: Duration.toSeconds(timeout) },
+		Schema.Struct({ reason: Schema.String }),
+	).pipe(
 		Effect.retry(safely),
-		Effect.flatMap(({ reason }) => (reason === "output" ? Effect.succeed(true) : printed)),
+		Effect.map(({ reason }) => reason === "output"),
 	);
-
-	return Effect.filterOrElse(printed, Boolean, () => wait);
-};
 
 const makeFeed = Effect.all({ notices: Queue.unbounded<HcNotice>(), subscribed: Latch.make() });
 
@@ -223,8 +222,6 @@ export const labelTerminal = ({
 	readonly labels: Readonly<Record<string, string>>;
 }) => Effect.flatMap(socketPath, (socket) => change(socket, "terminal.label", { terminal, labels }));
 
-const lastLines = (count: number) => (text: string) => Arr.join(Arr.takeRight(Str.split(text, "\n"), count), "\n");
-
 const notSubscribed = HcError.make({
 	method: "events.subscribe",
 	kind: "timeout",
@@ -269,7 +266,7 @@ export const hcLayer = (options: HcOptions): Layer.Layer<Hc> =>
 				kill: (terminal) => change(socket, "terminal.kill", { terminal }),
 				label: (terminal, labels) => change(socket, "terminal.label", { terminal, labels }),
 				waitForOutput: (terminal, pattern, timeout) => waitForOutput(socket, terminal, pattern, timeout),
-				tail: (terminal, count) => Effect.map(read(socket, terminal, count), lastLines(count)),
+				read: (terminal, history) => read(socket, terminal, history),
 				notices: Stream.fromQueue(feed.notices),
 			});
 		}),

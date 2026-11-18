@@ -1,5 +1,4 @@
 import * as Context from "effect/Context";
-import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as FiberMap from "effect/FiberMap";
@@ -20,6 +19,7 @@ import { Slices } from "#src/client/systemd/index.ts";
 import { recordVerdict, type VerdictRecord, verdictsFolder } from "#src/features/pr/index.ts";
 import { atLevel, launch, levels, type Self } from "./child.ts";
 import { continuationOf } from "./continuation.ts";
+import { type CommandRequest, framedArgv, serveReady, startTimeNow, watchTail } from "./frame.ts";
 import { liveDelegates } from "./lifetime.ts";
 import { Command, Draft, type LedgerState, type Step, type Verdict } from "./step.ts";
 import { Transitions } from "./transitions.ts";
@@ -35,6 +35,7 @@ import {
 	monotonicNow,
 	type Settled,
 	StartRequest,
+	type TimedRequest,
 	type WorkEntry,
 	type WorkRef,
 } from "./work.ts";
@@ -97,10 +98,6 @@ interface Kit {
 	readonly deadlines: FiberMap.FiberMap<WorkRef>;
 }
 
-const readyTimeout = Duration.seconds(60);
-
-const tailLines = 40;
-
 /** A pi that a serve or watch starts is a leaf at the last level, so it cannot delegate. */
 const commandChild = atLevel({ level: levels, role: "leaf" });
 
@@ -111,27 +108,17 @@ const labelOf = {
 	groupName: "ow.group.name",
 } as const;
 
-/** Copies the command's output to the log at `$2`, and exits with the command's code rather than tee's. */
-const teed = 'set -o pipefail; sh -c "$1" 2>&1 | tee -- "$2"';
-
-const shellSpec =
+export const commandSpec =
 	(options: Pick<LedgerOptions, "cwd" | "passEnv">) =>
-	(ref: WorkRef, command: string, shell: ReadonlyArray<string>): Omit<RunSpec, "labels"> => ({
+	(ref: WorkRef, request: CommandRequest): Omit<RunSpec, "labels"> => ({
 		ref,
-		name: terminalNameOf(command),
-		argv: ["choom", "-n", commandChild.oomScoreAdj, "--", "sh", ...shell],
+		name: terminalNameOf(request.command),
+		argv: ["choom", "-n", commandChild.oomScoreAdj, "--", "sh", ...framedArgv({ ref, cwd: options.cwd, request })],
 		cwd: options.cwd,
 		env: { ...options.passEnv, ...commandChild.env },
 	});
 
-export const commandSpec = (options: Pick<LedgerOptions, "cwd" | "passEnv">) => (ref: WorkRef, command: string) =>
-	shellSpec(options)(ref, command, ["-c", command]);
-
-export const watchSpec =
-	(options: Pick<LedgerOptions, "cwd" | "passEnv">) => (ref: WorkRef, command: string, log: string) =>
-		shellSpec(options)(ref, command, ["-c", teed, "sh", command, log]);
-
-const specOf = ({ options, cli }: Kit, ref: WorkRef, request: StartRequest): Effect.Effect<RunSpec, SpawnError> => {
+const specOf = ({ options, cli }: Kit, ref: WorkRef, request: TimedRequest): Effect.Effect<RunSpec, SpawnError> => {
 	const labels = { [labelOf.kind]: Draft.kindOf(request) };
 
 	return Match.valueTags(request, {
@@ -140,8 +127,8 @@ const specOf = ({ options, cli }: Kit, ref: WorkRef, request: StartRequest): Eff
 				launch(cli)({ brief, level: options.self.level + 1, childSession, passEnv: options.passEnv }),
 				(spawn) => ({ ref, cwd: childSession.cwd, labels, ...spawn }),
 			),
-		Serve: ({ command }) => Effect.succeed({ ...commandSpec(options)(ref, command), labels }),
-		Watch: ({ command, log }) => Effect.succeed({ ...watchSpec(options)(ref, command, log), labels }),
+		Serve: (serve) => Effect.succeed({ ...commandSpec(options)(ref, serve), labels }),
+		Watch: (watch) => Effect.succeed({ ...commandSpec(options)(ref, watch), labels }),
 	});
 };
 
@@ -165,10 +152,10 @@ const run = (kit: Kit, command: Command): Effect.Effect<unknown> =>
 			Effect.flatMap(kit.sessions.readAnswer(session), (answer) =>
 				apply(kit, (current) => Transitions.answered(current, ref, end, answer)),
 			),
-		ReadTail: ({ ref, terminal, end }) =>
-			kit.hc.tail(terminal, tailLines).pipe(
+		ReadTail: ({ watch, terminal, end }) =>
+			watchTail({ hc: kit.hc, terminal, end, frame: { ref: watch.ref, cwd: kit.options.cwd, shown: watch } }).pipe(
 				Effect.orElseSucceed(() => ""),
-				Effect.flatMap((tail) => apply(kit, (current) => Transitions.watchEnded(current, ref, end, tail))),
+				Effect.flatMap((tail) => apply(kit, (current) => Transitions.watchEnded(current, watch.ref, end, tail))),
 			),
 		ArmDeadline: ({ ref, after }) => {
 			const passed = apply(kit, (current) => Transitions.deadlinePassed(current, ref));
@@ -208,20 +195,24 @@ const attempt = <Reply, Failure>(
 		}),
 	);
 
-const awaitReady = (kit: Kit, handle: Handle, request: StartRequest): Effect.Effect<Handle> => {
-	const pattern = StartRequest.$is("Serve")(request) ? request.ready : Option.none<string>();
+const awaitReady = (kit: Kit, handle: Handle, request: TimedRequest): Effect.Effect<Handle> => {
+	if (!StartRequest.$is("Serve")(request)) {
+		return Effect.succeed(handle);
+	}
 
-	return Option.match(Option.all({ pattern, terminal: handle.terminal }), {
+	const frame = { ref: handle.ref, cwd: kit.options.cwd, shown: request };
+
+	return Option.match(Option.all({ text: request.ready, terminal: handle.terminal }), {
 		onNone: () => Effect.succeed(handle),
-		onSome: ({ pattern: text, terminal }) =>
-			kit.hc.waitForOutput(terminal, text, readyTimeout).pipe(
+		onSome: ({ text, terminal }) =>
+			serveReady({ hc: kit.hc, terminal, frame, text }).pipe(
 				Effect.orElseSucceed(() => false),
 				Effect.map((matched) => ({ ...handle, ready: Option.some(matched) })),
 			),
 	});
 };
 
-const spawn = (kit: Kit, ref: WorkRef, request: StartRequest): Effect.Effect<Handle, SpawnError> =>
+const spawn = (kit: Kit, ref: WorkRef, request: TimedRequest): Effect.Effect<Handle, SpawnError> =>
 	Effect.flatMap(specOf(kit, ref, request), (spec) => kit.hc.run(kit.slices.wrap(spec))).pipe(
 		Effect.matchEffect({
 			onFailure: (error) =>
@@ -237,8 +228,10 @@ const spawn = (kit: Kit, ref: WorkRef, request: StartRequest): Effect.Effect<Han
 		}),
 	);
 
-const start = (kit: Kit, request: StartRequest): Effect.Effect<Handle, StartError> =>
+const start = (kit: Kit, asked: StartRequest): Effect.Effect<Handle, StartError> =>
 	Effect.gen(function* () {
+		const startTime = yield* startTimeNow;
+		const request = { ...asked, startTime };
 		const ref = yield* attempt(kit, (current) => Transitions.start(current, request));
 		const detachedSpawn = yield* FiberSet.run(kit.fibers, spawn(kit, ref, request));
 

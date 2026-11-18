@@ -94,6 +94,7 @@ export type Work = Data.TaggedEnum<{
 	};
 	Watch: Common & {
 		readonly command: string;
+		readonly startTime: string;
 		readonly deadline: Option.Option<Duration.Duration>;
 		readonly log: string;
 		readonly spawn: Option.Option<Spawn>;
@@ -129,7 +130,12 @@ export type StartRequest = Data.TaggedEnum<{
 
 export const StartRequest = Data.taggedEnum<StartRequest>();
 
+/** A request the ledger took at `startTime`, the local wall-clock time a pane's header shows. */
+export type TimedRequest = StartRequest & { readonly startTime: string };
+
 export type DelegateStart = Data.TaggedEnum.Value<StartRequest, "Delegate">;
+
+export type WatchWork = Data.TaggedEnum.Value<Work, "Watch">;
 
 export interface ContinueRequest {
 	readonly ref: WorkRef;

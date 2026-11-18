@@ -18,6 +18,7 @@ import { HcNotice, TerminalAddress, type TerminalEnd } from "#src/client/hc/inde
 import { type Act, recordsAre, type Row } from "./act.fixture.ts";
 import type { LedgerFailure } from "./ledger.ts";
 import { Out } from "./out.ts";
+import { printed } from "./outside.fixture.ts";
 import { drained, settling } from "./settle.fixture.ts";
 import { Verdict } from "./step.ts";
 import { type Handle, MonotonicNanos, monotonicNow, Outcome, type Settled, StartRequest, WorkRef } from "./work.ts";
@@ -63,7 +64,7 @@ const requestOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">): Star
 
 	return Match.value(act.kind).pipe(
 		Match.when("delegate", () => StartRequest.Delegate({ brief: briefOf(world, act), childSession, group })),
-		Match.when("serve", () => StartRequest.Serve({ command: "serve", ready: Option.some("ready") })),
+		Match.when("serve", () => StartRequest.Serve({ command: "serve", ready: Option.some(printed) })),
 		Match.when("watch", () => StartRequest.Watch({ command: "watch", deadline, log: "watch.log" })),
 		Match.exhaustive,
 	);
