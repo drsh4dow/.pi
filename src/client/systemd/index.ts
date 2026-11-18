@@ -126,6 +126,7 @@ export const slicesLayer = ({
 							"--scope",
 							"--quiet",
 							"--collect",
+							"--expand-environment=no",
 							`--property=TimeoutStopSec=${stopGrace}`,
 							`--slice=${unit}.slice`,
 							`--unit=${unit}`,
