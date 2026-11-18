@@ -21,13 +21,14 @@ import { recordVerdict, type VerdictRecord, verdictsFolder } from "#src/features
 import { atLevel, launch, levels, type Self } from "./child.ts";
 import { continuationOf } from "./continuation.ts";
 import { liveDelegates } from "./lifetime.ts";
-import { Command, Draft, type LedgerError, type LedgerState, type Step, type Verdict } from "./step.ts";
+import { Command, Draft, type LedgerState, type Step, type Verdict } from "./step.ts";
 import { Transitions } from "./transitions.ts";
 import {
 	type ContinueRequest,
 	type DelegateStart,
 	type GroupRequest,
 	type Handle,
+	type LedgerError,
 	MonotonicNanos,
 	type NameTaken,
 	type NotContinuable,
