@@ -70,7 +70,9 @@ const rows: ReadonlyArray<Row> = [
 			delegate,
 			Start({ kind: "watch" }),
 			Start({ kind: "serve" }),
-			Shown({ expect: ["review-1 (ow.kind=delegate)", "watch (ow.kind=watch)", "serve (ow.kind=serve)"] }),
+			Shown({
+				expect: ["review-1 (ow.kind=delegate)", "unit-tests (ow.kind=watch)", "dev-server (ow.kind=serve)"],
+			}),
 			Cancel({
 				refs: ["delegate-1", "watch-2", "serve-3"],
 				expect:

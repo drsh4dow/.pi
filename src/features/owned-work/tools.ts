@@ -33,7 +33,14 @@ const Refs = Type.Array(HandleRef, { minItems: 1 });
 
 const RefsParams = Type.Object({ of: Refs });
 
+const CommandName = Type.String({
+	pattern: String.raw`\S`,
+	description:
+		"A few words that tell this command apart from the others you run, such as `dev server` or `unit tests`. The human sees it in their list of running agents and on its pane.",
+});
+
 const ServeParams = Type.Object({
+	name: CommandName,
 	command: Type.String({ minLength: 1 }),
 	ready: Type.Optional(
 		Type.String({ description: "Output text that means it is up. The call returns once it appears (60 s at most)." }),
@@ -41,6 +48,7 @@ const ServeParams = Type.Object({
 });
 
 const WatchParams = Type.Object({
+	name: CommandName,
 	command: Type.String({
 		minLength: 1,
 		description: "Write it as you would run it. The wake carries its exit code, last lines, and log path.",
@@ -199,9 +207,9 @@ const serveTool = (runtime: Runtime) =>
 		promptGuidelines,
 		parameters: ServeParams,
 		outputSchema: HandleOut,
-		execute: (_id, { command, ready }, signal) =>
+		execute: (_id, { name, command, ready }, signal) =>
 			runTool(runtime, signal)(
-				(ledger) => ledger.start(StartRequest.Serve({ command, ready: Option.fromUndefinedOr(ready) })),
+				(ledger) => ledger.start(StartRequest.Serve({ name, command, ready: Option.fromUndefinedOr(ready) })),
 				Out.handle,
 			),
 	});
@@ -214,9 +222,9 @@ const watchTool = (runtime: Runtime, place: Omit<ChildSession, "id">) =>
 		description: "Start a command that wakes you once it exits, with its exit code, last lines, and log path.",
 		parameters: WatchParams,
 		outputSchema: HandleOut,
-		execute: (_id, { command, deadline }, signal) => {
+		execute: (_id, { name, command, deadline }, signal) => {
 			const after = Option.map(Option.fromUndefinedOr(deadline), Duration.seconds);
-			const request = StartRequest.Watch({ command, deadline: after, log: `${place.dir}/${uuidv7()}.log` });
+			const request = StartRequest.Watch({ name, command, deadline: after, log: `${place.dir}/${uuidv7()}.log` });
 
 			return runTool(runtime, signal)(
 				(ledger) => Effect.andThen(makeSessionFolder(place.dir), ledger.start(request)),

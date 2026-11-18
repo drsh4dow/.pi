@@ -181,7 +181,7 @@ const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) =
 };
 
 const piServe = {
-	...StartRequest.Serve({ command: "pi --print hi", ready: Option.none() }),
+	...StartRequest.Serve({ name: "say hi", command: "pi --print hi", ready: Option.none() }),
 	startTime: "10:00:00",
 };
 
@@ -223,10 +223,10 @@ const launchRows = [
 		},
 	},
 	{
-		name: "a serve or watch runs as a leaf at the last level, so a pi it starts has no delegate tool, and is named by its command",
+		name: "a serve or watch runs as a leaf at the last level, so a pi it starts has no delegate tool, and is named by its name",
 		spec: Effect.succeed(commandSpec({ cwd: "/", passEnv: parentEnv })(WorkRef("serve-1"), piServe)),
 		expect: {
-			name: "pi-print-hi",
+			name: "say-hi",
 			argv: ["choom", "-n", "667", "--"],
 			tools: [],
 			excluded: [],

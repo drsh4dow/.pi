@@ -26,7 +26,7 @@ const firstFive = Arr.join(Arr.map(Arr.range(1, 5), paragraph), "\n\n");
 
 const rows: ReadonlyArray<Row> = [
 	{
-		name: "a wake names each delegate and its child session, a group member too, and a watch its command",
+		name: "a wake names each delegate and its child session, a group member too, and a watch its name and command",
 		role: "root",
 		acts: [
 			runs,
@@ -74,6 +74,7 @@ const rows: ReadonlyArray<Row> = [
 					{
 						ref: "watch-4",
 						kind: "watch",
+						name: "unit tests",
 						command: "watch",
 						outcome: { status: "fired", exit_code: 0, log: "watch.log", tail: "tail" },
 					},

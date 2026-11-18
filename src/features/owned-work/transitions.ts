@@ -47,13 +47,13 @@ const startedOf = (request: TimedRequest, ref: WorkRef, now: MonotonicNanos): St
 				childSessionId: childSession.id,
 			}),
 		],
-		Watch: ({ command, startTime, deadline, log }): Started => [
-			Work.Watch({ ...job, command, startTime, deadline, log }),
-			WorkEntry.CommandStarted({ handle: ref, kind: "watch", command }),
+		Watch: ({ name, command, startTime, deadline, log }): Started => [
+			Work.Watch({ ...job, name, command, startTime, deadline, log }),
+			WorkEntry.CommandStarted({ handle: ref, kind: "watch", name, command }),
 		],
-		Serve: ({ command }): Started => [
-			Work.Serve({ ...job, command }),
-			WorkEntry.CommandStarted({ handle: ref, kind: "serve", command }),
+		Serve: ({ name, command }): Started => [
+			Work.Serve({ ...job, name, command }),
+			WorkEntry.CommandStarted({ handle: ref, kind: "serve", name, command }),
 		],
 	});
 };

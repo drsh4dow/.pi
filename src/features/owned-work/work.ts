@@ -58,7 +58,7 @@ export const Outcome = Data.taggedEnum<Outcome>();
 
 export type Identity =
 	| { readonly kind: "delegate"; readonly name: string; readonly session: string }
-	| { readonly kind: "watch" | "serve"; readonly command: string }
+	| { readonly kind: "watch" | "serve"; readonly name: string; readonly command: string }
 	| { readonly kind: "group"; readonly name: string };
 
 export interface Settled {
@@ -93,13 +93,14 @@ export type Work = Data.TaggedEnum<{
 		readonly spawn: Option.Option<Spawn>;
 	};
 	Watch: Common & {
+		readonly name: string;
 		readonly command: string;
 		readonly startTime: string;
 		readonly deadline: Option.Option<Duration.Duration>;
 		readonly log: string;
 		readonly spawn: Option.Option<Spawn>;
 	};
-	Serve: Common & { readonly command: string; readonly spawn: Option.Option<Spawn> };
+	Serve: Common & { readonly name: string; readonly command: string; readonly spawn: Option.Option<Spawn> };
 	Group: Common & { readonly name: string; readonly members: ReadonlyArray<WorkRef> };
 }>;
 
@@ -112,8 +113,8 @@ export const whoOf = (work: Work): Identity =>
 			name: brief.name,
 			session: childSession.id,
 		}),
-		Watch: ({ command }): Identity => ({ kind: "watch", command }),
-		Serve: ({ command }): Identity => ({ kind: "serve", command }),
+		Watch: ({ name, command }): Identity => ({ kind: "watch", name, command }),
+		Serve: ({ name, command }): Identity => ({ kind: "serve", name, command }),
 		Group: ({ name }): Identity => ({ kind: "group", name }),
 	});
 
@@ -124,8 +125,13 @@ export const logOf = (work: Work): Option.Option<string> =>
 export type StartRequest = Data.TaggedEnum<{
 	/** `group` names the group the delegate joins, or starts when none of that name is live. */
 	Delegate: { readonly brief: Brief; readonly childSession: ChildSession; readonly group: Option.Option<string> };
-	Serve: { readonly command: string; readonly ready: Option.Option<string> };
-	Watch: { readonly command: string; readonly deadline: Option.Option<Duration.Duration>; readonly log: string };
+	Serve: { readonly name: string; readonly command: string; readonly ready: Option.Option<string> };
+	Watch: {
+		readonly name: string;
+		readonly command: string;
+		readonly deadline: Option.Option<Duration.Duration>;
+		readonly log: string;
+	};
 }>;
 
 export const StartRequest = Data.taggedEnum<StartRequest>();
@@ -193,7 +199,12 @@ export type WorkEntry = Data.TaggedEnum<{
 		readonly instructionsFile: Option.Option<string>;
 		readonly childSessionId: string;
 	};
-	CommandStarted: { readonly handle: WorkRef; readonly kind: "serve" | "watch"; readonly command: string };
+	CommandStarted: {
+		readonly handle: WorkRef;
+		readonly kind: "serve" | "watch";
+		readonly name: string;
+		readonly command: string;
+	};
 	GroupStarted: {
 		readonly handle: WorkRef;
 		readonly name: string;

@@ -64,8 +64,12 @@ const requestOf = (world: World, act: Data.TaggedEnum.Value<Act, "Start">): Star
 
 	return Match.value(act.kind).pipe(
 		Match.when("delegate", () => StartRequest.Delegate({ brief: briefOf(world, act), childSession, group })),
-		Match.when("serve", () => StartRequest.Serve({ command: "serve", ready: Option.some(printed) })),
-		Match.when("watch", () => StartRequest.Watch({ command: "watch", deadline, log: "watch.log" })),
+		Match.when("serve", () =>
+			StartRequest.Serve({ name: act.name ?? "dev server", command: "serve", ready: Option.some(printed) }),
+		),
+		Match.when("watch", () =>
+			StartRequest.Watch({ name: act.name ?? "unit tests", command: "watch", deadline, log: "watch.log" }),
+		),
 		Match.exhaustive,
 	);
 };

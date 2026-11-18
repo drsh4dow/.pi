@@ -9,14 +9,15 @@ const ref = WorkRef("watch-3");
 
 const log = Option.some("/s/delegates/w.log");
 
-const who = { kind: "watch", command: "bun test" } as const;
+const who = { kind: "watch", name: "unit tests", command: "bun test" } as const;
 
-test("a fired watch wakes the agent with its exit code, log path and last lines", () => {
+test("a fired watch wakes the agent with its name, exit code, log path and last lines", () => {
 	const outcome = Outcome.Fired({ exitCode: 143, tail: "line 200" });
 
 	expect(Out.result({ ref, who, outcome, log })).toEqual({
 		ref,
 		kind: "watch",
+		name: "unit tests",
 		command: "bun test",
 		outcome: { status: "fired", exit_code: 143, log: "/s/delegates/w.log", tail: "line 200" },
 	});
@@ -28,6 +29,7 @@ test("a cancelled watch wakes the agent with its log path", () => {
 	expect(Out.result({ ref, who, outcome, log })).toEqual({
 		ref,
 		kind: "watch",
+		name: "unit tests",
 		command: "bun test",
 		outcome: {
 			status: "failed",
