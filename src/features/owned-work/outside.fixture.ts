@@ -15,6 +15,8 @@ import type { World } from "./world.fixture.ts";
 const hangUp = (terminal: TerminalAddress) =>
 	HcNotice.Ended({ terminal, end: TerminalEnd.Exited({ code: Option.none(), signal: Option.some(1) }) });
 
+export const printed = "tail";
+
 /** Linux MAX_ARG_STRLEN, which counts the closing NUL: execve fails with E2BIG on a longer argv word. */
 const argvWordLimit = 128 * 1024;
 
@@ -91,7 +93,7 @@ export const hcOf = (world: Omit<World, "ledger" | "fs" | "reload">) => {
 				world.shown.push(shownAs(terminal, labels));
 			}),
 		waitForOutput: () => Effect.succeed(true),
-		tail: () => Effect.succeed("tail"),
+		read: () => Effect.succeed(printed),
 		follow: world.listening.open,
 		notices: Stream.unwrap(Effect.as(world.listening.await, queued)),
 	});

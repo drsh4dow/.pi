@@ -9,7 +9,7 @@ import { Design, PiCli } from "#src/client/pi-cli/index.ts";
 import { atLevel, type ChildRole, childExtensions, inheritedEnv, launch, selfFromEnv } from "./child.ts";
 import { Act, type Row, runRow } from "./ledger.fixture.ts";
 import { commandSpec } from "./ledger.ts";
-import { WorkRef } from "./work.ts";
+import { StartRequest, WorkRef } from "./work.ts";
 import { exit, killed, node, sessionRoot } from "./world.fixture.ts";
 
 const { Hook, Start, Answer, Cancel, TurnEnds, Wakes, Leftovers } = Act;
@@ -180,6 +180,11 @@ const plumbing = ({ name, argv, env }: Pick<RunSpec, "name" | "argv" | "env">) =
 	};
 };
 
+const piServe = {
+	...StartRequest.Serve({ command: "pi --print hi", ready: Option.none() }),
+	startTime: "10:00:00",
+};
+
 const launchRows = [
 	{
 		name: "a level-2 owner starts at OOM score adjustment 333 with codemode, its thinking level and its role",
@@ -219,7 +224,7 @@ const launchRows = [
 	},
 	{
 		name: "a serve or watch runs as a leaf at the last level, so a pi it starts has no delegate tool, and is named by its command",
-		spec: Effect.succeed(commandSpec({ cwd: "/", passEnv: parentEnv })(WorkRef("watch-1"), "pi --print hi")),
+		spec: Effect.succeed(commandSpec({ cwd: "/", passEnv: parentEnv })(WorkRef("serve-1"), piServe)),
 		expect: {
 			name: "pi-print-hi",
 			argv: ["choom", "-n", "667", "--"],
