@@ -5,9 +5,10 @@ import * as Result from "effect/Result";
 import type { Static } from "typebox";
 
 import type { DelegateParams } from "./brief.ts";
-import { Draft, type LedgerState, UnknownRef } from "./step.ts";
+import { Draft, type LedgerState } from "./step.ts";
 import {
 	BadDelegate,
+	UnknownRef,
 	type ContinueRequest,
 	type DelegateStart,
 	NotContinuable,

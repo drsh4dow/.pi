@@ -19,9 +19,8 @@ import type { DelegateParams } from "./brief.ts";
 import type { Brief, ChildRole } from "./child.ts";
 import { continueMessage } from "./continuation.ts";
 import { Ledger } from "./ledger.ts";
-import { UnknownRef } from "./step.ts";
 import { Tools } from "./tools.ts";
-import { type ContinueRequest, type Handle, StartRequest, WorkRef } from "./work.ts";
+import { type ContinueRequest, type Handle, StartRequest, UnknownRef, WorkRef } from "./work.ts";
 
 const luna = getBuiltinModel("openai", "gpt-6-luna");
 

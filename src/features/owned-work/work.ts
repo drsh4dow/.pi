@@ -156,6 +156,21 @@ export class NotContinuable extends Schema.TaggedError<NotContinuable, { readonl
 	{ ref: Schema.String, why: Schema.String },
 ) {}
 
+export class UnknownRef extends Schema.TaggedError<UnknownRef, { readonly brand: unique symbol }>()("UnknownRef", {
+	ref: Schema.String,
+}) {}
+
+export class NotYours extends Schema.TaggedError<NotYours, { readonly brand: unique symbol }>()("NotYours", {
+	ref: Schema.String,
+	why: Schema.String,
+}) {}
+
+export class NoJobs extends Schema.TaggedError<NoJobs, { readonly brand: unique symbol }>()("NoJobs", {
+	refs: Schema.Array(Schema.String),
+}) {}
+
+export type LedgerError = UnknownRef | NotYours | NoJobs;
+
 export interface Handle {
 	readonly ref: WorkRef;
 	readonly kind: WorkKind;

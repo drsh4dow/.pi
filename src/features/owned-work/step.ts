@@ -3,7 +3,6 @@ import * as Data from "effect/Data";
 import type * as Duration from "effect/Duration";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
-import * as Schema from "effect/Schema";
 import * as Str from "effect/String";
 
 import { TerminalEnd, type TerminalAddress } from "#src/client/hc/index.ts";
@@ -66,21 +65,6 @@ export interface Step<Reply> {
 }
 
 export type Woke = Step<ReadonlyArray<Settled>>;
-
-export class UnknownRef extends Schema.TaggedError<UnknownRef, { readonly brand: unique symbol }>()("UnknownRef", {
-	ref: Schema.String,
-}) {}
-
-export class NotYours extends Schema.TaggedError<NotYours, { readonly brand: unique symbol }>()("NotYours", {
-	ref: Schema.String,
-	why: Schema.String,
-}) {}
-
-export class NoJobs extends Schema.TaggedError<NoJobs, { readonly brand: unique symbol }>()("NoJobs", {
-	refs: Schema.Array(Schema.String),
-}) {}
-
-export type LedgerError = UnknownRef | NotYours | NoJobs;
 
 type Job = Exclude<Work, Data.TaggedEnum.Value<Work, "Serve">>;
 

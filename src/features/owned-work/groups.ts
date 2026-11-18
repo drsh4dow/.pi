@@ -2,19 +2,19 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 
+import { Command, Draft, type Group, type LedgerState, type Step, type Woke } from "./step.ts";
 import {
-	Command,
-	Draft,
-	type Group,
+	FailReason,
+	type GroupRequest,
+	type Handle,
 	type LedgerError,
-	type LedgerState,
 	NoJobs,
 	NotYours,
-	type Step,
-	type Woke,
 	UnknownRef,
-} from "./step.ts";
-import { FailReason, type GroupRequest, type Handle, Work, WorkEntry, WorkRef } from "./work.ts";
+	Work,
+	WorkEntry,
+	WorkRef,
+} from "./work.ts";
 
 const refused = (draft: Draft, ref: WorkRef): Option.Option<LedgerError> => {
 	const work = draft.work.get(ref);
