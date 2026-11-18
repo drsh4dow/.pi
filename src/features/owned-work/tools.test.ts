@@ -1,9 +1,10 @@
-import { expect, test } from "bun:test";
+import { afterAll, expect, test } from "bun:test";
 
 import { type JsonObject, validateToolArguments } from "@earendil-works/pi-ai";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Arr from "effect/Array";
+import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -16,6 +17,8 @@ import { Self } from "./child.ts";
 import { Ledger } from "./ledger.ts";
 import { modelTable } from "./models.ts";
 import { Tools } from "./tools.ts";
+import { type Handle, StartRequest, WorkRef } from "./work.ts";
+import { sessionRoot } from "./world.fixture.ts";
 
 const runtime = piHost(
 	Layer.mergeAll(
@@ -146,3 +149,82 @@ test.each([
 	expect(validated(toolNamed(tool), { ...args, name: " " })).toThrow();
 	expect(validated(toolNamed(tool), { ...args, name: "review auth" })).not.toThrow();
 });
+
+const commandsStarted: Array<string> = [];
+
+const startedHandle: Handle = {
+	ref: WorkRef("watch-1"),
+	kind: "watch",
+	terminal: Option.none(),
+	group: Option.none(),
+	ready: Option.none(),
+};
+
+const commandRuntime = piHost(
+	Layer.mergeAll(
+		Layer.provideMerge(briefSourcesLayer, NodeServices.layer),
+		Layer.mock(Ledger)({
+			start: (request) =>
+				Effect.sync(() => {
+					commandsStarted.push(StartRequest.$is("Delegate")(request) ? "a delegate" : request.command);
+
+					return startedHandle;
+				}),
+		}),
+		Layer.mock(Gh)({}),
+	),
+);
+
+const commandPlace = { cwd: "/", dir: `${sessionRoot}/tools` };
+
+const Warned = Schema.Struct({ warning: Schema.optionalKey(Schema.String) });
+
+const noAbort = new AbortController().signal;
+
+const started = {
+	serve: (call: { name: string; command: string }) => Tools.serve(commandRuntime).execute("call", call, noAbort),
+	watch: (call: { name: string; command: string }) =>
+		Tools.watch(commandRuntime, commandPlace).execute("call", call, noAbort),
+};
+
+const warningOf = (tool: keyof typeof started, command: string) =>
+	Effect.map(
+		Effect.flatMap(
+			Effect.promise(() => started[tool]({ name: "check", command })),
+			({ details }) => Schema.decodeUnknownEffect(Warned)(details),
+		),
+		({ warning }) => ({ started: commandsStarted.splice(0), warning }),
+	);
+
+test.each([
+	{ tool: "serve", command: "bun run dev > dev.log 2>&1", hiddenIn: "dev.log" },
+	{ tool: "watch", command: "bun run check > /tmp/check.log 2>&1; echo exit=$?", hiddenIn: "/tmp/check.log" },
+	{ tool: "watch", command: "cmd >/dev/null 2>&1", hiddenIn: "/dev/null" },
+] as const)(
+	"a $tool of `$command` starts, and its result warns that its stdout goes to $hiddenIn",
+	({ tool, command, hiddenIn }) =>
+		Effect.runPromise(
+			Effect.gen(function* () {
+				const { started: commands, warning } = yield* warningOf(tool, command);
+
+				expect(commands).toEqual([command]);
+				expect(warning).toContain(hiddenIn);
+			}),
+		),
+);
+
+test.each([
+	{ tool: "serve", command: "bun run dev" },
+	{ tool: "watch", command: "bun test 2>&1" },
+] as const)("a $tool of `$command` starts with no warning", ({ tool, command }) =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const { started: commands, warning } = yield* warningOf(tool, command);
+
+			expect(commands).toEqual([command]);
+			expect(warning).toBeUndefined();
+		}),
+	),
+);
+
+afterAll(() => Effect.runPromise(Effect.promise(() => Bun.$`rm -rf ${commandPlace.dir}`.quiet())));

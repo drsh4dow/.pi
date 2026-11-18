@@ -32,6 +32,8 @@ export const HandleOut = Type.Object({
 	next: Type.Optional(Type.String()),
 	/** Set when the whole delegate run lands on another model, because no BAA provider carries the one named. */
 	substituted: Type.Optional(Type.String()),
+	/** Set when a serve's or watch's command keeps its stdout off the pane the human watches. The command still runs. */
+	warning: Type.Optional(Type.String()),
 });
 
 const VerdictOut = Type.Object({
@@ -192,6 +194,14 @@ const delegatedOut = ({
 	...Option.match(substitution, { onNone: () => ({}), onSome: (substituted) => ({ substituted }) }),
 });
 
+const warningOf = (redirect: string) =>
+	`Its stdout goes to ${redirect}, so the human watching its pane cannot see it. It still runs. Next time let it print. A watch's wake carries its last lines and log path, and \`| tee <file>\` keeps a copy of a serve's output.`;
+
+const commandOut = ({ handle, redirect }: { readonly handle: Handle; readonly redirect: Option.Option<string> }) => ({
+	...handleOut(handle),
+	...Option.match(redirect, { onNone: () => ({}), onSome: (to) => ({ warning: warningOf(to) }) }),
+});
+
 const endOut = (end: Option.Option<TerminalEnd>) =>
 	Option.match(end, {
 		onNone: () => ({}),
@@ -242,6 +252,7 @@ const text = (json: JsonValue): Effect.Effect<string> => Effect.orDie(encode(jso
 
 export const Out = {
 	handle: handleOut,
+	command: commandOut,
 	delegated: delegatedOut,
 	reason: reasonOut,
 	result: resultOut,
