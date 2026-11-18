@@ -42,7 +42,11 @@ const CommandName = Type.String({
 
 const ServeParams = Type.Object({
 	name: CommandName,
-	command: Type.String({ minLength: 1 }),
+	command: Type.String({
+		minLength: 1,
+		description:
+			"Run it as is and let it print, rather than redirecting, filtering or silencing it. Pipe it through `tee <file>` to keep a copy. A loop should print one line per pass, so the pane shows it is alive.",
+	}),
 	ready: Type.Optional(
 		Type.String({ description: "Output text that means it is up. The call returns once it appears (60 s at most)." }),
 	),
@@ -52,7 +56,8 @@ const WatchParams = Type.Object({
 	name: CommandName,
 	command: Type.String({
 		minLength: 1,
-		description: "Write it as you would run it. The wake carries its exit code, last lines, and log path.",
+		description:
+			"Run it as is and let it print, rather than redirecting, filtering or silencing it. The wake already carries what you need. A loop should print one line per pass, so the pane shows it is alive.",
 	}),
 	deadline: Type.Optional(
 		Type.Number({ exclusiveMinimum: 0, description: "Seconds. Only for commands that might hang." }),
@@ -204,7 +209,7 @@ const serveTool = (runtime: Runtime) =>
 		name: "serve",
 		label: "serve",
 		description:
-			"Start a long-running command, such as a dev server. It runs until you cancel it, or until the group holding it settles.",
+			"Start a long-running command, such as a dev server. It runs until you cancel it, or until the group holding it settles. Its pane is the human's live view of the command.",
 		promptGuidelines,
 		parameters: ServeParams,
 		outputSchema: HandleOut,
@@ -220,7 +225,8 @@ const watchTool = (runtime: Runtime, place: Omit<ChildSession, "id">) =>
 	({
 		name: "watch",
 		label: "watch",
-		description: "Start a command that wakes you once it exits, with its exit code, last lines, and log path.",
+		description:
+			"Start a command that wakes you once it exits, with its exit code, last lines, and log path. Copy the log after the wake when you need it as evidence. Its pane is the human's live view of the command.",
 		parameters: WatchParams,
 		outputSchema: HandleOut,
 		execute: (_id, { name, command, deadline }, signal) => {
